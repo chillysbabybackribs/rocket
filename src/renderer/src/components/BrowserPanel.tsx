@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Lock, RotateCw, Search, X } from 'lucide-react'
 import type { BrowserState, BrowserTab, Suggestion } from '../../../shared/types.ts'
+import { useApp } from '../store.ts'
 import { BrowserTabs } from './BrowserTabs.tsx'
 
 // The UI's half of the embedded browser: the tab strip, a toolbar, and an empty box whose
@@ -138,10 +139,13 @@ export function BrowserPanel() {
     return off
   }, [])
 
+  // The page is a native view over the window; while a dialog is open it is hidden, not covered.
+  const covered = useApp((state) => state.newGoal !== null)
   useEffect(() => {
     const element = stage.current
     if (!element) return
     const report = (): void => {
+      if (covered) return send({ type: 'setBounds', bounds: null })
       const box = element.getBoundingClientRect()
       send({ type: 'setBounds', bounds: { x: box.left, y: box.top, width: box.width, height: box.height } })
     }
@@ -155,7 +159,7 @@ export function BrowserPanel() {
       send({ type: 'setBounds', bounds: null })
       send({ type: 'chromeFocus', focused: false })
     }
-  }, [])
+  }, [covered])
 
   return (
     <section

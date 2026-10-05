@@ -2,7 +2,7 @@ import { memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } 
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ChevronRight, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
-import type { Item, ToolKind, Turn } from '../../../shared/types.ts'
+import { providerLabel, type Goal, type Item, type ToolKind, type Turn } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
 import { peekItem, useApp, useItem } from '../store.ts'
 
@@ -275,7 +275,20 @@ function stageOf(ids: string[], running: boolean): { reply: string | null; steps
   return { reply, steps: at === -1 ? [] : work.slice(0, at), live: work.slice(at + 1), notices }
 }
 
-const TurnBlock = memo(function TurnBlock({ turn, ids, fill }: { turn: Turn; ids: string[]; fill: boolean }) {
+/**
+ * A goal's turns are sent by the app, not typed by the user, so their message is not shown as
+ * the user's. The draft turn shows what the user did write; the others, a line naming the round.
+ */
+function GoalLead({ turn, goal, round }: { turn: Turn; goal: Goal | null; round: number }) {
+  const name = providerLabel(turn.provider)
+  if (turn.goalRole === 'draft' && goal && round === 0) return <div className="user-bubble">{goal.request}</div>
+  const label = turn.goalRole === 'draft' ? `${name} drafts the goal again`
+    : turn.goalRole === 'work' ? `Round ${round} · ${name} works`
+    : `Round ${round} · ${name} checks`
+  return <div className={`goal-lead is-${turn.goalRole}`}>{label}</div>
+}
+
+const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { turn: Turn; ids: string[]; fill: boolean; goal: Goal | null; round: number }) {
   const [userId, ...rest] = ids
   const running = turn.status === 'running'
   const { reply, steps, live, notices } = stageOf(rest, running)
@@ -284,7 +297,7 @@ const TurnBlock = memo(function TurnBlock({ turn, ids, fill }: { turn: Turn; ids
   const thoughts = hasThought(steps) && steps.every((id) => peekItem(id)?.type !== 'tool')
   return (
     <article className={`turn${fill ? ' is-fill' : ''}`}>
-      {userId && <ItemRow id={userId} />}
+      {turn.goalRole ? <GoalLead turn={turn} goal={goal} round={round} /> : userId && <ItemRow id={userId} />}
       <div className="answer">
         <TurnHead turn={turn} thoughts={thoughts} open={thoughtsOpen} onToggle={() => setThoughtsOpen(!thoughtsOpen)} />
         {reply && <ItemRow key={reply} id={reply} />}
@@ -300,6 +313,17 @@ const TurnBlock = memo(function TurnBlock({ turn, ids, fill }: { turn: Turn; ids
 
 const NO_ITEMS: string[] = []
 
+/** A goal turn's round; for a draft, how many drafts came before it. A turn that has been retried belongs to the round it retried. */
+function roundOf(goal: Goal | null, turns: Turn[], turn: Turn): number {
+  if (!goal || !turn.goalRole) return 0
+  if (turn.goalRole === 'draft') return turns.filter((entry) => entry.goalRole === 'draft' && entry.startedAt < turn.startedAt).length
+  const known = goal.rounds.find((round) => round.workTurnId === turn.id || round.checkTurnId === turn.id)
+  if (known) return known.n
+  // A failed work turn was replaced by the next one for the same round; a check asked again checks the round before it.
+  if (turn.goalRole === 'work') return goal.rounds.find((round) => round.startedAt >= turn.startedAt)?.n ?? goal.rounds.length + 1
+  return goal.rounds.filter((round) => round.startedAt <= turn.startedAt).at(-1)?.n ?? goal.rounds.length
+}
+
 /** Per chat, the turn last sent while the app has been open: the one laid out to fill the view. */
 const sentTurns = new Map<string, string>()
 
@@ -307,6 +331,7 @@ export function Transcript() {
   const turns = useApp((state) => state.turns)
   const turnItems = useApp((state) => state.turnItems)
   const chatId = useApp((state) => state.activeChatId)
+  const goal = useApp((state) => state.goals.find((entry) => entry.chatId === state.activeChatId) ?? null)
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
@@ -360,7 +385,9 @@ export function Transcript() {
   return (
     <div className="transcript" ref={scroller}>
       <div className="transcript-inner" ref={content}>
-        {turns.map((turn) => <TurnBlock key={turn.id} turn={turn} ids={turnItems[turn.id] ?? NO_ITEMS} fill={turn.id === sentId} />)}
+        {turns.map((turn) => (
+          <TurnBlock key={turn.id} turn={turn} ids={turnItems[turn.id] ?? NO_ITEMS} fill={turn.id === sentId} goal={goal} round={roundOf(goal, turns, turn)} />
+        ))}
       </div>
     </div>
   )

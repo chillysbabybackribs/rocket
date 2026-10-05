@@ -35,6 +35,7 @@ export class UiTestAdapter implements ProviderAdapter {
         sessionId: request.sessionId, cwd: request.cwd, handoffTurns: request.handoff?.turns ?? 0
       }))
       if (command === 'UI check: fail') return { status: 'failed', error: 'Controlled UI test failure.' }
+      if (command === 'UI check: work') return this.work(request.turnId, sink, controller.signal)
       if (!['UI check: stream', 'UI check: stop', 'UI check: recover'].includes(command ?? '')) {
         return { status: 'failed', error: 'This isolated window uses UI test responses only.' }
       }
@@ -61,6 +62,52 @@ export class UiTestAdapter implements ProviderAdapter {
     } finally {
       this.active.delete(request.chatId)
     }
+  }
+
+  /**
+   * A longer turn for watching the transcript by eye: words, tool calls, more words and a long
+   * thought, paced like a model's, over about twenty seconds. It needs no release file.
+   */
+  private async work(turnId: string, sink: TurnSink, signal: AbortSignal): Promise<RunResult> {
+    let n = 0
+    const pause = (ms: number): Promise<void> => delay(ms, undefined, { signal })
+    const say = async (text: string): Promise<void> => {
+      const id = `${turnId}:say${n++}`
+      sink.item({ type: 'assistant', id, turnId, text: '', streaming: true })
+      for (const word of text.split(' ')) {
+        sink.delta(id, `${word} `)
+        await pause(40)
+      }
+      sink.item({ type: 'assistant', id, turnId, text, streaming: false })
+    }
+    const think = async (text: string): Promise<void> => {
+      const id = `${turnId}:think${n++}`
+      sink.item({ type: 'reasoning', id, turnId, text: '', streaming: true })
+      for (const word of text.split(' ')) {
+        sink.delta(id, `${word} `)
+        await pause(30)
+      }
+      sink.item({ type: 'reasoning', id, turnId, text, streaming: false })
+    }
+    const tool = async (label: string): Promise<void> => {
+      const id = `${turnId}:tool${n++}`
+      sink.item({ type: 'tool', id, turnId, kind: 'command', label, output: '', status: 'running' })
+      await pause(900)
+      sink.item({ type: 'tool', id, turnId, kind: 'command', label, output: `Output of ${label}.`, status: 'done' })
+    }
+    await think('Reading the request. The user wants the transcript checked by eye, so this turn should look like a real one: a few sentences, some tool calls, and a thought long enough to need scrolling.')
+    await say('Starting the check. First I will look at the current state of the code.')
+    await tool('cat src/host/hub.ts')
+    await tool('cat src/host/store.ts')
+    await say('The code is clean. Reading the renderer next, the transcript component and its styles.')
+    await think('The transcript shows one turn at a time. Its head carries the clock. Under it come the latest words, a summary of the steps so far, the live thought and the current tool. Each of these replaces the one before it in the same place, so the page does not grow while the turn works. The thought window grows with its text to seven lines and then scrolls, following the newest lines until the reader scrolls back. That is the behaviour under test here, and this thought is long enough to fill the window and go past it, so the fade at its top and the scrolling can both be seen. A reader who scrolls up stays where they are while more arrives, and the window follows the newest lines again once they return to the end. After the reply starts the window folds away, and the thought can be read again by opening the summary of the steps.')
+    await tool('sed -n 1,80p src/renderer/src/components/Transcript.tsx')
+    await tool('sed -n 500,640p src/renderer/src/styles.css')
+    await tool('npm test')
+    await say('Now the styles: the live window and the summary line.')
+    await tool('npm run typecheck')
+    await say('**Done.** The transcript keeps one shape while a turn works, and the finished turn folds its steps into one summary.')
+    return { status: 'completed' }
   }
 
   async prepare(): Promise<void> {}

@@ -3,6 +3,7 @@ import { Globe, RefreshCw } from 'lucide-react'
 import { PROVIDERS, providerLabel, type ProviderId, type UsageSnapshot, type UsageWindow } from '../../../shared/types.ts'
 import { refreshUsage, setBrowserOpen, useApp } from '../store.ts'
 import { ProviderGlyph } from './glyphs.tsx'
+import { Goals } from './Goals.tsx'
 import { History } from './History.tsx'
 
 // The left edge of the window: window controls, the usage notch, and two global actions (chat history and the browser). The
@@ -190,6 +191,7 @@ export function Rail() {
         <UsageNotch />
       </div>
       <div className="rail-actions">
+        <Goals />
         <History />
         <button
           type="button"

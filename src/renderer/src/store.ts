@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
-import type { Chat, HostEvent, Item, ModelInfo, ProviderId, Turn, UsageSnapshot } from '../../shared/types.ts'
-import { PROVIDERS } from '../../shared/types.ts'
+import type { Chat, Goal, GoalEdit, HostEvent, Item, ModelInfo, ProviderId, Turn, UsageSnapshot } from '../../shared/types.ts'
+import { PROVIDERS, providerLabel } from '../../shared/types.ts'
 import { call, connectHost } from './host.ts'
 
 // Client state. Two kinds of subscription keep a fast token stream cheap: components that care
@@ -27,6 +27,14 @@ export type AppState = {
   /** The model chosen per provider, in the same place; a provider absent here runs its own default. */
   modelChoice: ModelChoices
   browserOpen: boolean
+  /** Every goal, newest first. A goal's chat is an ordinary chat with the goal beside it. */
+  goals: Goal[]
+  /** Whether the goal shows beside its chat; hiding it does not stop the goal. */
+  goalPaneOpen: boolean
+  /** The goal side's width, in pixels. */
+  goalWidth: number
+  /** The new-goal dialog: closed, describing, or following the goal it drafted. */
+  newGoal: { goalId: string | null } | null
   /** The folder a new chat starts in: the last one the user chose, or their home folder. */
   defaultCwd: string
   error: string | null
@@ -46,6 +54,8 @@ type Prefs = {
   /** chatId → that chat's choice. */
   selections?: Record<string, Selection>
   browserOpen?: boolean
+  goalPaneOpen?: boolean
+  goalWidth?: number
   activeChatId?: string | null
   tabs?: string[]
   cwd?: string
@@ -106,6 +116,10 @@ let state: AppState = {
   models: {},
   modelChoice: prefs.modelChoice ?? {},
   browserOpen: prefs.browserOpen === true,
+  goals: [],
+  goalPaneOpen: prefs.goalPaneOpen !== false,
+  goalWidth: prefs.goalWidth ?? 400,
+  newGoal: null,
   defaultCwd: prefs.cwd || window.rocket.homeDir,
   error: null
 }
@@ -201,12 +215,15 @@ function applyEvents(events: HostEvent[]): void {
         break
       }
       case 'chatDeleted':
-        setState({ chats: state.chats.filter((chat) => chat.id !== event.chatId) })
+        setState({ chats: state.chats.filter((chat) => chat.id !== event.chatId), goals: state.goals.filter((goal) => goal.chatId !== event.chatId) })
         forgetSelection(event.chatId)
         closeTab(event.chatId)
         break
       case 'usage':
         setState({ usage: { ...state.usage, [event.snapshot.provider]: event.snapshot } })
+        break
+      case 'goal':
+        putGoal(event.goal)
         break
     }
   }
@@ -331,6 +348,94 @@ export function loadModels(provider: ProviderId): Promise<void> {
   return load
 }
 
+// ── Goals ─────────────────────────────────────────────────────────────
+
+/** A goal changed. When it finishes or needs the user, the desktop says so if the window is not in front. */
+function putGoal(goal: Goal): void {
+  const before = state.goals.find((entry) => entry.id === goal.id)
+  setState({ goals: [goal, ...state.goals.filter((entry) => entry.id !== goal.id)].sort((a, b) => b.createdAt - a.createdAt) })
+  if (!before || before.status === goal.status || !document.hidden && document.hasFocus()) return
+  const body = goal.status === 'done' ? `Done: ${goal.title}`
+    : goal.status === 'needs_you' ? `${goal.title}: ${goal.reason ?? 'needs you'}`
+    : goal.status === 'confirming' ? `Check the plan for: ${goal.title}`
+    : null
+  if (!body) return
+  try {
+    const notice = new Notification('Rocket', { body, silent: false })
+    notice.onclick = () => {
+      window.focus()
+      void openChat(goal.chatId)
+    }
+  } catch {
+    // Notifications are a courtesy.
+  }
+}
+
+export function goalOf(chatId: string | null): Goal | null {
+  return chatId ? state.goals.find((goal) => goal.chatId === chatId) ?? null : null
+}
+
+export function openNewGoal(): void {
+  setState({ newGoal: { goalId: null } })
+}
+
+export function closeNewGoal(): void {
+  setState({ newGoal: null })
+}
+
+/** Have the chosen provider draft a goal from what the user wrote, in a chat of its own. */
+export async function draftGoal(text: string, cwd: string): Promise<void> {
+  try {
+    const goal = await call('goal.draft', { cwd, text, provider: state.provider, model: state.modelChoice[state.provider]?.id ?? null })
+    putGoal(goal)
+    saveSelection(goal.chatId, { provider: state.provider, modelChoice: state.modelChoice })
+    writePrefs({ cwd })
+    setState({ defaultCwd: cwd, newGoal: { goalId: goal.id }, goalPaneOpen: true })
+    void openChat(goal.chatId)
+  } catch (error) {
+    fail(error)
+  }
+}
+
+async function goalCall(run: () => Promise<Goal>): Promise<boolean> {
+  try {
+    putGoal(await run())
+    return true
+  } catch (error) {
+    fail(error)
+    return false
+  }
+}
+
+export function updateGoal(goalId: string, edit: GoalEdit): Promise<boolean> {
+  return goalCall(() => call('goal.update', { goalId, edit }))
+}
+
+/** Save the brief as confirmed, then start the work. */
+export async function startGoal(goalId: string, edit: GoalEdit): Promise<void> {
+  if (!await updateGoal(goalId, edit)) return
+  if (await goalCall(() => call('goal.start', { goalId }))) closeNewGoal()
+}
+
+export function pauseGoal(goalId: string): void { void goalCall(() => call('goal.pause', { goalId })) }
+export function resumeGoal(goalId: string): void { void goalCall(() => call('goal.resume', { goalId })) }
+export function stopGoal(goalId: string): void { void goalCall(() => call('goal.stop', { goalId })) }
+export function steerGoal(goalId: string, text: string): Promise<boolean> { return goalCall(() => call('goal.steer', { goalId, text })) }
+
+export function setGoalPaneOpen(goalPaneOpen: boolean): void {
+  setState({ goalPaneOpen })
+  writePrefs({ goalPaneOpen })
+}
+
+export function setGoalWidth(goalWidth: number, save: boolean): void {
+  setState({ goalWidth })
+  if (save) writePrefs({ goalWidth })
+}
+
+export function agentLabel(agent: { provider: ProviderId }): string {
+  return providerLabel(agent.provider)
+}
+
 export function setBrowserOpen(browserOpen: boolean): void {
   setState({ browserOpen })
   writePrefs({ browserOpen })
@@ -354,7 +459,8 @@ export function refreshUsage(provider: ProviderId, force = false): Promise<void>
 
 async function load(): Promise<void> {
   try {
-    const chats = await call('chats.list', {})
+    const [chats, goals] = await Promise.all([call('chats.list', {}), call('goals.list', {})])
+    setState({ goals })
     const saved = readPrefs()
     setState({ ready: true, chats: sortChats(chats) })
     setTabs((saved.tabs ?? []).filter((id) => chats.some((chat) => chat.id === id)))
