@@ -96,9 +96,6 @@ function hasThought(ids: string[]): boolean {
 /** How long the live thinking takes to fold away; the same figure is in `.thought-live`. */
 const RETRACT_MS = 220
 
-/** The height of the live thinking window, four lines; the same figure is in `.thought-live`. */
-const LIVE_THOUGHT_HEIGHT = 80
-
 /** True while `on`, and for `ms` after it ends, so what it showed can animate out before unmounting. */
 function useLingering(on: boolean, ms: number): boolean {
   const [held, setHeld] = useState(on)
@@ -114,26 +111,37 @@ function useLingering(on: boolean, ms: number): boolean {
 }
 
 /**
- * The model's thinking as it arrives, in a window of fixed height that follows the newest lines.
- * It opens with the first text and folds away when the work it belongs to is over: the reply
- * starts, or the turn ends.
+ * The model's thinking as it arrives, in a window of fixed height that follows the newest lines
+ * until the user scrolls back through it, and again once they return to the end. It opens with
+ * the first text and folds away when the work it belongs to is over: the reply starts, or the
+ * turn ends.
  */
 function LiveThought({ id, open }: { id: string; open: boolean }) {
   const item = useItem(id)
   const box = useRef<HTMLDivElement>(null)
   const [clipped, setClipped] = useState(false)
+  /** Whether the window is at its end, and so should stay there as text arrives. */
+  const following = useRef(true)
   // A new thought starts empty; the last one stays up until it has something to say.
   const shown = useRef('')
   const text = item?.type === 'reasoning' ? item.text.trim() : ''
   if (text) shown.current = text
   const visible = open && shown.current !== ''
-  // Only text taller than the window fades out at the top; a first line is shown whole.
   useLayoutEffect(() => {
-    const inner = box.current?.firstElementChild
-    if (visible && inner) setClipped(inner.scrollHeight > LIVE_THOUGHT_HEIGHT)
+    const element = box.current
+    if (!visible || !element) return
+    if (following.current) element.scrollTop = element.scrollHeight
+    setClipped(element.scrollTop > 0)
   }, [visible, text])
+  // Only lines that have left at the top fade out there; text read from its start is shown whole.
+  const onScroll = (): void => {
+    const element = box.current
+    if (!element) return
+    following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 8
+    setClipped(element.scrollTop > 0)
+  }
   return (
-    <div ref={box} className={`thought-live${visible ? ' is-open' : ''}${clipped ? ' is-clipped' : ''}`} aria-hidden={!visible}>
+    <div ref={box} className={`thought-live${visible ? ' is-open' : ''}${clipped ? ' is-clipped' : ''}`} aria-hidden={!visible} onScroll={onScroll}>
       <div>{shown.current}</div>
     </div>
   )
