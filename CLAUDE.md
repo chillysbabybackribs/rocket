@@ -57,3 +57,12 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
 - Stream translation is a pure class (`TurnTranslator`, `UpdateTranslator`, `StepTranslator`) so
   it can be tested without a CLI. Tests sit beside the file they test.
 - User-facing errors are full sentences that say what to do next.
+
+## Self-check
+
+With `ROCKET_SELF_CHECK=1` you have `rocket_diagnostics` and `rocket_note`. When the app misbehaves,
+runs slow, or a `<self-check>` line appears ahead of a message, read the journal before guessing.
+Anything you notice but were not asked to fix goes in `rocket_note` with what you saw, the likely
+cause and the change you would make. Edit code only for what was asked or a clear defect in code
+you are already changing; propose anything larger in the chat. After a self-edit, run typecheck
+and tests, and read `rocket_diagnostics` for anything the change caused.

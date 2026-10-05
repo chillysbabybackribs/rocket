@@ -82,14 +82,29 @@ runs in a worker thread of the host and each step is a request to main
 background tabs of its own, marked with a dot in the tab strip, and touches the user's tabs only
 by id. The open tabs ride at the head of the user's message when they have changed, so listing
 them costs no call. A page counts as loaded when its document is ready, not when its last ad is.
+While a turn uses a tab, its page runs at full speed out of sight; when the turn ends it goes back
+to being an ordinary background tab, and a deleted chat's own tab is closed.
 
 ### Permissions
 
 All four providers run unattended with full access to the chat's working folder and your shell,
 as in the reference build. There are no approval prompts yet.
 
+### Self-check
+
+The host keeps a journal of its own trouble, `journal.jsonl` in the profile folder (one JSON
+object per line, rotated at 2 MB; `src/host/journal.ts`). It always records: uncaught errors in the
+host, host restarts seen by main, failed turns, tool failures, and turns far slower than usual for
+their provider and model. With `ROCKET_SELF_CHECK=1` the app also serves two tools to every
+provider (`src/host/tools/self-check.ts`): `rocket_diagnostics` reads the journal and the timing
+averages, and `rocket_note` files what a model saw, why it thinks it happened and the change it
+would make. Each chat is also told, ahead of its next message, when new warnings or errors have
+arrived, once. Notes edit nothing; changing code is still the user's request or the model's
+judgement about a clear defect, as `CLAUDE.md` says.
+
 ## Development hooks
 
+- `ROCKET_SELF_CHECK=1` serves the self-check tools and nudges described above.
 - `ROCKET_USER_DATA=<dir>` uses another profile folder, so test runs never touch real chats.
 - `ROCKET_CAPTURE=<file.png>` saves a picture of the UI after load; `ROCKET_CAPTURE_SCRIPT`,
   `ROCKET_CAPTURE_DELAY_MS` and `ROCKET_CAPTURE_EXIT=1` script a flow first and quit after.

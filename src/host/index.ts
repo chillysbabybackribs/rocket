@@ -6,6 +6,7 @@ import type {
 } from '../shared/types.ts'
 import { describeTiming, Hub } from './hub.ts'
 import { messageOf } from './json.ts'
+import { Journal } from './journal.ts'
 import { stopAllProcessGroups } from './process-tree.ts'
 import { AntigravityAdapter } from './providers/antigravity.ts'
 import { ClaudeAdapter } from './providers/claude.ts'
@@ -16,6 +17,7 @@ import { Store } from './store.ts'
 import { browserContext, browserTools } from './tools/browser.ts'
 import { ToolChannel } from './tools/channel.ts'
 import { ToolRegistry } from './tools/registry.ts'
+import { selfCheckTools } from './tools/self-check.ts'
 
 // The agent host: a utility process forked by Electron's main process. Everything that talks to
 // a provider or to the transcript store lives here, so none of it can stall the window or the
@@ -35,6 +37,9 @@ const EVENT_FLUSH_MS = 16
 
 const dataDir = process.env.ROCKET_DATA_DIR || join(homedir(), '.config', 'rocket')
 const store = new Store(join(dataDir, 'rocket.db'))
+// The journal records always, since a crash is worth keeping; the tools and nudges that surface it are opt-in.
+const journal = new Journal(join(dataDir, 'journal.jsonl'))
+const selfCheck = process.env.ROCKET_SELF_CHECK === '1'
 
 let rendererPort: Port | null = null
 let queued: HostEvent[] = []
@@ -107,7 +112,9 @@ function onBrowserReply(reply: BrowserAgentReply): void {
 
 // The tools are served before any provider starts, so every session is born knowing them.
 const tools = new ToolChannel(
-  new ToolRegistry().add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results'))),
+  new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', message, { provider, chatId }))
+    .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
+    .add(...(selfCheck ? selfCheckTools(journal) : [])),
   join(dataDir, 'tool-channel.json'),
   (provider) => hub.runningChat(provider)
 )
@@ -126,10 +133,17 @@ function onEvent(event: HostEvent): void {
   if (event.type === 'turn' && event.turn.status !== 'running') void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
   else if (event.type === 'chatDeleted') void askBrowser({ op: 'forget', chat: event.chatId }).catch(() => {})
 }
+const browserTabs = browserContext({ request: askBrowser })
 const hub = new Hub(
   store, adapters, onEvent,
-  (timing) => console.log(`[host] ${describeTiming(timing)}`),
-  browserContext({ request: askBrowser })
+  (timing) => {
+    console.log(`[host] ${describeTiming(timing)}`)
+    journal.noteTiming(timing)
+  },
+  async (chatId, provider, fresh) => {
+    const parts = [selfCheck ? journal.nudge(chatId) : null, await browserTabs(chatId, provider, fresh)]
+    return parts.filter(Boolean).join('\n\n') || null
+  }
 )
 
 const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | Promise<HostApi[M][1]> } = {
@@ -190,5 +204,11 @@ process.on('SIGTERM', () => { void shutdown() })
 process.on('SIGINT', () => { void shutdown() })
 // A provider child must never outlive the host, whatever took the host down.
 process.on('exit', () => stopAllProcessGroups())
-process.on('uncaughtException', (error) => console.error('[host] uncaught:', error))
-process.on('unhandledRejection', (error) => console.error('[host] unhandled rejection:', error))
+process.on('uncaughtException', (error) => {
+  console.error('[host] uncaught:', error)
+  journal.add('host', 'error', 'crash', `Uncaught exception: ${messageOf(error)}`, { stack: error.stack?.split('\n').slice(0, 6).join('\n') })
+})
+process.on('unhandledRejection', (error) => {
+  console.error('[host] unhandled rejection:', error)
+  journal.add('host', 'error', 'crash', `Unhandled rejection: ${messageOf(error)}`, { stack: error instanceof Error ? error.stack?.split('\n').slice(0, 6).join('\n') : undefined })
+})

@@ -19,6 +19,8 @@ export type TurnTiming = {
   provider: ProviderId
   model: string | null
   status: Turn['status']
+  /** Why a failed turn failed. */
+  error: string | null
   /** To the provider's first sign of life: a session, a model, an item. */
   firstEventMs: number | null
   /** To the first reasoning or reply text the user could read. */
@@ -261,11 +263,13 @@ export class Hub {
     try {
       // The provider is sent the message with the app's context ahead of it; the transcript keeps the message as typed.
       // With nothing to ask, the provider is started in the same tick as the send.
+      const { context } = this
       const told = async (fresh: boolean): Promise<string> => {
-        const context = this.context ? await this.context(chatId, provider, fresh).catch(() => null) : null
-        return context ? `${context}\n\n${text}` : text
+        const lines = context ? await context(chatId, provider, fresh).catch(() => null) : null
+        return lines ? `${lines}\n\n${text}` : text
       }
-      result = await adapter.run({ chatId, turnId: turn.id, cwd, sessionId, model, text: await told(sessionId === null), handoff }, sink)
+      const first = context ? await told(sessionId === null) : text
+      result = await adapter.run({ chatId, turnId: turn.id, cwd, sessionId, model, text: first, handoff }, sink)
       if (result.sessionLost && !live.stopRequested) {
         // The provider dropped its session: start a new one and hand over the whole chat.
         this.store.setSession(chatId, provider, { sessionId: null, seenTurnSeq: 0 })
@@ -303,6 +307,7 @@ export class Hub {
       provider,
       model: turn.model,
       status: turn.status,
+      error: turn.error,
       firstEventMs: clock.firstEvent === null ? null : clock.firstEvent - clock.sent,
       firstTextMs: clock.firstText === null ? null : clock.firstText - clock.sent,
       totalMs: performance.now() - clock.sent

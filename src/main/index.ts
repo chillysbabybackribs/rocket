@@ -8,6 +8,7 @@ import type { BrowserAgentReply, BrowserAgentRequest, BrowserCommand } from '../
 import { HOST_PORT_MESSAGE } from '../shared/types.ts'
 import { BrowserAgent } from './browser-agent.ts'
 import { BrowserPane } from './browser-pane.ts'
+import { appendJournal } from '../host/journal.ts'
 
 // Electron's main process does three things and nothing else: it owns the window, it owns the
 // embedded browser view, and it forks the agent host and introduces it to the renderer over a
@@ -46,6 +47,9 @@ function startHost(): UtilityProcess {
     host = null
     if (quitting) return
     console.error(`[main] agent host exited with code ${code}; restarting`)
+    appendJournal(join(app.getPath('userData'), 'journal.jsonl'), {
+      at: Date.now(), source: 'main', severity: 'error', kind: 'restart', message: `The agent host exited with code ${code} and was restarted`
+    })
     host = startHost()
     connectRenderer()
   })

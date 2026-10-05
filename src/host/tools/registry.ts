@@ -26,6 +26,9 @@ export function textResult(text: string): ToolResult {
 export class ToolRegistry {
   private readonly tools = new Map<string, Tool>()
 
+  /** `onFailure` hears every failed call, so the app can remember what its tools got wrong. */
+  constructor(private readonly onFailure: (name: string, message: string, context: ToolContext) => void = () => {}) {}
+
   add(...tools: Tool[]): this {
     for (const tool of tools) this.tools.set(tool.name, tool)
     return this
@@ -38,10 +41,16 @@ export class ToolRegistry {
   /** Run a tool. A failure is a result the model can read, never a thrown error. */
   async call(name: string, args: Record<string, unknown>, context: ToolContext): Promise<ToolResult> {
     const tool = this.tools.get(name)
-    if (!tool) return { ...textResult(`There is no tool named ${name}.`), isError: true }
+    if (!tool) {
+      this.onFailure(name, 'There is no such tool', context)
+      return { ...textResult(`There is no tool named ${name}.`), isError: true }
+    }
     try {
-      return await tool.run(args, context)
+      const result = await tool.run(args, context)
+      if (result.isError) this.onFailure(name, result.content.map((part) => (part.type === 'text' ? part.text : '')).join(' ').trim(), context)
+      return result
     } catch (error) {
+      this.onFailure(name, messageOf(error), context)
       return { ...textResult(messageOf(error)), isError: true }
     }
   }
