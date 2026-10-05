@@ -89,7 +89,7 @@ them costs no call. A page counts as loaded when its document is ready, not when
 While a turn uses a tab, its page runs at full speed out of sight; when the turn ends it goes back
 to being an ordinary background tab, and a deleted chat's own tab is closed.
 
-Besides the browser tools there is `remember` (see Workspace and memory) and, with
+Besides the browser tools there is `remember` (see Workspace and memory), `goal_report` (see Goals) and, with
 `ROCKET_SELF_CHECK=1`, the three self-check tools. Every tool's schema is in every session's prompt,
 so what a model should simply know goes ahead of the user's message instead (tabs, the file map,
 notes, trouble reports), and a tool is added only for something a model must do.
@@ -124,6 +124,32 @@ as it is.
 
 Claude Code sessions working on this repository outside the app are covered by a Stop hook
 (`.claude/settings.json`, `scripts/auto-commit.sh`) that commits what a turn left changed.
+
+### Goals
+
+A goal is something the user wants done end to end. They describe it in their own words (the
+target button on the rail, then New goal); the provider picked in the composer drafts a brief from
+it: the goal restated, two to six lines that define done, and at most one question. The user
+edits and confirms the brief, and the work starts. The design and its reasons are in
+`docs/goals-phase1.md`.
+
+A goal is a chat with a goal beside it (`src/host/goals.ts`). Each round is one ordinary turn by
+the worker, run however its CLI runs best, for as long as it takes; when it ends, a second
+provider (another signed-in one, with the most usage left) checks every line in a turn of its own
+in the same chat, so the handoff already gives it the worker's turns and files. Unmet lines and the
+checker's findings become the worker's next message, until every line is met. There are no step,
+time or token limits: the models decide. The goal pauses and asks the user only when the worker
+asks a question, when two checks in a row find the same gap, when a turn fails twice, or when a
+usage window reaches the goal's pause level (90% unless changed under Advanced); then it carries on
+by itself when the window resets. A goal cut off by the app closing waits for Resume.
+
+Models report through one tool, `goal_report`: the brief when drafting, done or needs-you when
+working, a verdict per line when checking. A worker that forgets to call it goes to the checker
+anyway; a checker that forgets is asked once more. A goal's turns are marked with their role
+(`goalRole`), so the transcript shows "Round 2 · Codex checks" instead of the app's prompt. In the
+window the chat splits like an artifact: the conversation, a divider to drag, and the goal's
+checklist and rounds (`GoalPane.tsx`); the composer becomes a note for the next round. While the
+new-goal dialog is open the browser's page is hidden, since it would paint over the dialog.
 
 ### Permissions
 

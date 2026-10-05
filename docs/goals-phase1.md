@@ -93,6 +93,9 @@ Outside a goal it answers that there is no goal running in this chat.
 
 ## Protocol (`src/shared/types.ts`)
 
+An outline; the types in `src/shared/types.ts` are the source of truth (they also hold `next`,
+the turn a paused goal takes when it resumes, and `resumeAt` for a goal waiting on usage).
+
 ```ts
 export type GoalStatus = 'drafting' | 'confirming' | 'working' | 'checking' | 'needs_you' | 'paused' | 'done' | 'stopped'
 export type GoalRole = 'draft' | 'work' | 'check'
@@ -134,20 +137,16 @@ renderer can hide the app's prompts behind "Rocket asked Codex to check round 2"
 
 Events: `{ type: 'goal'; goal: Goal }` whenever a goal changes.
 
-Requests: `goals.list`, `goal.open`, `goal.draft {cwd, text, provider, model}`,
+Requests: `goals.list`, `goal.draft {cwd, text, provider, model}`,
 `goal.update {goalId, goal, criteria, answer, worker, checker, pauseAtPercent}` (while
 confirming), `goal.start`, `goal.pause`, `goal.resume`, `goal.stop`, `goal.steer {goalId, text}`,
-`goal.delete`.
+and deleting the chat deletes the goal.
 
 ## Store (`src/host/store.ts`)
 
-Two tables, created with the rest of the schema, and a `goal_role` column on `turns`:
-
-- `goals`: one row per goal, with the brief's fields; `criteria`, `question`, `worker`, `checker`
-  and `steer` are JSON.
-- `goal_rounds`: `(goal_id, n)`, the two turn ids, the report, the verdicts, the files.
-
-Deleting the chat deletes its goal (`ON DELETE CASCADE`).
+One `goals` table: the goal as one row of JSON (rounds included), keyed by id with its `chat_id`.
+A goal is small and is read and written whole. Turns gain a `goal_role` column, added in place to
+stores made before it. Deleting the chat deletes its goal (`ON DELETE CASCADE`).
 
 ## Host
 

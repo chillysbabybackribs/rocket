@@ -36,6 +36,8 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
 - `src/host/workspace.ts`: the file map and saved notes a new session is told about its folder.
 - `src/host/teamwork.ts`, `git.ts`: what a model is told about others working in the folder, and
   the commit the app makes of a turn's changes.
+- `src/host/goals.ts`: goals, the loop of work and check turns until a brief's checklist is met
+  (`docs/goals-phase1.md`); `tools/goal.ts` is how models report to it.
 - `src/main/`: the window, the browser tabs (`browser-pane.ts`) and the browser tools' hands
   (`browser-agent.ts`, `browser-page-lib.ts`).
 - `src/renderer/`: React UI. `store.ts` is the client state.
