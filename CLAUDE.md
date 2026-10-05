@@ -32,6 +32,8 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
 - `src/host/journal.ts`: the journal of errors, slow turns and model notes (`journal.jsonl`); see Self-check.
 - `src/host/tools/`: the app's tools, served to all providers by one loopback MCP server.
 - `src/host/workspace.ts`: the file map and saved notes a new session is told about its folder.
+- `src/host/teamwork.ts`, `git.ts`: what a model is told about others working in the folder, and
+  the commit the app makes of a turn's changes.
 - `src/main/`: the window, the browser tabs (`browser-pane.ts`) and the browser tools' hands
   (`browser-agent.ts`, `browser-page-lib.ts`).
 - `src/renderer/`: React UI. `store.ts` is the client state.
@@ -53,6 +55,10 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
 - When a CLI's behaviour is learned or re-verified, record it in that adapter's header with the
   CLI version and date. When it changes, fix the header with the code.
 - Keep the README current with the code in the same change.
+- Git stays out of the chat. Do not commit, stage, branch or push, and do not mention git or
+  commits in replies unless asked. Inside Rocket the app commits each turn's changes itself.
+- Other assistants may be editing this folder at the same time. Read a file again before changing
+  it if it may have moved, and say so if someone else's change looks wrong rather than undoing it.
 
 ## Style
 

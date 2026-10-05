@@ -5,6 +5,7 @@ import { messageOf, oneLine } from './json.ts'
 import type { ProviderAdapter, RunResult, TurnSink } from './providers/provider.ts'
 import { unavailableUsage } from './providers/provider.ts'
 import type { Store, StoredTurn } from './store.ts'
+import type { Working } from './teamwork.ts'
 
 // The chat itself. The hub owns every conversation in the store and lends each turn to whichever
 // provider the user picked for that message. A provider's session is resumed where it left off
@@ -67,6 +68,20 @@ export class Hub {
   runningChat(provider: ProviderId): string | null {
     const chats = [...this.live.values()].filter((live) => live.turn.provider === provider)
     return chats.length === 1 ? chats[0]!.turn.chatId : null
+  }
+
+  /** Every turn in flight, with what it was asked and the files it has edited so far. */
+  working(): Working[] {
+    return [...this.live.values()].map(({ turn, items }) => {
+      const user = items.get(`${turn.id}:user`)
+      return {
+        chatId: turn.chatId,
+        provider: turn.provider,
+        model: turn.model,
+        request: user?.type === 'user' ? user.text : '',
+        edited: [...items.values()].flatMap((item) => (item.type === 'tool' && item.kind === 'edit' && item.status !== 'failed' ? [item.label] : []))
+      }
+    })
   }
 
   listChats(): Chat[] {

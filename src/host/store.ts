@@ -165,6 +165,20 @@ export class Store {
     ).run(chatId, provider, session.sessionId, session.seenTurnSeq)
   }
 
+  /** When this provider last finished a turn in the chat, or null when it never has. */
+  lastEnded(chatId: string, provider: ProviderId): number | null {
+    const row = this.sql('SELECT MAX(ended_at) AS at FROM turns WHERE chat_id = ? AND provider = ?').get(chatId, provider)
+    return typeof row?.at === 'number' ? row.at : null
+  }
+
+  /** Turns that ended after `since` in other chats working in the same folder, oldest first. */
+  turnsEndedInFolder(cwd: string, exceptChatId: string, since: number): StoredTurn[] {
+    return this.sql(
+      `SELECT turns.* FROM turns JOIN chats ON chats.id = turns.chat_id
+       WHERE chats.cwd = ? AND turns.chat_id != ? AND turns.ended_at > ? ORDER BY turns.seq`
+    ).all(cwd, exceptChatId, since).map(turnOf)
+  }
+
   /** A folder's notes, oldest first. They belong to the folder, not to a chat, and outlive both. */
   notes(cwd: string): Note[] {
     return this.sql('SELECT * FROM notes WHERE cwd = ? ORDER BY seq').all(cwd).map((row) => ({

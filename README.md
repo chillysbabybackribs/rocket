@@ -119,6 +119,9 @@ no commit is made mid-merge or off a branch. Models are told not to commit or br
 `ROCKET_AUTO_COMMIT=0` turns the committing off. A folder that is not a git repository is left
 as it is.
 
+Claude Code sessions working on this repository outside the app are covered by a Stop hook
+(`.claude/settings.json`, `scripts/auto-commit.sh`) that commits what a turn left changed.
+
 ### Permissions
 
 All four providers run unattended with full access to the chat's working folder and your shell,
