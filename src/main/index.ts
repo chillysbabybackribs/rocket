@@ -6,6 +6,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { BrowserAgentReply, BrowserAgentRequest, BrowserCommand } from '../shared/types.ts'
 import { HOST_PORT_MESSAGE } from '../shared/types.ts'
+import { readChatLink } from './chat-links.ts'
 import { BrowserAgent } from './browser-agent.ts'
 import { BrowserPane } from './browser-pane.ts'
 import { appendJournal } from '../host/journal.ts'
@@ -144,6 +145,10 @@ ipcMain.handle('rocket:pick-folder', async (event, current: string | null) => {
     properties: ['openDirectory', 'createDirectory']
   })
   return result.canceled ? null : result.filePaths[0] ?? null
+})
+ipcMain.handle('rocket:chat-link', (event, href: string, cwd: string) => {
+  if (event.sender !== window?.webContents) throw new Error('This link cannot be opened from this window.')
+  return readChatLink(href, cwd)
 })
 ipcMain.on('rocket:browser', (event, command: BrowserCommand) => {
   browser?.handle(event.sender, command)

@@ -1,16 +1,13 @@
 import { memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { ChevronRight, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
 import { providerLabel, type Goal, type Item, type ToolKind, type Turn } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
 import { peekItem, useApp, useItem } from '../store.ts'
 
-const REMARK = [remarkGfm]
-
 /** Markdown is the expensive part of a row; text that has not changed parses once and never again. */
 const Block = memo(function Block({ text }: { text: string }) {
-  return <Markdown remarkPlugins={REMARK}>{text}</Markdown>
+  return <ChatMarkdown text={text} />
 })
 
 /**
@@ -188,7 +185,7 @@ const ItemRow = memo(function ItemRow({ id }: { id: string }) {
   if (!item) return null
   switch (item.type) {
     case 'user':
-      return <div className="user-bubble">{item.text}</div>
+      return <div className="user-bubble"><ChatMarkdown text={item.text} /></div>
     case 'assistant':
       return item.text.trim() ? <Prose text={item.text} streaming={item.streaming} /> : null
     case 'notice':
@@ -258,7 +255,7 @@ function stageOf(ids: string[], running: boolean): { reply: string | null; steps
  */
 function GoalLead({ turn, goal, round }: { turn: Turn; goal: Goal | null; round: number }) {
   const name = providerLabel(turn.provider)
-  if (turn.goalRole === 'draft' && goal && round === 0) return <div className="user-bubble">{goal.request}</div>
+  if (turn.goalRole === 'draft' && goal && round === 0) return <div className="user-bubble"><ChatMarkdown text={goal.request} /></div>
   const label = turn.goalRole === 'draft' ? `${name} drafts the goal again`
     : turn.goalRole === 'work' ? `Round ${round} · ${name} works`
     : `Round ${round} · ${name} checks`

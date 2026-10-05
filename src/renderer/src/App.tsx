@@ -1,10 +1,12 @@
 import { useRef } from 'react'
-import { Target, X } from 'lucide-react'
+import { PanelRightOpen, X } from 'lucide-react'
 import type { Goal } from '../../shared/types.ts'
 import { dismissError, setGoalPaneOpen, setGoalWidth, useApp } from './store.ts'
+import { ArtifactPanel } from './components/ArtifactPanel.tsx'
 import { BrowserPanel } from './components/BrowserPanel.tsx'
 import { Composer } from './components/Composer.tsx'
-import { goalStatusText, goalTone } from './components/Goals.tsx'
+import { GoalStatusIcon } from './components/GoalIcons.tsx'
+import { goalStatusText } from './components/Goals.tsx'
 import { GoalNote, GoalPane } from './components/GoalPane.tsx'
 import { NewGoal } from './components/NewGoal.tsx'
 import { Rail } from './components/Rail.tsx'
@@ -56,12 +58,16 @@ function GoalChat({ goal }: { goal: Goal }) {
   return (
     <main ref={split} className={`chat has-goal${open ? ' is-split' : ''}`} style={{ '--goal-width': `${width}px` } as React.CSSProperties}>
       <div className="goal-chat">
-        <div className="goal-chat-head">
-          <button type="button" className={`goal-chip-toggle is-${goalTone(goal.status)}`} aria-pressed={open} title={open ? 'Hide the goal' : 'Show the goal'} onClick={() => setGoalPaneOpen(!open)}>
-            <Target size={13} aria-hidden />
-            <span>Goal · {goalStatusText(goal)}</span>
-          </button>
-        </div>
+        {!open && (
+          <div className="goal-chat-head">
+            <button type="button" className="goal-chip-toggle" title="Show the goal" onClick={() => setGoalPaneOpen(true)}>
+              <GoalStatusIcon status={goal.status} size={12} />
+              <span>{goal.title}</span>
+              <span className="goal-chip-status">{goalStatusText(goal)}</span>
+              <PanelRightOpen size={13} aria-hidden />
+            </button>
+          </div>
+        )}
         <Transcript />
         <div className="composer-dock">
           {ended ? <Composer key={chatId ?? 'new'} placeholder="Reply…" /> : <GoalNote goal={goal} />}
@@ -106,15 +112,16 @@ function ChatPane() {
 }
 
 export function App() {
+  const artifact = useApp((state) => state.artifact)
   const browserOpen = useApp((state) => state.browserOpen)
   const error = useApp((state) => state.error)
   const newGoal = useApp((state) => state.newGoal !== null)
   const split = useApp((state) => state.goalPaneOpen && state.goals.some((goal) => goal.chatId === state.activeChatId))
   return (
-    <div className={`app${browserOpen ? ' has-browser' : ''}${split ? ' has-goal' : ''}`}>
+    <div className={`app${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}`}>
       <Rail />
       <ChatPane />
-      {browserOpen && <BrowserPanel />}
+      {artifact ? <ArtifactPanel /> : browserOpen && <BrowserPanel />}
       {newGoal && <NewGoal />}
       {error && (
         <div className="toast" role="alert">

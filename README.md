@@ -66,6 +66,13 @@ Background tabs are hidden with `setVisible(false)`, so Chromium stops drawing t
 `ROCKET_BROWSER_HIDE=park npm run dev` moves them off screen instead, the older way, in case a
 tab ever comes back blank; see the note in `src/main/browser-url.ts`.
 
+Chat links open beside the conversation: HTTP(S) URLs and local HTML, images, PDFs, and media
+open in a new browser tab. Text and source files open in a closable artifact preview; Markdown
+renders as a document. Relative file links use the chat's working folder (or the containing
+artifact's folder), and `:line` / `#Lline` references highlight the source line. Markdown links,
+bare URLs, and recognizable file paths, including inline-code paths, are clickable. Text previews
+are limited to 2 MB; missing files and unsupported binary formats show an actionable error.
+
 ### Tools
 
 The app owns its tools and every provider sees the same ones. The agent host keeps them in one
@@ -148,7 +155,8 @@ working, a verdict per line when checking. A worker that forgets to call it goes
 anyway; a checker that forgets is asked once more. A goal's turns are marked with their role
 (`goalRole`), so the transcript shows "Round 2 · Codex checks" instead of the app's prompt. In the
 window the chat splits like an artifact: the conversation, a divider to drag, and the goal's
-checklist and rounds (`GoalPane.tsx`); the composer becomes a note for the next round. While the
+checklist and rounds laid out like a Linear issue (`GoalPane.tsx`). A goal's chat is a tab like any
+other, marked with the goal's status; its composer becomes a note for the next round. While the
 new-goal dialog is open the browser's page is hidden, since it would paint over the dialog.
 
 ### Permissions

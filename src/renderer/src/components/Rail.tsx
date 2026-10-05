@@ -173,7 +173,7 @@ function UsageNotch() {
 }
 
 export function Rail() {
-  const browserOpen = useApp((state) => state.browserOpen)
+  const browserOpen = useApp((state) => state.browserOpen && !state.artifact)
   return (
     <aside className="rail">
       <div className="traffic" role="group" aria-label="Window controls">

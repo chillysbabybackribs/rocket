@@ -91,7 +91,7 @@ export class BrowserPane {
       case 'setBounds': this.setBounds(command.bounds); break
       case 'sync': this.restore(); this.publish(); break
       case 'chromeFocus': this.chromeFocused = command.focused === true; break
-      case 'newTab': this.newTab(); break
+      case 'newTab': this.restore(); this.newTab(command.url); break
       case 'closeTab': this.closeTab(this.find(command.id)); break
       case 'activateTab': this.activate(this.find(command.id), true); break
       case 'moveTab': this.moveTab(this.find(command.id), Number(command.index)); break

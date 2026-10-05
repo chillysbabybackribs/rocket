@@ -25,6 +25,7 @@ const bridge: RocketBridge = {
     close: () => ipcRenderer.send('rocket:window', 'close')
   },
   pickFolder: (current) => ipcRenderer.invoke('rocket:pick-folder', current),
+  openChatLink: (href, cwd) => ipcRenderer.invoke('rocket:chat-link', href, cwd),
   homeDir: homedir(),
   browser: {
     send: (command) => ipcRenderer.send('rocket:browser', command),

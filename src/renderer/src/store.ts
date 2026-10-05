@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { Chat, Goal, GoalEdit, HostEvent, Item, ModelInfo, ProviderId, Turn, UsageSnapshot } from '../../shared/types.ts'
+import type { ChatLinkTarget, Chat, Goal, GoalEdit, HostEvent, Item, ModelInfo, ProviderId, Turn, UsageSnapshot } from '../../shared/types.ts'
 import { PROVIDERS, providerLabel } from '../../shared/types.ts'
 import { call, connectHost } from './host.ts'
 
@@ -26,6 +26,7 @@ export type AppState = {
   models: Partial<Record<ProviderId, ModelInfo[]>>
   /** The model chosen per provider, in the same place; a provider absent here runs its own default. */
   modelChoice: ModelChoices
+  artifact: Extract<ChatLinkTarget, { kind: 'artifact' }> | null
   browserOpen: boolean
   /** Every goal, newest first. A goal's chat is an ordinary chat with the goal beside it. */
   goals: Goal[]
@@ -104,6 +105,7 @@ function forgetSelection(chatId: string): void {
 }
 
 let state: AppState = {
+  artifact: null,
   ready: false,
   chats: [],
   activeChatId: null,
@@ -230,6 +232,8 @@ function applyEvents(events: HostEvent[]): void {
 }
 
 function showChat(chatId: string | null, turns: Turn[] = [], loaded: Item[] = []): void {
+  linkRequest++
+  setState({ artifact: null })
   items.clear()
   const turnItems: Record<string, string[]> = {}
   for (const item of loaded) {
@@ -437,7 +441,8 @@ export function agentLabel(agent: { provider: ProviderId }): string {
 }
 
 export function setBrowserOpen(browserOpen: boolean): void {
-  setState({ browserOpen })
+  linkRequest++
+  setState({ browserOpen, artifact: null })
   writePrefs({ browserOpen })
 }
 
@@ -493,4 +498,30 @@ export function start(): void {
   }
   setInterval(refreshAll, 5 * 60_000)
   document.addEventListener('visibilitychange', refreshAll)
+}
+
+// A later click or pane close wins over an earlier file read that is still in flight.
+let linkRequest = 0
+
+export function closeArtifact(): void {
+  linkRequest++
+  setState({ artifact: null })
+}
+
+export async function openChatLink(href: string, cwd?: string): Promise<void> {
+  const request = ++linkRequest
+  const folder = cwd ?? state.chats.find((chat) => chat.id === state.activeChatId)?.cwd ?? state.defaultCwd
+  try {
+    const target = await window.rocket.openChatLink(href, folder)
+    if (request !== linkRequest) return
+    if (target.kind === 'browser') {
+      setState({ artifact: null, browserOpen: true })
+      writePrefs({ browserOpen: true })
+      window.rocket.browser.send({ type: 'newTab', url: target.url })
+    } else {
+      setState({ artifact: target })
+    }
+  } catch (error) {
+    if (request === linkRequest) fail(error)
+  }
 }

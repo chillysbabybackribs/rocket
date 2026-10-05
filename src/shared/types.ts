@@ -295,7 +295,7 @@ export type BrowserCommand =
   | { type: 'sync' }
   /** Whether keyboard focus is in the browser's own toolbar, so tab shortcuts apply there too. */
   | { type: 'chromeFocus'; focused: boolean }
-  | { type: 'newTab' }
+  | { type: 'newTab'; url?: string }
   | { type: 'closeTab'; id: string }
   | { type: 'activateTab'; id: string }
   /** `index` is the tab's new place in the strip. */
@@ -315,6 +315,10 @@ export type BrowserCommand =
   /** Sent by the dropdown itself when a row is clicked. */
   | { type: 'suggestPick'; value: string }
 
+export type ChatLinkTarget =
+  | { kind: 'browser'; url: string }
+  | { kind: 'artifact'; path: string; text: string; markdown: boolean; line: number | null }
+
 /** What the preload exposes on `window.rocket`. */
 export type RocketBridge = {
   /** Ask main for a MessagePort to the agent host; it arrives as a window `message` event. */
@@ -325,6 +329,7 @@ export type RocketBridge = {
     close: () => void
   }
   pickFolder: (current: string | null) => Promise<string | null>
+  openChatLink: (href: string, cwd: string) => Promise<ChatLinkTarget>
   homeDir: string
   browser: {
     send: (command: BrowserCommand) => void
