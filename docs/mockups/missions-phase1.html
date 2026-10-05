@@ -233,10 +233,60 @@ details[open] summary::before { content: '▾ '; }
 .adv .edit { font-size: 12.5px; display: flex; justify-content: space-between; }
 
 .label-mock { position: fixed; right: 14px; top: 6px; font-size: 11px; color: var(--text-4); }
+
+/* Split layout: conversation | Goal/Browser */
+.app { grid-template-columns: 68px minmax(460px, 1fr) minmax(440px, 1fr); }
+.switch { display: flex; align-items: center; gap: 2px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.seg { display: flex; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
+.seg button { height: 24px; padding: 0 12px; border-radius: 6px; color: var(--text-3); font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; }
+.seg button.on { background: var(--selected); color: var(--text); }
+.seg .live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.switch .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.chat-head { display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+.chat-head .t { font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx { padding: 18px 26px 10px; display: grid; gap: 18px; }
+.ububble { justify-self: end; max-width: 78%; background: #1c1d20; border: 1px solid var(--line); border-radius: 12px; padding: 9px 13px; color: var(--text); }
+.app-ask { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-4); }
+.app-ask::before, .app-ask::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.who { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-3); margin-bottom: 6px; }
+.who b { color: var(--text-2); font-weight: 500; }
+.who .tag { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: var(--selected); color: var(--text-3); }
+.who .tag.chk { background: rgba(242,201,76,.1); color: var(--warn); }
+.prose { color: #d7d9de; font-size: 14px; line-height: 1.65; }
+.prose p { margin: 0 0 8px; }
+.tools { margin: 6px 0 8px; padding-left: 12px; border-left: 1px solid var(--line-strong); display: grid; gap: 3px; }
+.tline { display: flex; gap: 8px; font-size: 12.5px; color: var(--text-3); }
+.tline .mono { color: var(--text-2); }
+.tline .bad { color: var(--high); margin-left: auto; font-size: 11.5px; }
+.verdict-card { border: 1px solid var(--line-strong); background: var(--raised); border-radius: 10px; padding: 10px 12px; margin-top: 4px; }
+.verdict-card .vh { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text-3); margin-bottom: 6px; }
+.verdict-card .vl { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--text-2); margin: 3px 0; }
+.open-goal { font-size: 12px; color: var(--accent); margin-top: 6px; display: inline-block; }
+.composer { padding: 10px 16px 14px; border-top: 1px solid var(--line); }
+.cbox { background: var(--composer); border: 1px solid var(--composer-line); border-radius: 12px; padding: 10px 12px 8px 14px; }
+.cbox .ph { color: var(--text-4); min-height: 22px; }
+.cbar { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 11.5px; color: var(--text-4); }
+.cbar .sp { flex: 1; }
+
+/* Artifact (goal) in the right card */
+.art-head { padding: 14px 18px 10px; border-bottom: 1px solid var(--line); }
+.art-head .m-title { margin: 6px 0 4px; font-size: 16px; }
+.art-head .m-goal { font-size: 12.5px; }
+.art .section { padding: 12px 18px; }
+.round .details { display: none; margin: 10px 0 2px 60px; }
+.round.sel .details { display: block; }
+.details .term { margin-top: 8px; }
+.details .files { margin-top: 8px; }
+.details .shot { margin-top: 8px; height: 110px; }
+.mini-browser { flex: 1; display: none; flex-direction: column; }
+.mini-browser.on { display: flex; }
+.mb-bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.mb-url { flex: 1; height: 28px; border-radius: 7px; background: var(--raised); border: 1px solid var(--line); display: flex; align-items: center; padding: 0 10px; color: var(--text-3); font-size: 12px; }
+.mb-page { flex: 1; display: grid; place-items: center; color: var(--text-4); background: #0c0d0e; }
 </style>
 </head>
 <body>
-<div class="label-mock">Phase 1 mockup · invented data · click rounds, the rail's flag, and “New goal”</div>
+<div class="label-mock">Phase 1 mockup · invented data · click rounds, “See the evidence”, Goal | Browser, and “New goal”</div>
 
 <div class="app">
   <nav class="rail">
@@ -250,17 +300,12 @@ details[open] summary::before { content: '▾ '; }
       <b>18%</b><small>codex</small>
     </div>
     <div class="rail-sep"></div>
-    <button class="rail-btn" title="Chats">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v11H8l-4 4z"/></svg>
-    </button>
+    <button class="rail-btn" title="Chats"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v11H8l-4 4z"/></svg></button>
     <button class="rail-btn on" id="goalsBtn" title="Goals">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8" fill="currentColor"/></svg>
       <span class="badge">2</span>
     </button>
-    <button class="rail-btn" title="New chat">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
-
+    <button class="rail-btn" title="New chat"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 5v14M5 12h14"/></svg></button>
     <div class="flyout" id="flyout">
       <h4>Working</h4>
       <div class="m-row cur"><span class="dot run"></span><span class="t">Search my browsing history from the address bar</span><span class="s">round 3</span></div>
@@ -273,94 +318,151 @@ details[open] summary::before { content: '▾ '; }
     </div>
   </nav>
 
-  <!-- The goal, as agreed, and its rounds of work and checks. -->
+  <!-- Left: the goal's conversation, as an ordinary chat. -->
   <section class="card">
-    <div class="m-head">
-      <div class="crumbs">
-        Goals <span>/</span> <span style="color:var(--text-3)">~/Desktop/rocketv1</span>
-        <span class="spacer"></span>
-        <span class="pill"><span class="dot run"></span>Working · round 3</span>
+    <div class="chat-head">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>
+      <span class="t">Search my browsing history from the address bar</span>
+      <span class="pill"><span class="dot run"></span>Round 3</span>
+    </div>
+    <div class="scroll">
+      <div class="tx">
+        <div class="ububble">when I type in the url bar it should find stuff from my history like chrome does</div>
+        <div class="app-ask">Goal agreed · 4 lines · Claude works, Codex checks</div>
+
+        <div>
+          <div class="who"><b>Claude</b><span class="tag">round 2 · work</span><span class="faint">14 min</span></div>
+          <div class="prose"><p>History matches now show in the address dropdown under the URL suggestions, ranked by how often and how recently you visited them.</p></div>
+          <div class="tools">
+            <div class="tline">✎ <span class="mono">src/main/browser-suggest.ts</span></div>
+            <div class="tline">✎ <span class="mono">src/renderer/src/suggest.ts</span></div>
+            <div class="tline">$ <span class="mono">npm run typecheck && npm test</span></div>
+          </div>
+          <div class="prose"><p>Typecheck and all 214 tests pass. I think this is done.</p></div>
+        </div>
+
+        <div>
+          <div class="who"><b>Codex</b><span class="tag chk">round 2 · check</span><span class="faint">1m 20s</span></div>
+          <div class="tools">
+            <div class="tline">$ <span class="mono">npm run check:ui -- -g "address dropdown"</span><span class="bad">1 failed</span></div>
+            <div class="tline">◎ <span class="mono">browser_screenshot t5</span></div>
+          </div>
+          <div class="verdict-card">
+            <div class="vh"><span class="verdict part">3 of 4 met</span>Codex's verdict</div>
+            <div class="vl"><span class="dot fail"></span>The dropdown never moves, covers past, or resizes the page</div>
+            <div class="prose" style="font-size:13px;margin-top:6px">A long title widens the dropdown 412px past the browser panel and it covers the page edge.</div>
+            <a class="open-goal" data-round="2">See the evidence →</a>
+          </div>
+        </div>
+
+        <div>
+          <div class="who"><b>Claude</b><span class="tag">round 3 · work</span><span class="faint">7 min so far</span></div>
+          <div class="prose"><p>Codex is right: the suggest view takes its width from the longest row. I'll clamp it to the browser panel and end long titles with an ellipsis, then run the same UI check.</p></div>
+          <div class="tools">
+            <div class="tline">✎ <span class="mono">src/main/browser-suggest.ts</span></div>
+            <div class="tline shimmer">$ npm run check:ui -- -g "address dropdown"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="composer">
+      <div class="cbox">
+        <div class="ph">Add a note for Claude. It reads it at the start of the next round…</div>
+        <div class="cbar"><span>Claude · opus-5.5</span><span class="sp"></span><span>Enter to queue</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Right: the goal as an artifact, sharing the card with the browser. -->
+  <section class="card">
+    <div class="switch">
+      <div class="seg">
+        <button class="on" data-pane="goal">Goal</button>
+        <button data-pane="browser">Browser <span class="live" title="Claude is using a tab"></span></button>
+      </div>
+      <div class="right">
         <button class="btn">❚❚ Pause</button>
         <button class="btn danger">■ Stop</button>
       </div>
-      <div class="m-title">Search my browsing history from the address bar</div>
-      <div class="m-goal">Typing in the address field searches everything you've visited (titles and addresses), best
-        matches first, shown in the existing dropdown without ever moving the page.</div>
-      <div class="m-said">You wrote: “when I type in the url bar it should find stuff from my history like chrome does”</div>
-      <div class="roles">
-        <span class="pill"><b style="font-weight:500;color:var(--text)">Claude</b> working</span>
-        <span class="pill"><b style="font-weight:500;color:var(--text)">Codex</b> checking</span>
-        <span class="pill faint">picked automatically · 38 min so far</span>
-      </div>
     </div>
 
-    <div class="scroll">
+    <div class="scroll art" id="paneGoal">
+      <div class="art-head">
+        <div class="crumbs"><span class="pill"><span class="dot run"></span>Working · round 3</span><span class="faint">~/Desktop/rocketv1 · 38 min</span></div>
+        <div class="m-title">Search my browsing history from the address bar</div>
+        <div class="m-goal">Typing in the address field searches everything you've visited (titles and addresses), best matches first, shown in the existing dropdown without ever moving the page.</div>
+        <div class="roles">
+          <span class="pill"><b style="font-weight:500;color:var(--text)">Claude</b> working</span>
+          <span class="pill"><b style="font-weight:500;color:var(--text)">Codex</b> checking</span>
+        </div>
+      </div>
+
       <div class="section">
-        <h3>Done when <span class="faint">agreed before starting · Codex checks each line</span></h3>
+        <h3>Done when <span class="faint">Codex checks each line</span></h3>
         <div class="done-list">
           <div class="crit"><span class="check ok">✓</span>History matches by title and address appear while typing, best first<span class="by">round 1</span></div>
           <div class="crit"><span class="check ok">✓</span>It stays instant with a large history (50,000 visits)<span class="by">round 1</span></div>
-          <div class="crit"><span class="check fail">✕</span>The dropdown never moves, covers past, or resizes the page<span class="by">round 2 · being fixed</span></div>
+          <div class="crit"><span class="check fail">✕</span>The dropdown never moves, covers past, or resizes the page<span class="by">being fixed</span></div>
           <div class="crit"><span class="check ok">✓</span>Typecheck and tests pass<span class="by">round 2</span></div>
         </div>
       </div>
 
       <div class="section">
-        <h3>Left to the models</h3>
-        <div class="guard">
-          <div class="g-box">
-            <div class="k">Rocket pauses and asks you if</div>
-            <ul>
-              <li>the same gap comes back twice without progress</li>
-              <li>a decision only you can make comes up</li>
-              <li>a usage window reaches 90%</li>
-            </ul>
-          </div>
-          <div class="g-box">
-            <div class="k">Used by this goal so far</div>
-            <div class="use-row"><span>Claude · 5-hour window</span><span>+9%</span></div>
-            <div class="use-row"><span>Codex · weekly window</span><span>+2%</span></div>
-            <div class="use-row"><span>Time</span><span>38 min</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>Rounds <span class="faint">Claude works in its own way until it's done, then Codex checks</span></h3>
+        <h3>Rounds</h3>
         <div class="tl" id="timeline">
           <div class="round" data-i="1">
             <span class="dot ok"></span>
-            <div class="r-top"><span class="r-n">Round 1</span><span class="r-t">Built the history index and ranked search</span><span class="verdict part">2 of 4</span><button class="rollback">Undo to here</button></div>
-            <div class="r-line"><b>Claude</b>17 min · 5 files · said it was done</div>
+            <div class="r-top"><span class="r-n">Round 1</span><span class="r-t">Built the history index and ranked search</span><span class="verdict part">2 of 4</span></div>
             <div class="r-line"><b>Codex</b>Search works and is fast; nothing shows in the dropdown yet.</div>
+            <div class="details">
+              <div class="term">$ node scripts/bench-history.mjs --rows 50000
+<span class="g">p50 4.2ms  p95 11.0ms  max 19.8ms</span></div>
+              <div class="files"><div class="file"><span class="p mono">src/main/browser-history.ts</span><span class="mono add">+96</span><span class="mono del">−4</span></div><div class="file"><span class="p mono">src/main/browser-history.test.ts</span><span class="mono add">+40</span><span class="mono del">−0</span></div></div>
+              <button class="rollback" style="opacity:1;margin-top:6px">Undo to here</button>
+            </div>
           </div>
-          <div class="round sel" data-i="2">
+          <div class="round" data-i="2">
             <span class="dot fail"></span>
-            <div class="r-top"><span class="r-n">Round 2</span><span class="r-t">Showed matches in the address dropdown</span><span class="verdict part">3 of 4</span><button class="rollback">Undo to here</button></div>
-            <div class="r-line"><b>Claude</b>14 min · 3 files · said it was done</div>
+            <div class="r-top"><span class="r-n">Round 2</span><span class="r-t">Showed matches in the address dropdown</span><span class="verdict part">3 of 4</span></div>
             <div class="r-line"><b>Codex</b>Long titles widen the dropdown past the panel and cover the page edge.</div>
+            <div class="details">
+              <div class="term">$ npm run check:ui -- -g "address dropdown"
+<span class="r">✕ dropdown stays inside the browser panel</span>
+  expected right ≤ 1428, got 1840</div>
+              <div class="shot"><div class="fake-bar"><i></i><i></i><i></i></div><div class="fake-in">hist|</div><div class="fake-li" style="width:70%"></div><div class="fake-li" style="width:55%"></div><div class="clip" style="top:60px"></div><span class="cap">UI check · browser panel edge</span></div>
+              <div class="files"><div class="file"><span class="p mono">src/main/browser-suggest.ts</span><span class="mono add">+61</span><span class="mono del">−5</span></div><div class="file"><span class="p mono">src/renderer/src/suggest.ts</span><span class="mono add">+27</span><span class="mono del">−2</span></div></div>
+              <button class="rollback" style="opacity:1;margin-top:6px">Undo to here</button>
+            </div>
           </div>
           <div class="round" data-i="3">
             <span class="dot run"></span>
-            <div class="r-top"><span class="r-n">Round 3</span><span class="r-t shimmer">Fixing the dropdown width with Codex's finding…</span><span class="verdict run">working</span></div>
+            <div class="r-top"><span class="r-n">Round 3</span><span class="r-t shimmer">Fixing the dropdown width…</span><span class="verdict run">working</span></div>
             <div class="r-line"><b>Claude</b>7 min so far · running the UI check</div>
           </div>
         </div>
       </div>
+
+      <div class="section" style="border-bottom:0">
+        <h3>Left to the models</h3>
+        <div class="guard">
+          <div class="g-box">
+            <div class="k">Rocket pauses and asks you if</div>
+            <ul><li>the same gap comes back without progress</li><li>a decision only you can make comes up</li><li>a usage window reaches 90%</li></ul>
+          </div>
+          <div class="g-box">
+            <div class="k">Used by this goal so far</div>
+            <div class="use-row"><span>Claude · 5-hour</span><span>+9%</span></div>
+            <div class="use-row"><span>Codex · weekly</span><span>+2%</span></div>
+            <div class="use-row"><span>Time</span><span>38 min</span></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="steer">
-      <div class="steer-box"><span>Add a note for Claude. It reads it at the start of the next round…</span><button class="send">↑</button></div>
+    <div class="mini-browser" id="paneBrowser">
+      <div class="mb-bar"><span class="faint">‹ ›</span><div class="mb-url">localhost:5173 · UI check fixture</div></div>
+      <div class="mb-page">The real browser panel, unchanged. Claude's tab is marked with a dot.</div>
     </div>
-  </section>
-
-  <section class="card">
-    <div class="tabs">
-      <button class="tab on">Check</button>
-      <button class="tab">Changes</button>
-      <button class="tab">Conversation</button>
-    </div>
-    <div class="scroll" id="inspector"></div>
   </section>
 </div>
 
@@ -450,54 +552,26 @@ details[open] summary::before { content: '▾ '; }
 </div>
 
 <script>
-// What the checker found in each round, so clicking around the rounds shows the evidence.
-const rounds = {
-  1: { title: 'Built the history index and ranked search', verdict: ['part', '2 of 4 met'], by: 'Codex checked in 52s',
-       quote: 'Search over titles and addresses works and ranks sensibly. With 50,000 seeded visits the slowest of 200 searches took 20 ms. Nothing appears in the address dropdown yet, so the first and third lines are not met; the first is only half there.',
-       checks: [['ok', 'Matches appear while typing, best first', 'search only'], ['ok', 'Instant with 50,000 visits', 'max 20 ms'], ['wait', 'Dropdown never moves the page', 'nothing shown yet'], ['wait', 'Typecheck and tests pass', 'not run']],
-       term: '$ node scripts/bench-history.mjs --rows 50000\n<span class="g">p50 4.2ms  p95 11.0ms  max 19.8ms</span>', shot: false,
-       files: [['src/main/browser-history.ts', 96, 4], ['src/main/browser-history.test.ts', 40, 0], ['src/main/browser-suggest.ts', 6, 14]],
-       next: 'Told to Claude as round 2: “Search works and is fast; nothing shows in the dropdown yet.”' },
-  2: { title: 'Showed matches in the address dropdown', verdict: ['part', '3 of 4 met'], by: 'Codex checked in 1m 20s',
-       quote: 'History matches now show in the dropdown, best first, and typecheck and tests pass. But a page with a long title widens the dropdown past the browser panel and it covers the page edge, which the goal rules out.',
-       checks: [['ok', 'Matches appear while typing, best first', 'tried in browser'], ['ok', 'Instant with 50,000 visits', 'unchanged'], ['fail', 'Dropdown never moves or covers past the page', '412px past panel'], ['ok', 'Typecheck and tests pass', '214 tests']],
-       term: '$ npm run check:ui -- -g "address dropdown"\n<span class="r">✕ dropdown stays inside the browser panel</span>\n  expected right ≤ 1428, got 1840', shot: true,
-       files: [['src/main/browser-suggest.ts', 61, 5], ['src/renderer/src/suggest.ts', 27, 2]],
-       next: 'Told to Claude as round 3, with the screenshot. Rocket pauses for you if the same gap comes back after this round.' },
-  3: { title: 'Fixing the dropdown width', verdict: ['run', 'working'], by: 'Codex checks when Claude says it is done',
-       quote: 'Claude is working from Codex\'s finding and is running the UI check for the address dropdown.',
-       checks: [], term: '$ npm run check:ui -- -g "address dropdown"\n  building…\n  ✓ unit tests (0.8s)\n  ▸ launching Electron on :99', shot: false, files: [], next: null }
-}
-
-const ins = document.getElementById('inspector')
-function show(i) {
-  const s = rounds[i]
+const $ = (id) => document.getElementById(id)
+// Rounds open in place; "See the evidence" in the chat opens the matching round on the Goal side.
+function openRound(i) {
+  setPane('goal')
   document.querySelectorAll('.round').forEach((el) => el.classList.toggle('sel', el.dataset.i == i))
-  const checks = s.checks.map(([st, k, v]) =>
-    `<div class="ev-row"><span class="dot ${st}"></span><span class="k">${k}</span><span class="mono faint">${v}</span></div>`).join('')
-  const files = s.files.map(([p, a, d]) =>
-    `<div class="file"><span class="p mono">${p}</span><span class="mono add">+${a}</span><span class="mono del">−${d}</span></div>`).join('')
-  ins.innerHTML = `
-    <div class="ins-head">
-      <div class="r-top"><span class="r-n">Round ${i}</span><span class="r-t" style="font-size:14px">${s.title}</span><span class="verdict ${s.verdict[0]}">${s.verdict[1]}</span></div>
-      <div class="faint" style="font-size:11.5px;margin:4px 0 0 60px">${s.by}</div>
-    </div>
-    <div class="ins-sec"><h5>What Codex found</h5><div class="quote">${s.quote}</div></div>
-    ${checks ? `<div class="ins-sec"><h5>Line by line</h5><div class="ev">${checks}</div></div>` : ''}
-    ${s.term ? `<div class="ins-sec"><h5>What it ran</h5><div class="term">${s.term}</div></div>` : ''}
-    ${s.shot ? `<div class="ins-sec"><h5>What it saw</h5><div class="shot"><div class="fake-bar"><i></i><i></i><i></i></div>
-      <div class="fake-in">hist|</div><div class="fake-li" style="width:70%"></div><div class="fake-li" style="width:55%"></div><div class="fake-li" style="width:62%"></div>
-      <div class="clip"></div><span class="cap">UI check · browser panel edge</span></div></div>` : ''}
-    ${files ? `<div class="ins-sec"><h5>Files changed this round</h5><div class="files">${files}</div></div>` : ''}
-    ${s.next ? `<div class="ins-sec"><h5>Then</h5><div class="muted">${s.next}</div></div>` : ''}
-  `
+  document.querySelector(`.round[data-i="${i}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 }
-document.getElementById('timeline').addEventListener('click', (e) => {
+function setPane(name) {
+  document.querySelectorAll('.seg button').forEach((b) => b.classList.toggle('on', b.dataset.pane === name))
+  $('paneGoal').style.display = name === 'goal' ? '' : 'none'
+  $('paneBrowser').classList.toggle('on', name === 'browser')
+}
+document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => setPane(b.dataset.pane)))
+document.querySelectorAll('.open-goal').forEach((a) => a.addEventListener('click', () => openRound(a.dataset.round)))
+$('timeline').addEventListener('click', (e) => {
   if (e.target.closest('.rollback')) { alert('Mockup: would put the folder back the way it was at the end of this round, after a confirm.'); return }
-  const r = e.target.closest('.round'); if (r) show(r.dataset.i)
+  const r = e.target.closest('.round'); if (!r) return
+  if (r.classList.contains('sel')) r.classList.remove('sel'); else openRound(r.dataset.i)
 })
 
-const $ = (id) => document.getElementById(id)
 function openNew() {
   $('flyout').classList.remove('open'); $('scrim').classList.add('open')
   $('stepDescribe').style.display = ''; $('stepConfirm').style.display = 'none'; $('drafting').style.display = 'none'
@@ -518,7 +592,7 @@ document.querySelectorAll('.qa').forEach((el) => el.addEventListener('click', ()
 document.querySelectorAll('.dw-row .x').forEach((el) => el.addEventListener('click', () => el.closest('.dw-row').remove()))
 document.querySelectorAll('.close-new').forEach((el) => el.addEventListener('click', () => $('scrim').classList.remove('open')))
 $('scrim').addEventListener('click', (e) => { if (e.target.id === 'scrim') e.target.classList.remove('open') })
-show(2)
+openRound(2)
 </script>
 </body>
 </html>

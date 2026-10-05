@@ -167,14 +167,16 @@ Deleting the chat deletes its goal (`ON DELETE CASCADE`).
 - Rail: a Goals button with a count of goals working or needing the user, and a flyout like history.
 - `NewGoal.tsx`: the two steps. Describe: one text box, the folder, a few example chips.
   Confirm: the editable brief, the question as buttons, "How it will run", Advanced.
-- `GoalView.tsx`: the goal, the checklist with each line's state, "Left to the models" (when it
-  pauses, usage this goal used), rounds with the worker's and checker's lines, a note box, and
-  Pause/Resume/Stop. A round opens to show the checker's evidence, the files and the turn.
+- **Layout: conversation | artifact.** A goal opens as a chat: the transcript on the left, as
+  for any chat, with each turn labelled (round 2 · work, round 2 · check) and the app's own
+  prompts folded into one line. A check turn ends in a verdict card with "See the evidence". The
+  composer queues a note for the next round instead of sending a message.
+- The right card gets a **Goal | Browser** switch. Goal is `GoalArtifact.tsx`: status, the goal,
+  the checklist with each line's state, rounds that open in place to show the checker's evidence,
+  screenshot and files, and "Left to the models". Browser is the existing panel, unchanged; a dot
+  on its label says a model is using a tab. The browser's native view is hidden while Goal shows
+  (`setBounds(null)`), so nothing is laid over a page. Pause/Resume/Stop sit in the switch bar.
 - A system notification when a goal finishes or needs the user (the page's `Notification`).
-
-**Layout decision:** the mockup puts the round inspector where the browser is. In the app the
-browser should stay, since a goal often works there and watching it is half the value. Round
-details open inline under the round instead. The chat transcript is a tab of the goal view.
 
 ## Build order
 
