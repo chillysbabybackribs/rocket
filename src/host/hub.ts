@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { Chat, ChatSnapshot, HostEvent, Item, ModelInfo, ProviderId, Turn, UsageSnapshot } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, GoalRole, HostEvent, Item, ModelInfo, ProviderId, Turn, UsageSnapshot } from '../shared/types.ts'
 import { buildHandoff, type Handoff, type MissedTurn } from './handoff.ts'
 import { messageOf, oneLine } from './json.ts'
 import type { ProviderAdapter, RunResult, TurnSink } from './providers/provider.ts'
@@ -88,9 +88,9 @@ export class Hub {
     return this.store.listChats()
   }
 
-  createChat(cwd: string): Chat {
+  createChat(cwd: string, title = 'New chat'): Chat {
     const now = Date.now()
-    const chat: Chat = { id: randomUUID(), title: 'New chat', cwd, lastProvider: null, createdAt: now, updatedAt: now }
+    const chat: Chat = { id: randomUUID(), title, cwd, lastProvider: null, createdAt: now, updatedAt: now }
     this.store.createChat(chat)
     this.emit({ type: 'chat', chat })
     return chat
@@ -126,8 +126,11 @@ export class Hub {
     this.emit({ type: 'chatDeleted', chatId })
   }
 
-  /** Start a turn. Resolves once it is under way; its progress and end arrive as events. */
-  send(chatId: string, provider: ProviderId, model: string | null, text: string): void {
+  /**
+   * Start a turn and return its id; its progress and end arrive as events. A goal's turns carry
+   * their `goalRole`, and their message is the app's, so it does not name the chat.
+   */
+  send(chatId: string, provider: ProviderId, model: string | null, text: string, goalRole: GoalRole | null = null): string {
     const message = text.trim()
     if (!message) throw new Error('There is nothing to send')
     if (this.live.has(chatId)) throw new Error('This chat is still answering the last message')
@@ -144,6 +147,7 @@ export class Hub {
       status: 'running',
       error: null,
       handoffTurns: handoff?.turns ?? 0,
+      goalRole,
       startedAt: Date.now(),
       endedAt: null
     })
@@ -151,10 +155,10 @@ export class Hub {
     const live: LiveTurn = { turn, adapter, clock, items: new Map(), stopRequested: false }
     this.live.set(chatId, live)
 
-    const isFirst = chat.lastProvider === null
+    const named = chat.lastProvider === null && goalRole === null
     const updated: Chat = {
       ...chat,
-      title: isFirst ? oneLine(message, 60) : chat.title,
+      title: named ? oneLine(message, 60) : chat.title,
       lastProvider: provider,
       updatedAt: Date.now()
     }
@@ -164,6 +168,18 @@ export class Hub {
     this.putItem(live, { type: 'user', id: `${turn.id}:user`, turnId: turn.id, text: message })
 
     void this.runTurn(live, updated.cwd, message, model, session.sessionId, handoff)
+    return turn.id
+  }
+
+  /** Whether a chat has a turn in flight. */
+  isRunning(chatId: string): boolean {
+    return this.live.has(chatId)
+  }
+
+  /** A turn's items as they stand: live ones from the turn in flight, settled ones from the store. */
+  turnItems(chatId: string, turnId: string): Item[] {
+    const live = this.live.get(chatId)
+    return live?.turn.id === turnId ? [...live.items.values()] : this.store.turnItems(chatId, turnId)
   }
 
   /**

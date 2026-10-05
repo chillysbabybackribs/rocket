@@ -96,6 +96,9 @@ function hasThought(ids: string[]): boolean {
 /** How long the live thinking takes to fold away; the same figure is in `.thought-live`. */
 const RETRACT_MS = 220
 
+/** The most the live thinking window grows to, seven lines, before it scrolls. */
+const LIVE_THOUGHT_MAX = 140
+
 /** True while `on`, and for `ms` after it ends, so what it showed can animate out before unmounting. */
 function useLingering(on: boolean, ms: number): boolean {
   const [held, setHeld] = useState(on)
@@ -111,15 +114,16 @@ function useLingering(on: boolean, ms: number): boolean {
 }
 
 /**
- * The model's thinking as it arrives, in a window of fixed height that follows the newest lines
- * until the user scrolls back through it, and again once they return to the end. It opens with
- * the first text and folds away when the work it belongs to is over: the reply starts, or the
- * turn ends.
+ * The model's thinking as it arrives, in a window that grows with the text up to a few lines and
+ * then follows the newest ones, until the user scrolls back through it, and again once they
+ * return to the end. It opens with the first text and folds away when the work it belongs to is
+ * over: the reply starts, or the turn ends.
  */
 function LiveThought({ id, open }: { id: string; open: boolean }) {
   const item = useItem(id)
   const box = useRef<HTMLDivElement>(null)
   const [clipped, setClipped] = useState(false)
+  const [height, setHeight] = useState(0)
   /** Whether the window is at its end, and so should stay there as text arrives. */
   const following = useRef(true)
   // A new thought starts empty; the last one stays up until it has something to say.
@@ -127,6 +131,21 @@ function LiveThought({ id, open }: { id: string; open: boolean }) {
   const text = item?.type === 'reasoning' ? item.text.trim() : ''
   if (text) shown.current = text
   const visible = open && shown.current !== ''
+  // The window is sized to its text, so it also follows a reflow when the column changes width.
+  useLayoutEffect(() => {
+    const element = box.current
+    const inner = element?.firstElementChild
+    if (!visible || !element || !inner) return
+    const fit = (): void => {
+      setHeight(Math.min(inner.getBoundingClientRect().height, LIVE_THOUGHT_MAX))
+      if (following.current) element.scrollTop = element.scrollHeight
+      setClipped(element.scrollTop > 0)
+    }
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(inner)
+    return () => observer.disconnect()
+  }, [visible])
   useLayoutEffect(() => {
     const element = box.current
     if (!visible || !element) return
@@ -141,7 +160,7 @@ function LiveThought({ id, open }: { id: string; open: boolean }) {
     setClipped(element.scrollTop > 0)
   }
   return (
-    <div ref={box} className={`thought-live${visible ? ' is-open' : ''}${clipped ? ' is-clipped' : ''}`} aria-hidden={!visible} onScroll={onScroll}>
+    <div ref={box} className={`thought-live${visible ? ' is-open' : ''}${clipped ? ' is-clipped' : ''}`} aria-hidden={!visible} onScroll={onScroll} style={{ height: visible ? height : 0 }}>
       <div>{shown.current}</div>
     </div>
   )

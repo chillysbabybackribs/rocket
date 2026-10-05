@@ -47,8 +47,82 @@ export type Turn = {
   error: string | null
   /** How many turns by other providers were handed to this provider along with the message. */
   handoffTurns: number
+  /** What the turn was in a goal's loop; null for a turn the user sent. Its message is then the app's, not the user's. */
+  goalRole: GoalRole | null
   startedAt: number
   endedAt: number | null
+}
+
+// Goals: something the user wants done end to end. The worker drafts a brief, the user confirms
+// it, then the worker works in ordinary turns and a second provider checks each round against
+// the brief's checklist until every line is met. See docs/goals-phase1.md.
+
+export type GoalRole = 'draft' | 'work' | 'check'
+
+/**
+ * drafting and confirming come before the work; working and checking are a round in flight;
+ * needs_you is the app asking the user (a question, no progress, usage, a failure); paused is the
+ * user's own pause; done and stopped are the ends.
+ */
+export type GoalStatus = 'drafting' | 'confirming' | 'working' | 'checking' | 'needs_you' | 'paused' | 'done' | 'stopped'
+
+/** One line of what "done" means. `how` says how it will be checked, in a few words. */
+export type GoalCriterion = { text: string; how: string; met: boolean | null; metInRound: number | null }
+
+export type GoalVerdict = { line: number; met: boolean; evidence: string }
+
+export type GoalRound = {
+  n: number
+  workTurnId: string
+  checkTurnId: string | null
+  /** What the worker said it did, from its report or its last reply. */
+  summary: string | null
+  /** Files the work turn edited. */
+  files: string[]
+  verdicts: GoalVerdict[]
+  /** What the checker found still wrong; null until it has checked. */
+  findings: string | null
+  startedAt: number
+  endedAt: number | null
+}
+
+export type GoalAgent = { provider: ProviderId; model: string | null }
+
+export type Goal = {
+  id: string
+  chatId: string
+  cwd: string
+  /** What the user asked for, in their own words. */
+  request: string
+  title: string
+  /** The goal as the brief restates it; empty until drafted. */
+  goal: string
+  criteria: GoalCriterion[]
+  question: { text: string; options: string[]; answer: string | null } | null
+  worker: GoalAgent
+  checker: GoalAgent
+  /** A usage window at or past this percent pauses the goal before its next turn. */
+  pauseAtPercent: number
+  status: GoalStatus
+  /** Why the goal is waiting for the user, as a sentence. */
+  reason: string | null
+  /** When a goal waiting on usage starts again by itself. */
+  resumeAt: number | null
+  /** Notes from the user for the next work round. */
+  steer: string[]
+  rounds: GoalRound[]
+  createdAt: number
+  updatedAt: number
+}
+
+/** What the user can change in a goal's brief before it starts. */
+export type GoalEdit = {
+  goal?: string
+  criteria?: Array<{ text: string; how: string }>
+  answer?: string | null
+  worker?: GoalAgent
+  checker?: GoalAgent
+  pauseAtPercent?: number
 }
 
 export type Chat = {
@@ -86,6 +160,7 @@ export type HostEvent =
   | { type: 'chat'; chat: Chat }
   | { type: 'chatDeleted'; chatId: string }
   | { type: 'usage'; snapshot: UsageSnapshot }
+  | { type: 'goal'; goal: Goal }
 
 /** Request name → [params, result]. */
 export type HostApi = {
@@ -101,6 +176,19 @@ export type HostApi = {
   'chat.prepare': [{ chatId: string | null; cwd: string; provider: ProviderId; model: string | null }, null]
   'usage.read': [{ provider: ProviderId; force?: boolean }, UsageSnapshot]
   'models.list': [{ provider: ProviderId }, ModelInfo[]]
+  'goals.list': [Record<string, never>, Goal[]]
+  /** Start a goal: a chat in `cwd` whose worker drafts a brief from `text` for the user to confirm. */
+  'goal.draft': [{ cwd: string; text: string; provider: ProviderId; model: string | null }, Goal]
+  /** Change the brief; only while it is being confirmed. */
+  'goal.update': [{ goalId: string; edit: GoalEdit }, Goal]
+  'goal.start': [{ goalId: string }, Goal]
+  /** Pause after the turn in flight. */
+  'goal.pause': [{ goalId: string }, Goal]
+  /** Carry on from a pause, or from waiting on the user. */
+  'goal.resume': [{ goalId: string }, Goal]
+  'goal.stop': [{ goalId: string }, Goal]
+  /** A note for the next work round. A goal waiting on the user takes it as the answer and carries on. */
+  'goal.steer': [{ goalId: string; text: string }, Goal]
   /** An error the page caught, for the host's journal. */
   'journal.report': [{ message: string; stack?: string }, null]
 }

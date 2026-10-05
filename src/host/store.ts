@@ -1,7 +1,7 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { Chat, ChatSnapshot, Item, ProviderId, Turn, TurnStatus } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, Goal, GoalRole, Item, ProviderId, Turn, TurnStatus } from '../shared/types.ts'
 
 // The canonical transcript. The app owns the conversation; a provider's own session is a cache
 // of the part of it that provider has already seen. Each (chat, provider) pair records the
@@ -63,7 +63,18 @@ const SCHEMA = `
     created_at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS notes_by_cwd ON notes(cwd, seq);
+  CREATE TABLE IF NOT EXISTS goals (
+    id TEXT PRIMARY KEY,
+    chat_id TEXT NOT NULL UNIQUE REFERENCES chats(id) ON DELETE CASCADE,
+    data TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
 `
+
+// Columns added after the first release, for stores created before them.
+const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
+  { table: 'turns', column: 'goal_role', definition: 'TEXT' }
+]
 
 type Row = Record<string, unknown>
 
@@ -76,6 +87,10 @@ export class Store {
     this.db = new DatabaseSync(path)
     this.db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;')
     this.db.exec(SCHEMA)
+    for (const { table, column, definition } of ADDED_COLUMNS) {
+      const columns = this.db.prepare(`PRAGMA table_info(${table})`).all().map((row) => String(row.name))
+      if (!columns.includes(column)) this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+    }
     // A turn still marked running was cut off by the last exit; nothing will ever finish it.
     this.db.prepare(`UPDATE turns SET status = 'interrupted', ended_at = ? WHERE status = 'running'`).run(Date.now())
   }
@@ -129,8 +144,8 @@ export class Store {
 
   createTurn(turn: Turn): StoredTurn {
     const result = this.sql(
-      'INSERT INTO turns (id, chat_id, provider, model, status, error, handoff_turns, started_at, ended_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(turn.id, turn.chatId, turn.provider, turn.model, turn.status, turn.error, turn.handoffTurns, turn.startedAt, turn.endedAt)
+      'INSERT INTO turns (id, chat_id, provider, model, status, error, handoff_turns, goal_role, started_at, ended_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(turn.id, turn.chatId, turn.provider, turn.model, turn.status, turn.error, turn.handoffTurns, turn.goalRole, turn.startedAt, turn.endedAt)
     return { ...turn, seq: Number(result.lastInsertRowid) }
   }
 
@@ -203,6 +218,22 @@ export class Store {
     return Number(this.sql('DELETE FROM notes WHERE cwd = ? AND seq = ?').run(cwd, seq).changes) > 0
   }
 
+  /** Every goal, newest first. A goal is one row of JSON: it is small, and read and written whole. */
+  goals(): Goal[] {
+    return this.sql('SELECT data FROM goals ORDER BY created_at DESC').all().map(goalOf)
+  }
+
+  goal(goalId: string): Goal | null {
+    const row = this.sql('SELECT data FROM goals WHERE id = ?').get(goalId)
+    return row ? goalOf(row) : null
+  }
+
+  /** Insert or replace. Its chat must exist; deleting the chat deletes the goal. */
+  putGoal(goal: Goal): void {
+    this.sql('INSERT INTO goals (id, chat_id, data, created_at) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET data = excluded.data')
+      .run(goal.id, goal.chatId, JSON.stringify(goal), goal.createdAt)
+  }
+
   private sql(text: string): StatementSync {
     let statement = this.statements.get(text)
     if (!statement) {
@@ -234,6 +265,7 @@ function turnOf(row: Row): StoredTurn {
     status: String(row.status) as TurnStatus,
     error: typeof row.error === 'string' ? row.error : null,
     handoffTurns: Number(row.handoff_turns),
+    goalRole: typeof row.goal_role === 'string' ? row.goal_role as GoalRole : null,
     startedAt: Number(row.started_at),
     endedAt: row.ended_at === null ? null : Number(row.ended_at)
   }
@@ -241,4 +273,8 @@ function turnOf(row: Row): StoredTurn {
 
 function itemOf(row: Row): Item {
   return JSON.parse(String(row.data)) as Item
+}
+
+function goalOf(row: Row): Goal {
+  return JSON.parse(String(row.data)) as Goal
 }

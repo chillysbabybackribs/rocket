@@ -610,9 +610,9 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   overflow-wrap: anywhere;
 }
 
-/* Thinking as it arrives: a window seven lines tall that keeps the newest lines in view, the
-   older ones leaving at the top, where the user can scroll back to them. It folds away when the
-   reply starts. */
+/* Thinking as it arrives: a window that grows with the text to seven lines, then keeps the
+   newest lines in view, the older ones leaving at the top, where the user can scroll back to
+   them. Its height is set inline from the text; it folds away when the reply starts. */
 .thought-live {
   height: 0;
   overflow: hidden auto;
@@ -623,7 +623,7 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   overflow-wrap: anywhere;
   transition: height 220ms cubic-bezier(0.2, 0.8, 0.2, 1), margin-bottom 220ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms ease;
 }
-.thought-live.is-open { height: 140px; margin-bottom: 6px; opacity: 1; }
+.thought-live.is-open { margin-bottom: 6px; opacity: 1; }
 .thought-live.is-clipped { mask-image: linear-gradient(to bottom, transparent, #000 24px); }
 /* While it folds away ahead of a reply, the gap it held closes with it. */
 .activity:has(> .thought-live:only-child) + .prose { margin-top: 0; }

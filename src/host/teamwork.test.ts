@@ -38,7 +38,7 @@ function setup(dir: string) {
   const turn = (chatId: string, provider: Turn['provider'], request: string, status: Turn['status'], edits: string[] = []): Turn => {
     clock += 10
     const id = `${chatId}-${clock}`
-    const stored = store.createTurn({ id, chatId, provider, model: null, status, error: null, handoffTurns: 0, startedAt: clock, endedAt: clock })
+    const stored = store.createTurn({ id, chatId, provider, model: null, status, error: null, handoffTurns: 0, goalRole: null, startedAt: clock, endedAt: clock })
     const items: Item[] = [
       { type: 'user', id: `${id}:user`, turnId: id, text: request },
       ...edits.map((label, index): Item => ({ type: 'tool', id: `${id}:${index}`, turnId: id, kind: 'edit', label, status: 'done', output: '' }))
