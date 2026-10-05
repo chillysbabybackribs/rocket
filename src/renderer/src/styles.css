@@ -1141,18 +1141,6 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 .address-rest svg { flex: none; color: var(--text-3); }
 .address-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .address-warning { flex: none; color: var(--text-3); }
-.address-reload {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  color: var(--text-3);
-}
-.address-reload:hover { background: rgba(255, 255, 255, 0.09); color: var(--text); }
 /* The load line creeps along while the page loads, then runs to the end and fades. */
 .address-progress {
   position: absolute;

@@ -25,8 +25,8 @@ function atRest(url: string): { kind: 'secure' | 'insecure' | 'other'; label: st
 }
 
 // The address field, after Safari's. At rest it shows the site's name in the middle; focused, it
-// becomes the whole address, selected, ready to be typed over. Reload sits inside it, and a line
-// along its bottom edge follows the page load.
+// becomes the whole address, selected, ready to be typed over. A line along its bottom edge follows
+// the page load.
 function AddressField({ tab }: { tab: BrowserTab | null }) {
   const url = tab?.url ?? ''
   const [text, setText] = useState(url)
@@ -122,16 +122,6 @@ function AddressField({ tab }: { tab: BrowserTab | null }) {
           <span className="address-label">{url ? rest.label : 'Search or enter website name'}</span>
         </div>
       )}
-      {!editing && tab && url && (
-        <button
-          type="button"
-          className="address-reload"
-          aria-label={tab.loading ? 'Stop loading' : 'Reload'}
-          onClick={() => send({ type: tab.loading ? 'stop' : 'reload' })}
-        >
-          {tab.loading ? <X size={13} /> : <RotateCw size={12} />}
-        </button>
-      )}
       <span className={`address-progress${tab?.loading ? ' is-loading' : ''}`} />
     </form>
   )
@@ -185,6 +175,15 @@ export function BrowserPanel() {
             </button>
             <button type="button" className="icon-button" aria-label="Forward" disabled={!active?.canGoForward} onClick={() => send({ type: 'forward' })}>
               <ArrowRight size={15} />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={active?.loading ? 'Stop loading' : 'Reload'}
+              disabled={!active?.url}
+              onClick={() => send({ type: active?.loading ? 'stop' : 'reload' })}
+            >
+              {active?.loading ? <X size={15} /> : <RotateCw size={14} />}
             </button>
           </div>
           <AddressField tab={active} />
