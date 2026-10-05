@@ -93,32 +93,85 @@ function hasThought(ids: string[]): boolean {
   })
 }
 
+/** How long the live thinking takes to fold away; the same figure is in `.thought-live`. */
+const RETRACT_MS = 220
+
+/** The height of the live thinking window, four lines; the same figure is in `.thought-live`. */
+const LIVE_THOUGHT_HEIGHT = 80
+
+/** True while `on`, and for `ms` after it ends, so what it showed can animate out before unmounting. */
+function useLingering(on: boolean, ms: number): boolean {
+  const [held, setHeld] = useState(on)
+  useEffect(() => {
+    if (on) {
+      setHeld(true)
+      return
+    }
+    const timer = setTimeout(() => setHeld(false), ms)
+    return () => clearTimeout(timer)
+  }, [on, ms])
+  return on || held
+}
+
 /**
- * A run of reasoning and tool calls between replies. While the turn is working on it, it is one
- * line showing the current tool; once done, one summary line that opens the steps. A run that is
- * only thinking has no line of its own: the turn's head opens it.
+ * The model's thinking as it arrives, in a window of fixed height that follows the newest lines.
+ * It opens with the first text and folds away when the work it belongs to is over: the reply
+ * starts, or the turn ends.
+ */
+function LiveThought({ id, open }: { id: string; open: boolean }) {
+  const item = useItem(id)
+  const box = useRef<HTMLDivElement>(null)
+  const [clipped, setClipped] = useState(false)
+  // A new thought starts empty; the last one stays up until it has something to say.
+  const shown = useRef('')
+  const text = item?.type === 'reasoning' ? item.text.trim() : ''
+  if (text) shown.current = text
+  const visible = open && shown.current !== ''
+  // Only text taller than the window fades out at the top; a first line is shown whole.
+  useLayoutEffect(() => {
+    const inner = box.current?.firstElementChild
+    if (visible && inner) setClipped(inner.scrollHeight > LIVE_THOUGHT_HEIGHT)
+  }, [visible, text])
+  return (
+    <div ref={box} className={`thought-live${visible ? ' is-open' : ''}${clipped ? ' is-clipped' : ''}`} aria-hidden={!visible}>
+      <div>{shown.current}</div>
+    </div>
+  )
+}
+
+/**
+ * A run of reasoning and tool calls between replies. While the turn is working on it, it is the
+ * thinking as it arrives over one line showing the current tool; once done, one summary line that
+ * opens the steps. A finished run that is only thinking has no line of its own: the turn's head
+ * opens it.
  */
 const Activity = memo(function Activity({ ids, live, thoughtsOpen }: { ids: string[]; live: boolean; thoughtsOpen: boolean }) {
   const [open, setOpen] = useState(false)
+  const lingering = useLingering(live, RETRACT_MS)
   const steps = ids.map(peekItem)
   const tools = steps.filter((step): step is ToolItem => step?.type === 'tool')
-  if (live) {
-    const current = tools.at(-1)
-    return current ? <div className="activity"><CurrentTool id={current.id} /></div> : null
-  }
-  if (tools.length === 0) {
-    if (!thoughtsOpen || !hasThought(ids)) return null
-    return <div className="activity"><div className="activity-steps">{ids.map((id) => <Step key={id} id={id} />)}</div></div>
-  }
+  const thought = lingering ? steps.findLast((step) => step?.type === 'reasoning') : undefined
   const failed = tools.filter((tool) => tool.status === 'failed').length
+  const current = tools.at(-1)
+  const body = live
+    ? current && <CurrentTool id={current.id} />
+    : tools.length === 0
+      ? thoughtsOpen && hasThought(ids) && <div className="activity-steps">{ids.map((id) => <Step key={id} id={id} />)}</div>
+      : (
+        <>
+          <button type="button" className="activity-summary" aria-expanded={open} onClick={() => setOpen(!open)}>
+            <span>{`Worked · ${tools.length} ${tools.length === 1 ? 'step' : 'steps'}`}</span>
+            {failed > 0 && <span className="activity-failed">{failed} failed</span>}
+            <ChevronRight size={12} className={`tool-chevron${open ? ' is-open' : ''}`} />
+          </button>
+          {open && <div className="activity-steps">{ids.map((id) => <Step key={id} id={id} />)}</div>}
+        </>
+      )
+  if (!thought && !body) return null
   return (
     <div className="activity">
-      <button type="button" className="activity-summary" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span>{`Worked · ${tools.length} ${tools.length === 1 ? 'step' : 'steps'}`}</span>
-        {failed > 0 && <span className="activity-failed">{failed} failed</span>}
-        <ChevronRight size={12} className={`tool-chevron${open ? ' is-open' : ''}`} />
-      </button>
-      {open && <div className="activity-steps">{ids.map((id) => <Step key={id} id={id} />)}</div>}
+      {thought && <LiveThought key="thought" id={thought.id} open={live} />}
+      {body}
     </div>
   )
 })
