@@ -171,16 +171,15 @@ Deleting the chat deletes its goal (`ON DELETE CASCADE`).
   for any chat, with each turn labelled (round 2 · work, round 2 · check) and the app's own
   prompts folded into one line. A check turn ends in a verdict card with "See the evidence". The
   composer queues a note for the next round instead of sending a message.
-- The goal is **a card of its own between the chat and the browser**: chat | goal | browser, or
-  chat | goal with the browser closed. `GoalCard.tsx` shows status, the goal, the checklist with
-  each line's state, rounds that open in place to show the checker's evidence, screenshot and
-  files, and "Left to the models", with Pause/Resume/Stop and a ✕ in its header. ✕ hides the card
-  (the goal keeps running); the "Goal · round 3" chip in the chat header brings it back. It is
-  fixed at 340–400px so the chat and the page keep the room. The browser is unchanged, and moves
-  over by the card's width; since the page is a native view, its bounds follow the layout as
-  they already do when the window resizes.
-- In a narrow window with the browser open (under about 1,300px), the card starts hidden behind
-  the chip rather than squeezing the chat.
+- **The chat card splits, like an artifact.** The conversation is on the left and the goal on the
+  right, inside the same card, with a draggable divider. `GoalPane.tsx` shows status, the goal,
+  the checklist with each line's state, rounds that open in place to show the checker's evidence,
+  screenshot and files, and "Left to the models", with Pause/Resume/Stop and a ✕ in its header.
+  ✕ hides the pane (the goal keeps running); the "Goal · round 3" chip in the chat header brings it
+  back. The pane's width is remembered.
+- **The browser stays a separate card, toggled as today**, from a button in the chat header too.
+  With it open the split chat takes about 60% of the width; with it closed the split takes it all
+  and the goal pane widens. The page is a native view whose bounds already follow the layout.
 - A system notification when a goal finishes or needs the user (the page's `Notification`).
 
 ## Build order

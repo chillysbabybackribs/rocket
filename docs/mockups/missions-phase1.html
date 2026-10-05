@@ -318,6 +318,20 @@ details[open] summary::before { content: '▾ '; }
 .bpage .driving { position: absolute; right: 10px; bottom: 10px; font-size: 11px; color: #555; background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 3px 9px; display: flex; gap: 6px; align-items: center; }
 .gcard .term { white-space: pre-wrap; overflow-wrap: anywhere; }
 .label-mock button { color: var(--text-3); text-decoration: underline; text-underline-offset: 2px; margin-left: 8px; }
+
+/* Split chat: the goal is an artifact inside the chat card; the browser is its own card, toggled. */
+.app { grid-template-columns: 68px minmax(640px, 1.5fr) minmax(400px, 1fr); }
+.app.no-browser { grid-template-columns: 68px 1fr; }
+.app.no-browser .bcard { display: none; }
+.split { display: grid; grid-template-columns: minmax(300px, 1fr) 1px var(--goal-w, 380px); background: var(--sheen), var(--panel); }
+.split.no-goal { grid-template-columns: 1fr 0 0; }
+.split.no-goal .pane-goal, .split.no-goal .divider { display: none; }
+.pane-chat, .pane-goal { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.pane-goal.gcard { border: 0; border-radius: 0; background: linear-gradient(180deg, rgba(113,112,255,.045), rgba(113,112,255,0) 160px), #0c0d0e; }
+.divider { background: var(--line-strong); position: relative; cursor: col-resize; }
+.divider::after { content: ''; position: absolute; inset: 0 -4px; }
+.divider:hover, .divider.drag { background: var(--accent); }
+.app.no-browser .split { --goal-w: 460px; }
 </style>
 </head>
 <body>
@@ -353,12 +367,14 @@ details[open] summary::before { content: '▾ '; }
     </div>
   </nav>
 
-  <!-- Left: the goal's conversation, as an ordinary chat. -->
-  <section class="card">
+  <!-- The chat card, split: the conversation, a divider, and the goal as an artifact. -->
+  <section class="card split" id="split">
+    <div class="pane-chat">
     <div class="chat-head">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>
       <span class="t">Search my browsing history from the address bar</span>
-      <button class="pill goal-chip" id="goalChip" title="Show the goal"><span class="dot run"></span>Goal · round 3</button>
+      <button class="pill goal-chip" id="goalChip" title="Show or hide the goal"><span class="dot run"></span>Goal · round 3</button>
+      <button class="icon-btn" id="toggleBrowser2" title="Show or hide the browser"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5"/></svg></button>
     </div>
     <div class="scroll">
       <div class="tx">
@@ -406,10 +422,11 @@ details[open] summary::before { content: '▾ '; }
         <div class="cbar"><span>Claude · opus-5.5</span><span class="sp"></span><span>Enter to queue</span></div>
       </div>
     </div>
-  </section>
+    </div>
+    <div class="divider" id="divider" title="Drag to resize"></div>
 
-  <!-- Middle: the goal, as an artifact card of its own. -->
-  <section class="card gcard">
+
+    <div class="pane-goal gcard">
     <div class="g-top">
       <span class="lbl"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>Goal</span>
       <span class="sp"></span>
@@ -490,6 +507,7 @@ details[open] summary::before { content: '▾ '; }
       </div>
     </div>
 
+    </div>
   </section>
 
   <!-- Right: the browser, as it is today. -->
@@ -602,12 +620,19 @@ details[open] summary::before { content: '▾ '; }
 const $ = (id) => document.getElementById(id)
 // Rounds open in place; "See the evidence" in the chat opens the matching round on the Goal side.
 function openRound(i, scroll = true) {
-  $('app').classList.remove('no-goal')
+  $('split').classList.remove('no-goal')
   document.querySelectorAll('.round').forEach((el) => el.classList.toggle('sel', el.dataset.i == i))
   if (scroll) document.querySelector(`.round[data-i="${i}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 }
-$('hideGoal').addEventListener('click', () => $('app').classList.add('no-goal'))
-$('goalChip').addEventListener('click', () => $('app').classList.toggle('no-goal'))
+$('hideGoal').addEventListener('click', () => $('split').classList.add('no-goal'))
+$('goalChip').addEventListener('click', () => $('split').classList.toggle('no-goal'))
+$('toggleBrowser2').addEventListener('click', () => $('app').classList.toggle('no-browser'))
+$('divider').addEventListener('pointerdown', (e) => {
+  const split = $('split'), d = $('divider'); d.classList.add('drag'); d.setPointerCapture(e.pointerId)
+  const move = (ev) => { const r = split.getBoundingClientRect(); split.style.setProperty('--goal-w', Math.max(300, Math.min(r.width - 320, r.right - ev.clientX)) + 'px') }
+  const up = () => { d.classList.remove('drag'); d.removeEventListener('pointermove', move); d.removeEventListener('pointerup', up) }
+  d.addEventListener('pointermove', move); d.addEventListener('pointerup', up)
+})
 $('toggleBrowser').addEventListener('click', () => $('app').classList.toggle('no-browser'))
 document.querySelectorAll('.open-goal').forEach((a) => a.addEventListener('click', () => openRound(a.dataset.round)))
 $('timeline').addEventListener('click', (e) => {
