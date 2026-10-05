@@ -283,12 +283,47 @@ details[open] summary::before { content: '▾ '; }
 .mb-bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .mb-url { flex: 1; height: 28px; border-radius: 7px; background: var(--raised); border: 1px solid var(--line); display: flex; align-items: center; padding: 0 10px; color: var(--text-3); font-size: 12px; }
 .mb-page { flex: 1; display: grid; place-items: center; color: var(--text-4); background: #0c0d0e; }
+
+/* Three cards: chat | goal artifact | browser. Without the browser: chat | goal. */
+.app { grid-template-columns: 68px minmax(380px, 1fr) minmax(340px, 400px) minmax(420px, 1.15fr); }
+.app.no-browser { grid-template-columns: 68px minmax(420px, 1fr) minmax(360px, 460px); }
+.app.no-browser .bcard { display: none; }
+.app.no-goal { grid-template-columns: 68px minmax(380px, 1fr) minmax(420px, 1.15fr); }
+.app.no-goal.no-browser { grid-template-columns: 68px 1fr; }
+.app.no-goal .gcard { display: none; }
+.gcard { background: linear-gradient(180deg, rgba(113,112,255,.05), rgba(113,112,255,0) 160px), var(--panel); border-color: rgba(113,112,255,.22); }
+.g-top { display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+.g-top .lbl { font-size: 11px; font-weight: 500; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; display: flex; align-items: center; gap: 6px; }
+.g-top .sp { flex: 1; }
+.icon-btn { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--text-3); }
+.icon-btn:hover { background: var(--hover); color: var(--text); }
+.gcard .art-head { padding: 12px 16px 10px; }
+.gcard .section { padding: 12px 16px; }
+.gcard .guard { grid-template-columns: 1fr; }
+.gcard .r-n { width: 48px; }
+.gcard .r-line, .gcard .round .details { margin-left: 56px; }
+.goal-chip { cursor: pointer; }
+.goal-chip:hover { border-color: rgba(113,112,255,.5); }
+.bstrip { display: flex; align-items: flex-end; gap: 2px; padding: 8px 8px 0; border-bottom: 1px solid var(--line); }
+.btab { height: 30px; max-width: 190px; flex: 1; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-radius: 8px 8px 0 0; color: var(--text-3); font-size: 12px; overflow: hidden; white-space: nowrap; }
+.btab.on { background: var(--raised); color: var(--text); }
+.btab .ag { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+.bpage { flex: 1; background: #f4f5f7; position: relative; overflow: hidden; }
+.bpage .fx-h { height: 46px; background: #fff; border-bottom: 1px solid #e3e5e8; display: flex; align-items: center; padding: 0 18px; gap: 10px; color: #333; font-weight: 600; }
+.bpage .fx-in { margin: 18px; height: 34px; border-radius: 8px; border: 2px solid #7170ff; background: #fff; color: #222; display: flex; align-items: center; padding: 0 12px; font-size: 13px; }
+.bpage .fx-dd { position: absolute; left: 18px; right: 18px; top: 116px; background: #fff; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,.18); padding: 5px; color: #333; font-size: 12.5px; }
+.bpage .fx-dd div { padding: 7px 10px; border-radius: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bpage .fx-dd div:first-child { background: #eef0ff; }
+.bpage .fx-dd small { color: #888; margin-left: 6px; }
+.bpage .driving { position: absolute; right: 10px; bottom: 10px; font-size: 11px; color: #555; background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 3px 9px; display: flex; gap: 6px; align-items: center; }
+.gcard .term { white-space: pre-wrap; overflow-wrap: anywhere; }
+.label-mock button { color: var(--text-3); text-decoration: underline; text-underline-offset: 2px; margin-left: 8px; }
 </style>
 </head>
 <body>
-<div class="label-mock">Phase 1 mockup · invented data · click rounds, “See the evidence”, Goal | Browser, and “New goal”</div>
+<div class="label-mock">Phase 1 mockup · invented data<button id="toggleBrowser">Show / hide browser</button></div>
 
-<div class="app">
+<div class="app" id="app">
   <nav class="rail">
     <div class="traffic"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
     <div class="ring" title="Claude: 5-hour window">
@@ -323,7 +358,7 @@ details[open] summary::before { content: '▾ '; }
     <div class="chat-head">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>
       <span class="t">Search my browsing history from the address bar</span>
-      <span class="pill"><span class="dot run"></span>Round 3</span>
+      <button class="pill goal-chip" id="goalChip" title="Show the goal"><span class="dot run"></span>Goal · round 3</button>
     </div>
     <div class="scroll">
       <div class="tx">
@@ -373,20 +408,16 @@ details[open] summary::before { content: '▾ '; }
     </div>
   </section>
 
-  <!-- Right: the goal as an artifact, sharing the card with the browser. -->
-  <section class="card">
-    <div class="switch">
-      <div class="seg">
-        <button class="on" data-pane="goal">Goal</button>
-        <button data-pane="browser">Browser <span class="live" title="Claude is using a tab"></span></button>
-      </div>
-      <div class="right">
-        <button class="btn">❚❚ Pause</button>
-        <button class="btn danger">■ Stop</button>
-      </div>
+  <!-- Middle: the goal, as an artifact card of its own. -->
+  <section class="card gcard">
+    <div class="g-top">
+      <span class="lbl"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>Goal</span>
+      <span class="sp"></span>
+      <button class="btn">❚❚ Pause</button>
+      <button class="btn danger">■ Stop</button>
+      <button class="icon-btn" id="hideGoal" title="Hide (the goal keeps running)">✕</button>
     </div>
-
-    <div class="scroll art" id="paneGoal">
+<div class="scroll art" id="paneGoal">
       <div class="art-head">
         <div class="crumbs"><span class="pill"><span class="dot run"></span>Working · round 3</span><span class="faint">~/Desktop/rocketv1 · 38 min</span></div>
         <div class="m-title">Search my browsing history from the address bar</div>
@@ -459,9 +490,25 @@ details[open] summary::before { content: '▾ '; }
       </div>
     </div>
 
-    <div class="mini-browser" id="paneBrowser">
-      <div class="mb-bar"><span class="faint">‹ ›</span><div class="mb-url">localhost:5173 · UI check fixture</div></div>
-      <div class="mb-page">The real browser panel, unchanged. Claude's tab is marked with a dot.</div>
+  </section>
+
+  <!-- Right: the browser, as it is today. -->
+  <section class="card bcard">
+    <div class="bstrip">
+      <div class="btab">Reddit</div>
+      <div class="btab on"><span class="ag" title="Claude is using this tab"></span>UI check fixture</div>
+      <div class="btab" style="flex:none;color:var(--text-4)">+</div>
+    </div>
+    <div class="mb-bar"><span class="faint">‹ › ↻</span><div class="mb-url">localhost:5173/fixture</div></div>
+    <div class="bpage">
+      <div class="fx-h">Fixture app</div>
+      <div class="fx-in">hist</div>
+      <div class="fx-dd">
+        <div>history search — Rocket docs<small>rocket.dev/docs/history</small></div>
+        <div>Browsing history in Chromium: how frecency ranks pages that you visit often<small>chromium.org</small></div>
+        <div>hist<small>Search</small></div>
+      </div>
+      <div class="driving"><span class="dot run"></span>Claude is testing the dropdown</div>
     </div>
   </section>
 </div>
@@ -554,17 +601,14 @@ details[open] summary::before { content: '▾ '; }
 <script>
 const $ = (id) => document.getElementById(id)
 // Rounds open in place; "See the evidence" in the chat opens the matching round on the Goal side.
-function openRound(i) {
-  setPane('goal')
+function openRound(i, scroll = true) {
+  $('app').classList.remove('no-goal')
   document.querySelectorAll('.round').forEach((el) => el.classList.toggle('sel', el.dataset.i == i))
-  document.querySelector(`.round[data-i="${i}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  if (scroll) document.querySelector(`.round[data-i="${i}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 }
-function setPane(name) {
-  document.querySelectorAll('.seg button').forEach((b) => b.classList.toggle('on', b.dataset.pane === name))
-  $('paneGoal').style.display = name === 'goal' ? '' : 'none'
-  $('paneBrowser').classList.toggle('on', name === 'browser')
-}
-document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => setPane(b.dataset.pane)))
+$('hideGoal').addEventListener('click', () => $('app').classList.add('no-goal'))
+$('goalChip').addEventListener('click', () => $('app').classList.toggle('no-goal'))
+$('toggleBrowser').addEventListener('click', () => $('app').classList.toggle('no-browser'))
 document.querySelectorAll('.open-goal').forEach((a) => a.addEventListener('click', () => openRound(a.dataset.round)))
 $('timeline').addEventListener('click', (e) => {
   if (e.target.closest('.rollback')) { alert('Mockup: would put the folder back the way it was at the end of this round, after a confirm.'); return }
@@ -592,7 +636,7 @@ document.querySelectorAll('.qa').forEach((el) => el.addEventListener('click', ()
 document.querySelectorAll('.dw-row .x').forEach((el) => el.addEventListener('click', () => el.closest('.dw-row').remove()))
 document.querySelectorAll('.close-new').forEach((el) => el.addEventListener('click', () => $('scrim').classList.remove('open')))
 $('scrim').addEventListener('click', (e) => { if (e.target.id === 'scrim') e.target.classList.remove('open') })
-openRound(2)
+openRound(2, false)
 </script>
 </body>
 </html>
