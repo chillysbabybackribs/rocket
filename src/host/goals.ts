@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { designPreparationContext } from './design-library.ts'
 import {
   PROVIDERS, providerLabel,
   type Chat, type Goal, type GoalAgent, type GoalEdit, type GoalRole, type GoalRound, type GoalVerdict,
@@ -529,6 +530,7 @@ function draftPrompt(goal: Goal): string {
   return `The user wants this done, in their own words:
 "${goal.request}"
 
+${designPreparationContext()}
 Before any work starts, draft a short brief for them to confirm. Look at the folder as much as you need to understand what they mean, but change nothing yet. Then call goal_report with:
 - goal: one or two plain sentences saying what will be true when it is finished.
 - criteria: 2 to 6 lines that together define done. Each is one fact about the finished result that someone could check, in plain words the user understands, with how it will be checked in a few words (for example "runs the tests", "screenshot", "tried in the browser"). Leave out anything they did not ask for.
@@ -540,6 +542,7 @@ function redraftPrompt(goal: Goal): string {
   return `The user answered:
 ${goal.steer.map((note) => `- ${note}`).join('\n')}
 
+${designPreparationContext()}
 Draft the brief again with that in mind and call goal_report with goal, criteria and, if still needed, question. Do not start the work.`
 }
 

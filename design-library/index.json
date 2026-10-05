@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "references": [
+    {
+      "id": "linear",
+      "title": "Linear \u2014 restrained productivity UI",
+      "summary": "Dark surfaces, quiet hierarchy and compact task details. Homepage screenshot with an embedded product illustration; not an interactive application capture.",
+      "surface": "marketing page with product illustration",
+      "verticals": [
+        "productivity",
+        "developer-tools"
+      ],
+      "patterns": [
+        "detail-panel",
+        "activity-feed",
+        "navigation",
+        "landing-page"
+      ],
+      "character": [
+        "dark",
+        "compact",
+        "restrained"
+      ],
+      "status": "reviewed",
+      "sources": [
+        "https://styles.refero.design/style/90ce5883-bb24-4466-93f7-801cd617b0d1",
+        "https://linear.app"
+      ],
+      "notes": "references/linear/reference.md",
+      "images": [
+        {
+          "path": "references/linear/images/refero-linear.jpg",
+          "source": "https://images.refero.design/styles/refero.design/image/eee18c0c-a85f-4a66-83f6-f9f38d284825.jpg",
+          "caption": "Linear homepage with a product detail illustration. Useful for visual hierarchy; does not establish interaction behavior.",
+          "savedAt": "2026-10-05"
+        }
+      ]
+    }
+  ]
+}

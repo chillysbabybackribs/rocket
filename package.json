@@ -14,7 +14,8 @@
     "test": "node --experimental-transform-types --disable-warning=ExperimentalWarning --test \"src/**/*.test.ts\" \"scripts/*.test.mjs\"",
     "check:live": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/live-check.ts",
     "check:ui": "node scripts/ui-check.mjs",
-    "simulate:slow-turn": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/simulate-slow-turn.ts"
+    "simulate:slow-turn": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/simulate-slow-turn.ts",
+    "design": "node scripts/design-library.mjs"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.285",

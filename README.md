@@ -159,6 +159,16 @@ checklist and rounds laid out like a Linear issue (`GoalPane.tsx`). A goal's cha
 other, marked with the goal's status; its composer becomes a note for the next round. While the
 new-goal dialog is open the browser's page is hidden, since it would paint over the dialog.
 
+### Design reference library
+
+Goal drafting now points agents to an editable preparation skill and shared reference catalog.
+See [the library guide](design-library/README.md) to add references, edit notes and images,
+search tags, or validate paths with `npm run design -- validate`. The initial Linear entry
+includes the supplied Refero source and a local screenshot. Catalog edits need no rebuild.
+[DESIGN.md](DESIGN.md) records Rocket-specific conventions; other projects retain their own.
+Set `ROCKET_DESIGN_LIBRARY` to use another library folder. Library management currently uses
+files and commands; there is no in-app editor.
+
 ### Permissions
 
 All four providers run unattended with full access to the chat's working folder and your shell,

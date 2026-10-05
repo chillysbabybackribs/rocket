@@ -1,0 +1,21 @@
+{
+  "id": "your-reference",
+  "title": "Your reference",
+  "summary": "Explain what this reference is useful for.",
+  "surface": "Describe the screen: application, marketing page, or mobile flow",
+  "verticals": [
+    "your-product-type"
+  ],
+  "patterns": [
+    "your-interface-pattern"
+  ],
+  "character": [
+    "your-visual-character"
+  ],
+  "status": "candidate",
+  "sources": [
+    "https://example.com/replace-with-source"
+  ],
+  "notes": "references/your-reference/reference.md",
+  "images": []
+}
