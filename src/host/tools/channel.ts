@@ -68,6 +68,11 @@ export class ToolChannel {
   }
 
   /** Tie a key that was handed out before its chat existed to that chat. */
+  /** The tools served here, as `tools/list` gives them. */
+  list(): { name: string; description: string; inputSchema: Record<string, unknown> }[] {
+    return this.registry.list().map(({ name, description, inputSchema }) => ({ name, description, inputSchema }))
+  }
+
   bind(key: string, chatId: string): void {
     this.bound.set(key, chatId)
   }
@@ -133,7 +138,7 @@ export class ToolChannel {
       case 'tools/list':
         return {
           result: {
-            tools: this.registry.list().map(({ name, description, inputSchema }) => ({ name, description, inputSchema }))
+            tools: this.list()
           }
         }
       case 'tools/call':

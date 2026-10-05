@@ -28,12 +28,17 @@ export type PrepareRequest = {
   model: string | null
 }
 
+/** A tool as a model is told about it: `inputSchema` is the JSON Schema of its arguments. */
+export type ToolBrief = { name: string; description: string; inputSchema: Record<string, unknown> }
+
 /**
  * Where a provider's sessions find the app's tools: an MCP URL per session, whose key tells the
  * app which chat is calling (tools/channel.ts). Null when the app's tools are not being served.
  */
 export type ToolEndpoint = {
   url: (provider: ProviderId, key: string) => string
+  /** The tools served there, for a provider whose CLI does not put them in the model's prompt. */
+  list: () => ToolBrief[]
   bind: (key: string, chatId: string) => void
   unbind: (key: string) => void
 } | null

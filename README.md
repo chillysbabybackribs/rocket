@@ -71,7 +71,9 @@ The app owns its tools and every provider sees the same ones. The agent host kee
 registry (`src/host/tools/registry.ts`) and serves them over a single MCP server on loopback
 (`channel.ts`), the one channel all four CLIs accept. Each session is given a URL that names its
 chat. Antigravity is the exception: its MCP config is global, so the app registers itself there
-as `rocket` (`agy mcp add`) and works out the chat from the turn that is running.
+as `rocket` (`agy mcp add`) and works out the chat from the turn that is running. Its CLI also
+leaves MCP tools out of the model's prompt, so the adapter opens a new conversation's first
+message with the tools, their arguments and how to call them.
 
 There are three browser tools (`src/host/tools/browser.ts`). `browser_read` returns a page as text
 with links, its controls with short refs, and the data requests it made. `browser_screenshot`

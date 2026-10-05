@@ -15,5 +15,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["electron.vite.config.ts", "src/**/*.ts", "src/**/*.tsx"]
+  "include": ["electron.vite.config.ts", "playwright.config.ts", "tests/**/*.ts", "src/**/*.ts", "src/**/*.tsx"]
 }

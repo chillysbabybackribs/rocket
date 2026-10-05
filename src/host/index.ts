@@ -21,6 +21,7 @@ import { memoryTools } from './tools/memory.ts'
 import { selfCheckTools } from './tools/self-check.ts'
 import { Teamwork } from './teamwork.ts'
 import { workspaceContext } from './workspace.ts'
+import { UiTestAdapter, uiTestProfile } from './ui-test.ts'
 
 // The agent host: a utility process forked by Electron's main process. Everything that talks to
 // a provider or to the transcript store lives here, so none of it can stall the window or the
@@ -38,6 +39,7 @@ const parentPort = (process as unknown as { parentPort?: Port }).parentPort
 
 const EVENT_FLUSH_MS = 16
 
+const testProfile = uiTestProfile()
 const dataDir = process.env.ROCKET_DATA_DIR || join(homedir(), '.config', 'rocket')
 const store = new Store(join(dataDir, 'rocket.db'))
 // The journal records always, since a crash is worth keeping; the tools and nudges that surface it are opt-in.
@@ -125,7 +127,12 @@ const tools = new ToolChannel(
 await tools.start()
 
 const onUsage = (snapshot: UsageSnapshot): void => hub.noteUsage(snapshot)
-const adapters: Record<ProviderId, ProviderAdapter> = {
+const adapters: Record<ProviderId, ProviderAdapter> = testProfile ? {
+  codex: new UiTestAdapter('codex', testProfile),
+  claude: new UiTestAdapter('claude', testProfile),
+  cursor: new UiTestAdapter('cursor', testProfile),
+  antigravity: new UiTestAdapter('antigravity', testProfile)
+} : {
   codex: new CodexAdapter(onUsage, tools),
   claude: new ClaudeAdapter(onUsage, tools),
   cursor: new CursorAdapter(tools),
@@ -144,7 +151,7 @@ function onEvent(event: HostEvent): void {
 }
 // ROCKET_AUTO_COMMIT=0 leaves committing to the user; models are still told about each other.
 const teamwork: Teamwork = new Teamwork(store, () => hub.working(), {
-  commit: process.env.ROCKET_AUTO_COMMIT !== '0',
+  commit: !testProfile && process.env.ROCKET_AUTO_COMMIT !== '0',
   warn: (message, details) => journal.add('host', 'warn', 'commit', message, details)
 })
 const browserTabs = browserContext({ request: askBrowser })

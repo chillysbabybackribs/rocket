@@ -11,7 +11,7 @@ import { antigravityUsage } from '../usage-parsers.ts'
 import { SHARED } from '../tools/channel.ts'
 import {
   itemId, TOOL_SERVER, unavailableUsage,
-  type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type ToolEndpoint, type TurnSink
+  type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type ToolBrief, type ToolEndpoint, type TurnSink
 } from './provider.ts'
 
 // Antigravity through Google's `agy` CLI in headless stream-json mode: one process per chat,
@@ -33,6 +33,15 @@ import {
 // - MCP servers come only from the CLI's own global config (`agy mcp add`); a process cannot be
 //   given one of its own. So the app's tools are registered there once, at a URL every chat
 //   shares, and the app works out which chat is calling from the turn that is running.
+// Verified live against agy 1.2.17 on 2026-10-05:
+// - MCP tools are not in the model's prompt. `init.tools` lists only the CLI's own tools; the
+//   model reaches an MCP tool through `call_mcp_tool {ServerName, ToolName, Arguments}` and, told
+//   nothing, first spends several steps reading the schema files the CLI keeps under
+//   ~/.gemini/antigravity-cli/mcp/<server>/. So a new conversation's first message opens with
+//   the app's tools and how to call them (`toolBrief`).
+// - Thinking is never in the stream. A step that was only thinking arrives as one `agent_response`
+//   with state DONE, no `text_delta`, and a `usage.thinking_tokens` count; there is no text to show.
+// - Step types seen: `user_input`, `agent_response`, `tool`.
 // The CLI owns its conversation store, so missed turns ride at the head of the message.
 // `prepare` starts the process while the message is still being typed, and keeps one spare for
 // the next new chat, so a first message (or the one after a stop) does not wait on the spawn.
@@ -184,7 +193,10 @@ export class AntigravityAdapter implements ProviderAdapter {
       }
       agy.turn = turn
       try {
-        agy.write(withHandoff(request.handoff, request.text))
+        // A conversation that has not started has not been told about the app's tools.
+        const brief = agy.conversationId === null && this.tools ? toolBrief(this.serverName, this.tools.list()) : ''
+        const message = withHandoff(request.handoff, request.text)
+        agy.write(brief ? `${brief}\n\n${message}` : message)
       } catch (error) {
         turn.finish({ status: 'failed', error: messageOf(error) })
       }
@@ -336,6 +348,33 @@ export class AntigravityAdapter implements ProviderAdapter {
     else if (!turn.sawEvent && agy.conversationId && !agy.spawnFailed) turn.finish({ status: 'failed', sessionLost: true })
     else turn.finish({ status: 'failed', error: detail })
   }
+}
+
+/**
+ * What a new conversation is told about the app's tools, since agy leaves MCP tools out of the
+ * prompt: each tool's description and arguments, and the one call that reaches them.
+ */
+export function toolBrief(serverName: string, tools: ToolBrief[]): string {
+  if (tools.length === 0) return ''
+  const blocks = tools.map((tool) => {
+    const schema = recordOf(tool.inputSchema)
+    const required = new Set(Array.isArray(schema.required) ? schema.required : [])
+    const args = Object.entries(recordOf(schema.properties)).map(([name, value]) => {
+      const property = recordOf(value)
+      const choices = Array.isArray(property.enum) ? property.enum.map((choice) => JSON.stringify(choice)).join(' | ') : ''
+      const type = choices || stringOf(property.type) || 'any'
+      const description = stringOf(property.description)
+      return `  - ${name} (${type}${required.has(name) ? ', required' : ''})${description ? `: ${description}` : ''}`
+    })
+    return [`## ${tool.name}`, tool.description.trim(), args.length ? `Arguments:\n${args.join('\n')}` : 'No arguments.'].join('\n')
+  })
+  return [
+    '<app-tools>',
+    `This app serves the tools below on the MCP server "${serverName}". Call one with call_mcp_tool, giving ServerName "${serverName}", ToolName as named here and Arguments as described. This is the whole list with every argument, so do not look the tools or their schema files up first.`,
+    '',
+    blocks.join('\n\n'),
+    '</app-tools>'
+  ].join('\n')
 }
 
 type Op = { type: 'item'; item: Item } | { type: 'delta'; itemId: string; delta: string }

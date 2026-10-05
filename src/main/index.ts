@@ -9,12 +9,14 @@ import { HOST_PORT_MESSAGE } from '../shared/types.ts'
 import { BrowserAgent } from './browser-agent.ts'
 import { BrowserPane } from './browser-pane.ts'
 import { appendJournal } from '../host/journal.ts'
+import { uiTestProfile } from '../host/ui-test.ts'
 
 // Electron's main process does three things and nothing else: it owns the window, it owns the
 // embedded browser view, and it forks the agent host and introduces it to the renderer over a
 // MessageChannel. Chat traffic never passes through here.
 
 // ROCKET_USER_DATA points the app at another profile folder, so a test run never touches real chats.
+uiTestProfile()
 if (process.env.ROCKET_USER_DATA) app.setPath('userData', process.env.ROCKET_USER_DATA)
 
 let window: BrowserWindow | null = null
