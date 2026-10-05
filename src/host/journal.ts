@@ -1,6 +1,5 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { ProviderId } from '../shared/types.ts'
 import { recordOf, stringOf } from './json.ts'
 
 // The app's memory of its own trouble. Console output vanishes; this keeps what went wrong, what
@@ -27,7 +26,7 @@ export type JournalQuery = { since?: number; severity?: Severity; source?: strin
 /** A turn's timing, as the hub reports it; the journal needs only these fields. */
 export type TimingReading = {
   chatId: string
-  provider: ProviderId
+  provider: string
   model: string | null
   status: string
   error?: string | null
