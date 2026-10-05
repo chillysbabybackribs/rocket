@@ -4,6 +4,7 @@ import type {
   BrowserAgentOp, BrowserAgentReply, BrowserAgentRequest,
   HostApi, HostEvent, HostMethod, HostRequestMessage, HostToRenderer, ProviderId, UsageSnapshot
 } from '../shared/types.ts'
+import { GoalRunner } from './goals.ts'
 import { describeTiming, Hub } from './hub.ts'
 import { messageOf, oneLine } from './json.ts'
 import { Journal } from './journal.ts'
@@ -16,6 +17,7 @@ import type { ProviderAdapter } from './providers/provider.ts'
 import { Store } from './store.ts'
 import { browserContext, browserTools } from './tools/browser.ts'
 import { ToolChannel } from './tools/channel.ts'
+import { goalTools } from './tools/goal.ts'
 import { ToolRegistry } from './tools/registry.ts'
 import { memoryTools } from './tools/memory.ts'
 import { selfCheckTools } from './tools/self-check.ts'
@@ -120,6 +122,7 @@ const tools = new ToolChannel(
   new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', message, { provider, chatId }))
     .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
     .add(...memoryTools(store))
+    .add(...goalTools(() => goals))
     .add(...(selfCheck ? selfCheckTools(journal, (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)) : [])),
   join(dataDir, 'tool-channel.json'),
   (provider) => hub.runningChat(provider)
@@ -144,7 +147,9 @@ function onEvent(event: HostEvent): void {
   if (event.type === 'turn' && event.turn.status !== 'running') {
     void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
     void teamwork.turnEnded(event.turn)
+    goals.turnEnded(event.turn)
   } else if (event.type === 'chatDeleted') {
+    goals.forget(event.chatId)
     void askBrowser({ op: 'forget', chat: event.chatId }).catch(() => {})
     teamwork.forget(event.chatId)
   }
@@ -171,6 +176,9 @@ const hub: Hub = new Hub(
   }
 )
 
+// Built after the hub, which it drives; goals cut off by the last exit wait for the user.
+const goals: GoalRunner = new GoalRunner(store, hub, (goal) => emit({ type: 'goal', goal }))
+
 const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | Promise<HostApi[M][1]> } = {
   'chats.list': () => hub.listChats(),
   'chat.create': ({ cwd }) => hub.createChat(cwd),
@@ -186,6 +194,14 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'chat.prepare': ({ chatId, cwd, provider, model }) => { void hub.prepare(chatId, provider, model, cwd); return null },
   'usage.read': ({ provider, force }) => hub.usage(provider, force),
   'models.list': ({ provider }) => hub.models(provider),
+  'goals.list': () => goals.list(),
+  'goal.draft': (input) => goals.draft(input),
+  'goal.update': ({ goalId, edit }) => goals.update(goalId, edit),
+  'goal.start': ({ goalId }) => goals.start(goalId),
+  'goal.pause': ({ goalId }) => goals.pause(goalId),
+  'goal.resume': ({ goalId }) => goals.resume(goalId),
+  'goal.stop': ({ goalId }) => goals.stop(goalId),
+  'goal.steer': ({ goalId, text }) => goals.steer(goalId, text),
   'journal.report': ({ message, stack }) => {
     journal.add('renderer', 'error', 'crash', oneLine(String(message), 300), { stack: String(stack ?? '').split('\n').slice(0, 6).join('\n') })
     return null
@@ -216,6 +232,7 @@ let exiting = false
 async function shutdown(): Promise<void> {
   if (exiting) return
   exiting = true
+  goals.shutdown()
   await Promise.race([hub.shutdown(), new Promise((resolve) => setTimeout(resolve, 1_500))])
   stopAllProcessGroups()
   tools.stop()

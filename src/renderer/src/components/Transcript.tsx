@@ -52,12 +52,16 @@ function ToolLine({ item }: { item: ToolItem }) {
   )
 }
 
-/** A step in an opened summary: a tool line that opens its output, or the reasoning text. */
+/**
+ * A step in an opened summary: a tool line that opens its output, the reasoning text, or what
+ * the model said along the way before its final reply.
+ */
 const Step = memo(function Step({ id }: { id: string }) {
   const item = useItem(id)
   const [open, setOpen] = useState(false)
   if (!item) return null
   if (item.type === 'reasoning') return item.text.trim() ? <div className="reasoning-text">{item.text}</div> : null
+  if (item.type === 'assistant') return item.text.trim() ? <Prose text={item.text} streaming={false} /> : null
   if (item.type !== 'tool') return null
   const expandable = item.output.trim().length > 0
   return (
@@ -167,10 +171,9 @@ function LiveThought({ id, open }: { id: string; open: boolean }) {
 }
 
 /**
- * A run of reasoning and tool calls between replies. While the turn is working on it, it is the
- * thinking as it arrives over one line showing the current tool; once done, one summary line that
- * opens the steps. A finished run that is only thinking has no line of its own: the turn's head
- * opens it.
+ * The work of a turn. While it is live, it is the thinking as it arrives over one line showing
+ * the current tool; otherwise one summary line that opens the steps. Work that is only thinking
+ * has no line of its own: the turn's head opens it.
  */
 const Activity = memo(function Activity({ ids, live, thoughtsOpen }: { ids: string[]; live: boolean; thoughtsOpen: boolean }) {
   const [open, setOpen] = useState(false)
@@ -258,43 +261,36 @@ function TurnHead({ turn, thoughts, open, onToggle }: { turn: Turn; thoughts: bo
   )
 }
 
-type Segment = { kind: 'activity'; ids: string[] } | { kind: 'item'; id: string }
-
-/** Consecutive reasoning and tool items fold into one activity; replies and notices stand alone. */
-function segmentsOf(ids: string[]): Segment[] {
-  const segments: Segment[] = []
-  for (const id of ids) {
-    const type = peekItem(id)?.type
-    if (type === 'reasoning' || type === 'tool') {
-      const last = segments.at(-1)
-      if (last?.kind === 'activity') last.ids.push(id)
-      else segments.push({ kind: 'activity', ids: [id] })
-    } else {
-      segments.push({ kind: 'item', id })
-    }
-  }
-  return segments
+/**
+ * A turn's response keeps one shape however long it works, each part replacing the last in its
+ * place rather than piling up: the model's latest words, a summary of the steps before them, and,
+ * while it runs, the thinking and tool call under way. Notices keep to the end.
+ */
+function stageOf(ids: string[], running: boolean): { reply: string | null; steps: string[]; live: string[]; notices: string[] } {
+  const notices = ids.filter((id) => peekItem(id)?.type === 'notice')
+  const work = ids.filter((id) => peekItem(id)?.type !== 'notice')
+  const at = work.findLastIndex((id) => peekItem(id)?.type === 'assistant')
+  const reply = at === -1 ? null : work[at]
+  if (!running) return { reply, steps: work.filter((id) => id !== reply), live: [], notices }
+  return { reply, steps: at === -1 ? [] : work.slice(0, at), live: work.slice(at + 1), notices }
 }
 
 const TurnBlock = memo(function TurnBlock({ turn, ids, fill }: { turn: Turn; ids: string[]; fill: boolean }) {
   const [userId, ...rest] = ids
-  const segments = segmentsOf(rest)
   const running = turn.status === 'running'
-  const last = segments.at(-1)
+  const { reply, steps, live, notices } = stageOf(rest, running)
   const [thoughtsOpen, setThoughtsOpen] = useState(false)
   // Thinking that stands alone, with no tool calls around it, is what the head opens.
-  const thoughts = segments.some((segment) => segment.kind === 'activity'
-    && !(running && segment === last)
-    && hasThought(segment.ids)
-    && segment.ids.every((id) => peekItem(id)?.type !== 'tool'))
+  const thoughts = hasThought(steps) && steps.every((id) => peekItem(id)?.type !== 'tool')
   return (
     <article className={`turn${fill ? ' is-fill' : ''}`}>
       {userId && <ItemRow id={userId} />}
       <div className="answer">
         <TurnHead turn={turn} thoughts={thoughts} open={thoughtsOpen} onToggle={() => setThoughtsOpen(!thoughtsOpen)} />
-        {segments.map((segment) => segment.kind === 'item'
-          ? <ItemRow key={segment.id} id={segment.id} />
-          : <Activity key={segment.ids[0]} ids={segment.ids} live={running && segment === last} thoughtsOpen={thoughtsOpen} />)}
+        {reply && <ItemRow key={reply} id={reply} />}
+        {steps.length > 0 && <Activity ids={steps} live={false} thoughtsOpen={thoughtsOpen} />}
+        {live.length > 0 && <Activity key={live[0]} ids={live} live thoughtsOpen={false} />}
+        {notices.map((id) => <ItemRow key={id} id={id} />)}
         {turn.status === 'interrupted' && <p className="notice is-info">Stopped</p>}
         {turn.status === 'failed' && <p className="notice is-error">{turn.error ?? 'This turn failed.'}</p>}
       </div>

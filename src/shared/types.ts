@@ -104,6 +104,8 @@ export type Goal = {
   /** A usage window at or past this percent pauses the goal before its next turn. */
   pauseAtPercent: number
   status: GoalStatus
+  /** The turn the goal takes next, when it carries on from a pause or the user. */
+  next: GoalRole
   /** Why the goal is waiting for the user, as a sentence. */
   reason: string | null
   /** When a goal waiting on usage starts again by itself. */

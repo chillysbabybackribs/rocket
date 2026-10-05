@@ -154,3 +154,14 @@ test('a session that was lost is told the app\'s context again', async () => {
   assert.deepEqual(asked, [true, false, true])
   assert.deepEqual(adapter.ran.map((request) => request.text), ['<tabs>\n\none', 'two', '<tabs>\n\ntwo'])
 })
+
+test("a goal's turn does not name the chat after the app's message", async () => {
+  const { hub, adapter, ended } = setup()
+  const chat = hub.createChat('/work', 'Search my history')
+  const turnId = hub.send(chat.id, 'claude', null, 'The user wants this done…', 'draft')
+  assert.equal(hub.listChats()[0]!.title, 'Search my history')
+  assert.equal(hub.isRunning(chat.id), true)
+  adapter.complete()
+  await ended()
+  assert.equal(hub.openChat(chat.id).turns.find((turn) => turn.id === turnId)!.goalRole, 'draft')
+})

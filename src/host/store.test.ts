@@ -45,3 +45,20 @@ test('deleting a chat removes its turns, items and sessions', () => {
   assert.deepEqual(store.turns('c1'), [])
   assert.deepEqual(store.session('c1', 'claude'), { sessionId: null, seenTurnSeq: 0 })
 })
+
+test('a store made before goals gains the goal_role column, and turns keep their role', async () => {
+  const { DatabaseSync } = await import('node:sqlite')
+  const { mkdtempSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const path = join(mkdtempSync(join(tmpdir(), 'rocket-store-')), 'old.db')
+  const old = new DatabaseSync(path)
+  old.exec(`CREATE TABLE turns (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, chat_id TEXT NOT NULL, provider TEXT NOT NULL,
+    model TEXT, status TEXT NOT NULL, error TEXT, handoff_turns INTEGER NOT NULL DEFAULT 0, started_at INTEGER NOT NULL, ended_at INTEGER)`)
+  old.close()
+  const store = new Store(path)
+  store.createChat(chat)
+  store.createTurn({ ...turn('t1', 'codex'), goalRole: 'check' })
+  assert.equal(store.turns('c1')[0]!.goalRole, 'check')
+  store.close()
+})

@@ -509,6 +509,7 @@ button {
 .prose hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .prose + .prose, .activity + .prose { margin-top: 12px; }
 .prose + .activity { margin-top: 12px; }
+.activity + .activity { margin-top: 4px; }
 
 /* Every response opens with one quiet line over a divider: "Thinking" and a clock while it
    works, the time it took afterwards. What the model says and does goes beneath. */
@@ -561,6 +562,8 @@ button {
 .activity-summary:hover { color: var(--text-2); }
 .activity-failed { color: var(--danger); }
 .activity-steps { margin: 4px 0 8px; padding-left: 12px; border-left: 1px solid var(--line-strong); }
+.activity-steps .prose { font-size: 13px; color: var(--text-3); }
+.activity-steps .prose + .tool-line, .activity-steps .tool-line + .prose { margin-top: 6px; }
 
 .tool-line {
   max-width: 100%;
