@@ -147,9 +147,10 @@ function LiveThought({ id, open }: { id: string; open: boolean }) {
 }
 
 /**
- * The work of a turn. While it is live, it is the thinking as it arrives over one line showing
- * the current tool; otherwise one summary line that opens the steps. Work that is only thinking
- * has no line of its own: the turn's head opens it.
+ * The work of a turn. While it is live, it is one line showing the current tool over the thinking
+ * as it arrives, the tool on top so it keeps its place while the text below it grows; otherwise
+ * one summary line that opens the steps. Work that is only thinking has no line of its own: the
+ * turn's head opens it.
  */
 const Activity = memo(function Activity({ ids, live, thoughtsOpen }: { ids: string[]; live: boolean; thoughtsOpen: boolean }) {
   const [open, setOpen] = useState(false)
@@ -176,8 +177,8 @@ const Activity = memo(function Activity({ ids, live, thoughtsOpen }: { ids: stri
   if (!thought && !body) return null
   return (
     <div className="activity">
-      {thought && <LiveThought key="thought" id={thought.id} open={live} />}
       {body}
+      {thought && <LiveThought key="thought" id={thought.id} open={live} />}
     </div>
   )
 })
