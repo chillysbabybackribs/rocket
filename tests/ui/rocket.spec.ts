@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test, expect } from './app'
+import { assertOverlay, nativeViews } from './safeguards'
 
 test('Rocket desktop self-check', async ({ rocket }) => {
   const { page, app, origin, profile, workspace } = rocket
@@ -11,7 +12,13 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await page.locator('.picker-trigger').click()
     await page.getByRole('menu', { name: 'Providers', exact: true }).getByRole('menuitemradio').filter({ hasText: name }).click()
   }
-  const submit = async (text: string): Promise<void> => { await message.fill(text); await send.click() }
+  const submit = async (text: string): Promise<void> => {
+    const count = await page.locator('.turn').count()
+    await message.fill(text)
+    await send.click()
+    await expect(page.locator('.turn')).toHaveCount(count + 1)
+    await expect(page.locator('.turn').last().locator('.user-bubble')).toHaveText(text)
+  }
   const complete = async (): Promise<void> => {
     await rocket.release()
     await expect(stop).toHaveCount(0)
@@ -54,6 +61,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await expect(browser).toHaveTitle('UI page two')
     await page.getByRole('button', { name: 'New tab', exact: true }).click()
     await expect(page.locator('.btab')).toHaveCount(2)
+    await expect(page.locator('.btab.is-active')).toHaveText('UI page one')
     await page.getByRole('textbox', { name: 'Address', exact: true }).fill(`${origin}/one`)
     await page.getByRole('textbox', { name: 'Address', exact: true }).press('Enter')
     await expect(page.locator('.btab.is-active')).toHaveText('UI page one')
@@ -70,10 +78,13 @@ test('Rocket desktop self-check', async ({ rocket }) => {
 
   await test.step('Address suggestions overlay the page without moving it', async () => {
     const before = await page.locator('.browser-stage').boundingBox()
+    const browser = (await nativeViews(app)).find(view => view.visible && view.url === `${origin}/two`)
+    expect(browser).toBeDefined()
     await page.getByRole('textbox', { name: 'Address', exact: true }).fill(new URL(origin).host)
     const suggestions = await rocket.surface('suggestions')
     await expect(suggestions.locator('body')).toContainText('UI page two')
     expect(await page.locator('.browser-stage').boundingBox()).toEqual(before)
+    await assertOverlay(app, browser!)
     await rocket.capture('browser-overlay')
     await page.getByRole('textbox', { name: 'Address', exact: true }).press('Escape')
     await message.click()
@@ -81,7 +92,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
 
   await test.step('Streaming completion and expandable tool output', async () => {
     await submit('UI check: stream')
-    await expect(page.locator('.prose').last()).toHaveText('Streaming from codex.')
+    await expect(page.locator('.turn').last().locator('.prose')).toHaveText('Streaming from codex.')
     await expect(stop).toBeVisible()
     expect(await rocket.request()).toMatchObject({ provider: 'codex', model: 'ui-alternate', cwd: workspace })
     await rocket.capture('streaming')
@@ -94,7 +105,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
   await test.step('Provider handoff keeps the conversation', async () => {
     await provider('Claude')
     await submit('UI check: stream')
-    await expect(page.locator('.prose').last()).toHaveText('Streaming from claude.')
+    await expect(page.locator('.turn').last().locator('.prose')).toHaveText('Streaming from claude.')
     expect(await rocket.request()).toMatchObject({ provider: 'claude', handoffTurns: 1 })
     await complete()
     await expect(page.locator('.user-bubble')).toHaveCount(2)
@@ -102,7 +113,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
 
   await test.step('Stop interrupts a streaming response', async () => {
     await submit('UI check: stop')
-    await expect(page.locator('.prose').last()).toHaveText('Streaming from claude.')
+    await expect(page.locator('.turn').last().locator('.prose')).toHaveText('Streaming from claude.')
     await stop.click()
     await expect(page.locator('.turn').last().locator('.notice')).toHaveText('Stopped')
     await expect(stop).toHaveCount(0)
@@ -114,7 +125,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await expect(page.locator('.turn').last().locator('.notice.is-error')).toHaveText('Controlled UI test failure.')
     await expect(stop).toHaveCount(0)
     await submit('UI check: recover')
-    await expect(page.locator('.prose').last()).toHaveText('Streaming from claude.')
+    await expect(page.locator('.turn').last().locator('.prose')).toHaveText('Streaming from claude.')
     expect((await rocket.request()).sessionId).not.toBeNull()
     await complete()
   })
@@ -138,7 +149,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
   await test.step('Renderer reload restores persisted transcript and browser state', async () => {
     await page.reload()
     await expect(page.locator('.turn')).toHaveCount(5)
-    await expect(page.locator('.prose').last()).toContainText('Complete. The controlled response finished.')
+    await expect(page.locator('.turn').last().locator('.prose')).toContainText('Complete. The controlled response finished.')
     await expect(page.locator('.btab.is-active')).toHaveText('UI page two')
     await expect(page.locator('.notice.is-info')).toHaveText('Stopped')
     await expect(page.locator('.notice.is-error')).toHaveText('Controlled UI test failure.')

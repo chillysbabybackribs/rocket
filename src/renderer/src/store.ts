@@ -20,10 +20,11 @@ export type AppState = {
   /** Chats with a turn in flight, including ones not on screen. */
   running: ReadonlySet<string>
   usage: Partial<Record<ProviderId, UsageSnapshot>>
+  /** The provider chosen in the open chat, or on the empty screen for the next new one. */
   provider: ProviderId
   /** Each provider's models, once read. A provider absent here has not been asked yet. */
   models: Partial<Record<ProviderId, ModelInfo[]>>
-  /** The model chosen per provider; a provider absent here runs its own default. */
+  /** The model chosen per provider, in the same place; a provider absent here runs its own default. */
   modelChoice: ModelChoices
   browserOpen: boolean
   /** The folder a new chat starts in: the last one the user chose, or their home folder. */
@@ -33,10 +34,17 @@ export type AppState = {
 
 export type ModelChoices = Partial<Record<ProviderId, { id: string; label: string }>>
 
+// Each chat keeps its own provider and models, so a change in one never shows up in another. The
+// empty screen has a choice of its own, which a chat takes with it when it is created there.
+type Selection = { provider: ProviderId; modelChoice: ModelChoices }
+
 const PREFS_KEY = 'rocket.prefs'
 type Prefs = {
+  /** The empty screen's choice, and what a chat with none of its own falls back to. */
   provider?: ProviderId
   modelChoice?: ModelChoices
+  /** chatId → that chat's choice. */
+  selections?: Record<string, Selection>
   browserOpen?: boolean
   activeChatId?: string | null
   tabs?: string[]
@@ -60,6 +68,30 @@ function writePrefs(patch: Prefs): void {
 }
 
 const prefs = readPrefs()
+
+function selectionFor(chatId: string | null): Selection {
+  const saved = readPrefs()
+  const own = chatId ? saved.selections?.[chatId] : undefined
+  const provider = own?.provider ?? saved.provider
+  const modelChoice = { ...(own?.modelChoice ?? saved.modelChoice) }
+  // A remembered model the provider no longer offers would fail the turn; fall back to default.
+  for (const entry of PROVIDERS) {
+    const offered = state.models[entry.id]
+    const chosen = modelChoice[entry.id]
+    if (offered?.length && chosen && !offered.some((model) => model.id === chosen.id)) delete modelChoice[entry.id]
+  }
+  return { provider: PROVIDERS.some((entry) => entry.id === provider) ? provider! : 'claude', modelChoice }
+}
+
+function saveSelection(chatId: string | null, selection: Selection): void {
+  if (chatId) writePrefs({ selections: { ...readPrefs().selections, [chatId]: selection } })
+  else writePrefs(selection)
+}
+
+function forgetSelection(chatId: string): void {
+  const { [chatId]: _gone, ...selections } = readPrefs().selections ?? {}
+  writePrefs({ selections })
+}
 
 let state: AppState = {
   ready: false,
@@ -170,6 +202,7 @@ function applyEvents(events: HostEvent[]): void {
       }
       case 'chatDeleted':
         setState({ chats: state.chats.filter((chat) => chat.id !== event.chatId) })
+        forgetSelection(event.chatId)
         closeTab(event.chatId)
         break
       case 'usage':
@@ -189,7 +222,7 @@ function showChat(chatId: string | null, turns: Turn[] = [], loaded: Item[] = []
   const running = new Set(state.running)
   for (const turn of turns) if (turn.status === 'running') running.add(turn.chatId)
   const tabs = chatId && !state.tabs.includes(chatId) ? [...state.tabs, chatId] : state.tabs
-  setState({ activeChatId: chatId, tabs, turns, turnItems, running })
+  setState({ activeChatId: chatId, tabs, turns, turnItems, running, ...selectionFor(chatId) })
   writePrefs({ activeChatId: chatId, tabs })
 }
 
@@ -236,6 +269,7 @@ export async function send(text: string): Promise<void> {
     let chatId = state.activeChatId
     if (!chatId) {
       const chat = await call('chat.create', { cwd: state.defaultCwd })
+      saveSelection(chat.id, { provider: state.provider, modelChoice: state.modelChoice })
       showChat(chat.id)
       chatId = chat.id
     }
@@ -266,7 +300,7 @@ export function deleteChat(chatId: string): void {
 
 export function setProvider(provider: ProviderId): void {
   setState({ provider })
-  writePrefs({ provider })
+  saveSelection(state.activeChatId, { provider, modelChoice: state.modelChoice })
 }
 
 /** Pick a provider's model, or null to go back to that provider's default. Also selects the provider. */
@@ -275,7 +309,7 @@ export function selectModel(provider: ProviderId, model: ModelInfo | null): void
   if (model) modelChoice[provider] = { id: model.id, label: model.label }
   else delete modelChoice[provider]
   setState({ provider, modelChoice })
-  writePrefs({ provider, modelChoice })
+  saveSelection(state.activeChatId, { provider, modelChoice })
 }
 
 const modelLoads = new Map<ProviderId, Promise<void>>()
@@ -286,14 +320,8 @@ export function loadModels(provider: ProviderId): Promise<void> {
   if (!load) {
     load = call('models.list', { provider }).then((models) => {
       setState({ models: { ...state.models, [provider]: models } })
-      // A remembered model the provider no longer offers would fail the turn; fall back to default.
-      const chosen = state.modelChoice[provider]
-      if (chosen && !models.some((model) => model.id === chosen.id)) {
-        const modelChoice = { ...state.modelChoice }
-        delete modelChoice[provider]
-        setState({ modelChoice })
-        writePrefs({ modelChoice })
-      }
+      // Drops a remembered model the provider no longer offers; other chats drop theirs when shown.
+      setState({ modelChoice: selectionFor(state.activeChatId).modelChoice })
     }).catch(() => {
       modelLoads.delete(provider)
       setState({ models: { ...state.models, [provider]: [] } })

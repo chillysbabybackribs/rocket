@@ -10,13 +10,14 @@ import { BrowserAgent } from './browser-agent.ts'
 import { BrowserPane } from './browser-pane.ts'
 import { appendJournal } from '../host/journal.ts'
 import { uiTestProfile } from '../host/ui-test.ts'
+import { isolateUiTestNetwork } from './ui-test-network.ts'
 
 // Electron's main process does three things and nothing else: it owns the window, it owns the
 // embedded browser view, and it forks the agent host and introduces it to the renderer over a
 // MessageChannel. Chat traffic never passes through here.
 
 // ROCKET_USER_DATA points the app at another profile folder, so a test run never touches real chats.
-uiTestProfile()
+const testProfile = uiTestProfile()
 if (process.env.ROCKET_USER_DATA) app.setPath('userData', process.env.ROCKET_USER_DATA)
 
 let window: BrowserWindow | null = null
@@ -149,6 +150,7 @@ ipcMain.on('rocket:browser', (event, command: BrowserCommand) => {
 })
 
 app.whenReady().then(() => {
+  if (testProfile) isolateUiTestNetwork(process.env.ROCKET_UI_TEST_ORIGIN)
   host = startHost()
   createWindow()
 })

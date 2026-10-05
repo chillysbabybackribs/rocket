@@ -18,6 +18,7 @@ type Rocket = {
   request: () => Promise<Request>
   release: () => Promise<void>
   capture: (name: string) => Promise<void>
+  restart: () => Promise<void>
 }
 
 export const test = base.extend<{ rocket: Rocket }>({
@@ -49,12 +50,14 @@ export const test = base.extend<{ rocket: Rocket }>({
     for (const name of Object.keys(env)) {
       if (/^(ROCKET_|ELECTRON_|__NV_PRIME_RENDER_OFFLOAD$|__GLX_VENDOR_LIBRARY_NAME$|__VK_LAYER_NV_optimus$)/.test(name)) delete env[name]
     }
-    Object.assign(env, { NODE_ENV: 'test', ROCKET_UI_TEST: '1', ROCKET_USER_DATA: profile, ROCKET_AUTO_COMMIT: '0', ROCKET_SELF_CHECK: '1' })
+    Object.assign(env, { NODE_ENV: 'test', ROCKET_UI_TEST: '1', ROCKET_USER_DATA: profile, ROCKET_AUTO_COMMIT: '0', ROCKET_SELF_CHECK: '1', ROCKET_UI_TEST_ORIGIN: origin })
     const errors: string[] = []
     const logs: string[] = []
     let app: ElectronApplication | undefined
     let tracing = false
-    try {
+    let generation = 0
+    let page!: Page
+    const launch = async (): Promise<void> => {
       app = await _electron.launch({
         executablePath: createRequire(import.meta.url)('electron') as string,
         args: [resolve('.'), ...(noSandbox ? ['--no-sandbox'] : [])],
@@ -76,37 +79,45 @@ export const test = base.extend<{ rocket: Rocket }>({
       application.context().on('page', watch)
       await application.context().tracing.start({ screenshots: true, snapshots: true, sources: true })
       tracing = true
-      const page = await application.firstWindow()
+      page = await application.firstWindow()
       await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toBeVisible()
-      await application.evaluate(({ BrowserWindow, dialog, session }, { origin, workspace }) => {
+      await application.evaluate(({ BrowserWindow, dialog }, workspace) => {
         BrowserWindow.getAllWindows()[0].setTitle('Rocket — UI check')
-        // Exercise the folder button and its IPC response without automating an OS file picker.
         dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [workspace] })
-        // New tabs normally open Google. Keep every test page local and cancel external HTTP.
-        session.defaultSession.webRequest.onBeforeRequest({ urls: ['http://*/*', 'https://*/*'] }, (details, done) => {
-          if (details.url.startsWith(`${origin}/`)) done({})
-          else if (details.url === 'https://www.google.com/') done({ redirectURL: `${origin}/one` })
-          else done({ cancel: true })
-        })
-      }, { origin, workspace })
+      }, workspace)
+    }
+    const close = async (): Promise<void> => {
+      if (!app) return
+      const closing = app
+      try {
+        if (tracing) {
+          const path = info.outputPath(`trace-${generation++}.zip`)
+          await closing.context().tracing.stop({ path }).then(() => info.attach('Trace', { path, contentType: 'application/zip' })).catch(error => logs.push(String(error)))
+          tracing = false
+        }
+        await closing.close().catch(error => { errors.push(`Closing test app: ${String(error)}`); closing.process().kill('SIGKILL') })
+      } finally { app = undefined }
+    }
+    try {
+      await launch()
       const surface = async (kind: 'browser' | 'suggestions'): Promise<Page> => {
         const matches = (candidate: Page): boolean => kind === 'browser'
           ? candidate.url().startsWith(origin)
           : candidate.url().endsWith('/suggest.html')
-        await expect.poll(() => application.context().pages().some(matches)).toBe(true)
-        return application.context().pages().find(matches)!
+        await expect.poll(() => app!.context().pages().some(matches)).toBe(true)
+        return app!.context().pages().find(matches)!
       }
       const request = async (): Promise<Request> => JSON.parse(await readFile(join(profile, 'ui-request.json'), 'utf8')) as Request
       const capture = async (name: string): Promise<void> => {
         const shell = info.outputPath(`${name}-shell.png`)
         await page.screenshot({ path: shell })
         await info.attach(`${name}: app shell`, { path: shell, contentType: 'image/png' })
-        const views = await application.evaluate(({ BrowserWindow, WebContentsView }) => BrowserWindow.getAllWindows()[0].contentView.children
+        const views = await app!.evaluate(({ BrowserWindow, WebContentsView }) => BrowserWindow.getAllWindows()[0].contentView.children
           .filter(view => view instanceof WebContentsView && view.getVisible())
           .map(view => ({ url: (view as InstanceType<typeof WebContentsView>).webContents.getURL(), bounds: view.getBounds() })))
         await info.attach(`${name}: native view layout`, { body: JSON.stringify(views, null, 2), contentType: 'application/json' })
         for (const [index, view] of views.entries()) {
-          const target = application.context().pages().find(candidate => candidate.url() === view.url)
+          const target = app!.context().pages().find(candidate => candidate.url() === view.url)
           if (!target || target === page) continue
           const path = info.outputPath(`${name}-view-${index}.png`)
           await target.screenshot({ path })
@@ -116,7 +127,7 @@ export const test = base.extend<{ rocket: Rocket }>({
         // actual composed window; other environments still retain each surface and its bounds.
         try {
           if (!process.env.DISPLAY) throw new Error('No X11 display is available.')
-          const id = await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getNativeWindowHandle().readUInt32LE(0))
+          const id = await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getNativeWindowHandle().readUInt32LE(0))
           const path = info.outputPath(`${name}-window.png`)
           await promisify(execFile)('import', ['-window', String(id), path], { timeout: 5_000 })
           await info.attach(`${name}: full window`, { path, contentType: 'image/png' })
@@ -125,7 +136,8 @@ export const test = base.extend<{ rocket: Rocket }>({
         }
       }
       try {
-        await use({ app: application, page, profile, workspace, origin, surface, request,
+        await use({ get app() { return app! }, get page() { return page }, profile, workspace, origin, surface, request,
+          restart: async () => { await close(); await launch() },
           release: async () => { await writeFile(join(profile, `ui-release-${(await request()).turnId}`), '') }, capture })
       } finally {
         if (info.status !== info.expectedStatus && !page.isClosed()) {
@@ -133,13 +145,7 @@ export const test = base.extend<{ rocket: Rocket }>({
         }
       }
     } finally {
-      if (app) {
-        if (tracing) {
-          const path = info.outputPath('trace.zip')
-          await app.context().tracing.stop({ path }).then(() => info.attach('Trace', { path, contentType: 'application/zip' })).catch(error => logs.push(String(error)))
-        }
-        await app.close().catch(error => { errors.push(`Closing test app: ${String(error)}`); app?.process().kill('SIGKILL') })
-      }
+      await close()
       server.closeAllConnections()
       await new Promise<void>(resolve => server.close(() => resolve()))
       await info.attach('App log', { body: logs.join(''), contentType: 'text/plain' })

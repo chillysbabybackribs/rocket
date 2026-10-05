@@ -8,7 +8,7 @@ the architecture; read it before changing how the processes talk to each other.
 
 ```sh
 npm run typecheck   # tsc, no emit
-npm test            # node:test over src/**/*.test.ts, under a second
+npm test            # host/renderer unit tests and UI subprocess cleanup regression tests
 npm run check:ui    # build + unit tests + isolated Electron UI check, no real model turns
 npm run dev         # the app, rebuilding on change (ROCKET_NO_SANDBOX=1 if the sandbox helper is not set up)
 ```

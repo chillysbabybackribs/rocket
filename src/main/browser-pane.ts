@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AgentTab, Bounds, BrowserCommand, BrowserState, BrowserTab } from '../shared/types.ts'
 import { Suggestions } from './browser-suggest.ts'
-import { conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, reveal, toUrl } from './browser-url.ts'
+import { BROWSER_PARTITION, conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, reveal, toUrl } from './browser-url.ts'
 
 // The embedded browser: a strip of tabs, each a WebContentsView laid over the region of the
 // window the UI reserves for the page. A view is a native surface, so it paints above every DOM
@@ -19,7 +19,7 @@ import { conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, reveal, toUrl } from 
 // tab restored from the last session has no view at all until it is first selected, as in
 // Chromium.
 
-const PARTITION = 'persist:browser'
+const PARTITION = BROWSER_PARTITION
 const REOPEN_LIMIT = 25
 const FAVICON_LIMIT = 64_000
 

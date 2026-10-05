@@ -156,7 +156,7 @@ app with Playwright. The default uses a private Xvfb display so the test cannot 
 keyboard input. On Linux it requires `Xvfb`, `xvfb-run` and `xauth`; ImageMagick's `import`
 adds full-window screenshots. No Playwright browser download is needed: it uses the project's
 Electron binary. Use `npm run check:ui -- --visible` to watch on your desktop, or
-`npm run check:ui -- --repeat-each=3` to check repeatability with three fresh profiles.
+`npm run check:ui -- --repeat-each=3` to run every scenario three times with fresh profiles.
 
 Each run keeps a timestamped directory under `.artifacts/ui/`, printed at start and finish.
 It contains `runner.log`, `summary.json`, the machine-readable `results.json`, and an HTML
@@ -165,25 +165,40 @@ view bounds, the app log, the isolated journal, and a Playwright trace. Open it 
 `npx playwright show-report <run-directory>/report`; traces can be inspected from the report.
 Failed runs exit nonzero and capture the UI before closing. Test windows and the local web
 server close automatically; profiles remain with the report for investigation.
+SIGINT/SIGTERM stops the owned subprocess tree, including detached Electron processes;
+TERM-resistant children are killed after a grace period. Interrupted runs exit with status
+130/143 and record failure in `summary.json`.
 
 The checks exercise composer input, folder selection, usage, model selection, streaming,
 completion, tool output, provider handoff, cancellation, failure recovery, chat drafts,
-history, renderer reload, minimum window size, browser navigation/tabs, and the address
-dropdown. The shell, embedded page and dropdown are separate Playwright targets. Their
+history, renderer reload, full app restart, recovery from a host crash during a response,
+minimum window size, browser navigation/tabs, and the address dropdown. The shell, embedded
+page and dropdown are separate Playwright targets. Their
 screenshots and bounds are retained separately; on X11, a whole-window capture also records
 how the native views overlap. If that optional capture is unavailable, the report says so.
+Assertions also check the native page bounds and dropdown visibility, overlap and stacking
+order, so misplaced or hidden native views fail even without visual screenshot comparison.
 
 The test fixture (`tests/ui/app.ts`) uses a fresh marked profile and scratch workspace. All
 four provider adapters are replaced by `src/host/ui-test.ts`; real provider CLIs are never
-started, and HTTP pages stay on the local fixture server. Responses wait for the test to
+started. Before any restored tab loads, the app and `persist:browser` sessions both block
+HTTP/WebSocket origins outside the local fixture; new-tab home navigation redirects to it.
+Responses wait for the test to
 observe the stream before finishing, which avoids timing-dependent sleeps. The host, SQLite
 store, MessagePort, and renderer are real. The folder dialog returns the scratch workspace.
 This checks app behavior, not provider authentication, CLI translation, or native OS dialogs;
 `check:live` remains the separate, explicitly authorized provider integration check.
 
-Add scenarios in `tests/ui/rocket.spec.ts`. Prefer accessible controls and observable state;
+The safeguards scenarios deliberately remove the browser filter and damage native view
+layout, then require the same assertions to reject those faults. The subprocess unit test
+checks ordinary and detached descendants, including ones that ignore SIGTERM.
+
+Add scenarios in `tests/ui/` (`rocket.spec.ts`, `safeguards.spec.ts`, `recovery.spec.ts`).
+Prefer accessible controls and observable state;
 do not mutate renderer state to manufacture a passing UI. `ROCKET_UI_TEST=1` is reserved for
 this runner and requires the marked profile before either main or host opens the store.
+The runner supplies `ROCKET_UI_TEST_ORIGIN` for its loopback server; this hook is inactive
+outside UI test mode.
 
 ## Development hooks
 

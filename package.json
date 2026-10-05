@@ -11,7 +11,7 @@
     "build": "tsc --noEmit && electron-vite build",
     "preview": "node scripts/launch.mjs preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-transform-types --disable-warning=ExperimentalWarning --test \"src/**/*.test.ts\"",
+    "test": "node --experimental-transform-types --disable-warning=ExperimentalWarning --test \"src/**/*.test.ts\" \"scripts/*.test.mjs\"",
     "check:live": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/live-check.ts",
     "check:ui": "node scripts/ui-check.mjs",
     "simulate:slow-turn": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/simulate-slow-turn.ts"
