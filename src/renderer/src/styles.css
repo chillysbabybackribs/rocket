@@ -830,8 +830,8 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   overflow-wrap: anywhere;
 }
 
-/* Thinking as it arrives, shown whole: the window grows with its text. Its height is set inline
-   from the text; it folds away when the reply starts. */
+/* Thinking as it arrives, shown whole, under the tool line: the window grows with its text. Its
+   height is set inline from the text; it folds away when the reply starts. */
 .thought-live {
   height: 0;
   overflow: hidden;
@@ -840,9 +840,10 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   line-height: 20px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  transition: height 220ms cubic-bezier(0.2, 0.8, 0.2, 1), margin-bottom 220ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms ease;
+  transition: height 220ms cubic-bezier(0.2, 0.8, 0.2, 1), margin-top 220ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms ease;
 }
-.thought-live.is-open { margin-bottom: 6px; opacity: 1; }
+.thought-live.is-open { opacity: 1; }
+.activity-current + .thought-live.is-open { margin-top: 6px; }
 /* While it folds away ahead of a reply, the gap it held closes with it. */
 .activity:has(> .thought-live:only-child) + .prose { margin-top: 0; }
 
