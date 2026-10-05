@@ -117,7 +117,7 @@ const tools = new ToolChannel(
   new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', message, { provider, chatId }))
     .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
     .add(...memoryTools(store))
-    .add(...(selfCheck ? selfCheckTools(journal) : [])),
+    .add(...(selfCheck ? selfCheckTools(journal, (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)) : [])),
   join(dataDir, 'tool-channel.json'),
   (provider) => hub.runningChat(provider)
 )

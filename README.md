@@ -87,7 +87,7 @@ While a turn uses a tab, its page runs at full speed out of sight; when the turn
 to being an ordinary background tab, and a deleted chat's own tab is closed.
 
 Besides the browser tools there is `remember` (see Workspace and memory) and, with
-`ROCKET_SELF_CHECK=1`, the two self-check tools. Every tool's schema is in every session's prompt,
+`ROCKET_SELF_CHECK=1`, the three self-check tools. Every tool's schema is in every session's prompt,
 so what a model should simply know goes ahead of the user's message instead (tabs, the file map,
 notes, trouble reports), and a tool is added only for something a model must do.
 
@@ -112,8 +112,10 @@ as in the reference build. There are no approval prompts yet.
 The host keeps a journal of its own trouble, `journal.jsonl` in the profile folder (one JSON
 object per line, rotated at 2 MB; `src/host/journal.ts`). It always records: uncaught errors in the
 host, host restarts seen by main, failed turns, tool failures, and turns far slower than usual for
-their provider and model. With `ROCKET_SELF_CHECK=1` the app also serves two tools to every
-provider (`src/host/tools/self-check.ts`): `rocket_diagnostics` reads the journal and the timing
+their provider and model. With `ROCKET_SELF_CHECK=1` the app also serves three tools to every
+provider (`src/host/tools/self-check.ts`): `rocket_check` runs the chat folder's `typecheck` and
+`test` scripts and returns what failed (a failure also lands in the journal as a tool error);
+`rocket_diagnostics` reads the journal and the timing
 averages, and `rocket_note` files what a model saw, why it thinks it happened and the change it
 would make. Each chat is also told, ahead of its next message, when new warnings or errors have
 arrived, once. Notes edit nothing; changing code is still the user's request or the model's
