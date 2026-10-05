@@ -101,6 +101,8 @@ export type HostApi = {
   'chat.prepare': [{ chatId: string | null; cwd: string; provider: ProviderId; model: string | null }, null]
   'usage.read': [{ provider: ProviderId; force?: boolean }, UsageSnapshot]
   'models.list': [{ provider: ProviderId }, ModelInfo[]]
+  /** An error the page caught, for the host's journal. */
+  'journal.report': [{ message: string; stack?: string }, null]
 }
 
 export type HostMethod = keyof HostApi

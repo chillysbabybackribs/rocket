@@ -102,6 +102,23 @@ store, and a session already going is told the ones others save. Reading notes i
 it costs no call and no schema. A handoff names the files the missed turns edited and read, each
 once and relative to the chat's folder, so the next provider goes straight to them.
 
+### Several assistants, one folder
+
+Chats can run at once in the same project, and the user and other programs change its files too.
+Ahead of a message, a model is told (`src/host/teamwork.ts`) who else is working in the folder
+right now and on what, what other chats finished there since its last turn, and which files
+changed under it, so it reads those again before touching them.
+
+Git is the app's job, not the models'. When a turn completes, the files that changed during it
+are committed on the current branch, alone, with the user's request as the message
+(`src/host/git.ts`). Changes are found by comparing a snapshot of the folder at the turn's start
+and end, so files changed by a shell command count; what the user had already changed, and files
+another running turn has edited, are left out. A stopped or failed turn commits nothing: its
+files go in with the turn that finishes the work. Nothing is ever pushed, hooks are not run, and
+no commit is made mid-merge or off a branch. Models are told not to commit or bring git up.
+`ROCKET_AUTO_COMMIT=0` turns the committing off. A folder that is not a git repository is left
+as it is.
+
 ### Permissions
 
 All four providers run unattended with full access to the chat's working folder and your shell,
@@ -111,7 +128,7 @@ as in the reference build. There are no approval prompts yet.
 
 The host keeps a journal of its own trouble, `journal.jsonl` in the profile folder (one JSON
 object per line, rotated at 2 MB; `src/host/journal.ts`). It always records: uncaught errors in the
-host, host restarts seen by main, failed turns, tool failures, and turns far slower than usual for
+host, uncaught errors in the page (sent over the renderer's port, once per message), host restarts seen by main, failed turns, tool failures, and turns far slower than usual for
 their provider and model. With `ROCKET_SELF_CHECK=1` the app also serves three tools to every
 provider (`src/host/tools/self-check.ts`): `rocket_check` runs the chat folder's `typecheck` and
 `test` scripts and returns what failed (a failure also lands in the journal as a tool error);

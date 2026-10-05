@@ -5,7 +5,7 @@ import type {
   HostApi, HostEvent, HostMethod, HostRequestMessage, HostToRenderer, ProviderId, UsageSnapshot
 } from '../shared/types.ts'
 import { describeTiming, Hub } from './hub.ts'
-import { messageOf } from './json.ts'
+import { messageOf, oneLine } from './json.ts'
 import { Journal } from './journal.ts'
 import { stopAllProcessGroups } from './process-tree.ts'
 import { AntigravityAdapter } from './providers/antigravity.ts'
@@ -19,6 +19,7 @@ import { ToolChannel } from './tools/channel.ts'
 import { ToolRegistry } from './tools/registry.ts'
 import { memoryTools } from './tools/memory.ts'
 import { selfCheckTools } from './tools/self-check.ts'
+import { Teamwork } from './teamwork.ts'
 import { workspaceContext } from './workspace.ts'
 
 // The agent host: a utility process forked by Electron's main process. Everything that talks to
@@ -133,12 +134,22 @@ const adapters: Record<ProviderId, ProviderAdapter> = {
 /** Events go to the renderer; the ones that end a chat's use of the browser go to main as well. */
 function onEvent(event: HostEvent): void {
   emit(event)
-  if (event.type === 'turn' && event.turn.status !== 'running') void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
-  else if (event.type === 'chatDeleted') void askBrowser({ op: 'forget', chat: event.chatId }).catch(() => {})
+  if (event.type === 'turn' && event.turn.status !== 'running') {
+    void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
+    void teamwork.turnEnded(event.turn)
+  } else if (event.type === 'chatDeleted') {
+    void askBrowser({ op: 'forget', chat: event.chatId }).catch(() => {})
+    teamwork.forget(event.chatId)
+  }
 }
+// ROCKET_AUTO_COMMIT=0 leaves committing to the user; models are still told about each other.
+const teamwork: Teamwork = new Teamwork(store, () => hub.working(), {
+  commit: process.env.ROCKET_AUTO_COMMIT !== '0',
+  warn: (message, details) => journal.add('host', 'warn', 'commit', message, details)
+})
 const browserTabs = browserContext({ request: askBrowser })
 const workspace = workspaceContext(store)
-const hub = new Hub(
+const hub: Hub = new Hub(
   store, adapters, onEvent,
   (timing) => {
     console.log(`[host] ${describeTiming(timing)}`)
@@ -147,7 +158,7 @@ const hub = new Hub(
   async (chatId, provider, fresh) => {
     const parts = [
       selfCheck ? journal.nudge(chatId) : null,
-      ...await Promise.all([workspace(chatId, provider, fresh), browserTabs(chatId, provider, fresh)])
+      ...await Promise.all([workspace(chatId, provider, fresh), teamwork.context(chatId, provider, fresh), browserTabs(chatId, provider, fresh)])
     ]
     return parts.filter(Boolean).join('\n\n') || null
   }
@@ -167,7 +178,11 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'chat.stop': async ({ chatId }) => { await hub.stop(chatId); return null },
   'chat.prepare': ({ chatId, cwd, provider, model }) => { void hub.prepare(chatId, provider, model, cwd); return null },
   'usage.read': ({ provider, force }) => hub.usage(provider, force),
-  'models.list': ({ provider }) => hub.models(provider)
+  'models.list': ({ provider }) => hub.models(provider),
+  'journal.report': ({ message, stack }) => {
+    journal.add('renderer', 'error', 'crash', oneLine(String(message), 300), { stack: String(stack ?? '').split('\n').slice(0, 6).join('\n') })
+    return null
+  }
 }
 
 async function handleRequest(message: HostRequestMessage): Promise<void> {
