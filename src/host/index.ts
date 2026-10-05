@@ -17,7 +17,9 @@ import { Store } from './store.ts'
 import { browserContext, browserTools } from './tools/browser.ts'
 import { ToolChannel } from './tools/channel.ts'
 import { ToolRegistry } from './tools/registry.ts'
+import { memoryTools } from './tools/memory.ts'
 import { selfCheckTools } from './tools/self-check.ts'
+import { workspaceContext } from './workspace.ts'
 
 // The agent host: a utility process forked by Electron's main process. Everything that talks to
 // a provider or to the transcript store lives here, so none of it can stall the window or the
@@ -114,6 +116,7 @@ function onBrowserReply(reply: BrowserAgentReply): void {
 const tools = new ToolChannel(
   new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', message, { provider, chatId }))
     .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
+    .add(...memoryTools(store))
     .add(...(selfCheck ? selfCheckTools(journal) : [])),
   join(dataDir, 'tool-channel.json'),
   (provider) => hub.runningChat(provider)
@@ -134,6 +137,7 @@ function onEvent(event: HostEvent): void {
   else if (event.type === 'chatDeleted') void askBrowser({ op: 'forget', chat: event.chatId }).catch(() => {})
 }
 const browserTabs = browserContext({ request: askBrowser })
+const workspace = workspaceContext(store)
 const hub = new Hub(
   store, adapters, onEvent,
   (timing) => {
@@ -141,7 +145,10 @@ const hub = new Hub(
     journal.noteTiming(timing)
   },
   async (chatId, provider, fresh) => {
-    const parts = [selfCheck ? journal.nudge(chatId) : null, await browserTabs(chatId, provider, fresh)]
+    const parts = [
+      selfCheck ? journal.nudge(chatId) : null,
+      ...await Promise.all([workspace(chatId, provider, fresh), browserTabs(chatId, provider, fresh)])
+    ]
     return parts.filter(Boolean).join('\n\n') || null
   }
 )

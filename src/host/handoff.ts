@@ -6,9 +6,10 @@ import { oneLine } from './json.ts'
 // the block for the turns since then, which other providers answered. The block rides at the
 // head of the user's next message.
 //
-// Kept: every user message and every assistant reply in full where the budget allows, plus one
-// line per tool call so the model knows which files and commands were touched. Left out:
-// reasoning and tool output. Files other providers changed are on disk for the model to read.
+// Kept: every user message and every assistant reply in full where the budget allows, the files
+// the turn edited and read (each named once, so the model knows where the relevant code is
+// without searching for it again), and one line per other tool call. Left out: reasoning and
+// tool output. Files other providers changed are on disk for the model to read.
 
 export type MissedTurn = {
   provider: ProviderId
@@ -19,6 +20,7 @@ export type MissedTurn = {
 
 export const HANDOFF_BUDGET_CHARS = 60_000
 const MAX_ACTIONS_PER_TURN = 20
+const MAX_FILES_PER_LINE = 30
 const TAG = 'conversation_handoff'
 
 type Block = { head: string; user: string; reply: string; actions: string[] }
@@ -35,8 +37,8 @@ export type Handoff = {
 }
 
 /** Null when there is nothing to hand over. */
-export function buildHandoff(turns: MissedTurn[], budget = HANDOFF_BUDGET_CHARS): Handoff | null {
-  const blocks = turns.map(blockOf).filter((block) => block.user || block.reply || block.actions.length)
+export function buildHandoff(turns: MissedTurn[], budget = HANDOFF_BUDGET_CHARS, root: string | null = null): Handoff | null {
+  const blocks = turns.map((turn) => blockOf(turn, root)).filter((block) => block.user || block.reply || block.actions.length)
   if (blocks.length === 0) return null
   fit(blocks, budget)
   const text = [
@@ -44,6 +46,7 @@ export function buildHandoff(turns: MissedTurn[], budget = HANDOFF_BUDGET_CHARS)
     'This conversation is shared between several assistants, and the user chooses one for each message.',
     'Since your last turn here, other assistants answered the turns below (oldest first).',
     'Treat them as earlier history of this same conversation. Any file changes they made are already on disk.',
+    'The files they read and edited are named, so go straight to those rather than searching for them again.',
     '',
     blocks.map(render).join('\n\n'),
     `</${TAG}>`
@@ -68,7 +71,8 @@ export function withHandoff(handoff: Handoff | null, text: string): string {
   return handoff ? `${handoff.text}\n\n${text}` : text
 }
 
-function blockOf(turn: MissedTurn): Block {
+/** `root` is the chat's folder; paths inside it are given relative to it. */
+function blockOf(turn: MissedTurn, root: string | null): Block {
   const name = providerLabel(turn.provider) + (turn.model ? ` (${turn.model})` : '')
   const ending = turn.status === 'interrupted'
     ? ', stopped by the user before it finished'
@@ -76,9 +80,23 @@ function blockOf(turn: MissedTurn): Block {
   const user = turn.items.filter((item) => item.type === 'user').map((item) => item.text).join('\n\n')
   const reply = turn.items.filter((item) => item.type === 'assistant').map((item) => item.text.trim()).filter(Boolean).join('\n\n')
   const tools = turn.items.filter((item) => item.type === 'tool')
-  const actions = tools.slice(0, MAX_ACTIONS_PER_TURN).map((tool) =>
-    `- ${tool.kind}: ${oneLine(tool.label, 160)}${tool.status === 'failed' ? ' (failed)' : ''}`)
-  if (tools.length > MAX_ACTIONS_PER_TURN) actions.push(`- …and ${tools.length - MAX_ACTIONS_PER_TURN} more`)
+  // Files are named once each however often they were touched; a file that was edited was also read.
+  const isFile = (tool: (typeof tools)[number]): boolean => (tool.kind === 'edit' || tool.kind === 'read') && tool.status !== 'failed'
+  const paths = (kind: 'edit' | 'read'): string[] => [...new Set(tools.filter((tool) => isFile(tool) && tool.kind === kind)
+    .flatMap((tool) => tool.label.split(', '))
+    .map((path) => oneLine(root && path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path, 160)))]
+  const edited = paths('edit')
+  const read = paths('read').filter((path) => !edited.includes(path))
+  const files = (verb: string, list: string[]): string[] => (list.length
+    ? [`- ${verb}: ${list.slice(0, MAX_FILES_PER_LINE).join(', ')}${list.length > MAX_FILES_PER_LINE ? ` (+${list.length - MAX_FILES_PER_LINE} more)` : ''}`]
+    : [])
+  const others = tools.filter((tool) => !isFile(tool))
+  const actions = [
+    ...files('edited', edited),
+    ...files('read', read),
+    ...others.slice(0, MAX_ACTIONS_PER_TURN).map((tool) => `- ${tool.kind}: ${oneLine(tool.label, 160)}${tool.status === 'failed' ? ' (failed)' : ''}`)
+  ]
+  if (others.length > MAX_ACTIONS_PER_TURN) actions.push(`- …and ${others.length - MAX_ACTIONS_PER_TURN} more`)
   return { head: `### Turn answered by ${name}${ending}`, user, reply, actions }
 }
 

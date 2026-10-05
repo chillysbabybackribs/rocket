@@ -13,6 +13,8 @@ import type { Chat, ChatSnapshot, Item, ProviderId, Turn, TurnStatus } from '../
 
 export type ProviderSession = { sessionId: string | null; seenTurnSeq: number }
 export type StoredTurn = Turn & { seq: number }
+/** One thing a model wrote down about a folder, for every later session there. Models cite it as m<seq>. */
+export type Note = { seq: number; cwd: string; text: string; provider: ProviderId; chatId: string | null; createdAt: number }
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS chats (
@@ -52,6 +54,15 @@ const SCHEMA = `
     seen_turn_seq INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (chat_id, provider)
   );
+  CREATE TABLE IF NOT EXISTS notes (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    cwd TEXT NOT NULL,
+    text TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    chat_id TEXT,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS notes_by_cwd ON notes(cwd, seq);
 `
 
 type Row = Record<string, unknown>
@@ -152,6 +163,30 @@ export class Store {
       `INSERT INTO provider_sessions (chat_id, provider, session_id, seen_turn_seq) VALUES (?, ?, ?, ?)
        ON CONFLICT (chat_id, provider) DO UPDATE SET session_id = excluded.session_id, seen_turn_seq = excluded.seen_turn_seq`
     ).run(chatId, provider, session.sessionId, session.seenTurnSeq)
+  }
+
+  /** A folder's notes, oldest first. They belong to the folder, not to a chat, and outlive both. */
+  notes(cwd: string): Note[] {
+    return this.sql('SELECT * FROM notes WHERE cwd = ? ORDER BY seq').all(cwd).map((row) => ({
+      seq: Number(row.seq),
+      cwd: String(row.cwd),
+      text: String(row.text),
+      provider: String(row.provider) as ProviderId,
+      chatId: typeof row.chat_id === 'string' ? row.chat_id : null,
+      createdAt: Number(row.created_at)
+    }))
+  }
+
+  addNote(note: Pick<Note, 'cwd' | 'text' | 'provider' | 'chatId'>): Note {
+    const createdAt = Date.now()
+    const result = this.sql('INSERT INTO notes (cwd, text, provider, chat_id, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(note.cwd, note.text, note.provider, note.chatId, createdAt)
+    return { ...note, seq: Number(result.lastInsertRowid), createdAt }
+  }
+
+  /** Whether there was such a note in that folder to remove. */
+  removeNote(cwd: string, seq: number): boolean {
+    return Number(this.sql('DELETE FROM notes WHERE cwd = ? AND seq = ?').run(cwd, seq).changes) > 0
   }
 
   private sql(text: string): StatementSync {

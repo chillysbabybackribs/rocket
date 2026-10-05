@@ -29,7 +29,9 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
   transcript, `handoff.ts` builds what a provider is told about turns it missed.
 - `src/host/providers/`: one adapter per provider behind `provider.ts`. Each file's header lists
   the CLI behaviour it depends on, with the version and date it was verified.
+- `src/host/journal.ts`: the journal of errors, slow turns and model notes (`journal.jsonl`); see Self-check.
 - `src/host/tools/`: the app's tools, served to all providers by one loopback MCP server.
+- `src/host/workspace.ts`: the file map and saved notes a new session is told about its folder.
 - `src/main/`: the window, the browser tabs (`browser-pane.ts`) and the browser tools' hands
   (`browser-agent.ts`, `browser-page-lib.ts`).
 - `src/renderer/`: React UI. `store.ts` is the client state.
@@ -45,6 +47,8 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
 - In the browser, anything that opens near the page (dropdowns, menus) overlays it in a view of
   its own. Never move or resize the page to make room.
 - Model lists and usage are read live from the provider, never hardcoded.
+- Every tool's schema is in every session's prompt. What a model should simply know goes ahead of
+  the user's message (tabs, the file map, notes); add a tool only for something a model must do.
 - Provider payloads are `unknown`: read them through `recordOf` / `stringOf` in `src/host/json.ts`.
 - When a CLI's behaviour is learned or re-verified, record it in that adapter's header with the
   CLI version and date. When it changes, fix the header with the code.
@@ -65,4 +69,5 @@ runs slow, or a `<self-check>` line appears ahead of a message, read the journal
 Anything you notice but were not asked to fix goes in `rocket_note` with what you saw, the likely
 cause and the change you would make. Edit code only for what was asked or a clear defect in code
 you are already changing; propose anything larger in the chat. After a self-edit, run typecheck
-and tests, and read `rocket_diagnostics` for anything the change caused.
+and tests, and read `rocket_diagnostics` for anything the change caused. Keep this section and the
+README's Self-check section current when the journal, its tools or its nudges change.

@@ -53,3 +53,20 @@ test('an oversized handoff is cut to the budget and keeps the newest turn whole'
   assert.match(handoff.text, /the newest answer/)
   assert.match(handoff.text, /old question/)
 })
+
+test('files a turn touched are named once each, relative to the chat folder, edits ahead of reads', () => {
+  const tool = (id: string, kind: 'read' | 'edit' | 'command', label: string, status: 'done' | 'failed' = 'done'): Item =>
+    ({ type: 'tool', id, turnId: 't', kind, label, status, output: '' })
+  const handoff = buildHandoff([
+    turn('claude', 'tidy up', 'Done.', [
+      tool('1', 'read', '/work/src/a.ts'),
+      tool('2', 'read', '/work/src/a.ts'),
+      tool('3', 'read', '/work/src/b.ts'),
+      tool('4', 'edit', '/work/src/b.ts'),
+      tool('5', 'read', '/etc/hosts'),
+      tool('6', 'read', '/work/missing.ts', 'failed'),
+      tool('7', 'command', 'npm test')
+    ])
+  ], undefined, '/work')!
+  assert.match(handoff.text, /- edited: src\/b\.ts\n- read: src\/a\.ts, \/etc\/hosts\n- read: \/work\/missing\.ts \(failed\)\n- command: npm test/)
+})

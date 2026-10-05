@@ -160,24 +160,20 @@ function TurnHead({ turn, thoughts, open, onToggle }: { turn: Turn; thoughts: bo
     const timer = setInterval(() => setNow(Date.now()), 1_000)
     return () => clearInterval(timer)
   }, [running])
-  const line = (
-    <>
-      {running && <span className="shimmer">Thinking</span>}
-      {running
-        ? <span>Working for {duration(now - turn.startedAt)}</span>
-        : turn.endedAt !== null && <span>Worked for {duration(turn.endedAt - turn.startedAt)}</span>}
-    </>
-  )
+  const label = running ? <span className="shimmer">Thinking</span> : thoughts && <span>Thought</span>
   return (
     <div className="turn-head" role={running ? 'status' : undefined}>
       {thoughts
         ? (
           <button type="button" className="turn-head-toggle" aria-expanded={open} onClick={onToggle}>
-            {line}
+            {label}
             <ChevronRight size={12} className={`tool-chevron${open ? ' is-open' : ''}`} />
           </button>
         )
-        : line}
+        : label}
+      {running
+        ? <span className="turn-head-time">Working for {duration(now - turn.startedAt)}</span>
+        : turn.endedAt !== null && <span className="turn-head-time">Worked for {duration(turn.endedAt - turn.startedAt)}</span>}
     </div>
   )
 }

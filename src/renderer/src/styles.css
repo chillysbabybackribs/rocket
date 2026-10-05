@@ -525,7 +525,8 @@ button {
   font-variant-numeric: tabular-nums;
 }
 .turn-head .shimmer { font-weight: 510; }
-.turn-head-toggle { display: inline-flex; align-items: center; gap: 10px; color: inherit; font: inherit; }
+.turn-head-toggle { display: inline-flex; align-items: center; gap: 6px; color: inherit; font: inherit; }
+.turn-head-time { margin-left: auto; }
 .turn-head-toggle:hover > span:not(.shimmer) { color: var(--text-2); }
 
 /* Work between replies. While it happens: one borderless line that is replaced by each new tool

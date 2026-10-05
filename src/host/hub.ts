@@ -325,7 +325,7 @@ export class Hub {
         status: turn.status,
         items: this.store.turnItems(chatId, turn.id)
       }))
-    return buildHandoff(missed)
+    return buildHandoff(missed, undefined, this.store.chat(chatId)?.cwd ?? null)
   }
 
   private putItem(live: LiveTurn, item: Item): void {
