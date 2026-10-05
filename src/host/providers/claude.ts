@@ -1,0 +1,684 @@
+import { homedir } from 'node:os'
+import type { Options, Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
+import type { Item, ModelInfo, ToolKind, UsageSnapshot } from '../../shared/types.ts'
+import { withHandoff } from '../handoff.ts'
+import { clipOutput, jsonPreview, messageOf, oneLine, recordOf, stringOf } from '../json.ts'
+import { claudeRateLimitWindow, claudeUsage, mergeWindow, planName } from '../usage-parsers.ts'
+import { randomUUID } from 'node:crypto'
+import {
+  itemId, TOOL_SERVER, unavailableUsage,
+  type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type ToolEndpoint, type TurnSink
+} from './provider.ts'
+
+// Claude through the Agent SDK, which runs the Claude Code binary as a child process. One
+// `query()` over a streaming input stays alive per chat, so follow-up turns reuse the process
+// and its prompt cache instead of paying a spawn per message; an idle one is retired. `prepare`
+// starts that process while the message is still being typed, and keeps one spare for the next
+// new chat, so the first message of a chat does not wait on the spawn either.
+//
+// Stream contract this relies on (SDK 0.3.285, includePartialMessages: true):
+// - `system`/`init` carries the session id and resolved model; it repeats on resume.
+// - text / thinking / tool_use blocks arrive as content_block_start → *_delta → *_stop inside
+//   `stream_event`, then the whole `assistant` message restates them.
+// - `user` messages carry tool_result blocks keyed by tool_use id.
+// - `result` closes the turn.
+// The SDK has no supported way to import another model's turns into a session, so missed turns
+// ride at the head of the user's message as a tagged block.
+//
+// Sessions run with permissions bypassed, like the other providers here: the app has no
+// approval prompts yet.
+
+type ClaudeSdk = typeof import('@anthropic-ai/claude-agent-sdk')
+
+const IDLE_RETIRE_MS = 15 * 60_000
+/** Processes kept waiting with no turn running; each one is a whole Claude Code in memory. */
+const MAX_IDLE_RUNTIMES = 3
+/** The key the spare runtime is held under until a new chat takes it. */
+const SPARE = ''
+/** How long the process that answers account questions is kept after its last one. */
+const PROBE_LINGER_MS = 30_000
+const ABORT_REASONS = new Set(['aborted_streaming', 'aborted_tools'])
+
+let sdkLoading: Promise<ClaudeSdk> | null = null
+
+/** Loaded on first use: the SDK is a large module the app should not pay for at startup. */
+function loadSdk(): Promise<ClaudeSdk> {
+  sdkLoading ??= import('@anthropic-ai/claude-agent-sdk').catch((error: unknown) => {
+    sdkLoading = null
+    throw new Error(`Claude Agent SDK could not be loaded: ${messageOf(error)}`)
+  })
+  return sdkLoading
+}
+
+function queryOptions(
+  cwd: string, resume: string | null, model: string | null, toolsUrl: string | null, stderr: (text: string) => void
+): Options {
+  return {
+    cwd,
+    ...(resume ? { resume } : {}),
+    ...(model ? { model } : {}),
+    thinking: { type: 'adaptive', display: 'summarized' },
+    // Tool search off: the app's few tools are in the prompt from the start, not one lookup away.
+    env: { ...process.env, CLAUDE_AGENT_SDK_CLIENT_APP: 'rocket/0.1.0', ENABLE_TOOL_SEARCH: 'false' },
+    includePartialMessages: true,
+    permissionMode: 'bypassPermissions',
+    allowDangerouslySkipPermissions: true,
+    // The workspace's CLAUDE.md and the user's skills apply; the user's own MCP connectors do not.
+    // The app's tools are the one MCP server a session has.
+    settingSources: ['project', 'user'],
+    strictMcpConfig: true,
+    mcpServers: toolsUrl ? { [TOOL_SERVER]: { type: 'http', url: toolsUrl } } : {},
+    // There is no UI for a blocking question, so the model asks in its reply instead.
+    disallowedTools: ['AskUserQuestion'],
+    systemPrompt: { type: 'preset', preset: 'claude_code' },
+    stderr
+  }
+}
+
+type RunningTurn = {
+  request: RunRequest
+  sink: TurnSink
+  translator: TurnTranslator
+  finish: (result: RunResult) => void
+}
+
+/** One live Claude Code process for one chat. */
+class Runtime {
+  private readonly query: Query
+  private readonly queue: SDKUserMessage[] = []
+  private wake: (() => void) | null = null
+  private closed = false
+  private idleTimer: NodeJS.Timeout | null = null
+  stderrTail = ''
+  sessionId: string | null
+  turn: RunningTurn | null = null
+  /** The key in this process's tools URL. A process can start before its chat exists, so the chat is tied to it later. */
+  toolKey: string | null = null
+
+  constructor(
+    sdk: ClaudeSdk,
+    readonly cwd: string,
+    resume: string | null,
+    /** The model this process is on; null is the CLI's own default. */
+    public model: string | null,
+    private readonly onMessage: (runtime: Runtime, message: SDKMessage) => void,
+    private readonly onEnd: (runtime: Runtime, error: unknown) => void,
+    /** Where this process finds the app's tools; null for one that only answers account questions. */
+    toolsUrl: string | null = null
+  ) {
+    this.sessionId = resume
+    this.query = sdk.query({
+      prompt: this.input(),
+      options: queryOptions(cwd, resume, model, toolsUrl, (text) => { this.stderrTail = (this.stderrTail + text).slice(-2_000) })
+    })
+    void this.consume()
+  }
+
+  get alive(): boolean {
+    return !this.closed
+  }
+
+  push(text: string): void {
+    if (this.closed) throw new Error('Claude Code is not running')
+    this.queue.push({
+      type: 'user',
+      message: { role: 'user', content: text },
+      parent_tool_use_id: null,
+      session_id: this.sessionId ?? ''
+    })
+    this.wake?.()
+  }
+
+  /** Switch the live session's model; null restores the CLI default. */
+  async setModel(model: string | null): Promise<void> {
+    if (model === this.model) return
+    await this.query.setModel(model ?? undefined)
+    this.model = model
+  }
+
+  /** Settles once the process has started and answered its handshake. */
+  async ready(): Promise<void> {
+    await this.query.initializationResult()
+  }
+
+  supportedModels(): ReturnType<Query['supportedModels']> {
+    return this.query.supportedModels()
+  }
+
+  async interrupt(): Promise<void> {
+    await this.query.interrupt()
+  }
+
+  /** The plan windows `/usage` shows. Experimental in the SDK, so its absence is not an error. */
+  async planUsage(): Promise<unknown> {
+    const read = this.query.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET
+    return typeof read === 'function' ? read.call(this.query) : null
+  }
+
+  accountInfo(): ReturnType<Query['accountInfo']> {
+    return this.query.accountInfo()
+  }
+
+  /** Retire the process after a quiet spell; the session resumes from disk on the next message. */
+  armIdle(retire: () => void): void {
+    this.disarmIdle()
+    this.idleTimer = setTimeout(retire, IDLE_RETIRE_MS)
+    this.idleTimer.unref?.()
+  }
+
+  disarmIdle(): void {
+    if (this.idleTimer) clearTimeout(this.idleTimer)
+    this.idleTimer = null
+  }
+
+  close(): void {
+    this.disarmIdle()
+    if (this.closed) return
+    this.closed = true
+    this.wake?.()
+    try {
+      this.query.close()
+    } catch {
+      // Already gone.
+    }
+  }
+
+  private async *input(): AsyncGenerator<SDKUserMessage> {
+    while (true) {
+      while (this.queue.length) yield this.queue.shift()!
+      if (this.closed) return
+      await new Promise<void>((resolve) => { this.wake = resolve })
+      this.wake = null
+    }
+  }
+
+  private async consume(): Promise<void> {
+    let failure: unknown = null
+    try {
+      for await (const message of this.query) this.onMessage(this, message)
+    } catch (error) {
+      failure = error
+    } finally {
+      this.closed = true
+      this.onEnd(this, failure)
+    }
+  }
+}
+
+export class ClaudeAdapter implements ProviderAdapter {
+  readonly id = 'claude' as const
+  private readonly runtimes = new Map<string, Runtime>()
+  private lastUsage: UsageSnapshot | null = null
+  private probe: Runtime | null = null
+  private probeTimer: NodeJS.Timeout | null = null
+
+  constructor(private readonly onUsage: (snapshot: UsageSnapshot) => void, private readonly tools: ToolEndpoint = null) {}
+
+  async run(request: RunRequest, sink: TurnSink): Promise<RunResult> {
+    let runtime: Runtime
+    try {
+      runtime = await this.runtimeFor(request.chatId, request)
+      if (runtime.toolKey) this.tools?.bind(runtime.toolKey, request.chatId)
+      await runtime.setModel(request.model)
+    } catch (error) {
+      return { status: 'failed', error: messageOf(error) }
+    }
+    runtime.disarmIdle()
+    return new Promise<RunResult>((resolve) => {
+      const turn: RunningTurn = {
+        request,
+        sink,
+        translator: new TurnTranslator(request.turnId),
+        finish: (result) => {
+          if (runtime.turn !== turn) return
+          runtime.turn = null
+          if (runtime.alive) runtime.armIdle(() => this.retire(runtime))
+          resolve(result)
+        }
+      }
+      runtime.turn = turn
+      try {
+        runtime.push(withHandoff(request.handoff, request.text))
+      } catch (error) {
+        turn.finish({ status: 'failed', error: messageOf(error) })
+      }
+    })
+  }
+
+  async prepare(request: PrepareRequest): Promise<void> {
+    const runtime = await this.runtimeFor(request.chatId ?? SPARE, request)
+    if (!runtime.turn) runtime.armIdle(() => this.retire(runtime))
+    this.trimIdle(runtime)
+    await runtime.ready()
+  }
+
+  async stop(chatId: string): Promise<void> {
+    const runtime = this.runtimes.get(chatId)
+    if (!runtime?.turn) return
+    await runtime.interrupt().catch(() => {
+      // An interrupt the process cannot take is answered by closing it; the session resumes later.
+      this.retire(runtime)
+    })
+  }
+
+  forget(chatId: string): void {
+    const runtime = this.runtimes.get(chatId)
+    if (runtime) this.retire(runtime)
+  }
+
+  async usage(): Promise<UsageSnapshot> {
+    return this.readUsage(await this.accountRuntime())
+  }
+
+  /** The CLI's own catalog for the signed-in account. Aliases of one model collapse to one entry. */
+  async models(): Promise<ModelInfo[]> {
+    const infos = await (await this.accountRuntime()).supportedModels()
+    const defaultTarget = infos.find((info) => info.value === 'default')?.resolvedModel ?? null
+    const seen = new Set<string>()
+    const models: ModelInfo[] = []
+    for (const info of infos) {
+      if (!info.value || info.value === 'default') continue
+      const identity = info.resolvedModel ?? info.value
+      if (seen.has(identity)) continue
+      seen.add(identity)
+      models.push({
+        id: info.value,
+        label: info.displayName || info.value,
+        description: info.description ?? '',
+        isDefault: defaultTarget !== null && identity === defaultTarget
+      })
+    }
+    return models
+  }
+
+  shutdown(): void {
+    if (this.probeTimer) clearTimeout(this.probeTimer)
+    this.probe?.close()
+    this.probe = null
+    for (const runtime of this.runtimes.values()) runtime.close()
+    this.runtimes.clear()
+  }
+
+  /**
+   * A process to ask about the account (usage, models): any chat's live one, or the spare. With
+   * none running, a process of its own that never sends a model turn; it serves every such
+   * question asked close together and exits a little after the last.
+   */
+  private async accountRuntime(): Promise<Runtime> {
+    // Loaded before the lookup, so a warm-up asked for just ahead of this has its process by now.
+    const sdk = await loadSdk()
+    const live = [...this.runtimes.values()].find((runtime) => runtime.alive)
+    if (live) return live
+    if (!this.probe?.alive) this.probe = new Runtime(sdk, homedir(), null, null, () => {}, () => {})
+    const probe = this.probe
+    if (this.probeTimer) clearTimeout(this.probeTimer)
+    this.probeTimer = setTimeout(() => {
+      probe.close()
+      if (this.probe === probe) this.probe = null
+    }, PROBE_LINGER_MS)
+    this.probeTimer.unref?.()
+    return probe
+  }
+
+  /** The live process for a chat (or the spare, under `SPARE`), started if there is none. */
+  private async runtimeFor(key: string, request: Pick<PrepareRequest, 'cwd' | 'sessionId' | 'model'>): Promise<Runtime> {
+    // Loaded before the lookup, so two callers arriving together cannot both start a process.
+    const sdk = await loadSdk()
+    const existing = this.runtimes.get(key)
+    // The spare belongs to no chat yet, so the folder it was started in has to match too.
+    if (existing?.alive && existing.sessionId === request.sessionId && (key !== SPARE || existing.cwd === request.cwd)) {
+      return this.hold(key, existing)
+    }
+    if (existing) this.retire(existing)
+    const spare = this.runtimes.get(SPARE)
+    if (key !== SPARE && request.sessionId === null && spare?.alive && !spare.turn && spare.cwd === request.cwd) {
+      // A new chat takes the process that was warmed for it.
+      this.runtimes.delete(SPARE)
+      return this.hold(key, spare)
+    }
+    const toolKey = this.tools ? randomUUID() : null
+    const runtime = new Runtime(
+      sdk,
+      request.cwd,
+      request.sessionId,
+      request.model,
+      (source, message) => this.onMessage(source, message),
+      (source, error) => this.onEnd(source, error),
+      toolKey && this.tools ? this.tools.url('claude', toolKey) : null
+    )
+    runtime.toolKey = toolKey
+    return this.hold(key, runtime)
+  }
+
+  /** File a runtime under its key as the most recently wanted one. */
+  private hold(key: string, runtime: Runtime): Runtime {
+    this.runtimes.delete(key)
+    this.runtimes.set(key, runtime)
+    return runtime
+  }
+
+  /** Close the longest-waiting idle processes beyond the few worth keeping warm. */
+  private trimIdle(keep: Runtime): void {
+    const idle = [...this.runtimes.values()].filter((runtime) => !runtime.turn && runtime !== keep)
+    for (const runtime of idle.slice(0, Math.max(0, idle.length + 1 - MAX_IDLE_RUNTIMES))) this.retire(runtime)
+  }
+
+  private release(runtime: Runtime): void {
+    if (runtime.toolKey) this.tools?.unbind(runtime.toolKey)
+    for (const [key, held] of this.runtimes) if (held === runtime) this.runtimes.delete(key)
+  }
+
+  private retire(runtime: Runtime): void {
+    this.release(runtime)
+    runtime.close()
+  }
+
+  private onMessage(runtime: Runtime, raw: SDKMessage): void {
+    const message = recordOf(raw)
+    if (message.type === 'rate_limit_event') this.noteRateLimit(recordOf(message.rate_limit_info))
+    const turn = runtime.turn
+    if (!turn) return
+    const out = turn.translator.handle(message)
+    if (out.sessionId) {
+      runtime.sessionId = out.sessionId
+      turn.sink.session(out.sessionId)
+    }
+    if (out.model) turn.sink.model(out.model)
+    for (const op of out.ops) {
+      if (op.type === 'item') turn.sink.item(op.item)
+      else turn.sink.delta(op.itemId, op.delta)
+    }
+    if (out.end) turn.finish(out.end)
+  }
+
+  /** The process ended. With a turn open, that turn failed, or its session could not be resumed. */
+  private onEnd(runtime: Runtime, error: unknown): void {
+    this.release(runtime)
+    const turn = runtime.turn
+    if (!turn) return
+    const detail = `${error ? messageOf(error) : ''}\n${runtime.stderrTail}`
+    if (turn.request.sessionId && /no conversation found|session.*not found|could not (find|resume)/i.test(detail)) {
+      turn.finish({ status: 'failed', sessionLost: true })
+      return
+    }
+    turn.finish({
+      status: 'failed',
+      error: error ? messageOf(error) : (oneLine(runtime.stderrTail, 300) || 'Claude Code exited before finishing the turn')
+    })
+  }
+
+  private async readUsage(runtime: Runtime): Promise<UsageSnapshot> {
+    let timer: NodeJS.Timeout | undefined
+    try {
+      const [account, usage] = await Promise.race([
+        Promise.all([runtime.accountInfo(), runtime.planUsage()]),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Claude usage read timed out')), 25_000) })
+      ])
+      const parsed = claudeUsage(usage)
+      const snapshot: UsageSnapshot = {
+        provider: 'claude',
+        account: account.email ?? null,
+        plan: parsed?.plan ?? planName(account.subscriptionType),
+        windows: parsed?.windows ?? [],
+        note: parsed?.note ?? null,
+        unavailable: parsed
+          ? parsed.unavailable ?? (parsed.windows.length ? null : 'Claude did not report any usage windows.')
+          : 'This Claude Code version does not report subscription usage.',
+        updatedAt: Date.now()
+      }
+      this.lastUsage = snapshot
+      return snapshot
+    } catch (error) {
+      return this.lastUsage ?? unavailableUsage('claude', messageOf(error))
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  /** A mid-turn event names the one window it moved; fold it into the last full reading. */
+  private noteRateLimit(info: Record<string, unknown>): void {
+    const window = claudeRateLimitWindow(info)
+    if (!window) return
+    const base = this.lastUsage ?? unavailableUsage('claude', '')
+    this.lastUsage = { ...base, windows: mergeWindow(base.windows, window), unavailable: null, updatedAt: Date.now() }
+    this.onUsage(this.lastUsage)
+  }
+}
+
+type Op = { type: 'item'; item: Item } | { type: 'delta'; itemId: string; delta: string }
+type Translation = { ops: Op[]; sessionId?: string; model?: string; end?: RunResult }
+type Block = { id: string; kind: 'text' | 'thinking' | 'tool'; text: string; json: string; settled: boolean }
+type ToolItem = Extract<Item, { type: 'tool' }>
+
+/** Pure translation from one turn's SDK messages to transcript operations. */
+export class TurnTranslator {
+  private readonly blocks = new Map<number, Block>()
+  private readonly tools = new Map<string, { item: ToolItem; name: string }>()
+  /**
+   * Streamed text that has closed and whose restatement in the `assistant` message is still to
+   * come, counted per text: a turn can say the same thing twice, and each saying is its own row.
+   */
+  private readonly awaited = new Map<string, number>()
+  private messageCount = 0
+  private pendingError: string | null = null
+
+  constructor(private readonly turnId: string) {}
+
+  handle(message: Record<string, unknown>): Translation {
+    // A subagent's inner stream belongs to its Task tool call, not to the transcript.
+    if (typeof message.parent_tool_use_id === 'string' && message.parent_tool_use_id) return { ops: [] }
+    switch (message.type) {
+      case 'system':
+        if (message.subtype === 'init') {
+          return {
+            ops: [],
+            ...(typeof message.session_id === 'string' ? { sessionId: message.session_id } : {}),
+            ...(typeof message.model === 'string' ? { model: message.model } : {})
+          }
+        }
+        if (message.subtype === 'compact_boundary') return { ops: [this.notice('Conversation context compacted', 'info')] }
+        return { ops: [] }
+      case 'stream_event':
+        return { ops: this.streamEvent(recordOf(message.event)) }
+      case 'assistant':
+        return { ops: this.assistant(message) }
+      case 'user':
+        return { ops: this.toolResults(message) }
+      case 'rate_limit_event': {
+        const info = recordOf(message.rate_limit_info)
+        if (info.status === 'rejected') this.pendingError = 'Claude usage limit reached.'
+        return { ops: [] }
+      }
+      case 'result':
+        return this.result(message)
+      default:
+        return { ops: [] }
+    }
+  }
+
+  private streamEvent(event: Record<string, unknown>): Op[] {
+    const index = Number(event.index ?? 0)
+    switch (event.type) {
+      case 'message_start':
+        this.messageCount += 1
+        this.blocks.clear()
+        return []
+      case 'content_block_start': {
+        const block = recordOf(event.content_block)
+        if (block.type === 'text' || block.type === 'thinking') {
+          const id = itemId(this.turnId, `m${this.messageCount}b${index}`)
+          this.blocks.set(index, { id, kind: block.type, text: '', json: '', settled: false })
+          return [{ type: 'item', item: this.textItem(block.type, id, '', true) }]
+        }
+        if (block.type === 'tool_use' && typeof block.id === 'string') {
+          this.blocks.set(index, { id: block.id, kind: 'tool', text: '', json: '', settled: false })
+          return this.startTool(block.id, stringOf(block.name) || 'tool', recordOf(block.input))
+        }
+        return []
+      }
+      case 'content_block_delta': {
+        const block = this.blocks.get(index)
+        const delta = recordOf(event.delta)
+        if (!block) return []
+        const text = block.kind === 'text' ? delta.text : block.kind === 'thinking' ? delta.thinking : null
+        if (typeof text === 'string' && text) {
+          block.text += text
+          return [{ type: 'delta', itemId: block.id, delta: text }]
+        }
+        if (block.kind === 'tool' && typeof delta.partial_json === 'string') block.json += delta.partial_json
+        return []
+      }
+      case 'content_block_stop': {
+        const block = this.blocks.get(index)
+        if (!block) return []
+        if (block.kind === 'tool') return this.relabelTool(block.id, parseJson(block.json))
+        // The restatement got here first and closed the row already.
+        if (block.settled) return []
+        const key = `${block.kind} ${block.text}`
+        this.awaited.set(key, (this.awaited.get(key) ?? 0) + 1)
+        return [{ type: 'item', item: this.textItem(block.kind, block.id, block.text, false) }]
+      }
+      default:
+        return []
+    }
+  }
+
+  /** The restated message: complete tool inputs, and any text that did not arrive as a stream. */
+  private assistant(message: Record<string, unknown>): Op[] {
+    if (typeof message.error === 'string' && message.error) {
+      this.pendingError = `Claude request failed: ${message.error.replaceAll('_', ' ')}`
+    }
+    const body = recordOf(message.message)
+    const content = Array.isArray(body.content) ? body.content.map(recordOf) : []
+    const ops: Op[] = []
+    content.forEach((block, index) => {
+      if (block.type === 'tool_use' && typeof block.id === 'string') {
+        ops.push(...this.startTool(block.id, stringOf(block.name) || 'tool', recordOf(block.input)))
+        ops.push(...this.relabelTool(block.id, recordOf(block.input)))
+        return
+      }
+      const kind = block.type === 'text' ? 'text' : block.type === 'thinking' ? 'thinking' : null
+      const text = kind === 'text' ? stringOf(block.text) : stringOf(block.thinking)
+      if (!kind || !text) return
+      const key = `${kind} ${text}`
+      const shown = this.awaited.get(key) ?? 0
+      if (shown > 0) {
+        if (shown === 1) this.awaited.delete(key)
+        else this.awaited.set(key, shown - 1)
+        return
+      }
+      // The restatement can arrive before the block's own stop event; it must land on the
+      // streamed item, not beside it.
+      const streaming = [...this.blocks.values()].find((open) =>
+        open.kind === kind && !open.settled && open.text.length > 0 && (text.startsWith(open.text) || open.text.startsWith(text)))
+      if (streaming) {
+        streaming.text = text
+        streaming.settled = true
+      }
+      const id = streaming?.id ?? itemId(this.turnId, `${stringOf(message.uuid) || `a${this.messageCount}`}-${index}`)
+      ops.push({ type: 'item', item: this.textItem(kind, id, text, false) })
+    })
+    return ops
+  }
+
+  private toolResults(message: Record<string, unknown>): Op[] {
+    const content = recordOf(message.message).content
+    const ops: Op[] = []
+    for (const block of Array.isArray(content) ? content.map(recordOf) : []) {
+      if (block.type !== 'tool_result' || typeof block.tool_use_id !== 'string') continue
+      const tool = this.tools.get(block.tool_use_id)
+      if (!tool) continue
+      tool.item = {
+        ...tool.item,
+        status: block.is_error === true ? 'failed' : 'done',
+        output: clipOutput(resultText(block.content))
+      }
+      ops.push({ type: 'item', item: tool.item })
+    }
+    return ops
+  }
+
+  private result(message: Record<string, unknown>): Translation {
+    if (ABORT_REASONS.has(stringOf(message.terminal_reason))) return { ops: [], end: { status: 'interrupted' } }
+    if (message.subtype === 'success' && message.is_error !== true) return { ops: [], end: { status: 'completed' } }
+    const errors = Array.isArray(message.errors) ? message.errors.filter((e): e is string => typeof e === 'string' && !!e.trim()) : []
+    const error = this.pendingError
+      ?? (errors.length ? errors.join('\n') : null)
+      ?? (stringOf(message.result).trim() || `Claude turn ended: ${stringOf(message.subtype) || 'error'}`)
+    if (/no conversation found/i.test(error)) return { ops: [], end: { status: 'failed', sessionLost: true } }
+    return { ops: [], end: { status: 'failed', error } }
+  }
+
+  private startTool(id: string, name: string, input: Record<string, unknown>): Op[] {
+    if (this.tools.has(id)) return []
+    const item: ToolItem = { type: 'tool', id: itemId(this.turnId, id), turnId: this.turnId, status: 'running', output: '', ...describeTool(name, input) }
+    this.tools.set(id, { item, name })
+    return [{ type: 'item', item }]
+  }
+
+  /** Arguments stream after the call is announced; re-describe it once they are known. */
+  private relabelTool(id: string, input: Record<string, unknown>): Op[] {
+    const tool = this.tools.get(id)
+    if (!tool || tool.item.status !== 'running' || Object.keys(input).length === 0) return []
+    const described = describeTool(tool.name, input)
+    if (described.label === tool.item.label) return []
+    tool.item = { ...tool.item, ...described }
+    return [{ type: 'item', item: tool.item }]
+  }
+
+  private textItem(kind: 'text' | 'thinking', id: string, text: string, streaming: boolean): Item {
+    return kind === 'text'
+      ? { type: 'assistant', id, turnId: this.turnId, text, streaming }
+      : { type: 'reasoning', id, turnId: this.turnId, text, streaming }
+  }
+
+  private notice(text: string, tone: 'info' | 'error'): Op {
+    return { type: 'item', item: { type: 'notice', id: itemId(this.turnId, `n${Date.now()}`), turnId: this.turnId, text, tone } }
+  }
+}
+
+/** A Claude Code tool call as a kind and a one-line label. */
+export function describeTool(name: string, input: Record<string, unknown>): { kind: ToolKind; label: string } {
+  const text = (key: string): string => stringOf(input[key])
+  switch (name) {
+    case 'Bash':
+      return { kind: 'command', label: text('command') || 'shell command' }
+    case 'Read':
+      return { kind: 'read', label: text('file_path') || 'file' }
+    case 'Edit':
+    case 'Write':
+    case 'NotebookEdit':
+      return { kind: 'edit', label: text('file_path') || text('notebook_path') || 'file' }
+    case 'Grep':
+    case 'Glob':
+      return { kind: 'search', label: [text('pattern'), text('path')].filter(Boolean).join(' in ') || name }
+    case 'WebSearch':
+      return { kind: 'web', label: text('query') || 'web search' }
+    case 'WebFetch':
+      return { kind: 'web', label: text('url') || 'web page' }
+    case 'Task':
+    case 'Agent':
+      return { kind: 'other', label: `Agent: ${text('description') || 'subtask'}` }
+    default: {
+      const mcp = /^mcp__(.+?)__(.+)$/.exec(name)
+      const args = jsonPreview(input, 120)
+      const title = mcp ? `${mcp[1]} · ${mcp[2]}` : name
+      return { kind: mcp ? 'mcp' : 'other', label: args && args !== '{}' ? `${title} ${args}` : title }
+    }
+  }
+}
+
+function resultText(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
+  return content.map(recordOf).map((block) => (block.type === 'text' ? stringOf(block.text) : block.type === 'image' ? '[image]' : '')).filter(Boolean).join('\n')
+}
+
+function parseJson(text: string): Record<string, unknown> {
+  if (!text.trim()) return {}
+  try {
+    return recordOf(JSON.parse(text))
+  } catch {
+    return {}
+  }
+}

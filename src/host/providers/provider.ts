@@ -1,0 +1,89 @@
+import type { Handoff } from '../handoff.ts'
+import type { Item, ModelInfo, ProviderId, TurnStatus, UsageSnapshot } from '../../shared/types.ts'
+
+// The one interface the hub talks to. An adapter owns its provider's process and session
+// mechanics and translates the provider's stream into transcript items; it knows nothing about
+// other providers, the store, or the renderer.
+
+export type RunRequest = {
+  chatId: string
+  turnId: string
+  cwd: string
+  /** The provider's own session for this chat, or null to start one. */
+  sessionId: string | null
+  /** The model to answer with, from this provider's `models()`; null leaves the provider's default. */
+  model: string | null
+  /** The user's message, as typed. */
+  text: string
+  /** The turns other providers answered since this provider's session last saw the chat. */
+  handoff: Handoff | null
+}
+
+/** What a provider needs to get ready for a message that has not been sent yet. */
+export type PrepareRequest = {
+  /** The chat about to be answered, or null for the next new chat, which will start in `cwd`. */
+  chatId: string | null
+  cwd: string
+  sessionId: string | null
+  model: string | null
+}
+
+/**
+ * Where a provider's sessions find the app's tools: an MCP URL per session, whose key tells the
+ * app which chat is calling (tools/channel.ts). Null when the app's tools are not being served.
+ */
+export type ToolEndpoint = {
+  url: (provider: ProviderId, key: string) => string
+  bind: (key: string, chatId: string) => void
+  unbind: (key: string) => void
+} | null
+
+/** The name every provider knows the app's MCP server by. */
+export const TOOL_SERVER = 'rocket'
+
+export type TurnSink = {
+  /** Add an item, or replace the one with the same id. */
+  item: (item: Item) => void
+  /** Append text to an assistant or reasoning item, or output to a tool item. */
+  delta: (itemId: string, delta: string) => void
+  /** The provider's session id for this chat, as soon as it is known. */
+  session: (sessionId: string) => void
+  model: (model: string) => void
+  usage: (snapshot: UsageSnapshot) => void
+}
+
+export type RunResult = {
+  status: Exclude<TurnStatus, 'running'>
+  error?: string
+  /**
+   * The provider no longer holds the session it was asked to resume and nothing was sent. The
+   * hub starts a fresh session and hands over the whole conversation instead.
+   */
+  sessionLost?: boolean
+}
+
+export interface ProviderAdapter {
+  readonly id: ProviderId
+  run(request: RunRequest, sink: TurnSink): Promise<RunResult>
+  /**
+   * Pay the cold start ahead of the message: start the process and open the session, but send
+   * the model nothing. Safe to call any number of times; `run` works the same without it.
+   */
+  prepare(request: PrepareRequest): Promise<void>
+  stop(chatId: string): Promise<void>
+  /** Drop whatever is held for a chat that was deleted. */
+  forget(chatId: string): void
+  usage(): Promise<UsageSnapshot>
+  /** The models this account can use, read live from the provider, never hardcoded. */
+  models(): Promise<ModelInfo[]>
+  shutdown(): void
+}
+
+export function unavailableUsage(provider: ProviderId, reason: string): UsageSnapshot {
+  return { provider, account: null, plan: null, windows: [], note: null, unavailable: reason, updatedAt: Date.now() }
+}
+
+/** Item ids are scoped by turn so two providers' ids can never collide inside one chat. */
+export function itemId(turnId: string, providerItemId: string): string {
+  return `${turnId}:${providerItemId}`
+}

@@ -1,0 +1,37 @@
+{
+  "name": "rocket",
+  "productName": "Rocket",
+  "version": "0.1.0",
+  "description": "One chat, many agents: an Electron shell that owns the conversation and the browser, with Codex, Claude, Cursor and Antigravity as interchangeable providers.",
+  "main": "out/main/index.js",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/launch.mjs dev",
+    "build": "tsc --noEmit && electron-vite build",
+    "preview": "node scripts/launch.mjs preview",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-transform-types --disable-warning=ExperimentalWarning --test \"src/**/*.test.ts\"",
+    "check:live": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/live-check.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.285",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "lucide-react": "^1.33.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.0.0",
+    "electron-vite": "^5.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6"
+  }
+}

@@ -1,0 +1,59 @@
+# Rocket
+
+An Electron app (Linux, personal tool) that owns one chat, its tools and an embedded browser, and
+lends each message to Claude, Codex, Cursor or Antigravity through their CLIs. `README.md` has
+the architecture; read it before changing how the processes talk to each other.
+
+## Commands
+
+```sh
+npm run typecheck   # tsc, no emit
+npm test            # node:test over src/**/*.test.ts, under a second
+npm run dev         # the app, rebuilding on change (ROCKET_NO_SANDBOX=1 if the sandbox helper is not set up)
+```
+
+Run typecheck and tests after every change. To check against the real CLIs without the UI:
+
+```sh
+USAGE=1 TURNS=0 npm run check:live -- claude cursor   # usage readings only, no model turns
+npm run check:live -- claude codex                    # a real conversation; spends subscription usage
+```
+
+Ask before running a check that sends model turns. For UI checks, use `ROCKET_USER_DATA=<dir>`
+so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a picture of the UI.
+
+## Where things are
+
+- `src/shared/types.ts`: every type that crosses a process boundary. Change the protocol here first.
+- `src/host/`: the agent host, a utility process. `hub.ts` runs turns, `store.ts` is the SQLite
+  transcript, `handoff.ts` builds what a provider is told about turns it missed.
+- `src/host/providers/`: one adapter per provider behind `provider.ts`. Each file's header lists
+  the CLI behaviour it depends on, with the version and date it was verified.
+- `src/host/tools/`: the app's tools, served to all providers by one loopback MCP server.
+- `src/main/`: the window, the browser tabs (`browser-pane.ts`) and the browser tools' hands
+  (`browser-agent.ts`, `browser-page-lib.ts`).
+- `src/renderer/`: React UI. `store.ts` is the client state.
+
+## Rules
+
+- The app's SQLite transcript is the conversation. A provider's session is a cache: resume it and
+  hand over only the turns it missed. No full-history replay except after a lost session.
+- Agent work stays in the host process. Nothing that talks to a provider or the store runs in
+  main or the renderer, and chat traffic never passes through main.
+- An adapter knows nothing about other providers, the store or the renderer. The hub knows
+  nothing about how any provider works.
+- In the browser, anything that opens near the page (dropdowns, menus) overlays it in a view of
+  its own. Never move or resize the page to make room.
+- Model lists and usage are read live from the provider, never hardcoded.
+- Provider payloads are `unknown`: read them through `recordOf` / `stringOf` in `src/host/json.ts`.
+- When a CLI's behaviour is learned or re-verified, record it in that adapter's header with the
+  CLI version and date. When it changes, fix the header with the code.
+- Keep the README current with the code in the same change.
+
+## Style
+
+- TypeScript, ES modules, imports with the `.ts` extension, no semicolons, single quotes.
+- Comments say why, in plain sentences, at the head of a file and above anything surprising.
+- Stream translation is a pure class (`TurnTranslator`, `UpdateTranslator`, `StepTranslator`) so
+  it can be tested without a CLI. Tests sit beside the file they test.
+- User-facing errors are full sentences that say what to do next.
