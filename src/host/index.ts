@@ -146,8 +146,9 @@ function onEvent(event: HostEvent): void {
   emit(event)
   if (event.type === 'turn' && event.turn.status !== 'running') {
     void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
-    void teamwork.turnEnded(event.turn)
     goals.turnEnded(event.turn)
+    const { id } = event.turn
+    void teamwork.turnEnded(event.turn).then((files) => goals.noteFiles(id, files))
   } else if (event.type === 'chatDeleted') {
     goals.forget(event.chatId)
     void askBrowser({ op: 'forget', chat: event.chatId }).catch(() => {})

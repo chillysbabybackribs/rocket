@@ -192,6 +192,21 @@ export class GoalRunner {
     }
   }
 
+  /**
+   * The files a turn changed, as found by comparing the folder before and after it. That catches
+   * edits made through shell commands, which the turn's own edit items miss.
+   */
+  noteFiles(turnId: string, files: string[]): void {
+    if (!files.length) return
+    const goal = this.store.goals().find((entry) => entry.rounds.some((round) => round.workTurnId === turnId))
+    const round = goal?.rounds.find((entry) => entry.workTurnId === turnId)
+    if (!goal || !round) return
+    const merged = [...new Set([...round.files, ...files])]
+    if (merged.length === round.files.length) return
+    round.files = merged
+    this.save(goal)
+  }
+
   /** The chat is gone, and its goal with it. */
   forget(chatId: string): void {
     for (const [turnId, entry] of this.turns) {

@@ -104,22 +104,26 @@ export class Teamwork {
     return parts.join('\n\n') || null
   }
 
-  /** A turn is over: note where the folder stands, and commit what the turn changed. Never throws. */
-  async turnEnded(turn: Turn): Promise<void> {
+  /**
+   * A turn is over: note where the folder stands, and commit what the turn changed. Returns the
+   * files it changed, relative to the repository (empty outside one). Never throws.
+   */
+  async turnEnded(turn: Turn): Promise<string[]> {
     const start = this.starts.get(turn.chatId)
     this.starts.delete(turn.chatId)
     const chat = this.store.chat(turn.chatId)
-    if (!chat) return
+    if (!chat) return []
+    let changed: string[] = []
     try {
       const top = await repoRoot(chat.cwd)
-      if (!top) return
+      if (!top) return []
       await this.queue(top, async () => {
         const end = await snapshot(top)
         if (end) this.ends.set(turn.chatId, end)
-        if (!this.options.commit) return
         const items = this.store.turnItems(turn.chatId, turn.id)
         const here = (label: string): string[] => pathsOf(label, chat.cwd, top)
-        const changed = start && end ? await changedBetween(top, start, end) : editedIn(items, here)
+        changed = start && end ? await changedBetween(top, start, end) : editedIn(items, here)
+        if (!this.options.commit) return
         const theirs = new Set(this.working()
           .filter((other) => other.chatId !== turn.chatId)
           .flatMap((other) => other.edited.flatMap((label) => pathsOf(label, this.store.chat(other.chatId)?.cwd ?? chat.cwd, top))))
@@ -137,6 +141,7 @@ export class Teamwork {
     } catch (error) {
       this.options.warn?.(`A turn's changes could not be committed: ${messageOf(error)}`, { chatId: turn.chatId })
     }
+    return changed
   }
 
   forget(chatId: string): void {

@@ -279,3 +279,16 @@ test('with no other provider signed in, the worker checks its own work', async (
   await settle()
   assert.equal(goal().checker.provider, 'claude')
 })
+
+test('files a work turn changed through the shell are added to its round', async () => {
+  const { hub, runner, goal, end, brief } = setup()
+  runner.draft({ cwd: '/w', text: 'x', provider: 'claude', model: null })
+  await settle()
+  await end(brief)
+  runner.start(goal().id)
+  await settle()
+  const work = hub.last().turnId
+  await end({ status: 'done', summary: '' })
+  runner.noteFiles(work, ['cart.js'])
+  assert.deepEqual(goal().rounds[0]!.files, ['cart.js'])
+})
