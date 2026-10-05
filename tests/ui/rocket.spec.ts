@@ -70,7 +70,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
 
   await test.step('Address suggestions overlay the page without moving it', async () => {
     const before = await page.locator('.browser-stage').boundingBox()
-    await page.getByRole('textbox', { name: 'Address', exact: true }).fill(origin)
+    await page.getByRole('textbox', { name: 'Address', exact: true }).fill(new URL(origin).host)
     const suggestions = await rocket.surface('suggestions')
     await expect(suggestions.locator('body')).toContainText('UI page two')
     expect(await page.locator('.browser-stage').boundingBox()).toEqual(before)
@@ -135,7 +135,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await expect(send).toBeDisabled()
   })
 
-  await test.step('Renderer reload restores persisted transcript and browser session', async () => {
+  await test.step('Renderer reload restores persisted transcript and browser state', async () => {
     await page.reload()
     await expect(page.locator('.turn')).toHaveCount(5)
     await expect(page.locator('.prose').last()).toContainText('Complete. The controlled response finished.')

@@ -11,6 +11,7 @@ npm install
 npm run dev        # development, with rebuild on change
 npm run preview    # production build, then launch
 npm test           # unit tests, beside the files they test
+npm run check:ui   # build, unit tests, then the isolated desktop self-check
 ```
 
 Each provider runs through its own CLI, signed in with your own account. Install and sign in to
@@ -147,6 +148,42 @@ The profile folder is `~/.config/Rocket` (Electron's `userData`), so the journal
 `~/.config/Rocket/journal.jsonl`; `tail -f` it to watch. `npm run simulate:slow-turn` writes a
 fake slow turn from a `sim` provider to check detection; those rows stay in the journal and show
 in the timing averages, so use `ROCKET_DATA_DIR=<dir>` to point it at a scratch folder instead.
+
+### Desktop self-check
+
+`npm run check:ui` builds the current source, runs unit tests, and drives the actual Electron
+app with Playwright. The default uses a private Xvfb display so the test cannot steal your
+keyboard input. On Linux it requires `Xvfb`, `xvfb-run` and `xauth`; ImageMagick's `import`
+adds full-window screenshots. No Playwright browser download is needed: it uses the project's
+Electron binary. Use `npm run check:ui -- --visible` to watch on your desktop, or
+`npm run check:ui -- --repeat-each=3` to check repeatability with three fresh profiles.
+
+Each run keeps a timestamped directory under `.artifacts/ui/`, printed at start and finish.
+It contains `runner.log`, `summary.json`, the machine-readable `results.json`, and an HTML
+report in `report/index.html`. The report includes named check steps, screenshots, native
+view bounds, the app log, the isolated journal, and a Playwright trace. Open it with
+`npx playwright show-report <run-directory>/report`; traces can be inspected from the report.
+Failed runs exit nonzero and capture the UI before closing. Test windows and the local web
+server close automatically; profiles remain with the report for investigation.
+
+The checks exercise composer input, folder selection, usage, model selection, streaming,
+completion, tool output, provider handoff, cancellation, failure recovery, chat drafts,
+history, renderer reload, minimum window size, browser navigation/tabs, and the address
+dropdown. The shell, embedded page and dropdown are separate Playwright targets. Their
+screenshots and bounds are retained separately; on X11, a whole-window capture also records
+how the native views overlap. If that optional capture is unavailable, the report says so.
+
+The test fixture (`tests/ui/app.ts`) uses a fresh marked profile and scratch workspace. All
+four provider adapters are replaced by `src/host/ui-test.ts`; real provider CLIs are never
+started, and HTTP pages stay on the local fixture server. Responses wait for the test to
+observe the stream before finishing, which avoids timing-dependent sleeps. The host, SQLite
+store, MessagePort, and renderer are real. The folder dialog returns the scratch workspace.
+This checks app behavior, not provider authentication, CLI translation, or native OS dialogs;
+`check:live` remains the separate, explicitly authorized provider integration check.
+
+Add scenarios in `tests/ui/rocket.spec.ts`. Prefer accessible controls and observable state;
+do not mutate renderer state to manufacture a passing UI. `ROCKET_UI_TEST=1` is reserved for
+this runner and requires the marked profile before either main or host opens the store.
 
 ## Development hooks
 

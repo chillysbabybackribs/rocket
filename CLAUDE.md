@@ -9,6 +9,7 @@ the architecture; read it before changing how the processes talk to each other.
 ```sh
 npm run typecheck   # tsc, no emit
 npm test            # node:test over src/**/*.test.ts, under a second
+npm run check:ui    # build + unit tests + isolated Electron UI check, no real model turns
 npm run dev         # the app, rebuilding on change (ROCKET_NO_SANDBOX=1 if the sandbox helper is not set up)
 ```
 
@@ -19,7 +20,8 @@ USAGE=1 TURNS=0 npm run check:live -- claude cursor   # usage readings only, no 
 npm run check:live -- claude codex                    # a real conversation; spends subscription usage
 ```
 
-Ask before running a check that sends model turns. For UI checks, use `ROCKET_USER_DATA=<dir>`
+Ask before running a check that sends model turns. Prefer `npm run check:ui` for UI checks;
+it uses controlled responses, fresh profiles and a private display (see README). For manual UI checks, use `ROCKET_USER_DATA=<dir>`
 so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a picture of the UI.
 
 ## Where things are
