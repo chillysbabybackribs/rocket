@@ -1,6 +1,8 @@
 <!doctype html>
-<!-- Library mock · DAM grid + document viewer. Thumbnails: real Rocket UI crops in assets/library/.
-     Tokens aligned with src/renderer/src/styles.css. Interactive states via top nav. -->
+<!-- Library mock: one shelf for every file the chats touched, Ranch-style (filter rail, dense
+     thumbnail grid), with a viewer per kind that the agent drives as easily as the user does.
+     Every preview is a real render of a real file; assets/library/build-assets.mjs rebuilds them.
+     Tokens follow src/renderer/src/styles.css. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -13,362 +15,771 @@
   color-scheme:dark;
   --font:'Inter',system-ui,sans-serif;
   --mono:'GeistMono',ui-monospace,monospace;
-  --canvas:#08090a;--panel:#0f1011;--raised:#17181a;--composer:#151617;--composer-line:#2f3031;
-  --line:rgba(255,255,255,.07);--line-strong:rgba(255,255,255,.11);
+  --canvas:#08090a;--panel:#0f1011;--raised:#17181a;--menu:#1b1c1e;--bubble:#1c1d20;
+  --composer:#151617;--composer-line:#2f3031;
+  --line:rgba(255,255,255,.07);--line-strong:rgba(255,255,255,.11);--line-focus:rgba(255,255,255,.2);
   --text:#f7f8f8;--text-2:#b4b8c0;--text-3:#8a8f98;--text-4:#62666d;
-  --accent:#7170ff;--ok:#4cb782;--clear:#eb5757;
-  --sheen:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0) 140px);
-  --card-radius:12px;--gap:8px;--rail-width:52px;
+  --hover:rgba(255,255,255,.045);--selected:rgba(255,255,255,.08);
+  --accent:#7170ff;--ok:#4cb782;--warn:#f2c94c;--danger:#eb5757;--add:#3fb950;
+  --sheen:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0) 180px);
+  --menu-shadow:0 0 0 1px rgba(0,0,0,.5),0 12px 40px rgba(0,0,0,.6);
+  --gap:8px;--card-radius:12px;
+  /* Who made a mark: the user's in highlighter yellow, the agent's in Rocket's indigo. */
+  --mark-you:rgba(255,214,10,.42);--mark-agent:rgba(113,112,255,.34);
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--canvas);color:var(--text);font:13px/1.5 var(--font);letter-spacing:-.006em;-webkit-font-smoothing:antialiased}
-button,input,select{font:inherit;letter-spacing:inherit;color:inherit}
-button{cursor:default;border:0;background:none;padding:0}
-button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+html,body{margin:0}
+body{background:#050506;color:var(--text);font:13px/1.5 var(--font);letter-spacing:-.006em;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;letter-spacing:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+button:focus-visible,input:focus-visible,.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 svg{display:block;flex-shrink:0}
-.page-header{max-width:1320px;margin:0 auto;padding:24px 28px 16px}
-.eyebrow{color:var(--text-3);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
-.page-header h1{font-size:24px;font-weight:550;letter-spacing:-.65px;margin:6px 0}
-.page-header p{color:var(--text-2);margin:0;max-width:680px;line-height:1.55}
-.nav{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}
-.nav button{padding:7px 12px;border-radius:8px;font-size:12px;color:var(--text-3);border:1px solid transparent}
-.nav button:hover{background:rgba(255,255,255,.04)}
-.nav button[aria-pressed=true]{background:var(--raised);border-color:var(--composer-line);color:var(--text)}
-main{max-width:1320px;margin:0 auto;padding:0 28px 28px}
-.stage-wrap{position:relative;border-radius:14px;padding:var(--gap);background:#030304;box-shadow:0 0 0 1px var(--line-strong),0 24px 80px rgba(0,0,0,.55)}
-.titlebar{height:28px;display:flex;align-items:center;padding:0 10px;gap:8px;color:var(--text-4);font-size:11px}
-.lights{display:flex;gap:6px}.lights i{width:11px;height:11px;border-radius:50%;display:block}
+img{display:block}
+
+/* The page around the window */
+.doc-head{max-width:1440px;margin:0 auto;padding:26px 28px 14px;display:flex;align-items:flex-end;gap:24px}
+.doc-head .intro{flex:1}
+.eyebrow{color:var(--text-4);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:500}
+.doc-head h1{font-size:22px;font-weight:600;letter-spacing:-.5px;margin:6px 0 4px}
+.doc-head p{color:var(--text-3);margin:0;max-width:720px}
+.states{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line)}
+.states button{padding:6px 11px;border-radius:7px;font-size:12px;color:var(--text-3);white-space:nowrap}
+.states button:hover{color:var(--text-2)}
+.states button[aria-pressed=true]{background:var(--raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.fit{max-width:1440px;margin:0 auto;padding:0 28px}
+.fit-inner{transform-origin:0 0}
+.caption{max-width:1440px;margin:14px auto 40px;padding:0 28px;color:var(--text-3);font-size:12.5px;display:flex;gap:10px}
+.caption b{color:var(--text);font-weight:550}
+
+/* The Rocket window, drawn at 1440 × 900 and scaled to fit */
+.window{width:1440px;height:900px;background:var(--canvas);border-radius:12px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(255,255,255,.09),0 30px 90px rgba(0,0,0,.7);display:flex;flex-direction:column}
+.titlebar{height:28px;flex:none;display:flex;align-items:center;padding:0 var(--gap) 0 14px;gap:8px;color:var(--text-4);font-size:11.5px}
+.lights{display:flex;gap:7px}.lights i{width:12px;height:12px;border-radius:50%}
 .lights i:nth-child(1){background:#ff5f57}.lights i:nth-child(2){background:#febc2e}.lights i:nth-child(3){background:#28c840}
-.titlebar span{flex:1;text-align:center;color:var(--text-3);font-weight:500}
-.stage{position:relative;width:1264px;height:720px;border-radius:var(--card-radius);overflow:hidden;background:var(--canvas)}
-.win{display:flex;height:100%;padding:0 var(--gap) var(--gap) 0}
-.rail{width:var(--rail-width);flex:none;display:flex;flex-direction:column;align-items:center;padding:72px 0 16px;gap:12px}
-.rail-btn{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--text-4)}
-.rail-btn:hover{background:rgba(255,255,255,.05);color:var(--text-2)}
-.rail-btn.is-on{color:#b8b6ff;background:rgba(113,112,255,.18);box-shadow:inset 0 0 0 1px rgba(113,112,255,.45)}
-.rail-btn svg{width:19px;height:19px}
-.chat{width:318px;flex:none;display:flex;flex-direction:column;background:var(--sheen),var(--panel);border:1px solid var(--line-strong);border-radius:var(--card-radius);margin-right:var(--gap);overflow:hidden}
-.chat-head{padding:12px 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--text-3);display:flex;justify-content:space-between}
-.chat-head b{color:var(--text-2);font-weight:500}
-.chat-scroll{flex:1;padding:18px 16px;overflow:hidden}
-.user-bubble{margin:0 0 14px auto;max-width:94%;padding:9px 12px;background:var(--bubble,#1c1d20);border-radius:10px;color:var(--text-2);font-size:12.5px;line-height:1.5}
-.turn{color:var(--text-2);font-size:13px;line-height:1.6}
-.turn .meta{font-size:11px;color:var(--text-4);margin-bottom:6px}
-.dock{padding:10px 12px 12px}
-.chat-tab{display:inline-block;margin-left:8px;padding:5px 11px;font-size:11px;color:var(--text-2);background:var(--composer);border:1px solid var(--composer-line);border-bottom:0;border-radius:8px 8px 0 0;transform:translateY(1px)}
-.composer-box{background:var(--composer);border:1px solid var(--composer-line);border-radius:var(--card-radius);padding:8px 10px 6px}
-.composer-box .hint{min-height:42px;color:var(--text-4);font-size:12px;padding:4px 2px}
-.composer-bar{display:flex;align-items:center;gap:6px;padding-top:4px;color:var(--text-4);font-size:10px}
-.composer-bar .send{margin-left:auto;width:26px;height:26px;border-radius:50%;background:var(--button,#e6e6e6);color:#08090a;display:grid;place-items:center}
-.library{flex:1;min-width:0;display:flex;background:var(--sheen),#0b0b0c;border:1px solid var(--line-strong);border-radius:var(--card-radius);overflow:hidden}
-.dam{flex:1;display:flex;min-height:0;min-width:0}
-.dam-side{width:210px;flex:none;padding:18px 16px 16px;background:#0a0a0b;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:16px}
-.dam-side h2{margin:0;font-size:14px;font-weight:600;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;color:var(--text)}
-.dam-side h2 svg{width:16px;height:16px;color:var(--text-3)}
-.field label{display:block;font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-4);margin-bottom:6px}
-.field select{width:100%;appearance:none;border-radius:8px;border:1px solid #2a2b2e;background:#131316;color:var(--text-2);font-size:12px;padding:8px 30px 8px 10px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%238a8f98' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center}
-.field select:hover{border-color:#3a3b3e}
-.clear{align-self:flex-start;font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--clear);padding:2px 0}
-.clear:hover{text-decoration:underline;cursor:pointer}
-.dam-main{flex:1;display:flex;flex-direction:column;min-width:0}
-.dam-toolbar{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);font-size:12px;color:var(--text-3)}
-.dam-toolbar .count{font-weight:500;color:var(--text-2)}
-.dam-toolbar .search{flex:1;max-width:260px;margin-left:auto;display:flex;align-items:center;gap:8px;padding:7px 11px;border-radius:9px;border:1px solid #2a2b2e;background:#101012}
-.dam-toolbar .search input{flex:1;border:0;background:transparent;outline:none;font-size:12px;color:var(--text);min-width:0}
-.dam-toolbar .search input::placeholder{color:var(--text-4)}
-.view-toggle{display:flex;gap:4px;padding:3px;border-radius:8px;background:#101012;border:1px solid #2a2b2e}
-.view-toggle button{padding:4px 10px;border-radius:6px;font-size:11px;color:var(--text-3)}
-.view-toggle button.on{background:#1c1d20;color:var(--text);box-shadow:0 1px 0 #0003}
-.grid-wrap{flex:1;overflow:auto;padding:16px 18px 20px}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-@media(min-width:1200px){.grid{grid-template-columns:repeat(5,1fr)}}
-.asset{position:relative;text-align:left;border-radius:10px;overflow:hidden;background:#121214;border:1px solid transparent;transition:border-color .15s,box-shadow .15s,transform .15s}
-.asset:hover{border-color:rgba(255,255,255,.35);box-shadow:0 8px 28px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.12);transform:translateY(-1px)}
-.asset.is-hover{border-color:rgba(255,255,255,.55);box-shadow:0 10px 32px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.2)}
-.asset.is-on{border-color:rgba(113,112,255,.7);box-shadow:0 0 0 1px rgba(113,112,255,.5)}
-.thumb{position:relative;width:100%;background:#0e0e10;overflow:hidden}
-.thumb.ratio-4x3{aspect-ratio:4/3}
-.thumb.ratio-3x4{aspect-ratio:3/4}
-.thumb img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(1.02)}
-.thumb-md-preview{position:absolute;inset:0;padding:10% 8%;font:9px/1.45 var(--mono);color:#8b939f;background:linear-gradient(165deg,#14161c,#0a0c10)}
-.thumb-md-preview .kw{color:#c792ea}.thumb-md-preview .hi{color:#82aaff}.thumb-md-preview .cm{color:#69717d}
-.thumb-shade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.55) 100%);pointer-events:none}
-.thumb-badge{position:absolute;top:8px;left:8px;font-size:9px;font-weight:600;letter-spacing:.05em;padding:3px 6px;border-radius:5px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);color:#e8eaef;border:1px solid rgba(255,255,255,.12)}
-.cap{padding:10px 10px 11px}
-.cap b{display:block;font-size:12px;font-weight:550;letter-spacing:-.01em;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cap span{display:block;margin-top:3px;font-size:10.5px;color:var(--text-4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cursor-fake{position:absolute;width:18px;height:22px;right:14px;bottom:38px;pointer-events:none;filter:drop-shadow(0 2px 4px #0008);z-index:2}
-.viewer{flex:1;display:flex;flex-direction:column;min-width:0;background:#09090a}
-.view-head{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line)}
-.back{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;font-size:12px;color:var(--text-2)}
-.back:hover{background:rgba(255,255,255,.05);color:var(--text)}
-.back svg{width:15px;height:15px}
-.view-title{flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.view-actions{display:flex;gap:6px}
-.btn{font-size:11px;padding:6px 11px;border-radius:8px;border:1px solid #38393c;color:var(--text-2)}
-.btn:hover{background:rgba(255,255,255,.05)}
-.btn.primary{background:#e6e6e6;color:#08090a;border-color:#e6e6e6;font-weight:550}
-.meta-row{display:flex;flex-wrap:wrap;gap:8px;padding:6px 16px 0;font-size:10.5px;color:var(--text-3)}
-.pill{padding:2px 8px;border-radius:6px;border:1px solid #2c2d31;background:#121316}
-.pill.accent{color:#b8b6ff;border-color:#7170ff44;background:#7170ff12}
-.view-tabs{display:flex;gap:3px;padding:8px 16px 0}
-.view-tabs button{font-size:11px;padding:5px 12px;border-radius:8px 8px 0 0;color:var(--text-3);border:1px solid transparent}
-.view-tabs button.on{color:var(--text);background:#101113;border-color:#333;border-bottom-color:#101113}
-.doc-frame{flex:1;min-height:0;margin:0 16px 16px;border:1px solid #333;border-radius:0 10px 10px 10px;background:#080809;overflow:hidden;display:flex;flex-direction:column}
-.nutrient-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:#0f1011;border-bottom:1px solid var(--line);font-size:11px;color:var(--text-3)}
-.nutrient-bar .tool{padding:5px 10px;border-radius:7px;color:var(--text-2);display:inline-flex;align-items:center;gap:5px}
-.nutrient-bar .tool.on{background:rgba(113,112,255,.22);color:#fff}
-.nutrient-bar .spacer{flex:1}
-.nutrient-bar .page-input{display:flex;align-items:center;gap:6px}
-.nutrient-bar input{width:32px;text-align:center;border-radius:6px;border:1px solid #333;background:#151617;color:var(--text);font-size:11px;padding:3px}
-.pdf-layout{flex:1;display:flex;min-height:0;background:#121316}
-.filmstrip{width:88px;flex:none;padding:10px 8px;overflow:auto;border-right:1px solid var(--line);background:#0c0d0e}
-.filmstrip button{display:block;width:100%;border-radius:4px;overflow:hidden;border:2px solid transparent;margin-bottom:8px;padding:0}
-.filmstrip button.on{border-color:var(--accent)}
-.filmstrip img{display:block;width:100%;aspect-ratio:8.5/11;object-fit:cover}
-.pdf-canvas{flex:1;overflow:auto;display:flex;justify-content:center;padding:20px}
-.pdf-sheet{position:relative;width:min(100%,440px);border-radius:2px;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06)}
-.pdf-sheet img{display:block;width:100%;height:auto}
-.pdf-sheet .annot{position:absolute;left:7%;top:34%;width:86%;height:10%;border:2px solid var(--accent);background:rgba(113,112,255,.15);border-radius:2px}
-.pdf-sheet .pin{position:absolute;right:8%;top:42%;width:20px;height:20px;background:var(--accent);border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px #0006}
-.cm-wrap{flex:1;overflow:auto;background:#0a0b0d}
-.cm{font:12px/1.7 var(--mono);tab-size:2}
-.cm .row{display:flex;min-height:1.7em}
-.cm .gutter{width:44px;text-align:right;padding-right:12px;color:var(--text-4);user-select:none;flex:none;border-right:1px solid var(--line);background:#0c0d0f}
-.cm .code{flex:1;padding-left:12px;color:#d7d9de;white-space:pre}
-.cm .row.hl .code{background:rgba(113,112,255,.12)}
-.cm .row.agent .code{background:rgba(76,183,130,.1);box-shadow:inset 3px 0 0 var(--ok)}
-.cm .tok-kw{color:#c792ea}.cm .tok-hi{color:#82aaff}.cm .tok-dim{color:#69717d}
-.preview-pane{flex:1;overflow:auto;padding:22px 24px;font-size:14px;line-height:1.65;color:#d7d9de}
-.preview-pane h2{font-size:17px;font-weight:590;margin:0 0 12px;letter-spacing:-.02em}
-.preview-pane h3{font-size:14px;margin:20px 0 8px}
-.preview-pane ul{padding-left:20px;color:var(--text-2)}
-.preview-pane .hl{background:rgba(113,112,255,.28);border-radius:3px;padding:0 3px}
-.agent-banner{margin:8px 16px 0;padding:9px 12px;border-radius:9px;font-size:11px;color:#b8e6cc;background:rgba(76,183,130,.12);border:1px solid rgba(76,183,130,.35)}
-.office-pane{flex:1;display:grid;place-items:center;padding:32px;text-align:center;color:var(--text-3)}
-.office-pane b{display:block;font-size:15px;color:var(--text-2);margin-bottom:12px;font-weight:550}
-.foot-note{display:flex;justify-content:space-between;gap:16px;margin-top:16px;font-size:12px;color:var(--text-3);max-width:1264px}
-.foot-note p{margin:0;line-height:1.55;max-width:820px}
-.foot-note strong{color:var(--text-2);font-weight:500}
-#status{margin-top:10px;font-size:11px;color:var(--text-3)}
+.shell{flex:1;min-height:0;display:flex;gap:var(--gap);padding:0 var(--gap) var(--gap) 0}
+.panel{border:1px solid var(--line);border-radius:var(--card-radius);background:var(--sheen),var(--panel);min-height:0;overflow:hidden;position:relative}
+
+/* Rail */
+.rail{width:56px;flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:4px}
+.rail button{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--text-3);position:relative}
+.rail button:hover{background:var(--hover);color:var(--text-2)}
+.rail button.on{background:var(--selected);color:var(--text)}
+.rail button.on::before{content:'';position:absolute;left:-10px;top:10px;bottom:10px;width:2px;border-radius:2px;background:var(--text)}
+.rail .sep{width:20px;height:1px;background:var(--line-strong);margin:4px 0}
+.rail .grow{flex:1}
+
+/* Chat pane */
+.chat{width:340px;flex:none;display:flex;flex-direction:column}
+.chat-head{height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--line)}
+.chat-head b{font-weight:550;font-size:13px}
+.chat-head .who{margin-left:auto;font-size:12px;color:var(--text-3);display:flex;align-items:center;gap:6px}
+.chat-head .who i{width:7px;height:7px;border-radius:50%;background:#d97757}
+.transcript{flex:1;min-height:0;overflow:auto;padding:18px 16px 12px;display:flex;flex-direction:column;gap:14px}
+.msg-user{align-self:flex-end;max-width:86%;background:var(--bubble);border:1px solid var(--line);padding:9px 12px;border-radius:12px 12px 4px 12px;color:var(--text)}
+.msg-agent{color:var(--text-2);display:flex;flex-direction:column;gap:8px}
+.msg-agent .by{font-size:11.5px;color:var(--text-4);display:flex;gap:6px;align-items:center}
+.msg-agent p{margin:0;color:var(--text)}
+.msg-agent p em{font-style:normal;color:var(--text-2)}
+.calls{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:rgba(255,255,255,.015)}
+.call{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:12px;color:var(--text-3);border-top:1px solid var(--line)}
+.call:first-child{border-top:0}
+.call code{font:11.5px var(--mono);color:var(--text-2);flex:none}
+.call > span:nth-of-type(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.call .res{margin-left:auto;color:var(--text-4);font-size:11.5px;white-space:nowrap}
+.call .ok{color:var(--ok)}
+.chip-file{max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 4px;border-radius:7px;border:1px solid var(--line-strong);background:var(--raised);font-size:12px;color:var(--text);cursor:pointer}
+.chip-file img{width:22px;height:16px;object-fit:cover;border-radius:3px}
+.composer{margin:0 10px 10px;border:1px solid var(--composer-line);background:var(--composer);border-radius:12px;padding:10px 12px 8px}
+.composer .ph{color:var(--text-4);height:38px}
+.composer .row{display:flex;align-items:center;gap:8px;color:var(--text-4);font-size:12px}
+.composer .send{margin-left:auto;width:26px;height:26px;border-radius:50%;background:var(--text);color:#000;display:grid;place-items:center}
+
+/* Library */
+.library{flex:1;min-width:0;display:flex;flex-direction:column}
+.lib-browse{flex:1;min-height:0;display:flex}
+.filters{width:212px;flex:none;border-right:1px solid var(--line);padding:14px 14px 12px;display:flex;flex-direction:column;gap:14px;position:relative;z-index:3}
+.filters .scope{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13.5px;padding:2px 2px 0}
+.filters .scope svg{color:var(--text-3)}
+.field label{display:block;font-size:11px;color:var(--text-4);margin:0 0 5px 2px;font-weight:500}
+.select{width:100%;height:32px;display:flex;align-items:center;gap:8px;padding:0 9px 0 10px;border-radius:8px;background:var(--raised);
+  border:1px solid var(--line-strong);font-size:12.5px;color:var(--text);text-align:left}
+.select:hover{border-color:var(--line-focus)}
+.select span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.select.set{border-color:rgba(113,112,255,.55);background:rgba(113,112,255,.08)}
+.select svg{color:var(--text-3)}
+.field{position:relative}
+.menu{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);background:var(--menu);border-radius:10px;box-shadow:var(--menu-shadow);padding:4px;display:none}
+.menu.open{display:block}
+.menu button{width:100%;display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:12.5px;color:var(--text-2);text-align:left}
+.menu button:hover,.menu button.is-hl{background:var(--selected);color:var(--text)}
+.menu button .n{margin-left:auto;color:var(--text-4);font-size:11.5px;font-variant-numeric:tabular-nums}
+.menu button .tick{width:14px;color:var(--text)}
+.clear{align-self:flex-start;margin:2px 0 0 2px;font-size:11px;letter-spacing:.08em;font-weight:600;color:var(--danger);text-transform:uppercase;opacity:.9}
+.clear:disabled{color:var(--text-4);opacity:.6;cursor:default}
+.filters .foot{margin-top:auto;font-size:11.5px;color:var(--text-4);line-height:1.6;padding:0 2px}
+.filters .meter{height:4px;border-radius:2px;background:var(--line-strong);overflow:hidden;margin-top:6px}
+.filters .meter i{display:block;height:100%;width:23%;background:var(--text-3)}
+
+.browse{flex:1;min-width:0;display:flex;flex-direction:column}
+.browse-head{height:52px;flex:none;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line)}
+.browse-head h2{font-size:13.5px;font-weight:600;margin:0}
+.browse-head .count{color:var(--text-4);font-size:12px;font-variant-numeric:tabular-nums}
+.browse-head .sp{flex:1}
+.search{width:240px;height:30px;display:flex;align-items:center;gap:7px;padding:0 10px;border-radius:8px;background:var(--raised);border:1px solid var(--line-strong);color:var(--text-4)}
+.search input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:12.5px;color:var(--text)}
+.search input::placeholder{color:var(--text-4)}
+.search kbd{font:10.5px var(--mono);color:var(--text-4);border:1px solid var(--line-strong);border-radius:4px;padding:0 4px}
+.seg{display:flex;padding:2px;border-radius:8px;background:var(--raised);border:1px solid var(--line-strong)}
+.seg button{height:24px;padding:0 7px;border-radius:6px;color:var(--text-4);display:flex;align-items:center;gap:5px;font-size:12px}
+.seg button[aria-pressed=true]{background:rgba(255,255,255,.09);color:var(--text)}
+.sort{height:30px;display:flex;align-items:center;gap:5px;padding:0 8px;border-radius:8px;color:var(--text-3);font-size:12px}
+.sort:hover{background:var(--hover);color:var(--text)}
+.icon-btn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--text-3)}
+.icon-btn:hover{background:var(--hover);color:var(--text)}
+.chips{display:flex;gap:6px;padding:10px 16px 0;flex-wrap:wrap}
+.chips:empty{display:none}
+.fchip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 6px 0 9px;border-radius:12px;background:rgba(113,112,255,.12);border:1px solid rgba(113,112,255,.35);font-size:12px;color:var(--text)}
+.fchip span{color:var(--text-3)}
+.fchip button{color:var(--text-3);display:grid;place-items:center;width:16px;height:16px;border-radius:50%}
+.fchip button:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.scroller{flex:1;min-height:0;overflow:auto;padding:14px 16px 20px}
+.scroller::-webkit-scrollbar,.transcript::-webkit-scrollbar,.canvas::-webkit-scrollbar,.editor::-webkit-scrollbar,.insp-body::-webkit-scrollbar{width:10px;height:10px}
+.scroller::-webkit-scrollbar-thumb,.transcript::-webkit-scrollbar-thumb,.canvas::-webkit-scrollbar-thumb,.editor::-webkit-scrollbar-thumb,.insp-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.09);border-radius:6px;border:3px solid transparent;background-clip:padding-box}
+.group-h{display:flex;align-items:baseline;gap:8px;margin:2px 2px 10px;font-size:12px;font-weight:550;color:var(--text-2)}
+.group-h span{color:var(--text-4);font-weight:400}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:10px 6px}
+
+/* A card is a frame with the preview, then two lines of text, the way Ranch lays out a shot. */
+.card{position:relative;border-radius:10px;padding:5px 5px 8px;background:transparent;cursor:pointer;outline:none}
+.card:hover{background:rgba(255,255,255,.035)}
+.card.sel{background:rgba(113,112,255,.10);box-shadow:inset 0 0 0 1px rgba(113,112,255,.5)}
+.thumb{position:relative;aspect-ratio:16/10;border-radius:6px;overflow:hidden;background:#141517;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+.thumb.cover img{width:100%;height:100%;object-fit:cover;transition:transform .35s ease}
+.card:hover .thumb.cover img{transform:scale(1.03)}
+/* Pages sit on a backdrop and run off its bottom edge, so the title and first lines read. */
+.thumb.page{background:radial-gradient(120% 90% at 50% 0%,#24262b,#141517)}
+.thumb.page img{position:absolute;left:50%;top:12%;width:62%;transform:translateX(-50%);border-radius:2px;
+  box-shadow:0 1px 2px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.45);transition:top .3s ease}
+.card:hover .thumb.page img{top:9%}
+.kind{position:absolute;left:6px;top:6px;height:18px;padding:0 6px;border-radius:5px;display:flex;align-items:center;font-size:10px;font-weight:600;letter-spacing:.04em;
+  color:#fff;background:rgba(10,10,12,.62);backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.marks{position:absolute;right:6px;bottom:6px;height:18px;padding:0 6px 0 5px;border-radius:9px;display:flex;align-items:center;gap:4px;font-size:10.5px;font-weight:550;
+  color:#fff;background:rgba(10,10,12,.66);backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.marks i{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.marks i.you{background:#ffd60a}
+.pages{position:absolute;right:6px;top:6px;font-size:10px;color:rgba(255,255,255,.75);background:rgba(10,10,12,.55);border-radius:5px;padding:1px 5px;backdrop-filter:blur(8px)}
+.quick{position:absolute;right:6px;top:6px;display:none;gap:4px}
+.card:hover .quick{display:flex}
+.card:hover .pages{display:none}
+.quick span{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;background:rgba(10,10,12,.7);backdrop-filter:blur(8px);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.card .t{margin:7px 3px 0;font-size:12.5px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .s{margin:1px 3px 0;font-size:11.5px;color:var(--text-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .s b{font-weight:400;color:var(--text-3)}
+.empty{padding:80px 0;text-align:center;color:var(--text-3)}
+
+/* List view */
+.list{width:100%;border-collapse:collapse;font-size:12.5px}
+.list th{text-align:left;font-weight:500;color:var(--text-4);font-size:11.5px;padding:0 10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.list td{padding:6px 10px;border-bottom:1px solid var(--line);color:var(--text-3);white-space:nowrap}
+.list tr:hover td{background:rgba(255,255,255,.03);cursor:pointer}
+.list td.name{color:var(--text);display:flex;align-items:center;gap:10px;max-width:330px}
+.list td.name span{overflow:hidden;text-overflow:ellipsis}
+.list .lt{width:44px;height:28px;border-radius:4px;flex:none;overflow:hidden;background:#1b1c1f;position:relative}
+.list .lt img{width:100%;height:100%;object-fit:cover}
+.list .lt.page img{width:60%;height:auto;margin:3px auto 0}
+.list .num{text-align:right;font-variant-numeric:tabular-nums}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:5px;vertical-align:1px}
+.dot.you{background:#ffd60a}
+
+/* Viewer */
+.viewer{flex:1;min-height:0;display:none;flex-direction:column}
+.library.viewing .lib-browse{display:none}
+.library.viewing .viewer{display:flex}
+.v-head{height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 10px 0 8px;border-bottom:1px solid var(--line)}
+.back{height:30px;flex:none;white-space:nowrap;display:flex;align-items:center;gap:6px;padding:0 10px 0 7px;border-radius:8px;color:var(--text-2);font-size:12.5px}
+.back:hover{background:var(--hover);color:var(--text)}
+.vsep{width:1px;height:20px;background:var(--line-strong);margin:0 4px}
+.v-title{min-width:0;flex:0 1 auto;display:flex;flex-direction:column;line-height:1.25}
+.v-title b{font-weight:550;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v-title span{font-size:11.5px;color:var(--text-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v-head .sp{flex:1}
+.tools{display:flex;align-items:center;gap:2px;padding:2px;border-radius:9px;background:var(--raised);border:1px solid var(--line-strong)}
+.tools button{height:26px;min-width:26px;padding:0 6px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--text-3);font-size:12px}
+.tools button:hover{color:var(--text);background:var(--hover)}
+.tools button.on{background:rgba(255,255,255,.1);color:var(--text)}
+.tools .swatch{width:10px;height:10px;border-radius:3px;background:#ffd60a}
+.tools .zv{min-width:44px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.btn{height:30px;padding:0 11px;border-radius:8px;font-size:12.5px;display:flex;align-items:center;gap:6px;color:var(--text-2);border:1px solid var(--line-strong);background:var(--raised);white-space:nowrap}
+.btn:hover{color:var(--text);border-color:var(--line-focus)}
+.btn.primary{background:#e6e6e6;color:#08090a;border-color:#e6e6e6;font-weight:500}
+.v-body{flex:1;min-height:0;display:flex}
+
+.strip{width:104px;flex:none;border-right:1px solid var(--line);overflow:auto;padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:12px}
+.strip button{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-4);font-size:10.5px}
+.strip .pg{width:64px;aspect-ratio:612/792;border-radius:2px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(255,255,255,.08);position:relative}
+.strip .pg img{width:100%}
+.strip .pg.blank{background:linear-gradient(#fafafa,#ececec)}
+.strip button.on .pg{box-shadow:0 0 0 2px var(--accent)}
+.strip button.on{color:var(--text)}
+.strip .pg .m{position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 1.5px #fff}
+
+.canvas{flex:1;min-width:0;overflow:auto;background:#0b0c0d;padding:22px 0 40px;display:flex;flex-direction:column;align-items:center;gap:18px}
+.sheet{position:relative;width:min(620px,calc(100% - 44px));flex:none;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.6),0 10px 40px rgba(0,0,0,.5)}
+.sheet img{width:100%}
+.hl{position:absolute;mix-blend-mode:multiply;border-radius:1px}
+.hl.you{background:var(--mark-you)}
+.hl.agent{background:var(--mark-agent)}
+.hl.focus{outline:1.5px solid rgba(113,112,255,.9);outline-offset:1px}
+.pin{position:absolute;width:20px;height:20px;border-radius:6px 6px 6px 2px;background:var(--accent);color:#fff;display:grid;place-items:center;
+  box-shadow:0 2px 8px rgba(40,40,120,.45);font-size:10px;font-weight:700}
+.pop{position:absolute;width:250px;background:var(--menu);border-radius:10px;box-shadow:var(--menu-shadow);padding:10px 12px;font-size:12px;color:var(--text-2);z-index:2}
+.pop .by{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-3);margin-bottom:5px}
+.pop p{margin:0;color:var(--text)}
+.pop .acts{display:flex;gap:12px;margin-top:8px;font-size:11.5px;color:var(--text-3)}
+.av{width:16px;height:16px;border-radius:5px;display:grid;place-items:center;font-size:9px;font-weight:700;color:#fff;background:#d97757;flex:none}
+.av.you{background:#3b3d44}
+
+.insp{width:290px;flex:none;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.insp-tabs{height:42px;flex:none;display:flex;align-items:flex-end;gap:16px;padding:0 14px;border-bottom:1px solid var(--line)}
+.insp-tabs button{height:42px;display:flex;align-items:center;gap:6px;color:var(--text-4);font-size:12.5px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.insp-tabs button.on{color:var(--text);border-color:var(--text)}
+.insp-tabs .n{font-size:11px;color:var(--text-4);background:var(--raised);border-radius:8px;padding:0 6px}
+.insp-body{flex:1;min-height:0;overflow:auto;padding:12px}
+.mark{border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:rgba(255,255,255,.015)}
+.mark.focus{border-color:rgba(113,112,255,.55);background:rgba(113,112,255,.07)}
+.mark .by{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text-3)}
+.mark .by b{color:var(--text);font-weight:550}
+.mark .by .when{margin-left:auto;color:var(--text-4)}
+.mark q{display:block;margin:8px 0 0;padding-left:9px;border-left:2px solid #ffd60a;color:var(--text-2);font-size:12px;quotes:none}
+.mark.agent q{border-color:var(--accent)}
+.mark q::before,.mark q::after{content:none}
+.mark p{margin:7px 0 0;color:var(--text);font-size:12.5px}
+.mark .loc{margin-top:7px;font-size:11px;color:var(--text-4);display:flex;gap:8px}
+.mark .loc code{font:10.5px var(--mono);color:var(--text-3)}
+.note{margin:12px 2px 0;font-size:11.5px;color:var(--text-4);line-height:1.55}
+.note code{font:10.5px var(--mono);color:var(--text-3)}
+.dl{display:grid;grid-template-columns:86px 1fr;gap:7px 10px;font-size:12px;margin:2px 2px 14px}
+.dl dt{color:var(--text-4)}
+.dl dd{margin:0;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl dd a{color:var(--text-2);text-decoration:none;border-bottom:1px solid var(--line-strong)}
+.sect{font-size:11px;font-weight:550;color:var(--text-4);text-transform:uppercase;letter-spacing:.06em;margin:16px 2px 8px}
+.outline button{display:block;width:100%;text-align:left;padding:4px 8px;border-radius:6px;font-size:12px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.outline button:hover{background:var(--hover);color:var(--text)}
+.outline button.on{color:var(--text);background:var(--selected)}
+.outline button.h3{padding-left:20px}
+
+/* Plan: CodeMirror's look, line by line */
+.editor{flex:1;min-width:0;overflow:auto;background:#0c0d0e;font:12.5px/20px var(--mono);padding:10px 0 60px}
+.ln{display:flex;min-height:20px;position:relative}
+.ln .g{width:52px;flex:none;text-align:right;padding-right:14px;color:#4a4d54;user-select:none;font-variant-numeric:tabular-nums}
+.ln .c{flex:1;min-width:0;padding-right:24px;white-space:pre-wrap;word-break:break-word;color:#c9ccd3}
+.ln.add::before{content:'';position:absolute;left:44px;top:0;bottom:0;width:3px;background:var(--add);border-radius:1px}
+.ln.add .c{background:rgba(63,185,80,.07)}
+.ln.hlm .c{background:rgba(113,112,255,.16)}
+.ln.cur .g{color:var(--text-2)}
+.tk-h{color:#f7f8f8;font-weight:700}
+.tk-hm{color:#7170ff}
+.tk-b{color:#f7f8f8;font-weight:650}
+.tk-code{color:#e5a46b}
+.tk-link{color:#7aa2f7}
+.tk-li{color:#7170ff}
+.tk-pipe{color:#4a4d54}
+.tk-rule{color:#4a4d54}
+.inline-tag{position:absolute;right:16px;top:-21px;font:11px var(--font);color:#fff;background:var(--accent);border-radius:5px;padding:1px 7px;display:flex;align-items:center;gap:5px}
+.preview{flex:1;min-width:0;overflow:auto;background:#0c0d0e;padding:28px 0 60px;display:none}
+.preview article{max-width:660px;margin:0 auto;padding:0 36px;color:var(--text-2);font-size:14px;line-height:1.65}
+.preview h1{font-size:24px;color:var(--text);letter-spacing:-.4px;line-height:1.25}
+.preview h2{font-size:17px;color:var(--text);margin:28px 0 8px}
+.preview h3{font-size:14.5px;color:var(--text)}
+.preview strong{color:var(--text);font-weight:600}
+.preview code{font:12.5px var(--mono);background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;color:var(--text)}
+.preview a{color:#a5a4ff;text-decoration:none}
+.preview table{border-collapse:collapse;font-size:12.5px;width:100%;margin:12px 0}
+.preview th,.preview td{border:1px solid var(--line-strong);padding:6px 8px;vertical-align:top;text-align:left}
+.preview th{color:var(--text);background:rgba(255,255,255,.03)}
+.preview hr{border:0;border-top:1px solid var(--line)}
+.preview .agent-mark{background:rgba(113,112,255,.16);box-shadow:0 0 0 6px rgba(113,112,255,.16);border-radius:3px}
+.v-body.md-preview .editor{display:none}
+.v-body.md-preview .preview{display:block}
+
+/* Image */
+.stage{flex:1;min-width:0;display:flex;flex-direction:column;background:#0b0c0d}
+.stage-main{flex:1;min-height:0;display:grid;place-items:center;padding:22px;position:relative}
+.photo{position:relative;max-width:100%;max-height:100%}
+.photo img{max-width:100%;max-height:560px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.region{position:absolute;border:2px solid var(--accent);border-radius:3px;box-shadow:0 0 0 9999px rgba(0,0,0,.28)}
+.region .tag{position:absolute;left:-2px;top:-26px;white-space:nowrap;background:var(--accent);color:#fff;font-size:11.5px;font-weight:500;border-radius:5px;padding:2px 8px;display:flex;gap:6px;align-items:center}
+.region .h{position:absolute;width:8px;height:8px;background:#fff;border:2px solid var(--accent);border-radius:2px}
+.film{height:84px;flex:none;border-top:1px solid var(--line);display:flex;gap:6px;align-items:center;padding:0 14px;overflow:auto}
+.film button{width:84px;height:56px;flex:none;border-radius:5px;overflow:hidden;opacity:.55;position:relative}
+.film button:hover{opacity:.85}
+.film button.on{opacity:1;box-shadow:0 0 0 2px var(--accent)}
+.film img{width:100%;height:100%;object-fit:cover}
+
+/* Office hand-off */
+.office{flex:1;min-width:0;display:grid;place-items:center;background:#0b0c0d}
+.office-card{width:640px;text-align:center}
+.office-card .slide{width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 20px 60px rgba(0,0,0,.6)}
+.office-card .slide img{width:100%;height:100%;object-fit:cover}
+.office-card h3{margin:22px 0 4px;font-size:15px;font-weight:600}
+.office-card p{margin:0 auto;color:var(--text-3);max-width:470px}
+.office-card .row{display:flex;gap:8px;justify-content:center;margin-top:16px}
+
+/* Agent toast */
+.toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:9px;padding:8px 12px 8px 10px;border-radius:10px;background:var(--menu);box-shadow:var(--menu-shadow);font-size:12.5px;color:var(--text-2);white-space:nowrap;z-index:5}
+.toast b{color:var(--text);font-weight:550}
+.toast code{font:11.5px var(--mono);color:var(--text)}
 </style>
 </head>
 <body>
-<div class="page-header">
-  <div class="eyebrow">Rocket / Library</div>
-  <h1>Document library &amp; viewer</h1>
-  <p>DAM-style index beside chat — real preview crops from UI evals, Rocket tokens, drill-in to CM6 and Nutrient chrome.</p>
-  <nav class="nav" aria-label="Mockup states">
-    <button type="button" data-state="browse" aria-pressed="true">01 · Grid</button>
-    <button type="button" data-state="md" aria-pressed="false">02 · Markdown</button>
-    <button type="button" data-state="pdf" aria-pressed="false">03 · PDF</button>
-    <button type="button" data-state="office" aria-pressed="false">04 · Office</button>
-    <button type="button" data-state="agent" aria-pressed="false">05 · Agent mark</button>
-  </nav>
+
+<header class="doc-head">
+  <div class="intro">
+    <div class="eyebrow">Rocket · Library mock</div>
+    <h1>Every file a chat touched, on one shelf</h1>
+    <p>Downloads, saved plans, captures and attachments, previewed from the real files. Open one and the agent works in it with you: it can find files, go to a page, and highlight, note, mark or edit anything you can.</p>
+  </div>
+  <nav class="states" id="states" aria-label="Mock states"></nav>
+</header>
+
+<div class="fit" id="fit"><div class="fit-inner" id="fitInner">
+<div class="window">
+  <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div></div>
+  <div class="shell">
+    <nav class="rail" aria-label="Rail">
+      <button aria-label="Chats"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg></button>
+      <button aria-label="Browser"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/></svg></button>
+      <button class="on" aria-label="Library"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg></button>
+      <button aria-label="Evals"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></button>
+      <div class="grow"></div>
+      <button aria-label="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 14H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 10h.1a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></button>
+      <div style="height:6px"></div>
+    </nav>
+
+    <section class="panel chat">
+      <div class="chat-head"><b id="chatTitle">Agent research</b><span class="who"><i></i>Claude · Opus 5.5</span></div>
+      <div class="transcript" id="transcript"></div>
+      <div class="composer"><div class="ph">Ask about a file, or tell Claude what to mark…</div>
+        <div class="row"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m21 12-8.6 8.6a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4L15.6 8"/></svg><span>Library is open beside this chat</span>
+          <span class="send"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span></div>
+      </div>
+    </section>
+
+    <section class="panel library" id="library">
+      <div class="lib-browse">
+        <aside class="filters" id="filters">
+          <div class="scope"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5Z"/></svg><span id="scopeName">All files</span></div>
+          <div id="fields"></div>
+          <button class="clear" id="clear">Clear filters</button>
+          <div class="foot"><span id="footCount"></span> · 41.6 MB<br>Workspace roots and the attachment store only.<div class="meter"><i></i></div></div>
+        </aside>
+        <div class="browse">
+          <div class="browse-head">
+            <h2 id="browseTitle">All files</h2><span class="count" id="count"></span>
+            <span class="sp"></span>
+            <label class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Search names, pages, text" aria-label="Search the library"><kbd>/</kbd></label>
+            <div class="seg" role="group" aria-label="View">
+              <button id="vGrid" aria-pressed="true" aria-label="Grid"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg></button>
+              <button id="vList" aria-pressed="false" aria-label="List"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button>
+            </div>
+            <button class="sort" aria-label="Sort">Newest first<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+            <button class="icon-btn" aria-label="Add files"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="chips" id="chips"></div>
+          <div class="scroller" id="scroller"></div>
+        </div>
+      </div>
+      <div class="viewer" id="viewer"></div>
+    </section>
+  </div>
 </div>
-<main>
-  <div class="stage-wrap">
-    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span>Rocket · Library mock</span><span style="flex:0;width:52px"></span></div>
-    <div class="stage" id="stage"></div>
-  </div>
-  <div class="foot-note">
-    <p id="note"><strong>Quality pass:</strong> thumbnails under <code>docs/mockups/assets/library/</code> (ImageMagick crops from UI eval screenshots). Implementation still generates previews on index — this mock shows target density and polish.</p>
-    <button type="button" class="btn" id="reset">Reset</button>
-  </div>
-  <div id="status" role="status"></div>
-</main>
+</div></div>
+
+<p class="caption" id="caption"></p>
+
+<script src="assets/library/content.js"></script>
 <script>
-const T='assets/library/'
-const icons={
-  lib:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5V4.5h16v15"/><path d="M8 4.5v15M4 9.5h16"/></svg>',
-  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>',
-  globe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4.5 7 4.5 9S15 21 12 21s-4.5-4-4.5-9S9 6 12 3z"/></svg>',
-  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 6-6 6 6 6"/></svg>',
-  folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>',
-  ext:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 3h6v6M10 14 21 3"/></svg>',
-  cursor:'<svg width="18" height="22" viewBox="0 0 18 22" fill="none"><path d="M1 1l4 18 3-7 7-3L1 1z" fill="#fff" stroke="#111" stroke-width="1.2"/></svg>'
+const A = 'assets/library/'
+const ICON = {
+  back: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  chev: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  tick: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  x: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  open: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>',
+  more: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>',
+  cursor: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m5 3 14 7-6 2-2 6Z"/></svg>',
+  note: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 4h14v12l-4 4H5Z"/><path d="M15 20v-4h4"/></svg>',
+  pen: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c4-1 6-3 9-8l3-5a2 2 0 0 1 3 2l-3 5c-3 5-6 6-12 6Z"/></svg>',
+  region: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2.5"><rect x="4" y="5" width="16" height="14" rx="1.5"/></svg>',
+  minus: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+  plus: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  save: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+  folder: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5Z"/></svg>',
+  ext: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  spark: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4Z"/></svg>',
 }
-const assets=[
-  {id:'pdf',title:'sales-ai-statistics-2024.pdf',sub:'Download · Research · Library',type:'pdf',ratio:'3x4',img:T+'thumb-pdf-sales.jpg',hover:true},
-  {id:'img',title:'capture-regions.png',sub:'Attachment · screen capture',type:'img',ratio:'4x3',img:T+'thumb-capture.jpg'},
-  {id:'img2',title:'source-marks-window.png',sub:'Workspace · UI eval',type:'img',ratio:'4x3',img:T+'thumb-source-marks.jpg'},
-  {id:'plan',title:'document-library-viewer-options.md',sub:'Workspace · docs/research',type:'md',ratio:'4x3',img:T+'thumb-plan-panel.jpg'},
-  {id:'pdf2',title:'onboarding-brief.pdf',sub:'Attachment · Review onboarding',type:'pdf',ratio:'3x4',img:T+'thumb-artifact-tall.jpg'},
-  {id:'plan2',title:'sources-plan.md',sub:'Workspace · docs',type:'md',ratio:'4x3'},
-  {id:'md3',title:'attachments-roadmap.md',sub:'Workspace · docs',type:'md',ratio:'4x3',img:T+'thumb-plan-panel.jpg'},
-  {id:'office',title:'Q3-board-deck.pptx',sub:'Download · 4.8 MB',type:'office',ratio:'4x3',img:T+'thumb-office.jpg'},
-  {id:'img3',title:'plan-open-window.png',sub:'Artifact · plan drawer',type:'img',ratio:'4x3',img:T+'thumb-plan-panel.jpg'},
-  {id:'pdf3',title:'llmbook-browser-agents.pdf',sub:'Download · saved page',type:'pdf',ratio:'3x4',img:T+'thumb-pdf-sales.jpg'},
-  {id:'code',title:'browser.ts',sub:'Workspace · host/tools',type:'md',ratio:'4x3'},
-  {id:'img4',title:'annotated-capture.png',sub:'Attachment · pen layer',type:'img',ratio:'3x4',img:T+'thumb-capture.jpg'},
-  {id:'md4',title:'browser-agent-capabilities-plan.md',sub:'Workspace · open in artifact',type:'md',ratio:'4x3',img:T+'thumb-artifact-tall.jpg'},
-  {id:'pdf4',title:'invoice-acme.pdf',sub:'Download · inbox',type:'pdf',ratio:'3x4',img:T+'thumb-pdf-sales.jpg'},
-  {id:'img5',title:'eval-shell.png',sub:'Workspace · .artifacts/ui',type:'img',ratio:'4x3',img:T+'thumb-source-marks.jpg'}
+
+// The shelf. Sizes, page counts and pixel sizes are the real files'; dates are the story's.
+const CHATS = { scout: 'Offsite location scouting', research: 'Agent research', lib: 'Library design', ui: 'UI checks' }
+const FILES = [
+  { id: 'react', pre: 'react', name: '2210.03629v3.pdf', title: 'ReAct: Synergizing Reasoning and Acting', kind: 'pdf', source: 'download', origin: 'arxiv.org', chat: 'research', size: '620 KB', added: 'Today', pages: 33, preview: 'react-thumb.jpg', layout: 'page', marks: { agent: 2, you: 1 } },
+  { id: 'photo-1', name: 'kimono-forest-arashiyama.jpg', kind: 'image', source: 'download', origin: 'commons.wikimedia.org', chat: 'scout', size: '916 KB', added: 'Today', px: '1920 × 1280', preview: 'photo-1-shot.jpg', full: 'photo-1.jpg', marks: { agent: 1 } },
+  { id: 'plan', pre: 'doc-library-options', name: 'document-library-viewer-options.md', kind: 'md', source: 'plan', origin: 'docs/research', chat: 'lib', size: '18 KB', added: 'Today', pages: 7, preview: 'doc-library-options-thumb.jpg', layout: 'page', marks: { agent: 1 }, edited: true },
+  { id: 'photo-2', name: 'changgyeonggung-hyehwamun.jpg', kind: 'image', source: 'download', origin: 'commons.wikimedia.org', chat: 'scout', size: '724 KB', added: 'Today', px: '1920 × 1418', preview: 'photo-2-shot.jpg', full: 'photo-2.jpg' },
+  { id: 'ranch', name: 'ranch.inc.png', kind: 'image', source: 'capture', origin: 'ranch.inc', chat: 'lib', size: '1.1 MB', added: 'Today', px: '1440 × 900', preview: 'ranch-shot.jpg', full: 'ranch.jpg' },
+  { id: 'photo-3', name: 'piazzetta-san-marco.jpg', kind: 'image', source: 'download', origin: 'commons.wikimedia.org', chat: 'scout', size: '468 KB', added: 'Today', px: '1920 × 827', preview: 'photo-3-shot.jpg', full: 'photo-3.jpg' },
+  { id: 'sweagent', pre: 'sweagent', name: '2405.15793v3.pdf', title: 'SWE-agent: Agent-Computer Interfaces', kind: 'pdf', source: 'download', origin: 'arxiv.org', chat: 'research', size: '4.7 MB', added: 'Today', pages: 118, preview: 'sweagent-thumb.jpg', layout: 'page' },
+  { id: 'photo-4', name: 'cloud-forest-singapore.jpg', kind: 'image', source: 'download', origin: 'commons.wikimedia.org', chat: 'scout', size: '1.6 MB', added: 'Today', px: '1920 × 1920', preview: 'photo-4-shot.jpg', full: 'photo-4.jpg' },
+  { id: 'deck', name: 'q3-board-review.pptx', kind: 'slides', source: 'attachment', origin: 'this chat', chat: 'research', size: '4.8 MB', added: 'Today', pages: 14, preview: 'deck-1-shot.jpg', full: 'deck-1.jpg' },
+  { id: 'photo-5', name: 'chefchaouen-blue-steps.jpg', kind: 'image', source: 'download', origin: 'commons.wikimedia.org', chat: 'scout', size: '648 KB', added: 'Yesterday', px: '1920 × 1280', preview: 'photo-5-shot.jpg', full: 'photo-5.jpg' },
+  { id: 'llmbook', pre: 'llmbook', name: 'section-29.2-browser-agents.pdf', kind: 'pdf', source: 'download', origin: 'llmbook.icsgen-ai.org', chat: 'research', size: '660 KB', added: 'Yesterday', pages: 6, preview: 'llmbook-thumb.jpg', layout: 'page', marks: { you: 2 } },
+  { id: 'photo-6', name: 'ribblehead-viaduct.jpg', kind: 'image', source: 'download', origin: 'commons.wikimedia.org', chat: 'scout', size: '800 KB', added: 'Yesterday', px: '1920 × 1280', preview: 'photo-6-shot.jpg', full: 'photo-6.jpg' },
+  { id: 'sources', pre: 'sources-plan', name: 'sources-plan.md', kind: 'md', source: 'plan', origin: 'docs', chat: 'lib', size: '14 KB', added: 'Yesterday', pages: 5, preview: 'sources-plan-thumb.jpg', layout: 'page' },
+  { id: 'photo-7', name: 'lofoten-austnesfjorden.jpg', kind: 'image', source: 'download', origin: 'commons.wikimedia.org', chat: 'scout', size: '512 KB', added: 'Yesterday', px: '1920 × 658', preview: 'photo-7-shot.jpg', full: 'photo-7.jpg' },
+  { id: 'app-plan', name: 'plan-open-window.png', kind: 'image', source: 'attachment', origin: 'UI check', chat: 'ui', size: '212 KB', added: 'Yesterday', px: '1360 × 860', preview: 'app-plan-shot.jpg', full: 'app-plan.jpg' },
+  { id: 'photo-8', name: 'fuji-from-kawaguchiko.jpg', kind: 'image', source: 'download', origin: 'commons.wikimedia.org', chat: 'scout', size: '620 KB', added: 'This week', px: '1728 × 1152', preview: 'photo-8-shot.jpg', full: 'photo-8.jpg' },
+  { id: 'goals', pre: 'goals-phase1', name: 'goals-phase1.md', kind: 'md', source: 'plan', origin: 'docs', chat: 'research', size: '12 KB', added: 'This week', pages: 5, preview: 'goals-phase1-thumb.jpg', layout: 'page' },
+  { id: 'photo-9', name: 'golden-gate-battery-east.jpg', kind: 'image', source: 'download', origin: 'commons.wikimedia.org', chat: 'scout', size: '524 KB', added: 'This week', px: '1920 × 1200', preview: 'photo-9-shot.jpg', full: 'photo-9.jpg' },
+  { id: 'app-changes', name: 'changes-panel-window.png', kind: 'image', source: 'attachment', origin: 'UI check', chat: 'ui', size: '198 KB', added: 'This week', px: '1360 × 860', preview: 'app-changes-shot.jpg', full: 'app-changes.jpg' },
+  { id: 'attach', pre: 'attachments-roadmap', name: 'attachments-roadmap.md', kind: 'md', source: 'plan', origin: 'docs', chat: 'lib', size: '9 KB', added: 'This week', pages: 3, preview: 'attachments-roadmap-thumb.jpg', layout: 'page' },
+  { id: 'photo-10', name: 'antwerp-central-station.jpg', kind: 'image', source: 'download', origin: 'commons.wikimedia.org', chat: 'scout', size: '716 KB', added: 'This week', px: '1920 × 1276', preview: 'photo-10-shot.jpg', full: 'photo-10.jpg' },
+  { id: 'reference', name: 'image.png', kind: 'image', source: 'attachment', origin: 'this chat', chat: 'lib', size: '64 KB', added: 'This week', px: '259 × 194', preview: 'ranch-reference.jpg', full: 'ranch-reference.jpg' },
 ]
-const mdRows=[
-  ['# Document library & viewer',''],
-  ['## Decisions (locked)',''],
-  ['',''],
-  ['- PDF: ','Nutrient Web SDK','kw'],
-  ['- Markdown: ','CodeMirror 6 source-first','kw'],
-  ['- Persistence: ','host sidecar','kw'],
-  ['',''],
-  ['### Agent tools','hi'],
-  ['',''],
-  ['library.list · document.highlight','','dim'],
-  ['document.gotoPage · sidecar JSON','','dim']
+const byId = Object.fromEntries(FILES.map(f => [f.id, f]))
+const KIND_LABEL = { pdf: 'PDF', md: 'MD', image: 'IMG', slides: 'PPTX' }
+const SOURCE_LABEL = { download: 'Download', plan: 'Plan', capture: 'Capture', attachment: 'Attachment' }
+
+const FIELDS = [
+  { key: 'source', label: 'Source', any: 'All sources', options: [['download', 'Downloads'], ['plan', 'Plans'], ['capture', 'Captures'], ['attachment', 'Attachments']] },
+  { key: 'kind', label: 'Kind', any: 'All kinds', options: [['pdf', 'PDF'], ['md', 'Markdown'], ['image', 'Images'], ['slides', 'Slides']] },
+  { key: 'chat', label: 'Chat', any: 'Any chat', options: Object.entries(CHATS) },
+  { key: 'marked', label: 'Marked by', any: 'Anyone or no one', options: [['agent', 'Claude'], ['you', 'You'], ['none', 'No marks']] },
+  { key: 'added', label: 'Added', any: 'Any time', options: [['Today', 'Today'], ['Yesterday', 'Yesterday'], ['This week', 'This week']] },
 ]
-let state='browse',selected=null,tab='source',hoverId='pdf'
-const stage=document.getElementById('stage'),statusEl=document.getElementById('status'),noteEl=document.getElementById('note')
-function el(t,c,h){const n=document.createElement(t);if(c)n.className=c;if(h!==undefined)n.innerHTML=h;return n}
-function mdThumb(){
-  const d=el('div','thumb-md-preview')
-  d.innerHTML='<span class="kw">#</span> document-library<br><br><span class="hi">##</span> Decisions<br><span class="cm">- Nutrient Web SDK</span><br><span class="cm">- CM6 source-first</span>'
-  return d
-}
-function thumbNode(a){
-  const wrap=el('div','thumb ratio-'+(a.ratio||'4x3'))
-  if(a.img){const img=el('img');img.src=a.img;img.alt='';img.loading='lazy';wrap.append(img)}
-  else if(a.type==='md'||a.type==='code')wrap.append(mdThumb())
-  else wrap.style.background='#1a1b1f'
-  wrap.append(el('div','thumb-shade'))
-  const badge=a.type==='pdf'?'PDF':a.type==='md'||a.type==='code'?'MD':a.type==='office'?'PPTX':'PNG'
-  wrap.append(el('span','thumb-badge',badge))
-  return wrap
-}
-function buildGrid(pick){
-  const grid=el('div','grid')
-  assets.forEach(a=>{
-    const card=el('button','asset'+(hoverId===a.id?' is-hover':'')+(selected===a.id&&state!=='browse'?' is-on':''))
-    card.append(thumbNode(a),el('div','cap',`<b>${a.title}</b><span>${a.sub}</span>`))
-    if(a.hover&&state==='browse')card.append(el('div','cursor-fake',icons.cursor))
-    card.onmouseenter=()=>{hoverId=a.id;statusEl.textContent=a.title;document.querySelectorAll('.asset').forEach(n=>n.classList.toggle('is-hover',n===card))}
-    card.onclick=()=>{selected=a.id;pick(a)}
-    grid.append(card)
-  })
-  return grid
-}
-function filters(){
-  const s=el('aside','dam-side')
-  s.innerHTML=`<h2>${icons.folder} All files</h2>`
-  const opts={
-    Source:['All sources','Workspace','Downloads','Attachments'],
-    Type:['All types','PDF','Markdown & code','Images','Office'],
-    Chat:['Any chat','This chat','Research · Library','Review onboarding'],
-    Sort:['Date modified','Name','Type']
+
+const ui = { filters: {}, q: '', view: 'grid', open: null, menu: null, sel: null, mdMode: 'source', state: 'grid' }
+
+function matches(f, except) {
+  for (const [k, v] of Object.entries(ui.filters)) {
+    if (!v || k === except) continue
+    if (k === 'marked') {
+      const m = f.marks || {}
+      if (v === 'none' ? (m.agent || m.you) : !m[v]) return false
+    } else if (f[k] !== v) return false
   }
-  Object.entries(opts).forEach(([label,values])=>{
-    const f=el('div','field');f.innerHTML=`<label>${label}</label>`
-    const sel=el('select');values.forEach(v=>sel.append(el('option','',v)))
-    f.append(sel);s.append(f)
-  })
-  const c=el('button','clear','CLEAR FILTERS');c.onclick=()=>statusEl.textContent='Filters cleared (mock).';s.append(c)
+  const q = ui.q.trim().toLowerCase()
+  return !q || [f.name, f.title, f.origin, CHATS[f.chat]].join(' ').toLowerCase().includes(q)
+}
+const shown = () => FILES.filter(f => matches(f))
+
+function renderFields() {
+  document.getElementById('fields').innerHTML = FIELDS.map(fd => {
+    const v = ui.filters[fd.key]
+    const label = v ? fd.options.find(o => o[0] === v)[1] : fd.any
+    const counts = fd.options.map(([val]) => FILES.filter(f => matches(f, fd.key) && (fd.key === 'marked'
+      ? (val === 'none' ? !(f.marks?.agent || f.marks?.you) : f.marks?.[val]) : f[fd.key] === val)).length)
+    return `<div class="field" style="margin-bottom:12px"><label>${fd.label}</label>
+      <button class="select ${v ? 'set' : ''}" data-menu="${fd.key}" aria-haspopup="listbox" aria-expanded="${ui.menu === fd.key}"><span>${label}</span>${ICON.chev}</button>
+      <div class="menu ${ui.menu === fd.key ? 'open' : ''}" role="listbox">
+        <button data-pick="${fd.key}" data-val=""><span class="tick">${!v ? ICON.tick : ''}</span>${fd.any}<span class="n">${FILES.filter(f => matches(f, fd.key)).length}</span></button>
+        ${fd.options.map(([val, name], i) => `<button data-pick="${fd.key}" data-val="${val}" class="${ui.menuHl === val && ui.menu === fd.key ? 'is-hl' : ''}"><span class="tick">${v === val ? ICON.tick : ''}</span>${name}<span class="n">${counts[i]}</span></button>`).join('')}
+      </div></div>`
+  }).join('')
+  document.getElementById('clear').disabled = !Object.values(ui.filters).some(Boolean) && !ui.q
+}
+
+function thumbHtml(f) {
+  const m = f.marks || {}
+  const marks = (m.agent || m.you) ? `<span class="marks">${m.agent ? '<i></i>' : ''}${m.you ? '<i class="you"></i>' : ''}${(m.agent || 0) + (m.you || 0)}</span>` : ''
+  return `<div class="thumb ${f.layout === 'page' ? 'page' : 'cover'}"><img src="${A + f.preview}" alt="" loading="lazy">
+    ${f.kind === 'image' ? '' : `<span class="kind">${KIND_LABEL[f.kind]}</span>`}${f.pages ? `<span class="pages">${f.pages} ${f.kind === 'slides' ? 'slides' : 'pp'}</span>` : ''}
+    <span class="quick"><span title="Open">${ICON.open}</span><span title="More">${ICON.more}</span></span>${marks}</div>`
+}
+
+function renderBrowse() {
+  renderFields()
+  const list = shown()
+  document.getElementById('count').textContent = `${list.length} of ${FILES.length}`
+  document.getElementById('footCount').textContent = `${FILES.length} files`
+  const active = Object.entries(ui.filters).filter(([, v]) => v)
+  const title = active.length === 1 ? FIELDS.find(f => f.key === active[0][0]).options.find(o => o[0] === active[0][1])[1] : active.length ? 'Filtered' : 'All files'
+  document.getElementById('browseTitle').textContent = title
+  document.getElementById('scopeName').textContent = 'All files'
+  document.getElementById('chips').innerHTML = active.map(([k, v]) => {
+    const fd = FIELDS.find(f => f.key === k)
+    return `<span class="fchip"><span>${fd.label}</span>${fd.options.find(o => o[0] === v)[1]}<button data-unset="${k}" aria-label="Remove">${ICON.x}</button></span>`
+  }).join('')
+  const sc = document.getElementById('scroller')
+  if (!list.length) { sc.innerHTML = '<div class="empty">Nothing matches these filters. Clear one to see more.</div>'; return }
+  if (ui.view === 'list') {
+    sc.innerHTML = `<table class="list"><thead><tr><th>Name</th><th>Kind</th><th>Source</th><th>Chat</th><th>Marks</th><th class="num">Size</th><th>Added</th></tr></thead><tbody>${list.map(f => `
+      <tr data-open="${f.id}"><td class="name"><span class="lt ${f.layout === 'page' ? 'page' : ''}"><img src="${A + f.preview}" alt=""></span><span>${f.name}</span></td>
+      <td>${KIND_LABEL[f.kind]}</td><td>${SOURCE_LABEL[f.source]} · ${f.origin}</td><td>${CHATS[f.chat]}</td>
+      <td>${f.marks?.agent ? `<span class="dot"></span>${f.marks.agent} ` : ''}${f.marks?.you ? `<span class="dot you"></span>${f.marks.you}` : ''}${!f.marks ? '—' : ''}</td>
+      <td class="num">${f.size}</td><td>${f.added}</td></tr>`).join('')}</tbody></table>`
+    return
+  }
+  sc.innerHTML = [list].map(l => `<div class="grid">${l.map(f => `
+    <div class="card ${ui.sel === f.id ? 'sel' : ''}" tabindex="0" data-open="${f.id}">${thumbHtml(f)}
+      <div class="t">${f.name}</div><div class="s"><b>${SOURCE_LABEL[f.source]}</b> · ${f.origin}</div></div>`).join('')}</div>`).join('')
+}
+
+/* Viewers */
+const REACT_MARKS = {
+  agent: [[31.07, 56.94, 45.48, 1.38], [23.51, 58.32, 35.1, 1.38]],
+  you: [[70.24, 40.34, 6.25, 1.38], [23.51, 41.72, 52.98, 1.38], [23.51, 43.1, 7.2, 1.38]],
+}
+const rect = (r, cls) => `<div class="hl ${cls}" style="left:${r[0]}%;top:${r[1]}%;width:${r[2]}%;height:${r[3]}%"></div>`
+
+function viewerHead(f, middle, right) {
+  return `<div class="v-head"><button class="back" data-back>${ICON.back}All files</button><span class="vsep"></span>
+    <div class="v-title"><b>${f.name}</b><span>${f.title ? f.title + ' · ' : ''}${f.origin}</span></div><span class="sp"></span>${middle}${right}</div>`
+}
+
+function pdfViewer(f) {
+  const isReact = f.id === 'react'
+  const pre = f.pre
+  const strip = Array.from({ length: Math.min(f.pages, 8) }, (_, i) => i < 3
+    ? `<button class="${i === 0 ? 'on' : ''}"><span class="pg"><img src="${A}${pre}-p${i + 1}.jpg" alt="">${isReact && i === 0 ? '<span class="m"></span>' : ''}</span>${i + 1}</button>`
+    : `<button><span class="pg blank"></span>${i + 1}</button>`).join('')
+  const overlays = isReact ? `${REACT_MARKS.you.map(r => rect(r, 'you')).join('')}${REACT_MARKS.agent.map(r => rect(r, 'agent focus')).join('')}
+      <div class="pin" style="left:calc(77% + 8px);top:calc(56.94% - 3px)">C</div>
+      <div class="pop" style="left:44%;top:61.6%"><div class="by"><span class="av">C</span>Claude · just now</div>
+        <p>Headline result: +34 points on ALFWorld and +10 on WebShop over imitation and RL baselines, from one or two in-context examples.</p>
+        <div class="acts"><span>Reply</span><span>Copy quote</span><span>Delete</span></div></div>` : ''
+  const middle = `<div class="tools"><button title="Select">${ICON.cursor}</button><button class="on" title="Highlight"><span class="swatch"></span>Highlight</button><button title="Note">${ICON.note}</button><button title="Ink">${ICON.pen}</button></div>
+    <div class="tools"><button>${ICON.minus}</button><button class="zv">100%</button><button>${ICON.plus}</button></div>
+    <div class="tools"><button class="zv" style="min-width:58px">1 / ${f.pages}</button></div>`
+  const right = `<button class="btn">${ICON.save}Save annotated copy</button><button class="icon-btn">${ICON.more}</button>`
+  const marks = isReact ? `
+    <div class="mark agent focus"><div class="by"><span class="av">C</span><b>Claude</b>Highlight · p.1<span class="when">just now</span></div>
+      <q>ReAct outperforms imitation and reinforcement learning methods by an absolute success rate of 34% and 10% respectively,</q>
+      <p>Headline result: +34 points on ALFWorld and +10 on WebShop over imitation and RL baselines, from one or two in-context examples.</p>
+      <div class="loc"><code>document.highlight</code>from this chat</div></div>
+    <div class="mark agent"><div class="by"><span class="av">C</span><b>Claude</b>Note · p.1<span class="when">just now</span></div>
+      <p>Compare with SWE-agent's interface results in 2405.15793v3.pdf, section 5; same idea applied to code.</p>
+      <div class="loc"><code>document.annotate</code>links to another library file</div></div>
+    <div class="mark"><div class="by"><span class="av you">D</span><b>You</b>Highlight · p.1<span class="when">2 days ago</span></div>
+      <q>reasoning traces help the model induce, track, and update action plans as well as handle exceptions,</q></div>
+    <div class="note">Marks are kept beside the download in <code>react.pdf.marks.json</code>; the file itself is untouched. <b style="color:var(--text-2);font-weight:500">Save annotated copy</b> writes them into a new PDF.</div>`
+    : `<div class="note">No marks yet. Select text and press H, or ask Claude to mark something.</div>`
+  return `${viewerHead(f, middle, right)}
+    <div class="v-body">
+      <nav class="strip">${strip}</nav>
+      <div class="canvas"><div class="sheet"><img src="${A}${pre}-p1.jpg" alt="Page 1">${overlays}</div>
+        <div class="sheet"><img src="${A}${pre}-p2.jpg" alt="Page 2"></div><div class="sheet"><img src="${A}${pre}-p3.jpg" alt="Page 3"></div></div>
+      <aside class="insp"><div class="insp-tabs"><button class="on">Marks <span class="n">${isReact ? 3 : 0}</span></button><button>Details</button><button>Text</button></div>
+        <div class="insp-body">${marks}</div></aside>
+    </div>`
+}
+
+function mdTokens(line) {
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  let s = esc(line)
+  if (/^#{1,6} /.test(line)) return s.replace(/^(#{1,6} )(.*)$/, '<span class="tk-hm">$1</span><span class="tk-h">$2</span>')
+  if (/^-{3,}$/.test(line)) return `<span class="tk-rule">${s}</span>`
+  s = s.replace(/`([^`]+)`/g, '<span class="tk-code">`$1`</span>')
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<span class="tk-b">**$1**</span>')
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '[$1](<span class="tk-link">$2</span>)')
+  s = s.replace(/^(\s*)([-*]|\d+\.) /, '$1<span class="tk-li">$2</span> ')
+  s = s.replace(/^\|| \|/g, m => `<span class="tk-pipe">${m}</span>`)
   return s
 }
-function viewer(cur){
-  const v=el('div','viewer')
-  const head=el('div','view-head')
-  const back=el('button','back',icons.back+' All files')
-  back.onclick=()=>{state='browse';render()}
-  head.append(back,el('span','view-title',cur.title),el('div','view-actions',`<button type="button" class="btn">Reveal</button><button type="button" class="btn primary">Save annotated copy</button>`))
-  v.append(head,el('div','meta-row',`<span class="pill">${cur.type}</span><span class="pill accent">Sidecar</span><span class="pill">${cur.sub.split('·')[0].trim()}</span>`))
-  if(state==='agent')v.append(el('div','agent-banner','Agent · document.highlight on lines 10–11 (same dispatcher as rocket_ui_act)'))
-  const frame=el('div','doc-frame')
-  if(cur.type==='md'||cur.id==='code'){
-    const tabs=el('div','view-tabs')
-    const b1=el('button',tab==='source'?'on':'','Source')
-    const b2=el('button',tab==='preview'?'on':'','Preview')
-    b1.onclick=()=>{tab='source';render()};b2.onclick=()=>{tab='preview';render()}
-    tabs.append(b1,b2);v.append(tabs)
-    if(tab==='preview'){
-      frame.innerHTML='<div class="preview-pane"><h2>Document library & viewer</h2><p>Grid index with <span class="hl">real preview crops</span>, then Nutrient + CM6.</p><h3>Decisions</h3><ul><li>Nutrient Web SDK for PDF</li><li>CM6 source-first for plans</li></ul></div>'
-    }else{
-      const wrap=el('div','cm-wrap');const cm=el('div','cm')
-      let ln=1
-      mdRows.forEach(row=>{
-        const r=el('div','row'+(state==='agent'&&ln>=10&&ln<=11?' agent':ln===4?' hl':''))
-        let html=''
-        if(row.length===1)html=row[0]
-        else if(row[2]==='kw')html=`<span class="tok-dim">${row[0]}</span><span class="tok-kw">${row[1]}</span>`
-        else if(row[2]==='hi')html=`<span class="tok-hi">${row[0]}</span>`
-        else if(row[2]==='dim')html=`<span class="tok-dim">${row[0]}</span>`
-        else html=row[0]
-        r.innerHTML=`<span class="gutter">${ln}</span><span class="code">${html||' '}</span>`;cm.append(r);ln++
-      })
-      wrap.append(cm);frame.append(wrap)
-    }
-  }else if(cur.type==='pdf'){
-    frame.innerHTML=`<div class="nutrient-bar">
-      <span class="tool on">Highlight</span><span class="tool">Note</span><span class="tool">Ink</span>
-      <span class="spacer"></span><span class="page-input">Page <input value="1" aria-label="Page"> of 6</span></div>
-      <div class="pdf-layout"><div class="filmstrip">
-        <button type="button" class="on"><img src="${T}thumb-pdf-sales.jpg" alt=""></button>
-        <button type="button"><img src="${T}thumb-artifact-tall.jpg" alt=""></button>
-        <button type="button"><img src="${T}thumb-pdf-sales.jpg" alt=""></button>
-      </div><div class="pdf-canvas"><div class="pdf-sheet"><img src="${T}thumb-pdf-sales.jpg" alt="PDF page">
-        <div class="annot"></div><div class="pin"></div></div></div></div>`
-  }else if(cur.type==='office'){
-    frame.innerHTML=`<div class="office-pane"><div><b>${cur.title}</b>Preview ships in a later phase.<br><br><button type="button" class="btn primary">${icons.ext} Open in default app</button></div></div>`
-  }else{
-    frame.innerHTML=`<div class="pdf-canvas"><img src="${cur.img||T+'thumb-capture.jpg'}" alt="" style="max-width:min(100%,520px);border-radius:8px;box-shadow:0 12px 40px #0008"></div>`
+
+// The list item Claude added in the story: "- Agent tools…" and its two continuation lines.
+function planRange() {
+  const from = window.PLAN.source.split('\n').findIndex(l => l.startsWith('- Agent tools')) + 1
+  return [from, from + 2]
+}
+
+function planViewer(f) {
+  const lines = window.PLAN.source.split('\n')
+  const [markFrom, markTo] = planRange(), [addFrom, addTo] = [markFrom, markTo]
+  const editor = lines.map((l, i) => {
+    const n = i + 1
+    const cls = [n >= addFrom && n <= addTo ? 'add' : '', n >= markFrom && n <= markTo ? 'hlm' : '', n === markFrom ? 'cur' : ''].join(' ')
+    const tag = n === markFrom ? `<span class="inline-tag">${ICON.spark}Claude · edited and marked</span>` : ''
+    return `<div class="ln ${cls}" id="L${n}"><span class="g">${n}</span><span class="c">${mdTokens(l) || ' '}</span>${tag}</div>`
+  }).join('')
+  const heads = lines.map((l, i) => [l, i + 1]).filter(([l]) => /^#{2,3} /.test(l))
+  const outline = heads.map(([l, n]) => `<button class="${l.startsWith('###') ? 'h3' : ''} ${l.includes('Mock implications') ? 'on' : ''}" data-line="${n}">${l.replace(/^#+ /, '')}</button>`).join('')
+  const middle = `<div class="seg" role="group"><button data-md="source" aria-pressed="${ui.mdMode === 'source'}">Source</button><button data-md="preview" aria-pressed="${ui.mdMode === 'preview'}">Preview</button></div>`
+  const right = `<button class="btn">${ICON.folder}Reveal</button><button class="icon-btn">${ICON.more}</button>`
+  const html = window.PLAN.html.replace('<li>Agent tools', '<li class="agent-mark">Agent tools')
+  return `${viewerHead(f, middle, right)}
+    <div class="v-body ${ui.mdMode === 'preview' ? 'md-preview' : ''}">
+      <div class="editor" id="editor">${editor}</div>
+      <div class="preview"><article>${html}</article></div>
+      <aside class="insp"><div class="insp-tabs"><button class="on">Outline</button><button>Marks <span class="n">1</span></button><button>Details</button></div>
+        <div class="insp-body">
+          <div class="mark agent focus"><div class="by"><span class="av">C</span><b>Claude</b>Edit · lines ${addFrom}–${addTo}<span class="when">2 min ago</span></div>
+            <p>Added the agent tool names to the mock section, and marked them so you can review the wording.</p>
+            <div class="loc"><span style="color:var(--add)">+3</span><span style="color:#f85149">−0</span><code>Edit</code><code>document.highlight</code></div></div>
+          <div class="sect">Outline</div><div class="outline">${outline}</div>
+          <div class="sect">Details</div>
+          <dl class="dl"><dt>Path</dt><dd>${window.PLAN.path}</dd><dt>Lines</dt><dd>${lines.length}</dd><dt>Chat</dt><dd>${CHATS[f.chat]}</dd><dt>Saved</dt><dd>On disk; the editor follows changes</dd></dl>
+        </div></aside>
+    </div>`
+}
+
+function imageViewer(f) {
+  const siblings = FILES.filter(x => x.kind === 'image' && x.chat === f.chat)
+  const region = f.id === 'photo-1' ? `<div class="region" style="left:30%;top:18%;width:40%;height:74%"><span class="tag"><span class="av" style="width:14px;height:14px;font-size:8px">C</span>Hero crop · 3 : 4</span>
+      <i class="h" style="left:-5px;top:-5px"></i><i class="h" style="right:-5px;top:-5px"></i><i class="h" style="left:-5px;bottom:-5px"></i><i class="h" style="right:-5px;bottom:-5px"></i></div>` : ''
+  const middle = `<div class="tools"><button title="Select">${ICON.cursor}</button><button class="on" title="Region">${ICON.region}Region</button><button title="Note">${ICON.note}</button><button title="Ink">${ICON.pen}</button></div>
+    <div class="tools"><button>${ICON.minus}</button><button class="zv">Fit</button><button>${ICON.plus}</button></div>`
+  const right = `<button class="btn">${ICON.ext}Open with…</button><button class="icon-btn">${ICON.more}</button>`
+  return `${viewerHead(f, middle, right)}
+    <div class="v-body">
+      <div class="stage"><div class="stage-main"><div class="photo"><img src="${A + f.full}" alt="">${region}</div></div>
+        <div class="film">${siblings.map(s => `<button class="${s.id === f.id ? 'on' : ''}" data-open="${s.id}"><img src="${A + s.preview}" alt=""></button>`).join('')}</div></div>
+      <aside class="insp"><div class="insp-tabs"><button class="on">Marks <span class="n">${f.marks?.agent ? 1 : 0}</span></button><button>Details</button></div>
+        <div class="insp-body">
+          ${f.id === 'photo-1' ? `<div class="mark agent focus"><div class="by"><span class="av">C</span><b>Claude</b>Region<span class="when">just now</span></div>
+            <p>Best hero of the ten: the lantern columns hold up at a 3 : 4 crop and the path leads the eye to the headline space.</p>
+            <div class="loc"><code>document.mark</code>x 30% · y 18% · 40 × 74%</div></div>` : '<div class="note">No marks yet. Drag a region, or ask Claude to mark one.</div>'}
+          <div class="sect">Details</div>
+          <dl class="dl"><dt>Size</dt><dd>${f.px} · ${f.size}</dd><dt>From</dt><dd><a>${f.origin}</a></dd><dt>Chat</dt><dd>${CHATS[f.chat]}</dd><dt>Added</dt><dd>${f.added}</dd><dt>Licence</dt><dd>On the source page</dd></dl>
+          <div class="note">Region marks live in the library's sidecar, like PDF marks; the image is never rewritten.</div>
+        </div></aside>
+    </div>`
+}
+
+function officeViewer(f) {
+  const right = `<button class="btn">${ICON.folder}Reveal</button><button class="icon-btn">${ICON.more}</button>`
+  return `${viewerHead(f, '', right)}
+    <div class="v-body"><div class="office"><div class="office-card">
+      <div class="slide"><img src="${A + f.full}" alt="First slide"></div>
+      <h3>PowerPoint · ${f.pages} slides · ${f.size}</h3>
+      <p>Rocket shows the preview the file carries and reads its text for Claude. Editing opens your default app; changes saved there come back here.</p>
+      <div class="row"><button class="btn primary">${ICON.ext}Open in default app</button><button class="btn">Ask Claude about it</button></div>
+    </div></div>
+    <aside class="insp"><div class="insp-tabs"><button class="on">Details</button><button>Text</button></div><div class="insp-body">
+      <dl class="dl"><dt>From</dt><dd>Attached in this chat</dd><dt>Chat</dt><dd>${CHATS[f.chat]}</dd><dt>Added</dt><dd>${f.added}</dd><dt>Slides</dt><dd>${f.pages}</dd></dl>
+      <div class="note">Office files are read-only here in v1; <code>document.getText</code> still gives Claude every slide's text.</div></div></aside></div>`
+}
+
+function renderViewer() {
+  const lib = document.getElementById('library'), v = document.getElementById('viewer')
+  lib.classList.toggle('viewing', !!ui.open)
+  if (!ui.open) return
+  const f = byId[ui.open]
+  v.innerHTML = f.kind === 'pdf' ? pdfViewer(f) : f.kind === 'md' ? (f.id === 'plan' ? planViewer(f) : pagedMd(f)) : f.kind === 'slides' ? officeViewer(f) : imageViewer(f)
+  if (f.id === 'plan' && ui.mdMode === 'source') {
+    const at = window.PLAN.source.split('\n').findIndex(l => l.startsWith('### Mock implications'))
+    const ed = document.getElementById('editor'), el = document.getElementById('L' + (at + 1))
+    if (ed && el) ed.scrollTop = el.offsetTop - 60
   }
-  v.append(frame)
-  return v
 }
-function chatPane(){
-  const c=el('section','chat')
-  c.innerHTML=`<div class="chat-head"><b>Research · Library</b><span>Claude</span></div>
-  <div class="chat-scroll"><div class="user-bubble">Gallery layout like Ranch — but our files.</div>
-  <div class="turn"><div class="meta">Claude</div>Filter rail, real thumbnails, open for Nutrient/CM6. Sidecar annotations unchanged.</div></div>
-  <div class="dock"><span class="chat-tab">Research · Library</span><div class="composer-box"><div class="hint">Reply…</div>
-  <div class="composer-bar"><span>~/Desktop/rocketv1</span><span class="send">↑</span></div></div></div>`
-  return c
+// Plans other than the one in the story open in the same editor in the build; here they show their pages.
+const pagedMd = f => pdfViewer(f)
+
+/* Chat transcript per state */
+const fileChip = id => `<span class="chip-file" data-open="${id}"><img src="${A + byId[id].preview}" alt="">${byId[id].name}</span>`
+const call = (name, args, res) => `<div class="call"><span class="ok">${ICON.check}</span><code>${name}</code><span>${args}</span><span class="res">${res}</span></div>`
+const STORIES = {
+  grid: { chat: 'Agent research', html: `
+    <div class="msg-user">Put everything from the research and scouting chats somewhere I can see it.</div>
+    <div class="msg-agent"><div class="by"><span class="av">C</span>Claude</div>
+      <div class="calls">${call('library.list', '{ chat: any }', '22 files')}</div>
+      <p>It's all in the Library now: 22 files from four chats. The two papers are at the top; the ten location photos are from the scouting chat.</p>
+      <p><em>Open any card and I can work in it with you.</em></p></div>` },
+  filter: { chat: 'Agent research', html: `
+    <div class="msg-user">Just the PDFs.</div>
+    <div class="msg-agent"><div class="by"><span class="av">C</span>Claude</div>
+      <div class="calls">${call('library.filter', '{ kind: "pdf" }', '3 files')}</div>
+      <p>Three PDFs: the ReAct and SWE-agent papers and the browser-agents chapter you saved yesterday. The filter is set in the panel too, so we're looking at the same thing.</p></div>` },
+  pdf: { chat: 'Agent research', html: `
+    <div class="msg-user">Open the ReAct paper and mark the headline result for me.</div>
+    <div class="msg-agent"><div class="by"><span class="av">C</span>Claude</div>
+      <div class="calls">${call('library.open', fileChip('react'), 'opened')}${call('document.getText', 'page 1', '4,812 chars')}${call('document.highlight', 'p.1 · 2 lines', 'agent mark')}${call('document.annotate', 'p.1 note', 'linked')}</div>
+      <p>Marked on page 1: ReAct beats imitation and RL baselines by 34 and 10 points absolute on ALFWorld and WebShop, with only one or two examples in the prompt.</p>
+      <p>I also left a note pointing to the SWE-agent paper, which applies the same idea to code. Your highlight on the abstract is untouched.</p></div>` },
+  plan: { chat: 'Library design', html: `
+    <div class="msg-user">Add the agent tool names to the plan's mock section and show me what changed.</div>
+    <div class="msg-agent"><div class="by"><span class="av">C</span>Claude</div>
+      <div class="calls">${call('Edit', 'document-library-viewer-options.md', '+3 −0')}${call('library.open', fileChip('plan'), 'line ' + planRange()[0])}${call('document.highlight', 'lines ' + planRange().join('–'), 'agent mark')}</div>
+      <p>Done. The new lines are marked in the editor; the green bar shows they're new since your last look. Switch to Preview to read it rendered.</p></div>` },
+  image: { chat: 'Offsite location scouting', html: `
+    <div class="msg-user">Which of these works as the hero for the offsite page? Mark the crop.</div>
+    <div class="msg-agent"><div class="by"><span class="av">C</span>Claude</div>
+      <div class="calls">${call('library.list', '{ chat: this, kind: "image" }', '10 images')}${call('library.open', fileChip('photo-1'), 'opened')}${call('document.mark', 'region 3 : 4', 'agent mark')}</div>
+      <p>The Arashiyama Kimono Forest. The lantern columns hold up at a tall 3 : 4 crop and the path gives you space for a headline. I've marked the crop; drag the handles to adjust it.</p></div>` },
+  deck: { chat: 'Agent research', html: `
+    <div class="msg-user">Open the board deck.</div>
+    <div class="msg-agent"><div class="by"><span class="av">C</span>Claude</div>
+      <div class="calls">${call('library.open', fileChip('deck'), 'preview')}${call('document.getText', 'all slides', '14 slides')}</div>
+      <p>It's PowerPoint, so editing happens in your default app. I've read all 14 slides, so ask me anything about them here.</p></div>` },
 }
-function render(){
-  stage.replaceChildren()
-  const win=el('div','win')
-  const rail=el('div','rail')
-  rail.innerHTML=`<button type="button" class="rail-btn" aria-label="Chat">${icons.chat}</button>
-    <button type="button" class="rail-btn" aria-label="Browser">${icons.globe}</button>
-    <button type="button" class="rail-btn is-on" aria-label="Library">${icons.lib}</button>`
-  const library=el('section','library')
-  const dam=el('div','dam')
-  if(state==='browse'){
-    const main=el('div','dam-main')
-    main.append(el('div','dam-toolbar',`<span class="count">${assets.length} files</span>
-      <div class="view-toggle"><button type="button" class="on">Grid</button><button type="button">List</button></div>
-      <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8f98" stroke-width="2"><circle cx="10" cy="10" r="6"/><path d="m16 16 4 4"/></svg>
-      <input placeholder="Search library…" aria-label="Search"></div>`))
-    const wrap=el('div','grid-wrap')
-    wrap.append(buildGrid(a=>{
-      selected=a.id
-      if(a.type==='office')state='office'
-      else if(a.type==='pdf')state='pdf'
-      else if(a.type==='md'){state='md';tab='source'}
-      else state='pdf'
-      render()
-    }))
-    main.append(wrap)
-    dam.append(filters(),main)
-  }else{
-    if(state==='agent'){selected=selected||'plan';tab='source'}
-    if(state==='md'){selected=selected||'plan';tab=tab||'source'}
-    if(state==='pdf')selected=selected||'pdf'
-    if(state==='office')selected=selected||'office'
-    dam.append(viewer(assets.find(x=>x.id===selected)||assets[0]))
-  }
-  library.append(dam)
-  win.append(rail,chatPane(),library)
-  stage.append(win)
-  document.querySelectorAll('[data-state]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.state===state)))
-  const notes={browse:'Grid with real thumbnail crops and hover affordance.',md:'CM6 source + preview tabs.',pdf:'Nutrient-style bar + filmstrip.',office:'External open.',agent:'Agent line highlights in editor.'}
-  noteEl.innerHTML=`<strong>${state==='browse'?'01':state}</strong> ${notes[state]||notes.browse}`
-  statusEl.textContent=state==='browse'?'Hover sales PDF card — pointer shows selection affordance.':'Viewer mock · Back returns to grid.'
+STORIES.list = STORIES.grid
+
+const STATES = [
+  { id: 'grid', label: '01 · Library', cap: '<b>Library.</b> Ranch-style: filters on the left, a dense grid of real previews, grouped by when files arrived. Pages show their first lines; photos and captures fill the frame. Indigo dots are Claude\'s marks, yellow are yours.' },
+  { id: 'filter', label: '02 · Filter', cap: '<b>Filter.</b> Each filter shows its counts before you pick. The same filters are a tool call, so when Claude filters, the panel shows it.' },
+  { id: 'pdf', label: '03 · PDF marks', cap: '<b>PDF.</b> Claude opened the paper, read page 1, and marked the result on the actual words. Your highlight stays yellow; the download is never rewritten.' },
+  { id: 'plan', label: '04 · Plan edit', cap: '<b>Plan.</b> The real file in a CodeMirror-style editor. Claude edits the file on disk, and its new lines are marked in place. Outline jumps to any section.' },
+  { id: 'image', label: '05 · Image mark', cap: '<b>Image.</b> A region mark with handles; the film strip shows the other photos from the chat. Marks are saved in the sidecar, so the photo stays untouched.' },
+  { id: 'deck', label: '06 · Office', cap: '<b>Office.</b> v1 is honest about Office: it shows the file\'s own preview, Claude reads the text, and editing opens your default app.' },
+  { id: 'list', label: '07 · List', cap: '<b>List.</b> The same index, dense, for when names and sizes matter more than pictures.' },
+]
+
+function setState(id) {
+  ui.state = id
+  ui.filters = {}; ui.q = ''; ui.menu = null; ui.menuHl = null; ui.open = null; ui.sel = null; ui.view = 'grid'; ui.mdMode = 'source'
+  if (id === 'filter') { ui.filters.kind = 'pdf'; ui.menu = 'kind'; ui.menuHl = 'pdf' }
+  if (id === 'pdf') ui.open = 'react'
+  if (id === 'plan') ui.open = 'plan'
+  if (id === 'image') ui.open = 'photo-1'
+  if (id === 'deck') ui.open = 'deck'
+  if (id === 'list') ui.view = 'list'
+  if (id === 'grid') ui.sel = 'react'
+  document.getElementById('q').value = ''
+  const story = STORIES[id]
+  document.getElementById('chatTitle').textContent = story.chat
+  document.getElementById('transcript').innerHTML = story.html
+  document.getElementById('caption').innerHTML = STATES.find(s => s.id === id).cap
+  document.querySelectorAll('#states button').forEach(b => b.setAttribute('aria-pressed', b.dataset.state === id))
+  syncView(); renderBrowse(); renderViewer()
 }
-function setState(s){state=s;if(s==='browse'){selected=null;tab='source'};if(s==='md'){selected='plan';tab='source'};if(s==='pdf')selected='pdf';if(s==='office')selected='office';if(s==='agent'){selected='plan';tab='source'};render()}
-document.querySelectorAll('[data-state]').forEach(b=>b.onclick=()=>setState(b.dataset.state))
-document.getElementById('reset').onclick=()=>setState('browse')
-render()
+function syncView() {
+  document.getElementById('vGrid').setAttribute('aria-pressed', ui.view === 'grid')
+  document.getElementById('vList').setAttribute('aria-pressed', ui.view === 'list')
+}
+
+document.getElementById('states').innerHTML = STATES.map(s => `<button data-state="${s.id}">${s.label}</button>`).join('')
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-state],[data-menu],[data-pick],[data-unset],[data-open],[data-back],[data-md],[data-line],#clear,#vGrid,#vList')
+  if (!t) { if (ui.menu) { ui.menu = null; renderFields() } return }
+  if (t.dataset.state) return setState(t.dataset.state)
+  if (t.dataset.menu) { ui.menu = ui.menu === t.dataset.menu ? null : t.dataset.menu; ui.menuHl = null; return renderFields() }
+  if (t.dataset.pick) { ui.filters[t.dataset.pick] = t.dataset.val || undefined; ui.menu = null; return renderBrowse() }
+  if (t.dataset.unset) { delete ui.filters[t.dataset.unset]; return renderBrowse() }
+  if (t.id === 'clear') { ui.filters = {}; ui.q = ''; document.getElementById('q').value = ''; return renderBrowse() }
+  if (t.id === 'vGrid' || t.id === 'vList') { ui.view = t.id === 'vGrid' ? 'grid' : 'list'; syncView(); return renderBrowse() }
+  if (t.dataset.back !== undefined) { ui.sel = ui.open; ui.open = null; renderViewer(); return renderBrowse() }
+  if (t.dataset.md) { ui.mdMode = t.dataset.md; return renderViewer() }
+  if (t.dataset.line) { const el = document.getElementById('L' + t.dataset.line), ed = document.getElementById('editor'); if (el && ed) { ui.mdMode = 'source'; ed.scrollTo({ top: el.offsetTop - 60, behavior: 'smooth' }) } return }
+  if (t.dataset.open) { ui.open = t.dataset.open; ui.mdMode = 'source'; return renderViewer() }
+})
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('.card')) { ui.open = e.target.dataset.open; renderViewer() }
+  if (e.key === 'Escape' && ui.open) { ui.sel = ui.open; ui.open = null; renderViewer(); renderBrowse() }
+  if (e.key === '/' && document.activeElement !== document.getElementById('q')) { e.preventDefault(); document.getElementById('q').focus() }
+})
+document.getElementById('q').addEventListener('input', e => { ui.q = e.target.value; renderBrowse() })
+
+// Draw the 1440 × 900 window at its own size and scale it to the page, so nothing reflows.
+function fit() {
+  const outer = document.getElementById('fit'), inner = document.getElementById('fitInner')
+  const w = outer.clientWidth - 56, s = Math.min(1, w / 1440)
+  inner.style.transform = `scale(${s})`
+  outer.style.height = `${900 * s}px`
+}
+addEventListener('resize', fit)
+fit()
+setState(new URLSearchParams(location.search).get('state') || 'grid')
 </script>
 </body>
 </html>

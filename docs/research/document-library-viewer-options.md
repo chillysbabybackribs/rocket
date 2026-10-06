@@ -224,10 +224,11 @@ app.
 - Shell: **Library** opens as a side panel (rail icon): **filter rail + thumbnail grid** first (DAM-style,
   per [document-library.html](../mockups/document-library.html)); **card → viewer** with back to grid.
 - Viewer: CM6 source + read-only md preview; Nutrient chrome on PDF; Office → external app.
-- Agent tools (names tentative): `library.list`, `library.open`, `document.goto`, `document.highlight`,
-  `document.annotate`, `document.getText` — all via host → renderer dispatcher, same pattern as
-  `rocket_ui_act`.
-- Image markup stays **out of v1** (attachments roadmap phase 4); images **zoom-only** in library.
+- Agent tools (names tentative): `library.list`, `library.filter`, `library.open`, `document.goto`,
+  `document.highlight`, `document.annotate`, `document.mark`, `document.getText` — all via host →
+  renderer dispatcher, same pattern as `rocket_ui_act`.
+- Images get **region marks** (a rectangle with a note) in the same sidecar as PDF marks, so the agent
+  has no blind spot on images; freehand pen/markup stays with attachments roadmap phase 4.
 
 ### Implementation quality bar (mock ≠ ship)
 
@@ -244,7 +245,10 @@ The HTML mock validates **layout and flow only**. Production must not inherit it
 | **Performance** | All assets in one HTML file | Thumbnail cache on disk; cap concurrent generation; never block UI thread on large PDFs. |
 | **Tests** | None | `app-map` place + act smoke; UI eval: grid → open md → back (fixture files). |
 
-**Mock status (Oct 2026):** direction approved (grid + filters + drill-in); **visual and data fidelity explicitly out of scope** until implementation slice 1 (index + real thumbnails).
+**Mock status (Oct 2026):** direction approved (grid + filters + drill-in). The mock now uses real
+renders of real files (arXiv PDFs, repo plans, Commons photos, page captures), built by
+`docs/mockups/assets/library/build-assets.mjs`; marks on the PDF sit on the paper's own word boxes.
+Treat its density and spacing as the target, not a placeholder.
 
 ---
 
