@@ -64,8 +64,9 @@ the whole conversation.
 
 Claude Code can start a turn with no message from the app: when a subagent or shell it ran in
 the background finishes, it answers on its own. A turn whose reply ends while such tasks still
-run is therefore held open: it keeps its working state, with a line saying how many tasks it is
-waiting on, and the follow-up lands in it (Stop ends the wait). A follow-up with no turn open,
+run is therefore held open: it keeps its working state, its head reads "Waiting for 2 background
+tasks" instead of "Thinking" (`Turn.activity`, set through the sink and never stored), and the
+follow-up lands in it (Stop ends the wait). A follow-up with no turn open,
 after a restart for instance, gets a turn of its own through `onUnprompted` (`provider.ts`), with
 a notice saying what finished. Before this, those replies were dropped. While background tasks are
 live, the Claude Code process is not retired for idleness, since that would kill them.
