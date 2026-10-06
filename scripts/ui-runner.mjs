@@ -88,16 +88,30 @@ async function surface(kind) {
   while (Date.now() < deadline) {
     // Resolve the visible native view each time, including after navigation or switching
     // between tabs with identical URLs. The local fixture need not remain the active page.
-    const url = await application.evaluate(({ BrowserWindow, WebContentsView }, kind) => {
+    const selected = await application.evaluate(({ BrowserWindow, WebContentsView }, kind) => {
       const views = BrowserWindow.getAllWindows()[0].contentView.children
       const current = views.find(view => view instanceof WebContentsView && view.getVisible()
         && (kind === 'suggestions' ? view.webContents.getURL().endsWith('/suggest.html') : !view.webContents.getURL().endsWith('/suggest.html')))
-      return current?.webContents.getURL()
+      return current ? { url: current.webContents.getURL(), id: current.webContents.id } : null
     }, kind)
-    const candidates = application.context().pages().filter(page => page.url() === url)
+    const candidates = application.context().pages().filter(page => page.url() === selected?.url)
     if (candidates.length === 1) return candidates[0]
-    for (const candidate of candidates) {
-      if (await candidate.evaluate(() => document.visibilityState === 'visible').catch(() => false)) return candidate
+    if (candidates.length > 1) {
+      // Electron may report visible documents for concealed sibling views. Match Chromium
+      // target ids instead of trusting document.visibilityState or choosing the first URL.
+      const targetId = await application.evaluate(async ({ webContents }, id) => {
+        const contents = webContents.fromId(id)
+        const attached = contents.debugger.isAttached()
+        if (!attached) contents.debugger.attach('1.3')
+        try { return (await contents.debugger.sendCommand('Target.getTargetInfo')).targetInfo.targetId }
+        finally { if (!attached) contents.debugger.detach() }
+      }, selected.id)
+      for (const candidate of candidates) {
+        const cdp = await application.context().newCDPSession(candidate)
+        try {
+          if ((await cdp.send('Target.getTargetInfo')).targetInfo.targetId === targetId) return candidate
+        } finally { await cdp.detach() }
+      }
     }
     await new Promise(resolve => setTimeout(resolve, 25))
   }
@@ -147,7 +161,10 @@ async function operate(op, captures) {
       return (await surface(op.surface)).keyboard[op.method](op.value)
     }
     case 'waitForFunction': {
-      const handle = await (await surface(op.surface)).waitForFunction(op.expression, undefined, op.options)
+      // Recreate a function in Node before handing it to Playwright. Its string-predicate
+      // path uses eval inside the renderer, which Rocket's content security policy rejects.
+      const predicate = new Function(`return (${op.expression})`)
+      const handle = await (await surface(op.surface)).waitForFunction(predicate, undefined, op.options)
       await handle.dispose()
       return null
     }
@@ -158,7 +175,10 @@ async function operate(op, captures) {
         if (!LOCATORS.has(step.method)) throw new Error('Unsupported locator operation.')
         target = target[step.method](...step.args)
       }
-      if (op.type === 'evaluate') return target.evaluate(op.expression)
+      if (op.type === 'evaluate') {
+        const fn = op.chain?.length ? new Function(`return (${op.expression})`)() : new Function(`return (${op.expression})`)
+        return target.evaluate(fn)
+      }
       if (!ACTIONS.has(op.method)) throw new Error('Unsupported UI operation.')
       return await target[op.method](...op.args) ?? null
     }
