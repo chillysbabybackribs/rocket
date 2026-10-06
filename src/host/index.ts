@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type {
-  BrowserAgentOp, BrowserAgentReply, BrowserAgentRequest,
+  MainAgentOp, BrowserAgentReply, BrowserAgentRequest, UiSnapshot,
   HostApi, HostEvent, HostMethod, HostRequestMessage, HostToRenderer, ProviderId, UsageSnapshot
 } from '../shared/types.ts'
 import { GoalRunner } from './goals.ts'
@@ -22,6 +22,7 @@ import { goalTools } from './tools/goal.ts'
 import { ToolRegistry } from './tools/registry.ts'
 import { memoryTools } from './tools/memory.ts'
 import { selfCheckTools } from './tools/self-check.ts'
+import { uiSnapshotTools } from './tools/ui-snapshot.ts'
 import { Teamwork } from './teamwork.ts'
 import { workspaceContext } from './workspace.ts'
 import { UiTestAdapter, uiTestProfile } from './ui-test.ts'
@@ -96,7 +97,7 @@ let browserSeq = 0
 const browserPending = new Map<number, { resolve: (result: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>()
 
 /** Ask main to do something in the browser, which lives there. */
-function askBrowser(op: BrowserAgentOp): Promise<unknown> {
+function askBrowser(op: MainAgentOp): Promise<unknown> {
   return new Promise((resolve, reject) => {
     if (!parentPort) return reject(new Error('The browser is only available inside the app'))
     const id = ++browserSeq
@@ -122,6 +123,7 @@ function onBrowserReply(reply: BrowserAgentReply): void {
 const tools = new ToolChannel(
   new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', message, { provider, chatId }))
     .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
+    .add(...uiSnapshotTools(async () => await askBrowser({ op: 'uiSnapshot' }) as UiSnapshot))
     .add(...memoryTools(store))
     .add(...askTools(() => hub))
     .add(...goalTools(() => goals))

@@ -12,6 +12,7 @@ import { BrowserPane } from './browser-pane.ts'
 import { appendJournal } from '../host/journal.ts'
 import { uiTestProfile } from '../host/ui-test.ts'
 import { isolateUiTestNetwork } from './ui-test-network.ts'
+import { captureUiSnapshot } from './ui-snapshot.ts'
 
 // Electron's main process does three things and nothing else: it owns the window, it owns the
 // embedded browser view, and it forks the agent host and introduces it to the renderer over a
@@ -41,6 +42,10 @@ function startHost(): UtilityProcess {
     }
     Promise.resolve()
       .then(() => {
+        if (message.op.op === 'uiSnapshot') {
+          if (!window) throw new Error('Rocket’s window is closed. Open the app and try again.')
+          return captureUiSnapshot(window)
+        }
         if (!browserAgent) throw new Error('The browser is not open')
         return browserAgent.handle(message.op)
       })

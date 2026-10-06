@@ -164,7 +164,18 @@ skills and hooks do not compete with Rocket's browser tools. The overrides apply
 resumed chats when that process starts; restart Rocket after updating to apply them. Native web
 search and other plugins retain their configured settings, as do Codex sessions outside Rocket.
 
-Besides the browser tools there is `remember` (see Workspace and memory), `ask_user` (below),
+`rocket_ui_snapshot` (`src/host/tools/ui-snapshot.ts`, `src/main/ui-snapshot.ts`) shows the
+currently running Rocket window without clicking, switching tabs or changing focus. It returns
+images directly to the model, visible shell control names and panel bounds, native view bounds,
+and the running process, start time, app version and main bundle fingerprint. It captures the
+composed window through ImageMagick on X11, including native browser pages and dropdowns; if
+that is unavailable, it returns separate shell and native-view images with a warning that they
+cannot verify overlap or stacking. Full-resolution PNGs and `snapshot.json` are retained under
+`<profile>/ui-snapshots/`; images sent to the model are JPEGs limited to 1600 pixels wide.
+Snapshots show the running instance, so source edits may still require a rebuild or reload.
+This read-only tool is always available to all providers; it does not require self-check mode.
+
+Besides the browser and snapshot tools there is `remember` (see Workspace and memory), `ask_user` (below),
 `goal_report` (see Goals) and, with `ROCKET_SELF_CHECK=1`, the three self-check tools. Every
 tool's schema is in every session's prompt, so what a model should simply know goes ahead of the
 user's message instead (tabs, the file map, notes, trouble reports), and a tool is added only for

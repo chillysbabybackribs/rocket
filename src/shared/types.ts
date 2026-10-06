@@ -362,7 +362,24 @@ export type BrowserAgentOp =
   | { op: 'rest'; chat: string }
   /** The chat is gone: its own tab is closed. */
   | { op: 'forget'; chat: string }
-export type BrowserAgentRequest = { type: 'browser'; id: number; op: BrowserAgentOp }
+/** The existing host-to-main channel also carries read-only app UI captures. */
+export type MainAgentOp = BrowserAgentOp | { op: 'uiSnapshot' }
+export type UiSnapshot = {
+  capturedAt: string
+  instance: { pid: number; startedAt: string; version: string; mainBundleSha256: string; rendererUrl: string }
+  window: { bounds: Bounds; contentBounds: Bounds; focused: boolean; minimized: boolean }
+  shell: {
+    panels: Array<{ name: string; bounds: Bounds }>
+    controls: Array<{ role: string; name: string; disabled: boolean; bounds: Bounds }>
+    controlsTruncated: boolean
+  }
+  views: Array<{ url: string; bounds: Bounds; z: number }>
+  capture: 'window' | 'surfaces'
+  warnings: string[]
+  directory: string
+  images: Array<{ label: string; path: string; mimeType: string; base64: string }>
+}
+export type BrowserAgentRequest = { type: 'browser'; id: number; op: MainAgentOp }
 export type BrowserAgentReply =
   | { type: 'browserReply'; id: number; ok: true; result: unknown }
   | { type: 'browserReply'; id: number; ok: false; error: string }
