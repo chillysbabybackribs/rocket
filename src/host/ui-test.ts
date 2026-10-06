@@ -52,6 +52,7 @@ export class UiTestAdapter implements ProviderAdapter {
       if (demo) return await runDemoTurn(demo, this.id, this.profile, request, sink, controller.signal)
       if (command === 'UI check: work') return this.work(request.turnId, sink, controller.signal)
       if (command === 'UI check: ask') return this.ask(request.turnId, sink)
+      if (command === 'UI check: cite') return this.cite(request.turnId, sink)
       if (command === 'UI check: edit') return this.edit(request.turnId, request.cwd, sink)
       if (command === 'UI check: plan') return this.plan(request.turnId, sink, controller.signal)
       if (command === 'UI check: good evening') {
@@ -146,6 +147,21 @@ export class UiTestAdapter implements ProviderAdapter {
     sink.item({ type: 'tool', id: `${turnId}:tool2`, turnId, kind: 'edit', label: 'server.js', output: '', status: 'done' })
     plan(5, false)
     sink.item({ type: 'assistant', id: `${turnId}:reply`, turnId, text: '**Done.** Login is built, tested and documented; each user sees only their own notes.', streaming: false })
+    return { status: 'completed' }
+  }
+
+  /**
+   * A research turn: a search (a query, never a source), one page fetched with the provider's
+   * own tool, and a reply that cites that page and one the turn never opened, so the marks on
+   * the reply's links can be seen.
+   */
+  private cite(turnId: string, sink: TurnSink): RunResult {
+    sink.item({ type: 'tool', id: `${turnId}:search`, turnId, kind: 'web', label: 'notes app login best practice', output: '', status: 'done' })
+    sink.item({ type: 'tool', id: `${turnId}:fetch`, turnId, kind: 'web', label: 'https://docs.example.com/auth/sessions', output: '', status: 'done' })
+    sink.item({
+      type: 'assistant', id: `${turnId}:reply`, turnId, streaming: false,
+      text: 'Sessions should be bearer tokens with a server-side store, per [the auth docs](https://docs.example.com/auth/sessions/). The cookie advice is reported by [a blog post](https://blog.example.org/cookies-vs-tokens) I could not open, so it is not verified.'
+    })
     return { status: 'completed' }
   }
 
