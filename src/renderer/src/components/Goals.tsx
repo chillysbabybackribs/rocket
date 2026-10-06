@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Plus, Target } from 'lucide-react'
 import type { Goal, GoalStatus } from '../../../shared/types.ts'
 import { openChat, openNewGoal, useApp } from '../store.ts'
+import { GoalStatusIcon } from './GoalIcons.tsx'
 
 // Goals, from the rail: the ones under way first, then the finished ones, and "New goal". Like
 // the history menu, it grows to the right over the chat column and never reaches the browser.
@@ -20,13 +21,6 @@ export function goalStatusText(goal: Goal): string {
     case 'done': return `done · ${round} ${round === 1 ? 'round' : 'rounds'}`
     case 'stopped': return 'stopped'
   }
-}
-
-export function goalTone(status: GoalStatus): 'run' | 'wait' | 'ok' | 'idle' {
-  if (status === 'drafting' || status === 'working' || status === 'checking') return 'run'
-  if (status === 'needs_you' || status === 'confirming') return 'wait'
-  if (status === 'done') return 'ok'
-  return 'idle'
 }
 
 function GoalsMenu({ onPick }: { onPick: () => void }) {
@@ -54,7 +48,7 @@ function GoalsMenu({ onPick }: { onPick: () => void }) {
                   onPick()
                 }}
               >
-                <span className={`goal-dot is-${goalTone(goal.status)}`} aria-hidden />
+                <GoalStatusIcon status={goal.status} />
                 <span className="chat-row-title">{goal.title}</span>
                 <span className="goal-row-status">{goalStatusText(goal)}</span>
               </button>

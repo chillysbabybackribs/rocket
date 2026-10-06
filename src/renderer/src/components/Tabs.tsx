@@ -1,5 +1,6 @@
 import { Plus, X } from 'lucide-react'
 import { closeTab, openChat, useApp } from '../store.ts'
+import { GoalStatusIcon } from './GoalIcons.tsx'
 
 // The open chats, as tabs standing on the composer's top edge. The selected tab is drawn as part
 // of the composer: same fill, same outline, and no line between the two. A chat that has not
@@ -10,12 +11,15 @@ export function Tabs() {
   const chats = useApp((state) => state.chats)
   const activeChatId = useApp((state) => state.activeChatId)
   const running = useApp((state) => state.running)
+  const goals = useApp((state) => state.goals)
 
   return (
     <div className="tabs" role="tablist" aria-label="Open chats">
       {tabs.map((id) => {
         const title = chats.find((chat) => chat.id === id)?.title ?? 'New chat'
         const active = id === activeChatId
+        // A goal's chat is a tab like any other, marked with where the goal stands.
+        const goal = goals.find((entry) => entry.chatId === id)
         return (
           <div
             key={id}
@@ -26,7 +30,9 @@ export function Tabs() {
             }}
           >
             <button type="button" role="tab" aria-selected={active} className="tab-main" onClick={() => void openChat(id)}>
-              {running.has(id) && <span className="live-dot" aria-label="Answering" />}
+              {goal
+                ? <span className="tab-goal" title={`Goal: ${goal.status.replace('_', ' ')}`}><GoalStatusIcon status={goal.status} size={12} /></span>
+                : running.has(id) && <span className="live-dot" aria-label="Answering" />}
               <span className="tab-title">{title}</span>
             </button>
             <button type="button" className="tab-close" aria-label={`Close tab: ${title}`} onClick={() => closeTab(id)}>
