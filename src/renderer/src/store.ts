@@ -49,9 +49,11 @@ export type ChatView = {
    * by itself on the first plan of a running turn unless this chat has closed it before.
    */
   planTurnId: string | null
+  /** Whether the chat has turns before the first one loaded, which come as the reader scrolls up (`loadOlder`). */
+  hasOlder: boolean
 }
 
-const EMPTY_VIEW: ChatView = { turns: [], turnItems: {}, queued: [], planTurnId: null }
+const EMPTY_VIEW: ChatView = { turns: [], turnItems: {}, queued: [], planTurnId: null, hasOlder: false }
 
 // The eval panel's navigation and its runs live here rather than in its components, so the app
 // map (`app-map.ts`) can read and set them by name: a model opens a scenario and runs it the same
@@ -403,7 +405,7 @@ function pruneViews(panes: Pane[]): Record<string, ChatView> {
   return views
 }
 
-function showChat(pane: number, chatId: string | null, turns: Turn[] = [], loaded: Item[] = [], queued: QueuedMessage[] = []): void {
+function showChat(pane: number, chatId: string | null, turns: Turn[] = [], loaded: Item[] = [], queued: QueuedMessage[] = [], hasOlder = false): void {
   linkRequest++
   setState({ artifact: null })
   const running = new Set(state.running)
@@ -419,7 +421,7 @@ function showChat(pane: number, chatId: string | null, turns: Turn[] = [], loade
       items.set(item.id, item)
       ;(turnItems[item.turnId] ??= []).push(item.id)
     }
-    views[chatId] = { turns, turnItems, queued, planTurnId: null }
+    views[chatId] = { turns, turnItems, queued, planTurnId: null, hasOlder }
   }
   setState({ panes, views, running })
   savePanes()
@@ -474,7 +476,7 @@ export async function openChat(chatId: string | null, pane: number = state.focus
   }
   try {
     const snapshot = await call('chat.open', { chatId })
-    showChat(pane, chatId, snapshot.turns, snapshot.items, snapshot.queued)
+    showChat(pane, chatId, snapshot.turns, snapshot.items, snapshot.queued, snapshot.hasOlder)
   } catch (error) {
     setTabs(pane, paneAt(state, pane).tabs.filter((id) => id !== chatId))
     showChat(pane, null)
@@ -770,6 +772,35 @@ export function showEvalView(view: EvalView, ids: Partial<Pick<EvalsState, 'scen
   if (!state.evalsOpen) setEvalsOpen(true)
 }
 
+/** Chats whose earlier turns are on their way, so a scroll that fires twice asks once. */
+const loadingOlder = new Set<string>()
+
+/**
+ * Bring in the turns before the first one a shown chat has loaded, as its reader scrolls up.
+ * They go in front of what is there; a chat that was closed or reopened meanwhile keeps its own.
+ */
+export async function loadOlder(chatId: string): Promise<void> {
+  const view = state.views[chatId]
+  const first = view?.turns[0]
+  if (!view?.hasOlder || !first || loadingOlder.has(chatId)) return
+  loadingOlder.add(chatId)
+  try {
+    const page = await call('chat.older', { chatId, before: first.id })
+    const current = state.views[chatId]
+    if (current?.turns[0]?.id !== first.id) return
+    const turnItems: Record<string, string[]> = {}
+    for (const item of page.items) {
+      items.set(item.id, item)
+      ;(turnItems[item.turnId] ??= []).push(item.id)
+    }
+    patchView(chatId, { turns: [...page.turns, ...current.turns], turnItems: { ...turnItems, ...current.turnItems }, hasOlder: page.hasOlder })
+  } catch (error) {
+    setState({ error: messageOf(error) })
+  } finally {
+    loadingOlder.delete(chatId)
+  }
+}
+
 /** The chat of the cell the run view shows, kept loaded while it is on screen. */
 export function evalChatId(current: AppState): string | null {
   const { cell, runs } = current.evals
@@ -786,7 +817,7 @@ export async function loadEvalChat(chatId: string): Promise<void> {
     items.set(item.id, item)
     ;(turnItems[item.turnId] ??= []).push(item.id)
   }
-  setState({ views: { ...state.views, [chatId]: { turns: snapshot.turns, turnItems, queued: snapshot.queued ?? [], planTurnId: null } } })
+  setState({ views: { ...state.views, [chatId]: { turns: snapshot.turns, turnItems, queued: snapshot.queued ?? [], planTurnId: null, hasOlder: snapshot.hasOlder } } })
 }
 
 /** The current state without subscribing, for the dispatcher. */
