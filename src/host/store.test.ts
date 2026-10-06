@@ -6,7 +6,7 @@ import { Store } from './store.ts'
 const chat: Chat = { id: 'c1', title: 'Chat', cwd: '/tmp', lastProvider: null, createdAt: 1, updatedAt: 1 }
 
 function turn(id: string, provider: Turn['provider']): Turn {
-  return { id, chatId: 'c1', provider, model: null, status: 'completed', error: null, handoffTurns: 0, goalRole: null, changes: null, startedAt: 1, endedAt: 2 }
+  return { id, chatId: 'c1', provider, model: null, status: 'completed', error: null, handoffTurns: 0, goalRole: null, changes: null, tokens: null, startedAt: 1, endedAt: 2 }
 }
 
 test('an item updated in place keeps its first position', () => {
@@ -61,4 +61,14 @@ test('a store made before goals gains the goal_role column, and turns keep their
   store.createTurn({ ...turn('t1', 'codex'), goalRole: 'check' })
   assert.equal(store.turns('c1')[0]!.goalRole, 'check')
   store.close()
+})
+
+test("a turn's tokens are saved with it, and a turn without them reads as null", () => {
+  const store = new Store(':memory:')
+  store.createChat({ id: 'c1', title: 'chat', cwd: '/work', lastProvider: null, createdAt: 1, updatedAt: 1 })
+  const stored = store.createTurn(turn('t1', 'claude'))
+  assert.equal(store.turn('t1')!.tokens, null)
+  const tokens = { input: 1_200, cached: 1_000, output: 30, context: 1_100, contextWindow: 200_000 }
+  store.updateTurn({ ...stored, tokens })
+  assert.deepEqual(store.turn('t1')!.tokens, tokens)
 })

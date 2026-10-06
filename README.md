@@ -60,6 +60,26 @@ for them. Codex receives them as real history (`thread/inject_items`); the other
 tagged block in front of the message. If a provider has lost its session, it gets a new one and
 the whole conversation.
 
+A handoff stays in the receiving session's history, read again with every later message, so it
+carries what each turn concluded and not how it got there (`handoff.ts`): the user's words, the
+reply after the turn's last tool call (the narration between calls is left out), and the files it
+touched. The newest three turns go whole with a line per other tool call; older ones keep their
+files and the head and tail of their request and reply. The whole block is held to 30,000
+characters, cutting the middle of the longest older replies first.
+
+What a session is told once (the git rules, the workspace map) goes to it when it starts, not
+again when a session is resumed after the app restarts. The browser research guidance is in
+`browser_read`'s description, which every session has, so it is not repeated ahead of a message.
+
+### Tokens
+
+Each turn keeps what it cost (`Turn.tokens`): input tokens across its model calls with how many
+came from the prompt cache, output tokens, and `context`, the input of its last call, which is how
+full the session is. Claude reports them in its `result` and `message_start` events, Codex in
+`thread/tokenUsage/updated`. Cursor's agent sends no usage over ACP and Antigravity's stream has
+shown only thinking counts, so their turns carry none. The readings go into the journal with each
+turn's timing, and `rocket_diagnostics` summarizes them per provider and model.
+
 ### Chat panes
 
 The chat card holds one to four chats at once. The add-chat button in the composer's text line
@@ -378,11 +398,12 @@ as in the reference build. There are no approval prompts yet.
 The host keeps a journal of its own trouble, `journal.jsonl` in the profile folder (one JSON
 object per line, rotated at 2 MB; `src/host/journal.ts`). It always records: uncaught errors in the
 host, uncaught errors in the page (sent over the renderer's port, once per message), host restarts seen by main, failed turns, tool failures, and turns far slower than usual for
-their provider and model. With `ROCKET_SELF_CHECK=1` the app also serves three tools to every
+their provider and model; every other turn is kept as a timing line with its tokens, when its
+provider reports them. With `ROCKET_SELF_CHECK=1` the app also serves three tools to every
 provider (`src/host/tools/self-check.ts`): `rocket_check` runs the chat folder's `typecheck` and
 `test` scripts and returns what failed (a failure also lands in the journal as a tool error);
 `rocket_diagnostics` reads the journal and the timing
-averages, and `rocket_note` files what a model saw, why it thinks it happened and the change it
+and token averages, and `rocket_note` files what a model saw, why it thinks it happened and the change it
 would make. Each chat is also told, ahead of its next message, when new warnings or errors have
 arrived, once. Notes edit nothing; changing code is still the user's request or the model's
 judgement about a clear defect, as `CLAUDE.md` says.

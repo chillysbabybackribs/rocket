@@ -1,7 +1,7 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { Chat, ChatSnapshot, Goal, GoalRole, Item, ProviderId, Turn, TurnChanges, TurnStatus } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, Goal, GoalRole, Item, ProviderId, Turn, TurnChanges, TurnStatus, TurnTokens } from '../shared/types.ts'
 
 // The canonical transcript. The app owns the conversation; a provider's own session is a cache
 // of the part of it that provider has already seen. Each (chat, provider) pair records the
@@ -87,7 +87,8 @@ const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }
   { table: 'turns', column: 'goal_role', definition: 'TEXT' },
   { table: 'turns', column: 'changes', definition: 'TEXT' },
   { table: 'turn_patches', column: 'start_tree', definition: 'TEXT' },
-  { table: 'turn_patches', column: 'end_tree', definition: 'TEXT' }
+  { table: 'turn_patches', column: 'end_tree', definition: 'TEXT' },
+  { table: 'turns', column: 'tokens', definition: 'TEXT' }
 ]
 
 /** What the store keeps of a turn's changes: the patch, and the two snapshots it was taken between, for undoing it. */
@@ -167,8 +168,8 @@ export class Store {
   }
 
   updateTurn(turn: Turn): void {
-    this.sql('UPDATE turns SET model = ?, status = ?, error = ?, handoff_turns = ?, ended_at = ? WHERE id = ?')
-      .run(turn.model, turn.status, turn.error, turn.handoffTurns, turn.endedAt, turn.id)
+    this.sql('UPDATE turns SET model = ?, status = ?, error = ?, handoff_turns = ?, tokens = ?, ended_at = ? WHERE id = ?')
+      .run(turn.model, turn.status, turn.error, turn.handoffTurns, turn.tokens ? JSON.stringify(turn.tokens) : null, turn.endedAt, turn.id)
   }
 
   turn(turnId: string): StoredTurn | undefined {
@@ -324,6 +325,7 @@ function turnOf(row: Row): StoredTurn {
     goalRole: typeof row.goal_role === 'string' ? row.goal_role as GoalRole : null,
     // Rows written before undo existed carry no `undone`.
     changes: typeof row.changes === 'string' ? { undone: false, ...JSON.parse(row.changes) as Partial<TurnChanges> } as TurnChanges : null,
+    tokens: typeof row.tokens === 'string' ? JSON.parse(row.tokens) as TurnTokens : null,
     startedAt: Number(row.started_at),
     endedAt: row.ended_at === null ? null : Number(row.ended_at)
   }

@@ -91,3 +91,21 @@ test('TodoWrite is the turn\'s plan, replaced whole on each update and never a t
     steps: [{ text: 'Read the API', status: 'done' }, { text: 'Add login', status: 'doing' }]
   })
 })
+
+test("a turn's tokens add up its results, and its context is the last model call's input", () => {
+  const translator = new TurnTranslator('t')
+  translator.handle({ type: 'system', subtype: 'init', session_id: 's', model: 'claude-x' })
+  const start = (input: number) => stream({ type: 'message_start', message: { usage: { input_tokens: input, cache_read_input_tokens: 9_000, cache_creation_input_tokens: 100 } } })
+  translator.handle(start(10))
+  translator.handle(start(50))
+  const modelUsage = { 'claude-x': { contextWindow: 200_000 }, 'claude-haiku': { contextWindow: 100_000 } }
+  const usage = { input_tokens: 60, cache_read_input_tokens: 18_000, cache_creation_input_tokens: 200, output_tokens: 700 }
+  const first = translator.handle({ type: 'result', subtype: 'success', usage, modelUsage })
+  assert.deepEqual(first.tokens, { input: 18_260, cached: 18_000, output: 700, context: 9_150, contextWindow: 200_000 })
+  assert.equal(first.end?.status, 'completed')
+  // The follow-up after background work is the same turn, so its result adds to it.
+  translator.handle(start(5))
+  const second = translator.handle({ type: 'result', subtype: 'success', usage: { ...usage, output_tokens: 300 }, modelUsage })
+  assert.deepEqual(second.tokens, { input: 36_520, cached: 36_000, output: 1_000, context: 9_105, contextWindow: 200_000 })
+  assert.equal(translator.handle({ type: 'result', subtype: 'success' }).tokens, undefined, 'a result without usage gives no reading')
+})

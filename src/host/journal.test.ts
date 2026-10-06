@@ -56,3 +56,16 @@ test('a note a model filed is not announced back to it', () => {
   clock.now = 3_000
   assert.equal(j.nudge('c1'), null)
 })
+
+test("a turn's tokens are kept with its timing and summed up in the stats", () => {
+  const clock = { now: 1_000 }
+  const j = journal(clock)
+  for (const input of [10_000, 20_000, 30_000]) {
+    j.noteTiming({ ...timing(2_000), tokens: { input, cached: input / 2, output: 500, context: input / 10, contextWindow: 200_000 } })
+  }
+  j.noteTiming(timing(2_000))
+  const entries = j.read({ kind: 'timing' })
+  assert.match(entries[0]!.message, /input 10k \(5k cached\), output 500, context 1k of 200k/)
+  assert.equal(entries[3]!.details!.tokens, undefined, 'a turn whose provider gave no reading has none')
+  assert.match(j.stats(), /input tokens p50 20k p95 30k; context p50 2k max 3k/)
+})

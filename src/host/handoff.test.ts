@@ -79,3 +79,42 @@ test('files a turn touched are named once each, relative to the chat folder, edi
   ], undefined, '/work')!
   assert.match(handoff.text, /- edited: src\/b\.ts\n- read: src\/a\.ts, \/etc\/hosts\n- read: \/work\/missing\.ts \(failed\)\n- command: npm test/)
 })
+
+test('a handoff carries what a turn concluded, not what it said between tool calls', () => {
+  const handoff = buildHandoff([{
+    provider: 'claude', model: null, status: 'completed', items: [
+      { type: 'user', id: 'u', turnId: 't', text: 'check the tests' },
+      { type: 'assistant', id: 'a1', turnId: 't', text: 'Let me run the tests first.', streaming: false },
+      { type: 'tool', id: 'x', turnId: 't', kind: 'command', label: 'npm test', status: 'done', output: '' },
+      { type: 'assistant', id: 'a2', turnId: 't', text: 'All 40 tests pass.', streaming: false },
+      { type: 'assistant', id: 'a3', turnId: 't', text: 'Nothing else needed.', streaming: false }
+    ]
+  }, {
+    provider: 'codex', model: null, status: 'interrupted', items: [
+      { type: 'user', id: 'u', turnId: 't2', text: 'and lint' },
+      { type: 'assistant', id: 'b1', turnId: 't2', text: 'Starting the linter.', streaming: false },
+      { type: 'tool', id: 'y', turnId: 't2', kind: 'command', label: 'npm run lint', status: 'failed', output: '' }
+    ]
+  }])!
+  assert.doesNotMatch(handoff.text, /Let me run the tests first/)
+  assert.match(handoff.text, /All 40 tests pass\.\n\nNothing else needed\./)
+  assert.match(handoff.text, /Starting the linter\./, 'a turn that ended on a call keeps its last words')
+})
+
+test('older turns keep their files and a shortened request and reply; the newest go whole', () => {
+  const tool = (id: string, kind: 'edit' | 'command', label: string): Item => ({ type: 'tool', id, turnId: 't', kind, label, status: 'done', output: '' })
+  const turns = Array.from({ length: 5 }, (_, i) => turn('codex', `request ${i} ${'r'.repeat(3_000)}`, `answer ${i} ${'a'.repeat(3_000)}`, [
+    tool(`e${i}`, 'edit', `src/file${i}.ts`),
+    tool(`c${i}`, 'command', `npm test ${i}`)
+  ]))
+  const text = buildHandoff(turns)!.text
+  for (const i of [0, 1]) {
+    assert.match(text, new RegExp(`- edited: src/file${i}\\.ts`))
+    assert.doesNotMatch(text, new RegExp(`npm test ${i}`))
+  }
+  for (const i of [2, 3, 4]) {
+    assert.match(text, new RegExp(`npm test ${i}`))
+    assert.ok(text.includes(`answer ${i} ${'a'.repeat(3_000)}`), `turn ${i} is whole`)
+  }
+  assert.equal((text.match(/characters omitted/g) ?? []).length, 4, 'the two older turns lost the middle of their request and reply')
+})

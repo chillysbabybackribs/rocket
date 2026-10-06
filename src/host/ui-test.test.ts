@@ -22,7 +22,7 @@ test('a controlled stream remains pending until stopped and emits no final respo
   const profile = mkdtempSync(join(tmpdir(), 'rocket-ui-stream-'))
   const adapter = new UiTestAdapter('codex', profile)
   const deltas: string[] = []
-  const sink: TurnSink = { item: () => {}, delta: (_id, text) => deltas.push(text), session: () => {}, model: () => {}, usage: () => {}, activity: () => {} }
+  const sink: TurnSink = { item: () => {}, delta: (_id, text) => deltas.push(text), session: () => {}, model: () => {}, usage: () => {}, tokens: () => {}, activity: () => {} }
   try {
     const result = adapter.run({ chatId: 'chat', turnId: 'turn', cwd: profile, sessionId: null, model: null, text: 'UI check: stop', handoff: null }, sink)
     assert.deepEqual(deltas, ['Streaming from codex.'])

@@ -90,8 +90,23 @@ export type Turn = {
   goalRole: GoalRole | null
   /** What the turn changed in its folder, found by comparing its start and end; null until it has ended, or when nothing changed. */
   changes: TurnChanges | null
+  /** What the turn cost in tokens, as its provider reported it; null when the provider reports nothing. */
+  tokens: TurnTokens | null
   startedAt: number
   endedAt: number | null
+}
+
+/**
+ * A turn's tokens. `input` counts every input token its model calls read, cached ones included,
+ * and `cached` how many of those came from the provider's prompt cache. `context` is the input of
+ * the turn's last model call alone: how full the session was when the turn ended.
+ */
+export type TurnTokens = {
+  input: number
+  cached: number
+  output: number
+  context: number | null
+  contextWindow: number | null
 }
 
 /** The totals a transcript line shows for a turn's changes, and whether the user has undone them. The full patch is read with `turn.changes`. */

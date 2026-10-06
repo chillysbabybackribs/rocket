@@ -38,8 +38,6 @@ export class Teamwork {
   private readonly pending = new Map<string, Set<string>>()
   /** chat and provider → when that session was last told what others did. */
   private readonly heard = new Map<string, number>()
-  /** Sessions that have been given the rules in this run of the app. */
-  private readonly ruled = new Set<string>()
   /** top → the last git work queued there, so two turns ending together do not commit over each other. */
   private readonly queues = new Map<string, Promise<unknown>>()
 
@@ -100,8 +98,9 @@ export class Teamwork {
       parts.push(`<others>\nYou share this folder with other assistants and the user.\n${lines.join('\n')}\n`
         + 'Read a file named here again before you change it, and leave a file someone is working on now to them unless the user says otherwise.\n</others>')
     }
-    if (top && this.options.commit && !this.ruled.has(key)) {
-      this.ruled.add(key)
+    // Once per session, at its start: it stays in the session's history, so telling a resumed one
+    // again (after the app restarts, say) only adds a copy, while a session started over needs it.
+    if (top && this.options.commit && fresh) {
       parts.push(`<git>\n${RULES}\n</git>`)
     }
     return parts.join('\n\n') || null

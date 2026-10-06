@@ -1,28 +1,26 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { AgentTab } from '../../shared/types.ts'
-import { browserContext } from './browser.ts'
+import { browserContext, browserTools, BROWSER_RESEARCH_GUIDE } from './browser.ts'
 
 const sampleTabs: AgentTab[] = [{
   id: 't1', url: 'https://example.com/doc', title: 'Doc', active: true, loading: false, agent: true
 }]
 
-test('browser context tells research once per chat and provider, then only when tabs change', async () => {
-  const link = { request: async () => sampleTabs }
-  const context = browserContext(link)
+test('browser context names the open tabs to a new session, then only when they change', async () => {
+  let tabs = sampleTabs
+  const context = browserContext({ request: async () => tabs })
   const first = await context('chat-1', 'codex', true)
-  assert.match(first!, /native web search/)
-  assert.match(first!, /example.com/)
-  const again = await context('chat-1', 'codex', false)
-  assert.equal(again, null)
-  const other = await context('chat-1', 'claude', true)
-  assert.match(other!, /native web search/)
+  assert.match(first!, /<browser>[\s\S]*example\.com/)
+  assert.equal(await context('chat-1', 'codex', false), null)
+  assert.match((await context('chat-1', 'claude', true))!, /example\.com/, 'each provider session is told for itself')
+  tabs = [...sampleTabs, { ...sampleTabs[0]!, id: 't2', url: 'https://example.org/', active: false }]
+  assert.match((await context('chat-1', 'codex', false))!, /example\.org/)
 })
 
-test('browser context can carry research alone when no tabs are open yet', async () => {
-  const link = { request: async () => [] as AgentTab[] }
-  const context = browserContext(link)
-  const block = await context('chat-2', 'codex', true)
-  assert.match(block!, /browser-research/)
-  assert.doesNotMatch(block!, /<browser>/)
+test('browser context says nothing with no tabs open, and research guidance rides in the tool description only', async () => {
+  const context = browserContext({ request: async () => [] as AgentTab[] })
+  assert.equal(await context('chat-2', 'codex', true), null)
+  const read = browserTools({ request: async () => null }, '/tmp/unused').find((tool) => tool.name === 'browser_read')!
+  assert.ok(read.description.includes(BROWSER_RESEARCH_GUIDE))
 })

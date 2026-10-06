@@ -42,6 +42,8 @@ import {
 // - Thinking is never in the stream. A step that was only thinking arrives as one `agent_response`
 //   with state DONE, no `text_delta`, and a `usage.thinking_tokens` count; there is no text to show.
 // - Step types seen: `user_input`, `agent_response`, `tool`.
+// - A step's `usage` has been seen carrying only `thinking_tokens`; with no input or context count
+//   on record, Antigravity turns carry no token reading yet.
 // The CLI owns its conversation store, so missed turns ride at the head of the message.
 // `prepare` starts the process while the message is still being typed, and keeps one spare for
 // the next new chat, so a first message (or the one after a stop) does not wait on the spawn.

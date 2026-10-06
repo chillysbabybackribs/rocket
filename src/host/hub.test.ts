@@ -354,3 +354,18 @@ for (const retry of [false, true]) {
     store.close()
   })
 }
+
+test("a turn's tokens are kept on it and reported with its timing; the latest reading wins", async () => {
+  const { adapter, hub, timings, ended } = setup()
+  const chat = hub.createChat('/work')
+  adapter.answer = (sink) => {
+    sink.tokens({ input: 10, cached: 0, output: 1, context: 10, contextWindow: null })
+    sink.tokens({ input: 900, cached: 800, output: 40, context: 500, contextWindow: 200_000 })
+  }
+  hub.send(chat.id, 'claude', null, 'hello')
+  adapter.complete()
+  await ended()
+  const tokens = { input: 900, cached: 800, output: 40, context: 500, contextWindow: 200_000 }
+  assert.deepEqual(timings[0]!.tokens, tokens)
+  assert.deepEqual(hub.openChat(chat.id).turns[0]!.tokens, tokens)
+})

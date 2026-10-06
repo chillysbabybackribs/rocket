@@ -1,5 +1,5 @@
 import type { Handoff } from '../handoff.ts'
-import { planItemId, type Item, type ModelInfo, type PlanStep, type ProviderId, type TurnStatus, type UsageSnapshot } from '../../shared/types.ts'
+import { planItemId, type Item, type ModelInfo, type PlanStep, type ProviderId, type TurnStatus, type TurnTokens, type UsageSnapshot } from '../../shared/types.ts'
 
 // The one interface the hub talks to. An adapter owns its provider's process and session
 // mechanics and translates the provider's stream into transcript items; it knows nothing about
@@ -55,6 +55,8 @@ export type TurnSink = {
   session: (sessionId: string) => void
   model: (model: string) => void
   usage: (snapshot: UsageSnapshot) => void
+  /** The turn's token totals so far; each report replaces the last. */
+  tokens: (tokens: TurnTokens) => void
   /** What the turn is doing, shown in its head instead of "Thinking"; null to go back to thinking. */
   activity: (text: string | null) => void
 }

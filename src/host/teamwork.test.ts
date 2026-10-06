@@ -39,7 +39,7 @@ function setup(dir: string) {
   const turn = (chatId: string, provider: Turn['provider'], request: string, status: Turn['status'], edits: string[] = []): Turn => {
     clock += 10
     const id = `${chatId}-${clock}`
-    const stored = store.createTurn({ id, chatId, provider, model: null, status, error: null, handoffTurns: 0, goalRole: null, changes: null, startedAt: clock, endedAt: clock })
+    const stored = store.createTurn({ id, chatId, provider, model: null, status, error: null, handoffTurns: 0, goalRole: null, changes: null, tokens: null, startedAt: clock, endedAt: clock })
     const items: Item[] = [
       { type: 'user', id: `${id}:user`, turnId: id, text: request },
       ...edits.map((label, index): Item => ({ type: 'tool', id: `${id}:${index}`, turnId: id, kind: 'edit', label, status: 'done', output: '' }))
@@ -125,7 +125,7 @@ test('undo puts a turn\'s files back, removes the ones it made, commits the reve
 test('a turn\'s changes are committed alone, under the request, and a stopped turn waits for the one that finishes it', async () => {
   const { dir, git, write } = repo()
   try {
-    const { teamwork, chat, turn, warnings } = setup(dir)
+    const { store, teamwork, chat, turn, warnings } = setup(dir)
     chat('one')
     write('b.ts', 'the user is halfway through this')
     const rules = await teamwork.context('one', 'claude', true)
@@ -136,6 +136,9 @@ test('a turn\'s changes are committed alone, under the request, and a stopped tu
     assert.equal(git('log', '--format=%s'), 'start', 'a stopped turn commits nothing')
 
     assert.equal(await teamwork.context('one', 'claude', false), null, 'the rules are given once, and nothing else happened')
+    assert.match((await teamwork.context('one', 'claude', true))!, /<git>/, 'a session started over is told again')
+    const restarted = new Teamwork(store, () => [], { commit: true })
+    assert.doesNotMatch(await restarted.context('one', 'claude', false) ?? '', /<git>/, 'a session resumed after a restart already has them')
     write('c.ts', 'c')
     await teamwork.turnEnded(turn('one', 'claude', 'Finish tidying', 'completed'))
     assert.equal(git('log', '-1', '--format=%s'), 'Finish tidying')

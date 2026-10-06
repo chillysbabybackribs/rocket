@@ -39,6 +39,9 @@ import {
 //   cannot be placed; it is accepted and its list dropped.
 // - The model list is whatever a session's setup reports in `models.availableModels`; an id is
 //   `<base>[<key>=<value>,…]` and only an id listed there verbatim can be selected.
+// - (cursor-agent 2026.10.01 bundle, read 2026-10-05) The ACP schema it ships allows `usage` on
+//   the `session/prompt` answer and a `usage_update` session update, but the agent answers with
+//   `stopReason` alone and sends no usage, so Cursor turns carry no token reading.
 // ACP gives the agent ownership of history, so missed turns ride at the head of the prompt.
 
 const execFileAsync = promisify(execFile)

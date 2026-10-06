@@ -6,10 +6,15 @@ import { oneLine } from './json.ts'
 // the block for the turns since then, which other providers answered. The block rides at the
 // head of the user's next message.
 //
-// Kept: every user message and every assistant reply in full where the budget allows, the files
-// the turn edited and read (each named once, so the model knows where the relevant code is
-// without searching for it again), and one line per other tool call. Left out: reasoning and
-// tool output. Files other providers changed are on disk for the model to read.
+// Kept: every user message, what each turn concluded (its reply after its last tool call; the
+// narration between calls is left out), the files the turn edited and read (each named once, so
+// the model knows where the relevant code is without searching for it again), and one line per
+// other tool call. The newest turns go whole; older ones keep their files and a shortened request
+// and reply, since what they did is mostly on disk and the newest turns build on it. Left out:
+// reasoning and tool output. Files other providers changed are on disk for the model to read.
+//
+// For Claude, Cursor and Antigravity the block becomes part of their session's history, read
+// again with every later message, so what is cut here is saved many times over.
 
 export type MissedTurn = {
   provider: ProviderId
@@ -18,12 +23,17 @@ export type MissedTurn = {
   items: Item[]
 }
 
-export const HANDOFF_BUDGET_CHARS = 60_000
+export const HANDOFF_BUDGET_CHARS = 30_000
+/** The newest turns are handed over whole; older ones are cut down to what they concluded. */
+const RECENT_TURNS = 3
+const OLDER_REPLY_CHARS = 1_200
+const OLDER_USER_CHARS = 1_500
 const MAX_ACTIONS_PER_TURN = 20
 const MAX_FILES_PER_LINE = 30
 const TAG = 'conversation_handoff'
 
-type Block = { head: string; user: string; reply: string; actions: string[] }
+/** `files` and `asked` are kept for older turns; `steps`, the other tool calls, only for the newest. */
+type Block = { head: string; user: string; reply: string; files: string[]; steps: string[]; asked: string[] }
 
 /**
  * The missed turns in both forms a provider can take them: `text`, one tagged block to put in
@@ -38,8 +48,13 @@ export type Handoff = {
 
 /** Null when there is nothing to hand over. */
 export function buildHandoff(turns: MissedTurn[], budget = HANDOFF_BUDGET_CHARS, root: string | null = null): Handoff | null {
-  const blocks = turns.map((turn) => blockOf(turn, root)).filter((block) => block.user || block.reply || block.actions.length)
+  const blocks = turns.map((turn) => blockOf(turn, root)).filter((block) => block.user || block.reply || actionsOf(block).length)
   if (blocks.length === 0) return null
+  for (const block of blocks.slice(0, -RECENT_TURNS)) {
+    block.steps = []
+    block.user = elide(block.user, OLDER_USER_CHARS)
+    block.reply = elide(block.reply, OLDER_REPLY_CHARS)
+  }
   fit(blocks, budget)
   const text = [
     `<${TAG}>`,
@@ -55,7 +70,8 @@ export function buildHandoff(turns: MissedTurn[], budget = HANDOFF_BUDGET_CHARS,
   for (const block of blocks) {
     if (block.user) messages.push({ role: 'user', text: block.user })
     const answer = [`[${block.head.replace(/^### /, '')}]`]
-    if (block.actions.length) answer.push(`Actions taken:\n${block.actions.join('\n')}`)
+    const actions = actionsOf(block)
+    if (actions.length) answer.push(`Actions taken:\n${actions.join('\n')}`)
     if (block.reply) answer.push(block.reply)
     messages.push({ role: 'assistant', text: answer.join('\n\n') })
   }
@@ -78,7 +94,7 @@ function blockOf(turn: MissedTurn, root: string | null): Block {
     ? ', stopped by the user before it finished'
     : turn.status === 'failed' ? ', which failed before finishing' : ''
   const user = turn.items.filter((item) => item.type === 'user').map((item) => item.text).join('\n\n')
-  const reply = turn.items.filter((item) => item.type === 'assistant').map((item) => item.text.trim()).filter(Boolean).join('\n\n')
+  const reply = replyOf(turn.items)
   const tools = turn.items.filter((item) => item.type === 'tool')
   // Files are named once each however often they were touched; a file that was edited was also read.
   const isFile = (tool: (typeof tools)[number]): boolean => (tool.kind === 'edit' || tool.kind === 'read') && tool.status !== 'failed'
@@ -94,20 +110,30 @@ function blockOf(turn: MissedTurn, root: string | null): Block {
   // A question the user has not answered is still open; one they have shows up in their next message.
   const asked = turn.items.filter((item) => item.type === 'question')
     .map((item) => `- asked the user: ${oneLine(item.text, 160)}${item.answer === null ? ' (no answer yet)' : ''}`)
-  const actions = [
-    ...files('edited', edited),
-    ...files('read', read),
-    ...others.slice(0, MAX_ACTIONS_PER_TURN).map((tool) => `- ${tool.kind}: ${oneLine(tool.label, 160)}${tool.status === 'failed' ? ' (failed)' : ''}`),
-    ...asked
-  ]
-  if (others.length > MAX_ACTIONS_PER_TURN) actions.push(`- …and ${others.length - MAX_ACTIONS_PER_TURN} more`)
-  return { head: `### Turn answered by ${name}${ending}`, user, reply, actions }
+  const steps = others.slice(0, MAX_ACTIONS_PER_TURN).map((tool) => `- ${tool.kind}: ${oneLine(tool.label, 160)}${tool.status === 'failed' ? ' (failed)' : ''}`)
+  if (others.length > MAX_ACTIONS_PER_TURN) steps.push(`- …and ${others.length - MAX_ACTIONS_PER_TURN} more`)
+  return { head: `### Turn answered by ${name}${ending}`, user, reply, files: [...files('edited', edited), ...files('read', read)], steps, asked }
+}
+
+/**
+ * What a turn concluded: its text after its last tool call, or its last text when it ended on a
+ * call. What it said between calls ("Now I'll check the tests") is narration and left out.
+ */
+function replyOf(items: Item[]): string {
+  const texts = (from: Item[]): string[] => from.flatMap((item) => (item.type === 'assistant' && item.text.trim() ? [item.text.trim()] : []))
+  const after = texts(items.slice(items.findLastIndex((item) => item.type === 'tool') + 1))
+  return after.length ? after.join('\n\n') : texts(items).at(-1) ?? ''
+}
+
+function actionsOf(block: Block): string[] {
+  return [...block.files, ...block.steps, ...block.asked]
 }
 
 function render(block: Block): string {
   const parts = [block.head]
+  const actions = actionsOf(block)
   if (block.user) parts.push(`User:\n${block.user}`)
-  if (block.actions.length) parts.push(`Actions taken:\n${block.actions.join('\n')}`)
+  if (actions.length) parts.push(`Actions taken:\n${actions.join('\n')}`)
   if (block.reply) parts.push(`Assistant:\n${block.reply}`)
   return parts.join('\n\n')
 }
@@ -121,7 +147,7 @@ function size(blocks: Block[]): number {
  * the middle of the longest replies. The most recent turn is touched last.
  */
 function fit(blocks: Block[], budget: number): void {
-  for (let i = 0; i < blocks.length - 1 && size(blocks) > budget; i++) blocks[i]!.actions = []
+  for (let i = 0; i < blocks.length - 1 && size(blocks) > budget; i++) Object.assign(blocks[i]!, { files: [], steps: [], asked: [] })
   for (let guard = 0; guard < 200 && size(blocks) > budget; guard++) {
     const over = size(blocks) - budget
     const older = blocks.slice(0, -1)

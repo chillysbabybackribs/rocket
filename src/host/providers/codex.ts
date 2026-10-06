@@ -1,5 +1,5 @@
 import { homedir } from 'node:os'
-import type { Item, ModelInfo, ToolStatus, UsageSnapshot } from '../../shared/types.ts'
+import type { Item, ModelInfo, ToolStatus, TurnTokens, UsageSnapshot } from '../../shared/types.ts'
 import { clipOutput, jsonPreview, messageOf, recordOf, stringOf } from '../json.ts'
 import { StdioJsonRpcClient, type JsonRpcNotification, type JsonRpcRequest } from '../stdio-json-rpc.ts'
 import { codexUsage } from '../usage-parsers.ts'
@@ -25,6 +25,12 @@ import {
 //   model's plan is the `turn/plan/updated` notification: `{threadId, turnId, explanation, plan:
 //   [{step, status: 'pending'|'inProgress'|'completed'}]}`, the whole list each time. It becomes
 //   the turn's plan item. The `plan` thread item is something else: a proposed plan as text.
+// - (codex-cli 0.160.0 `app-server generate-json-schema`, read 2026-10-05; not yet seen live) A
+//   turn's tokens: `thread/tokenUsage/updated {threadId, turnId, tokenUsage: {total, last,
+//   modelContextWindow}}`, where `total` is the thread's running count and `last` the latest model
+//   call's, each `{inputTokens, cachedInputTokens, outputTokens, …}`. As in the Responses API,
+//   `inputTokens` includes the cached ones. The turn's own share is `total` less what it stood at
+//   before the turn's first call.
 // - `model/list` pages through the account's models; `turn/start` takes a `model` for that turn.
 // - `account/rateLimits/read` and the `account/rateLimits/updated` notification carry the
 //   subscription windows.
@@ -46,7 +52,11 @@ type ActiveTurn = {
   finish: (result: RunResult) => void
   /** The user's words sent into this turn that Codex has not taken yet. */
   steers?: Array<{ text: string; taken: () => void }>
+  /** The thread's token count before this turn, known from its first reading. */
+  tokenBase?: Spent
 }
+
+type Spent = Pick<TurnTokens, 'input' | 'cached' | 'output'>
 
 class AppServerClient extends StdioJsonRpcClient {
   constructor() {
@@ -328,6 +338,16 @@ export class CodexAdapter implements ProviderAdapter {
         if (delta) sink.delta(itemId(request.turnId, stringOf(params.itemId)), delta)
         break
       }
+      case 'thread/tokenUsage/updated': {
+        // A late reading of the turn before this one is not this turn's.
+        const about = stringOf(params.turnId)
+        if (about && turn.codexTurnId && about !== turn.codexTurnId) break
+        const read = codexTokens(params.tokenUsage, turn.tokenBase ?? null)
+        if (!read) break
+        turn.tokenBase = read.base
+        sink.tokens(read.tokens)
+        break
+      }
       case 'turn/plan/updated': {
         const plan = planItem(request.turnId, params.plan, (step) => stringOf(step.step))
         if (plan) sink.item(plan)
@@ -379,6 +399,37 @@ export class CodexAdapter implements ProviderAdapter {
       note: parsed.note,
       unavailable: parsed.windows.length ? null : 'Codex did not report any rate-limit windows for this account.',
       updatedAt: Date.now()
+    }
+  }
+}
+
+/**
+ * A turn's tokens from a thread's token reading. `base` is the thread's count before the turn;
+ * on the turn's first reading it is unknown and worked out as the total less that latest call.
+ */
+export function codexTokens(value: unknown, base: Spent | null): { tokens: TurnTokens; base: Spent } | null {
+  const usage = recordOf(value)
+  const spent = (entry: unknown): Spent | null => {
+    const raw = recordOf(entry)
+    if (typeof raw.inputTokens !== 'number') return null
+    const count = (key: string): number => (typeof raw[key] === 'number' ? raw[key] as number : 0)
+    return { input: count('inputTokens'), cached: count('cachedInputTokens'), output: count('outputTokens') }
+  }
+  const total = spent(usage.total)
+  const last = spent(usage.last)
+  if (!total) return null
+  const before = base ?? (last
+    ? { input: total.input - last.input, cached: total.cached - last.cached, output: total.output - last.output }
+    : total)
+  const window = usage.modelContextWindow
+  return {
+    base: before,
+    tokens: {
+      input: Math.max(0, total.input - before.input),
+      cached: Math.max(0, total.cached - before.cached),
+      output: Math.max(0, total.output - before.output),
+      context: last?.input ?? null,
+      contextWindow: typeof window === 'number' && window > 0 ? window : null
     }
   }
 }
