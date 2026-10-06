@@ -17,6 +17,9 @@ import {
 // - `thread/inject_items` appends Responses-API message items to the thread's history without
 //   starting a turn, and the model treats them as real earlier turns. That is how the turns
 //   other providers answered are handed over: as history with roles, not as pasted text.
+// - (app-server docs, read 2026-10-05; not yet seen live) `turn/steer {threadId, expectedTurnId,
+//   input}` appends the user's words to the turn in flight without a new `turn/started`, and
+//   fails when that turn is no longer the active one.
 // - `model/list` pages through the account's models; `turn/start` takes a `model` for that turn.
 // - `account/rateLimits/read` and the `account/rateLimits/updated` notification carry the
 //   subscription windows.
@@ -144,6 +147,19 @@ export class CodexAdapter implements ProviderAdapter {
     await this.client.request('turn/interrupt', { threadId, turnId: turn.codexTurnId }).catch(() => {
       turn.finish({ status: 'interrupted' })
     })
+  }
+
+  async steer(chatId: string, text: string): Promise<boolean> {
+    const threadId = this.loaded.get(chatId)?.threadId
+    const turn = threadId ? this.active.get(threadId) : undefined
+    // Until Codex has named its turn there is nothing to steer; the words wait for the turn's end instead.
+    if (!threadId || !turn?.codexTurnId || !this.client?.connected) return false
+    try {
+      await this.client.request('turn/steer', { threadId, expectedTurnId: turn.codexTurnId, input: [{ type: 'text', text }] })
+      return true
+    } catch {
+      return false
+    }
   }
 
   forget(chatId: string): void {

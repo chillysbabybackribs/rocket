@@ -87,6 +87,12 @@ export interface ProviderAdapter {
    */
   prepare(request: PrepareRequest): Promise<void>
   stop(chatId: string): Promise<void>
+  /**
+   * Add the user's words to the turn running in a chat, for the model to take in from its next
+   * step; the turn keeps going and ends as usual. Resolves false when there is no turn that can
+   * take them, and the hub then sends them once the turn has ended.
+   */
+  steer?(chatId: string, text: string): Promise<boolean>
   /** Drop whatever is held for a chat that was deleted. */
   forget(chatId: string): void
   usage(): Promise<UsageSnapshot>

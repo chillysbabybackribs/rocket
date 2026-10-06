@@ -194,3 +194,92 @@ test('a turn the provider starts by itself is recorded, replied in, and settled'
   assert.equal(store.session(chat.id, 'claude').seenTurnSeq, store.turns(chat.id)[0]!.seq, 'the session holds its own turn')
   assert.equal(open!('no-such-chat', 'x'), null)
 })
+
+/** A fake whose turns take the user's words while they run, until told not to. */
+class SteeringAdapter extends FakeAdapter {
+  steered: Array<{ chatId: string; text: string }> = []
+  takes = true
+  async steer(chatId: string, text: string): Promise<boolean> {
+    if (!this.takes) return false
+    this.steered.push({ chatId, text })
+    return true
+  }
+}
+
+function steerSetup() {
+  const claude = new SteeringAdapter()
+  const cursor = new FakeAdapter()
+  const events: HostEvent[] = []
+  const timings: TurnTiming[] = []
+  const hub = new Hub(new Store(':memory:'), { claude, codex: cursor, cursor, antigravity: cursor }, (event) => events.push(event), (timing) => timings.push(timing))
+  const ended = (count: number): Promise<void> => new Promise((resolve) => {
+    const poll = (): void => (timings.length >= count ? resolve() : void setImmediate(poll))
+    poll()
+  })
+  const queueOf = (chatId: string): string[] => {
+    const last = events.findLast((event) => event.type === 'queue' && event.chatId === chatId)
+    return last?.type === 'queue' ? last.queued.map((entry) => entry.text) : []
+  }
+  return { claude, cursor, hub, ended, queueOf }
+}
+
+test('words sent to the provider answering join its turn, told not to acknowledge them', async () => {
+  const { claude, hub, ended } = steerSetup()
+  const chat = hub.createChat('/work')
+  const turnId = hub.send(chat.id, 'claude', null, 'Restyle settings')
+  await hub.post(chat.id, 'claude', null, '  Leave the account section  ')
+
+  assert.equal(claude.ran.length, 1, 'no second turn')
+  assert.match(claude.steered[0]!.text, /do not stop to acknowledge/)
+  assert.match(claude.steered[0]!.text, /Leave the account section$/)
+  const users = hub.openChat(chat.id).items.filter((item) => item.type === 'user')
+  assert.deepEqual(users.map((item) => [item.turnId, item.text, item.type === 'user' && item.steer === true]), [
+    [turnId, 'Restyle settings', false],
+    [turnId, 'Leave the account section', true]
+  ])
+  claude.complete()
+  await ended(1)
+})
+
+test('words for a provider that cannot take them wait, and go out together when the turn ends', async () => {
+  const { claude, cursor, hub, ended, queueOf } = steerSetup()
+  const chat = hub.createChat('/work')
+  hub.send(chat.id, 'cursor', null, 'Find the blank tab bug')
+  await hub.post(chat.id, 'cursor', null, 'Only with more than five tabs')
+  await hub.post(chat.id, 'claude', 'opus', 'And check the restore order')
+
+  assert.equal(cursor.ran.length, 1)
+  assert.deepEqual(queueOf(chat.id), ['Only with more than five tabs', 'And check the restore order'])
+  assert.deepEqual(hub.openChat(chat.id).queued!.map((entry) => entry.provider), ['cursor', 'claude'])
+  cursor.complete()
+  await ended(1)
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.equal(claude.ran.length, 1, 'the latest waiting message picks the provider')
+  assert.equal(claude.ran[0]!.model, 'opus')
+  assert.match(claude.ran[0]!.text, /Only with more than five tabs\n\nAnd check the restore order$/)
+  assert.deepEqual(queueOf(chat.id), [])
+  claude.complete()
+  await ended(2)
+})
+
+test('a turn that cannot take words leaves them waiting, and later words keep their place behind them', async () => {
+  const { claude, hub, ended, queueOf } = steerSetup()
+  const chat = hub.createChat('/work')
+  hub.send(chat.id, 'claude', null, 'Start')
+  claude.takes = false
+  await hub.post(chat.id, 'claude', null, 'first')
+  claude.takes = true
+  await hub.post(chat.id, 'claude', null, 'second')
+  assert.equal(claude.steered.length, 0, 'not steered past a waiting message')
+  assert.deepEqual(queueOf(chat.id), ['first', 'second'])
+
+  const [first] = hub.queued(chat.id)
+  assert.equal(hub.unqueue(chat.id, first!.id), 'first')
+  assert.equal(hub.withdraw(chat.id), 'second')
+  assert.equal(hub.withdraw(chat.id), null)
+  claude.complete()
+  await ended(1)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(claude.ran.length, 1, 'nothing was left to send')
+})

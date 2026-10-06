@@ -28,6 +28,10 @@ import {
 //   the full set of live background tasks each time it changes; `ambient` ones are not activity.
 //   A turn whose reply ends while such tasks run is held open and shown as waiting, so the
 //   follow-up continues it; a follow-up with no turn open (after a restart, say) gets one of its own.
+// - (SDK 0.3.289 types, read 2026-10-05; not yet seen live) A user message written while a turn
+//   runs takes `priority` ('next': folded in between tool rounds) and a `uuid`. When the reply
+//   ends before it was taken, the `result` has `queued_turn_count` > 0 and a turn answering it
+//   follows. `interrupt()` resolves with `still_queued`: uuids that will run after the stop.
 // The SDK has no supported way to import another model's turns into a session, so missed turns
 // ride at the head of the user's message as a tagged block.
 //
@@ -95,6 +99,8 @@ type RunningTurn = {
   deferred?: RunResult | null
   /** Ends a deferred turn if no follow-up starts after the background has emptied. */
   settleTimer?: NodeJS.Timeout | null
+  /** The uuids of the user's words sent into this turn while it ran. */
+  steers?: Set<string>
 }
 
 /** One live Claude Code process for one chat. */
@@ -137,13 +143,15 @@ class Runtime {
     return !this.closed
   }
 
-  push(text: string): void {
+  /** A user message; one sent while a turn runs carries a `priority` and the uuid it is known by. */
+  push(text: string, mid?: { uuid: string; priority: 'now' | 'next' | 'later' }): void {
     if (this.closed) throw new Error('Claude Code is not running')
     this.queue.push({
       type: 'user',
       message: { role: 'user', content: text },
       parent_tool_use_id: null,
-      session_id: this.sessionId ?? ''
+      session_id: this.sessionId ?? '',
+      ...(mid ? { uuid: mid.uuid as `${string}-${string}-${string}-${string}-${string}`, priority: mid.priority } : {})
     })
     this.wake?.()
   }
@@ -164,8 +172,10 @@ class Runtime {
     return this.query.supportedModels()
   }
 
-  async interrupt(): Promise<void> {
-    await this.query.interrupt()
+  /** The uuids of user messages that will still run after the interrupt, when the CLI says. */
+  async interrupt(): Promise<string[]> {
+    const receipt = recordOf(await this.query.interrupt())
+    return Array.isArray(receipt.still_queued) ? receipt.still_queued.map(String) : []
   }
 
   /** The plan windows `/usage` shows. Experimental in the SDK, so its absence is not an error. */
@@ -287,10 +297,26 @@ export class ClaudeAdapter implements ProviderAdapter {
       waiting.finish({ status: 'interrupted' })
       return
     }
-    await runtime.interrupt().catch(() => {
+    const survivors = await runtime.interrupt().catch(() => {
       // An interrupt the process cannot take is answered by closing it; the session resumes later.
       this.retire(runtime)
+      return []
     })
+    // Words the user sent into the turn and Claude Code has not taken yet would run after the
+    // stop as a turn of their own. The SDK cannot cancel them, so the process goes instead.
+    if (survivors.some((uuid) => waiting.steers?.has(uuid))) this.retire(runtime)
+  }
+
+  async steer(chatId: string, text: string): Promise<boolean> {
+    const runtime = this.runtimes.get(chatId)
+    const turn = runtime?.turn
+    if (!runtime?.alive || !turn) return false
+    // 'next' folds the words in between tool rounds without cutting off the step under way. A
+    // turn only waiting on background tasks is idle, so they start its follow-up at once.
+    const uuid = randomUUID()
+    ;(turn.steers ??= new Set()).add(uuid)
+    runtime.push(text, { uuid, priority: 'next' })
+    return true
   }
 
   forget(chatId: string): void {
@@ -428,6 +454,9 @@ export class ClaudeAdapter implements ProviderAdapter {
       if (op.type === 'item') turn.sink.item(op.item)
       else turn.sink.delta(op.itemId, op.delta)
     }
+    // A reply that ended before Claude Code took the words sent into it is followed by another
+    // turn answering them; that one belongs to this turn too, and its result ends it.
+    if (out.end?.status === 'completed' && message.type === 'result' && Number(message.queued_turn_count) > 0 && turn.steers?.size) return
     if (out.end) this.ended(runtime, turn, out.end)
   }
 

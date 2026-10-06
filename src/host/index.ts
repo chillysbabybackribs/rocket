@@ -143,31 +143,15 @@ const adapters: Record<ProviderId, ProviderAdapter> = testProfile ? {
   cursor: new CursorAdapter(tools),
   antigravity: new AntigravityAdapter(tools)
 }
-/** Answers clicked while the turn that asked was still running, sent as soon as it ends. */
-const pendingAnswers = new Map<string, { provider: ProviderId; model: string | null; text: string }>()
-
 /** Events go to the renderer; the ones that end a chat's use of the browser go to main as well. */
 function onEvent(event: HostEvent): void {
   emit(event)
   if (event.type === 'turn' && event.turn.status !== 'running') {
     void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
     goals.turnEnded(event.turn)
-    const { id, chatId } = event.turn
+    const { id } = event.turn
     void teamwork.turnEnded(event.turn).then((files) => goals.noteFiles(id, files))
-    const pending = pendingAnswers.get(chatId)
-    if (pending) {
-      pendingAnswers.delete(chatId)
-      // The hub has let go of the turn by the time it reports the end; a send that still fails goes in the journal.
-      queueMicrotask(() => {
-        try {
-          hub.send(chatId, pending.provider, pending.model, pending.text)
-        } catch (error) {
-          journal.add('host', 'warn', 'question', `The answer to a question could not be sent: ${messageOf(error)}`, { chatId })
-        }
-      })
-    }
   } else if (event.type === 'chatDeleted') {
-    pendingAnswers.delete(event.chatId)
     goals.forget(event.chatId)
     void askBrowser({ op: 'forget', chat: event.chatId }).catch(() => {})
     teamwork.forget(event.chatId)
@@ -210,8 +194,13 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   },
   'chat.setCwd': ({ chatId, cwd }) => hub.setCwd(chatId, cwd),
   'chat.delete': async ({ chatId }) => { await hub.deleteChat(chatId); return null },
-  'chat.send': ({ chatId, provider, model, text }) => { hub.send(chatId, provider, model, text); return null },
-  'chat.stop': async ({ chatId }) => { await hub.stop(chatId); return null },
+  'chat.send': async ({ chatId, provider, model, text }) => { await hub.post(chatId, provider, model, text); return null },
+  'chat.stop': async ({ chatId, sendQueued }) => {
+    const withdrawn = sendQueued ? null : hub.withdraw(chatId)
+    await hub.stop(chatId)
+    return withdrawn
+  },
+  'chat.unqueue': ({ chatId, id }) => hub.unqueue(chatId, id),
   'turn.changes': async ({ chatId, turnId }) => {
     const kept = store.turn(turnId)?.chatId === chatId ? store.turnPatch(turnId) : undefined
     if (!kept) return null
@@ -231,8 +220,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
     const message = answerMessage(question, text)
     try {
       if (goal) goals.steer(goal.id, message)
-      else if (hub.isRunning(chatId)) pendingAnswers.set(chatId, { provider, model, text: message })
-      else hub.send(chatId, provider, model, message)
+      else hub.enqueue(chatId, provider, model, message)
     } catch (error) {
       hub.answerQuestion(chatId, itemId, null)
       throw error

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { ChatLinkTarget, Chat, Goal, GoalEdit, HostEvent, Item, ModelInfo, ProviderId, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
+import type { ChatLinkTarget, Chat, Goal, GoalEdit, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
 
 export type ArtifactView =
   | Extract<ChatLinkTarget, { kind: 'artifact' }>

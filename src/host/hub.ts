@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { Chat, ChatSnapshot, GoalRole, HostEvent, Item, ModelInfo, ProviderId, Turn, UsageSnapshot } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, GoalRole, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, UsageSnapshot } from '../shared/types.ts'
 import { buildHandoff, type Handoff, type MissedTurn } from './handoff.ts'
 import { messageOf, oneLine } from './json.ts'
 import type { ProviderAdapter, RunResult, TurnSink, UnpromptedTurn } from './providers/provider.ts'
@@ -36,6 +36,15 @@ export function describeTiming(timing: TurnTiming): string {
 }
 
 type Question = Extract<Item, { type: 'question' }>
+type Queued = QueuedMessage & { model: string | null }
+
+/**
+ * What a provider is told with words the user added mid-turn. Without the second sentence a
+ * model stops to say "Got it", which the user does not want.
+ */
+export function steerText(text: string): string {
+  return `[The user sent this while you were working. Take it into account from here on and carry on with the task; do not stop to acknowledge it.]\n\n${text}`
+}
 
 type LiveTurn = {
   turn: StoredTurn
@@ -50,6 +59,8 @@ type LiveTurn = {
 export class Hub {
   /** chatId → the turn in flight. One turn per chat at a time. */
   private readonly live = new Map<string, LiveTurn>()
+  /** chatId → messages waiting for its turn in flight to end, oldest first. */
+  private readonly queues = new Map<string, Queued[]>()
   private readonly usageCache = new Map<ProviderId, { at: number; snapshot: UsageSnapshot }>()
   private readonly usagePending = new Map<ProviderId, Promise<UsageSnapshot>>()
   private readonly modelCache = new Map<ProviderId, { at: number; models: Promise<ModelInfo[]> }>()
@@ -103,8 +114,9 @@ export class Hub {
   }
 
   openChat(chatId: string): ChatSnapshot {
-    const snapshot = this.store.snapshot(chatId)
-    if (!snapshot) throw new Error('That chat no longer exists')
+    const stored = this.store.snapshot(chatId)
+    if (!stored) throw new Error('That chat no longer exists')
+    const snapshot = { ...stored, queued: this.queued(chatId) }
     const live = this.live.get(chatId)
     if (!live) return snapshot
     // A turn in flight holds newer text than the store does.
@@ -126,6 +138,7 @@ export class Hub {
   }
 
   async deleteChat(chatId: string): Promise<void> {
+    this.queues.delete(chatId)
     await this.stop(chatId)
     for (const adapter of Object.values(this.adapters)) adapter.forget(chatId)
     this.store.deleteChat(chatId)
@@ -176,6 +189,87 @@ export class Hub {
 
     void this.runTurn(live, updated.cwd, message, model, session.sessionId, handoff)
     return turn.id
+  }
+
+  /**
+   * A message the user sent. With the chat idle it starts a turn. While a turn runs, it joins
+   * that turn when the provider answering is the one picked and can take it; otherwise, or when
+   * messages are already waiting (they keep their order), it waits for the turn to end.
+   */
+  async post(chatId: string, provider: ProviderId, model: string | null, text: string): Promise<void> {
+    const message = text.trim()
+    if (!message) throw new Error('There is nothing to send')
+    const live = this.live.get(chatId)
+    if (!live) {
+      this.send(chatId, provider, model, message)
+      return
+    }
+    const steerable = live.turn.provider === provider && live.turn.goalRole === null && !live.stopRequested
+      && !this.queues.get(chatId)?.length && live.adapter.steer
+    if (steerable && await live.adapter.steer!(chatId, steerText(message)).catch(() => false)) {
+      // Kept with the turn that took it, even if that turn ended while the words were on their way.
+      this.putItem(live, { type: 'user', id: `${live.turn.id}:steer-${randomUUID()}`, turnId: live.turn.id, text: message, steer: true })
+      return
+    }
+    this.enqueue(chatId, provider, model, message)
+  }
+
+  /** Hold a message until the chat's turn in flight has ended, then send it; sent at once when none is running. */
+  enqueue(chatId: string, provider: ProviderId, model: string | null, text: string): void {
+    this.requireChat(chatId)
+    const queue = this.queues.get(chatId) ?? []
+    queue.push({ id: randomUUID(), provider, model, text })
+    this.queues.set(chatId, queue)
+    this.emitQueue(chatId)
+    if (!this.live.has(chatId)) this.drain(chatId)
+  }
+
+  /** Take one waiting message back; returns its text. */
+  unqueue(chatId: string, id: string): string {
+    const queue = this.queues.get(chatId) ?? []
+    const found = queue.find((entry) => entry.id === id)
+    if (!found) throw new Error('That message has already been sent')
+    this.setQueue(chatId, queue.filter((entry) => entry !== found))
+    return found.text
+  }
+
+  /** Take every waiting message back, as one text; null when none was waiting. */
+  withdraw(chatId: string): string | null {
+    const queue = this.queues.get(chatId) ?? []
+    if (!queue.length) return null
+    this.setQueue(chatId, [])
+    return queue.map((entry) => entry.text).join('\n\n')
+  }
+
+  queued(chatId: string): QueuedMessage[] {
+    return (this.queues.get(chatId) ?? []).map(({ id, provider, text }) => ({ id, provider, text }))
+  }
+
+  /**
+   * Send what was waiting, as one message to the provider and model of the latest: several
+   * words sent while one turn ran belong to one next turn, as they would in a conversation.
+   */
+  private drain(chatId: string): void {
+    const queue = this.queues.get(chatId)
+    if (!queue?.length || this.live.has(chatId)) return
+    this.setQueue(chatId, [])
+    const last = queue.at(-1)!
+    try {
+      this.send(chatId, last.provider, last.model, queue.map((entry) => entry.text).join('\n\n'))
+    } catch {
+      // Left waiting where the user can see it, take it back, or have it go with the next turn's end.
+      if (this.store.chat(chatId)) this.setQueue(chatId, queue)
+    }
+  }
+
+  private setQueue(chatId: string, queue: Queued[]): void {
+    if (queue.length) this.queues.set(chatId, queue)
+    else this.queues.delete(chatId)
+    this.emitQueue(chatId)
+  }
+
+  private emitQueue(chatId: string): void {
+    this.emit({ type: 'queue', chatId, queued: this.queued(chatId) })
   }
 
   /** Whether a chat has a turn in flight. */
@@ -421,6 +515,8 @@ export class Hub {
     if (taken) this.store.setSession(chatId, provider, { sessionId, seenTurnSeq: turn.seq })
     this.live.delete(chatId)
     this.emit({ type: 'turn', turn: publicTurn(turn) })
+    // After those who hear of the end have heard it, as the next turn's start must come after.
+    if (this.queues.get(chatId)?.length) queueMicrotask(() => this.drain(chatId))
     this.onTiming({
       chatId,
       provider,

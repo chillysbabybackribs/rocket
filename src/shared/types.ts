@@ -3,11 +3,15 @@
 
 export type ProviderId = 'codex' | 'claude' | 'cursor' | 'antigravity'
 
-export const PROVIDERS: ReadonlyArray<{ id: ProviderId; label: string }> = [
-  { id: 'claude', label: 'Claude' },
-  { id: 'codex', label: 'Codex' },
-  { id: 'cursor', label: 'Cursor' },
-  { id: 'antigravity', label: 'Antigravity' }
+/**
+ * `steers`: a message sent while this provider is answering joins the turn in flight. For the
+ * others it waits for the turn to end. The host decides; this only sets what the composer says.
+ */
+export const PROVIDERS: ReadonlyArray<{ id: ProviderId; label: string; steers: boolean }> = [
+  { id: 'claude', label: 'Claude', steers: true },
+  { id: 'codex', label: 'Codex', steers: true },
+  { id: 'cursor', label: 'Cursor', steers: false },
+  { id: 'antigravity', label: 'Antigravity', steers: false }
 ]
 
 export function providerLabel(id: ProviderId): string {
@@ -19,7 +23,8 @@ export type ToolStatus = 'running' | 'done' | 'failed'
 
 /** One row of the transcript. Ids are unique within a chat and stable across updates. */
 export type Item =
-  | { type: 'user'; id: string; turnId: string; text: string }
+  /** `steer`: sent while the turn was running and taken into it, after the turn's first message. */
+  | { type: 'user'; id: string; turnId: string; text: string; steer?: boolean }
   | { type: 'assistant'; id: string; turnId: string; text: string; streaming: boolean }
   | { type: 'reasoning'; id: string; turnId: string; text: string; streaming: boolean }
   | {
@@ -180,7 +185,10 @@ export type Chat = {
   updatedAt: number
 }
 
-export type ChatSnapshot = { chat: Chat; turns: Turn[]; items: Item[] }
+/** A message waiting for the chat's turn in flight to end, to be sent as the next one. Kept in memory only. */
+export type QueuedMessage = { id: string; provider: ProviderId; text: string }
+
+export type ChatSnapshot = { chat: Chat; turns: Turn[]; items: Item[]; queued?: QueuedMessage[] }
 
 export type UsageWindow = { label: string; percent: number; resetsAt: number | null }
 
@@ -207,6 +215,8 @@ export type HostEvent =
   | { type: 'chatDeleted'; chatId: string }
   | { type: 'usage'; snapshot: UsageSnapshot }
   | { type: 'goal'; goal: Goal }
+  /** The chat's waiting messages, all of them, each time they change. */
+  | { type: 'queue'; chatId: string; queued: QueuedMessage[] }
 
 /** Request name → [params, result]. */
 export type HostApi = {
@@ -216,8 +226,18 @@ export type HostApi = {
   'chat.setCwd': [{ chatId: string; cwd: string }, Chat]
   'chat.delete': [{ chatId: string }, null]
   /** `model` is one of the provider's `models.list` ids, or null for the provider's default. */
+  /**
+   * Sent at once when the chat is idle. While a turn runs, it joins that turn when its provider
+   * is the one answering and can take it, and otherwise waits for the turn to end.
+   */
   'chat.send': [{ chatId: string; provider: ProviderId; model: string | null; text: string }, null]
-  'chat.stop': [{ chatId: string }, null]
+  /**
+   * Stop the turn in flight. Waiting messages are withdrawn and their text returned, for the
+   * composer to take back; with `sendQueued` they stay and go out as soon as the turn has stopped.
+   */
+  'chat.stop': [{ chatId: string; sendQueued?: boolean }, string | null]
+  /** Take one waiting message back; returns its text. */
+  'chat.unqueue': [{ chatId: string; id: string }, string]
   /** A turn's changes as a unified patch; null when the turn changed nothing or its folder is not a repository. */
   'turn.changes': [{ chatId: string; turnId: string }, TurnPatch | null]
   /** Put the turn's files back as they were before it; the reversal is committed like a turn. Returns the turn as it now stands. */
