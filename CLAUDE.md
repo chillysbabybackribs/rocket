@@ -11,7 +11,13 @@ npm run typecheck   # tsc, no emit
 npm test            # host/renderer unit tests and UI subprocess cleanup regression tests
 npm run check:ui    # build + unit tests + isolated Electron UI check, no real model turns
 npm run dev         # the app, rebuilding on change (ROCKET_NO_SANDBOX=1 if the sandbox helper is not set up)
+npm run open -- <path or URL>   # open it inside the running app (browser tab or artifact panel)
 ```
+
+Anything made for the user to look at (a mockup, a capture, a report) is opened with
+`npm run open`, never `xdg-open` or an outside browser. Show a mockup in `docs/mockups` and get
+it agreed before building a UI change, and make checks visible: `npm run check:ui -- --visible`,
+or open the captures afterwards.
 
 Run typecheck and tests after every change. To check against the real CLIs without the UI:
 

@@ -12,7 +12,13 @@ npm run dev        # development, with rebuild on change
 npm run preview    # production build, then launch
 npm test           # unit tests, beside the files they test
 npm run check:ui   # build, unit tests, then the isolated desktop self-check
+npm run open -- docs/mockups/turn-changes.html   # open a file or URL inside the running app
 ```
+
+Rocket runs one instance per profile. `npm run open -- <path or URL>` hands its argument to the
+running app, which opens it as a chat link would: a page or HTML file in a browser tab, a text
+file in the artifact panel. With no app running it starts one. Mockups and reports made for you
+by an assistant belong here, not in an outside browser.
 
 Each provider runs through its own CLI, signed in with your own account. Install and sign in to
 the ones you want: `claude`, `codex`, `cursor-agent`, `agy`.
