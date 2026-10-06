@@ -25,7 +25,12 @@ the ones you want: `claude`, `codex`, `cursor-agent`, `agy`.
 
 ### Linux sandbox
 
-Chromium's sandbox needs its helper to be owned by root. After every `npm install`:
+Chromium's sandbox needs its helper to be owned by root with mode `4755`. Electron updates
+can replace that helper and reset its permissions. `npm run dev`, `npm run preview`, and
+`npm run open` check it before launching and automatically repair it using `sudo -n` when
+passwordless sudo is available. Correct permissions require no sudo calls.
+
+If automatic repair is unavailable, the launcher prints these manual repair commands:
 
 ```sh
 sudo chown root:root node_modules/electron/dist/chrome-sandbox
@@ -412,6 +417,26 @@ The profile folder is `~/.config/Rocket` (Electron's `userData`), so the journal
 `~/.config/Rocket/journal.jsonl`; `tail -f` it to watch. `npm run simulate:slow-turn` writes a
 fake slow turn from a `sim` provider to check detection; those rows stay in the journal and show
 in the timing averages, so use `ROCKET_DATA_DIR=<dir>` to point it at a scratch folder instead.
+
+### Tool-call history
+
+Rocket records calls to its shared MCP tools in `<profile>/tool-calls.db`, independently of
+self-check mode. Each call has a start and immutable finish, version/build fingerprints,
+provider and available model/turn identity, redacted arguments, duration, outcome, structured
+error and artifact references. Unfinished calls from a previous host are interrupted.
+Recording failures cannot change tool behavior.
+
+`rocket_tool_history` returns bounded call lists or deterministic failure groups. Default:
+last 24 hours, 10 results. Filter by tool/version, error code or dates; use a call ID for
+redacted arguments and artifact references. Failure rates include successes in the same
+version/operation scope. UI operation failures are distinct from script-authored exceptions.
+History stays out of session prompts; tool descriptions are not automatically rewritten.
+
+Records are pruned after 30 days or beyond 10,000 finished/previous-instance calls, at startup
+and every 100 starts. Active calls are preserved. Captures and traces are not deleted by ledger
+pruning. See [tool-failure-history.md](docs/tool-failure-history.md) for format, redaction,
+retention and query details, and [the implementation plan](docs/tool-failure-history-plan.md)
+for milestone progress.
 
 ### Desktop self-check
 

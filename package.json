@@ -19,6 +19,7 @@
     "eval:ui": "bt eval evals/rocket-ui-regression.eval.ts",
     "eval:ui:local": "node scripts/run-ui-eval.mjs",
     "eval:matrix:plan": "node scripts/run-agent-matrix.mjs",
+    "eval:matrix:run": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/eval-matrix-runner.ts",
     "eval:export-turn": "node --experimental-transform-types --disable-warning=ExperimentalWarning scripts/export-turn.mjs",
     "eval:grade-turn": "node scripts/grade-turn.mjs",
     "simulate:slow-turn": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/simulate-slow-turn.ts",

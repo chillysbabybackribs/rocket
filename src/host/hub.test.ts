@@ -45,6 +45,17 @@ function setup() {
   return { adapter, hub, timings, ended }
 }
 
+test('waitForTurn resolves when the turn ends', async () => {
+  const { adapter, hub } = setup()
+  const chat = hub.createChat('/work')
+  const turnId = hub.send(chat.id, 'claude', null, 'hello')
+  const pending = hub.waitForTurn(chat.id, { turnId, timeoutMs: 5_000 })
+  adapter.complete()
+  const turn = await pending
+  assert.equal(turn.id, turnId)
+  assert.equal(turn.status, 'completed')
+})
+
 test('prepare hands the provider the chat folder and the session it would resume', async () => {
   const { adapter, hub, ended } = setup()
   const chat = hub.createChat('/work')

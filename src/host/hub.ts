@@ -74,6 +74,7 @@ export class Hub {
   private readonly usageCache = new Map<ProviderId, { at: number; snapshot: UsageSnapshot }>()
   private readonly usagePending = new Map<ProviderId, Promise<UsageSnapshot>>()
   private readonly modelCache = new Map<ProviderId, { at: number; models: Promise<ModelInfo[]> }>()
+  private readonly turnWaiters = new Map<string, Array<{ turnId?: string; resolve: (turn: Turn) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>>()
 
   constructor(
     private readonly store: Store,
@@ -113,6 +114,31 @@ export class Hub {
 
   listChats(): Chat[] {
     return this.store.listChats()
+  }
+
+  /** Resolve when a turn in this chat reaches a terminal status. */
+  waitForTurn(chatId: string, options?: { turnId?: string; timeoutMs?: number }): Promise<Turn> {
+    const timeoutMs = options?.timeoutMs ?? 600_000
+    const wanted = options?.turnId
+    const done = wanted
+      ? this.store.turn(wanted)
+      : this.store.turns(chatId).findLast((turn) => turn.status !== 'running')
+    if (done && done.chatId === chatId && done.status !== 'running' && (!wanted || done.id === wanted)) {
+      return Promise.resolve(publicTurn(done))
+    }
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.dropTurnWaiter(chatId, entry)
+        reject(new Error(`Turn did not finish within ${Math.round(timeoutMs / 1000)}s`))
+      }, timeoutMs)
+      const entry = {
+        turnId: wanted,
+        resolve: (turn: Turn) => { clearTimeout(timer); resolve(turn) },
+        reject: (error: Error) => { clearTimeout(timer); reject(error) },
+        timer
+      }
+      this.turnWaiters.set(chatId, [...this.turnWaiters.get(chatId) ?? [], entry])
+    })
   }
 
   createChat(cwd: string, title = 'New chat'): Chat {
@@ -575,7 +601,9 @@ export class Hub {
       || [...live.items.values()].some((item) => item.type === 'assistant' || item.type === 'reasoning' || item.type === 'tool')
     if (taken) this.store.setSession(chatId, provider, { sessionId, seenTurnSeq: turn.seq })
     this.live.delete(chatId)
-    this.emit({ type: 'turn', turn: publicTurn(turn) })
+    const finished = publicTurn(turn)
+    this.emit({ type: 'turn', turn: finished })
+    this.releaseTurnWaiters(chatId, finished)
     // After those who hear of the end have heard it, as the next turn's start must come after.
     if (this.queues.get(chatId)?.length) queueMicrotask(() => this.drain(chatId))
     this.onTiming({
@@ -603,6 +631,27 @@ export class Hub {
         items: this.store.turnItems(chatId, turn.id)
       }))
     return buildHandoff(missed, undefined, this.store.chat(chatId)?.cwd ?? null)
+  }
+
+  private releaseTurnWaiters(chatId: string, turn: Turn): void {
+    if (turn.status === 'running') return
+    const waiting = this.turnWaiters.get(chatId)
+    if (!waiting?.length) return
+    const keep: typeof waiting = []
+    for (const entry of waiting) {
+      if (entry.turnId && entry.turnId !== turn.id) { keep.push(entry); continue }
+      entry.resolve(turn)
+    }
+    if (keep.length) this.turnWaiters.set(chatId, keep)
+    else this.turnWaiters.delete(chatId)
+  }
+
+  private dropTurnWaiter(chatId: string, target: { timer: NodeJS.Timeout }): void {
+    const waiting = this.turnWaiters.get(chatId)
+    if (!waiting?.length) return
+    const keep = waiting.filter((entry) => entry.timer !== target.timer)
+    if (keep.length) this.turnWaiters.set(chatId, keep)
+    else this.turnWaiters.delete(chatId)
   }
 
   private putItem(live: LiveTurn, item: Item): void {

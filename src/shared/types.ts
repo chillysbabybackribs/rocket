@@ -307,6 +307,17 @@ export type HostApi = {
   'eval.exportTurn': [{ turnId: string; outDir?: string | null }, string | null]
   /** Directory for automatic export on the next ended turns (matrix cell folder). */
   'eval.setCellDir': [{ dir: string | null }, null]
+  /** One matrix cell: send (or goal draft), wait, export to `outDir`. Requires a running app host. */
+  'eval.runCell': [{
+    cwd: string
+    message: string
+    provider: ProviderId
+    model: string | null
+    outDir: string
+    openGoal?: boolean
+    scenarioId?: string
+    timeoutMs?: number
+  }, { turnId: string; chatId: string; turnPath: string; cellDir: string }]
 }
 
 export type HostMethod = keyof HostApi

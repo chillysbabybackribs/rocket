@@ -26,7 +26,18 @@ Produces a run plan under `.artifacts/evals/` (manual or future host automation)
    npm run eval:grade-turn -- .artifacts/evals/inbox/<turnId>__*/turn.json --graders turn_completed,goal_report_called
    ```
 
-Host RPC (from renderer or future runner): `eval.tagChat`, `eval.setCellDir`, `eval.exportTurn`.
+Host RPC: `eval.tagChat`, `eval.setCellDir`, `eval.exportTurn`, `eval.runCell`.
+
+**Automated matrix** (calls real providers — costs usage):
+
+```bash
+npm run eval:matrix:plan
+npm run eval:matrix:run -- .artifacts/evals/<timestamp>-plan/manifest.json --dry-run
+ROCKET_EVAL_MATRIX_RUN=1 npm run eval:matrix:run -- .artifacts/evals/<timestamp>-plan/manifest.json
+# one cell: ... manifest.json --yes --cell 0
+```
+
+With `ROCKET_UI_TEST=1` / ui test profile, the runner uses fixture adapters instead of live providers.
 
 Offline export from the profile DB:
 

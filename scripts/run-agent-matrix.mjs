@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Expand scenario JSONL into a run plan (cells × trials). Execution hooks up to host eval RPC or manual dogfood.
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -35,11 +35,12 @@ const out = join(root, '.artifacts/evals', `${stamp}-plan`)
 mkdirSync(out, { recursive: true })
 const manifest = {
   createdAt: new Date().toISOString(),
-  scenarioFile: scenarioPath,
+  scenarioFile: resolve(scenarioPath),
   scenarioCount: scenarios.length,
   cellCount: cells.length,
   cells,
-  note: 'Run each cell in the live app (pick provider/model, send message), then grade with scripts/grade-turn.mjs when turn export exists.',
+  note: 'Automated: replace -plan with -run on this folder name, then npm run eval:matrix:run -- <manifest.json> --yes',
+  runDir: out.replace(/-plan$/, '-run'),
 }
 writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2))
 console.log(`Matrix plan: ${cells.length} cells → ${out}/manifest.json`)
