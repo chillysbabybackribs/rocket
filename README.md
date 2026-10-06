@@ -170,6 +170,23 @@ opens the system save dialog in main and the host copies the stored original the
 byte. **Reveal stored file** shows the host's copy in the file manager under its stored name
 (`<id>.<ext>`); main refuses any path outside the profile's `attachments/` folder.
 
+The camera beside the paperclip (`components/Capture.tsx`, agreed in
+`docs/mockups/screen-capture.html`) captures into that composer's draft: **Browser page** (the
+visible part of the current tab), **Rocket window**, **Another app's window…** (a picker of every
+open window and screen with previews), **Entire screen** (the one under the pointer) or **Select a
+region…**. Main does the capturing (`src/main/capture.ts`). Windows and screens come from
+Electron's `desktopCapturer`, which on X11 lists them all and returns a window at its own size;
+Rocket finds itself there by `getMediaSourceId()`, so its capture includes the native browser view.
+With PipeWire (Wayland) `desktopCapturer` returns only the one source picked in the system dialog.
+A region hides Rocket, freezes the screen under the pointer into a frameless window of its own
+(sandboxed, no Node, reporting its selection through its title) and crops source pixels from the
+drag. Every capture opens a review dialog with a pen (red, yellow, blue, white), an eraser that
+removes paint only, and Clear; the drawing is flattened into the image at the capture's resolution.
+Add to draft imports it like any image (PNG, or JPEG when a busy screen is over the 5 MB image
+limit) with a notice offering Undo; Retake and Cancel change nothing, and nothing is sent. The
+destination is fixed when the camera is pressed, so clicking another pane meanwhile does not
+redirect it.
+
 ### Messages sent while a turn runs
 
 The composer stays open while a turn runs; Esc or the Stop button beside Send stops it. A message

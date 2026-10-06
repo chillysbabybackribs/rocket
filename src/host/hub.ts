@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { validateAttachments, type ProviderAttachment } from './attachments.ts'
-import type { Chat, ChatSnapshot, OlderTurns, GoalRole, HostEvent, Attachment, MessageDraft, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnTokens, UsageSnapshot } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, OlderTurns, GoalRole, HostEvent, Attachment, MessageDraft, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnTokens, UsageSnapshot , TurnSources } from '../shared/types.ts'
 import { isFileAttachment } from '../shared/types.ts'
 import { buildHandoff, type Handoff, type MissedTurn } from './handoff.ts'
 import { messageOf, oneLine } from './json.ts'
 import { describeTokens } from './journal.ts'
 import type { ProviderAdapter, RunResult, TurnSink, UnpromptedTurn } from './providers/provider.ts'
 import { unavailableUsage } from './providers/provider.ts'
+import { pageKey, sourcesNotice, turnSources } from '../shared/sources.ts'
 import { publicTurn, type Store, type StoredTurn } from './store.ts'
 import type { Working } from './teamwork.ts'
 
@@ -64,6 +65,8 @@ type LiveTurn = {
   clock: { sent: number; firstEvent: number | null; firstText: number | null }
   /** Items as they stand right now, deltas applied; the store gets them when they settle. */
   items: Map<string, Item>
+  /** The pages the app saw the turn open, in order, for its sources record at the end. */
+  opened: TurnSources['opened']
   stopRequested: boolean
 }
 
@@ -228,11 +231,12 @@ export class Hub {
       goalRole,
       changes: null,
       tokens: null,
+      sources: null,
       startedAt: Date.now(),
       endedAt: null
     })
     const clock = { sent: performance.now(), firstEvent: null, firstText: null }
-    const live: LiveTurn = { turn, adapter, clock, items: new Map(), stopRequested: false }
+    const live: LiveTurn = { turn, adapter, clock, items: new Map(), opened: [], stopRequested: false }
     this.live.set(chatId, live)
 
     const named = chat.lastProvider === null && goalRole === null
@@ -504,13 +508,16 @@ export class Hub {
     try {
       // The provider is sent the message with the app's context ahead of it; the transcript keeps the message as typed.
       // With nothing to ask, the provider is started in the same tick as the send.
+      // The last reply's unopened citations are named ahead of the message, whoever answers next.
+      const notice = sourcesNotice(this.store.lastSettledTurn(chatId)?.sources ?? null)
       const { context } = this
-      const told = async (fresh: boolean): Promise<string> => {
-        const lines = context ? await context(chatId, provider, fresh).catch(() => null) : null
-        return lines ? `${lines}\n\n${text}` : text
+      const assemble = (lines: string | null): string => {
+        const head = [notice, lines].filter(Boolean).join('\n\n')
+        return head ? `${head}\n\n${text}` : text
       }
+      const told = async (fresh: boolean): Promise<string> => assemble(context ? await context(chatId, provider, fresh).catch(() => null) : null)
       const resolved = (history: Handoff | null): ProviderAttachment[] => this.resolveAttachments([...new Set([...attachments, ...(history?.attachments ?? []).toReversed()].map(image => image.id))])
-      const first = context ? await told(session.id === null) : text
+      const first = context ? await told(session.id === null) : assemble(null)
       result = live.stopRequested ? { status: 'interrupted' }
         : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: session.id, model, text: first, handoff, attachments: resolved(handoff) }, sink)
       if (result.sessionLost && !live.stopRequested) {
@@ -541,9 +548,9 @@ export class Hub {
     const adapter = this.adapters[provider]
     const turn = this.store.createTurn({
       id: randomUUID(), chatId, provider, model: null, status: 'running', error: null,
-      handoffTurns: 0, goalRole: null, changes: null, tokens: null, startedAt: Date.now(), endedAt: null
+      handoffTurns: 0, goalRole: null, changes: null, tokens: null, sources: null, startedAt: Date.now(), endedAt: null
     })
-    const live: LiveTurn = { turn, adapter, clock: { sent: performance.now(), firstEvent: null, firstText: null }, items: new Map(), stopRequested: false }
+    const live: LiveTurn = { turn, adapter, clock: { sent: performance.now(), firstEvent: null, firstText: null }, items: new Map(), opened: [], stopRequested: false }
     this.live.set(chatId, live)
     const updated: Chat = { ...chat, lastProvider: provider, updatedAt: Date.now() }
     this.store.updateChat(updated)
@@ -626,6 +633,8 @@ export class Hub {
         this.emitQueue(chatId)
       } else for (const entry of unread) this.putItem(live, takenItem(entry))
     }
+    // What the reply cited against what the turn opened; a stopped turn's reply still cited.
+    turn.sources = turnSources(live.opened, [...live.items.values()].flatMap((item) => (item.type === 'assistant' ? [item.text] : [])))
     turn.status = live.stopRequested && result.status !== 'completed' ? 'interrupted' : result.status
     turn.error = turn.status === 'failed' ? result.error ?? 'The turn failed' : null
     turn.endedAt = Date.now()
@@ -685,7 +694,15 @@ export class Hub {
     else this.turnWaiters.delete(chatId)
   }
 
+  /** A page Rocket's browser opened for the chat's turn in flight. Nothing is recorded for a chat with no turn running. */
+  noteOpened(chatId: string | null, url: string): void {
+    const live = chatId ? this.live.get(chatId) : undefined
+    live?.opened.push({ url, via: 'browser' })
+  }
+
   private putItem(live: LiveTurn, item: Item): void {
+    // A provider's own fetch tool, done, is a page the turn opened; a search carries a query, not a page.
+    if (item.type === 'tool' && item.kind === 'web' && item.status === 'done' && pageKey(item.label)) live.opened.push({ url: item.label, via: 'provider' })
     live.items.set(item.id, item)
     this.store.putItem(live.turn.chatId, item)
     this.emit({ type: 'item', chatId: live.turn.chatId, item })
