@@ -167,4 +167,4 @@ Matrix eval then compares **worker** providers while holding checker constant, o
 5. [ ] `report.html` generator from `summary.json`
 6. [ ] Optional: in-app “Eval runs” panel reading `.artifacts/evals/`
 
-Track progress here; check items when acceptance matches `docs/tool-failure-history-plan.md` (ledger as evidence source).
+Track progress here; check items when acceptance matches [tool-failure-history.md](../tool-failure-history.md) (ledger as evidence source).

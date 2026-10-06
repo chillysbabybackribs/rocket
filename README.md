@@ -258,6 +258,23 @@ and unsupported binary formats show an actionable error. Nothing opened from ins
 handed to a system app: the Tools view's capture links and any link that tries to open a new
 window go through the same path as a chat link.
 
+### Sources
+
+A search tool answers with a summary and links, and a model will cite those links as if it had
+read them. Rocket keeps, per turn, the pages the app saw it open: every page a browser tool asked
+main for, including each `goto`, `open`, `read` with a url, `fetch` and `download` in a
+`browser_run` script (`browserTools`' `onOpen`, `src/host/tools/browser.ts`), and every finished
+`web` tool item of the provider's own whose label is a URL (a search's label is its query, so a
+search is never a source). When the turn ends, the hub takes every HTTP(S) link in its replies,
+marks each one opened or not by page (host and path, without `www.`, the fragment, a trailing
+slash or `utm_` parameters; `src/shared/sources.ts`), and saves the record with the turn
+(`Turn.sources`). In the transcript each cited link carries a tick or a warning with the words on
+hover (`ChatMarkdown.tsx`); the next message in the chat, whoever answers it, is told ahead of it
+which pages the last reply cited without opening, and the `<agent-environment>` block carries the
+rule every turn: cite only pages opened this turn, and say what is not verified. Opened means a
+request left for the page; a page that answered with a bot check still counts, since the app does
+not judge what came back. Nothing here asks a model.
+
 ### Tools
 
 The app owns its tools and every provider sees the same ones. The agent host keeps them in one
@@ -642,8 +659,8 @@ still needing review.
 Records are pruned after 30 days or beyond 10,000 finished/previous-instance calls, at startup
 and every 100 starts. Active calls are preserved. Captures and traces are not deleted by ledger
 pruning. See [tool-failure-history.md](docs/tool-failure-history.md) for format, redaction,
-retention and query details, and [the implementation plan](docs/tool-failure-history-plan.md)
-for milestone progress.
+retention and query details. The in-app **Configure → Tools** view and `tests/ui/eval-tools.spec.ts`
+cover the ledger UI.
 
 ### Desktop self-check
 

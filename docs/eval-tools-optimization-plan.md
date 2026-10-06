@@ -1,6 +1,6 @@
 # Tool evaluation & optimization — product plan
 
-Status: **design** (follows completed [eval-tools-ui-plan.md](./eval-tools-ui-plan.md) ledger view).
+Status: **design** (builds on the shipped **Configure → Tools** ledger view; see README Tool-call history).
 
 ## Problem
 
@@ -177,5 +177,4 @@ Braintrust cloud **Tools** (remote scorers) remain out of scope; Rocket’s **To
 ## Related
 
 - [tool-failure-history.md](./tool-failure-history.md) — ledger semantics
-- [eval-tools-ui-plan.md](./eval-tools-ui-plan.md) — current UI (complete)
 - [provider-model-matrix.md](./evals/provider-model-matrix.md) — Lane B matrix & graders
