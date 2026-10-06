@@ -1,11 +1,12 @@
 import type { UiSnapshot } from '../../shared/types.ts'
+import { APP_UI_GUIDE } from './app-ui-guide.ts'
 import type { Tool } from './registry.ts'
 
 // Main owns the window; the host only translates its capture into the shared MCP image format.
 export function uiSnapshotTools(snapshot: () => Promise<UiSnapshot>): Tool[] {
   return [{
     name: 'rocket_ui_snapshot',
-    description: 'See Rocket’s currently running app UI, including chat panes, drawers and native browser views. Read-only: does not switch tabs, move focus or click controls. Returns images directly, saved capture paths, visible shell controls and panels, native view bounds, and running-instance information. This shows the running app; edits on disk may need a rebuild or reload to appear. When whole-window capture is unavailable, separate surfaces are returned with an explicit warning.',
+    description: `${APP_UI_GUIDE}\n\nSee Rocket’s currently running app shell (not browser tabs). Read-only: no clicks or focus changes. Returns images, saved capture paths, visible shell controls and panels, native view bounds, and running-instance information. Source edits may need rebuild/restart before they appear. When whole-window capture is unavailable, separate surface images are returned with a warning.`,
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     run: async () => {
       const { images, ...metadata } = await snapshot()
