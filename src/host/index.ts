@@ -265,6 +265,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
     return hub.openChat(chatId)
   },
   'chat.older': ({ chatId, before }) => hub.olderTurns(chatId, before),
+  'item.output': ({ chatId, itemId }) => hub.itemOutput(chatId, itemId),
   'chat.setCwd': ({ chatId, cwd }) => hub.setCwd(chatId, cwd),
   'chat.delete': async ({ chatId }) => { await uiRuns.close(chatId); await hub.deleteChat(chatId); return null },
   'chat.send': async ({ chatId, provider, model, text, attachmentIds = [] }) => {

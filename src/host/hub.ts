@@ -157,13 +157,22 @@ export class Hub {
   /** The turns before `before`, for a reader scrolling up. A running turn is always the newest, so none of these is live. */
   olderTurns(chatId: string, before: string): OlderTurns {
     this.requireChat(chatId)
-    return this.store.olderTurns(chatId, before)
+    const page = this.store.olderTurns(chatId, before)
+    return { ...page, items: page.items.map(withoutOutput) }
+  }
+
+  /** The output `withoutOutput` left out of a page: from the turn in flight when it is the live one's. */
+  itemOutput(chatId: string, itemId: string): string {
+    const item = this.live.get(chatId)?.items.get(itemId) ?? this.store.item(chatId, itemId)
+    if (item?.type !== 'tool') throw new Error('That step is no longer in this chat.')
+    return item.output
   }
 
   openChat(chatId: string): ChatSnapshot {
     const stored = this.store.snapshot(chatId)
     if (!stored) throw new Error('That chat no longer exists')
-    const snapshot = { ...stored, queued: this.queued(chatId) }
+    // The turn in flight keeps its output below, as it streams; every other call's waits to be opened.
+    const snapshot = { ...stored, items: stored.items.map(withoutOutput), queued: this.queued(chatId) }
     const live = this.live.get(chatId)
     if (!live) return snapshot
     // A turn in flight holds newer text than the store does.
@@ -696,4 +705,14 @@ export class Hub {
     if (!chat) throw new Error('That chat no longer exists')
     return chat
   }
+}
+
+/**
+ * A finished tool call as a page for the window carries it: without its output, which is most of
+ * a long chat's bytes and shows only when the step is opened. `outputLength` says there is some.
+ */
+function withoutOutput(item: Item): Item {
+  return item.type === 'tool' && item.status !== 'running' && item.output.length > 0
+    ? { ...item, output: '', outputLength: item.output.length }
+    : item
 }

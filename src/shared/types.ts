@@ -74,6 +74,11 @@ export type Item =
       label: string
       status: ToolStatus
       output: string
+      /**
+       * Set on a finished call in a page sent to the window: its output, this many characters,
+       * was left out, since a step's output shows only when opened (`item.output` fetches it).
+       */
+      outputLength?: number
     }
   | { type: 'notice'; id: string; turnId: string; text: string; tone: 'info' | 'error' }
   /**
@@ -361,6 +366,8 @@ export type HostApi = {
   'chat.open': [{ chatId: string }, ChatSnapshot]
   /** The turns before `before`, a turn id the window already shows. */
   'chat.older': [{ chatId: string; before: string }, OlderTurns]
+  /** A tool call's output, left out of the page that brought the call (`outputLength`). */
+  'item.output': [{ chatId: string; itemId: string }, string]
   'chat.setCwd': [{ chatId: string; cwd: string }, Chat]
   'chat.delete': [{ chatId: string }, null]
   /** `model` is one of the provider's `models.list` ids, or null for the provider's default. */
