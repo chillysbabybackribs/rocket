@@ -256,7 +256,8 @@ The browser panel has Chromium's tab strip and shortcuts (Ctrl+T, W, Shift+T, Ta
 Safari-style address field. Each tab is a native view owned by main (`src/main/browser-pane.ts`);
 only the active one is on screen. The address field's dropdown is a view of its own
 (`browser-suggest.ts`, `src/renderer/suggest.html`) stacked above the page, so it overlays the
-page and never moves it. Tabs, history and the last session are kept in the profile folder.
+page and never moves it; so is the chip of Fill with Rocket (below). Tabs, history and the last
+session are kept in the profile folder.
 
 Pages see an ordinary Chrome. Electron's default user agent adds `Rocket/<version>` and
 `Electron/<version>`, and Chromium sets `navigator.webdriver` in every page when the remote
@@ -337,6 +338,44 @@ as a list of its entries, each a link in turn. Text previews are limited to 2 MB
 and unsupported binary formats show an actionable error. Nothing opened from inside the app is
 handed to a system app: the Tools view's capture links and any link that tries to open a new
 window go through the same path as a chat link.
+
+### Fill with Rocket
+
+Right-click a text field in the browser and **Fill with Rocket** writes the answer straight into
+the page; **Fill with instructions…** asks first; right-clicking anywhere in a form with two or
+more text fields offers **Fill this form with Rocket**. The design is
+`docs/mockups/fill-with-rocket.html`. No chat opens and nothing is kept.
+
+- **Main** (`src/main/page-fill.ts`) owns it. Before the menu opens it asks the page, through a
+  script in an isolated world of its own (`fill-page.ts`, world 1208), what is under the pointer:
+  the field, the form around it (its `<form>`, or the nearest ancestor holding two or more fields),
+  each field's label, value and selector, and the text around it. Passwords and payment fields are
+  never filled; dropdowns, checkboxes and fields in embedded frames are left alone.
+- **The host** (`src/host/fill.ts`) runs one turn in a chat of its own, in a folder under the
+  profile (`<profile>/fill/<id>`), with the model last sent from the composer (remembered in
+  `fill/model.json`; the menu names it). The turn has every tool a chat turn has; the message
+  (`fillPrompt` in `src/shared/fill.ts`) tells it to read the user's tab but never act in it, to
+  check facts at their source, to write as the user, to leave fields that need the user's own
+  details, and never to submit. Its reply ends with a ```` ```rocket-fill ```` JSON block, which
+  `parseFillReply` reads. The chat never reaches the window (`FillRunner.observe` swallows its
+  events, `chats.list` and the library leave its folder out), and it and its folder are deleted
+  when the turn ends; a fill cut off by an exit is cleared at the next start. Tabs the model opens
+  stay in the background (`BrowserAgent.setQuiet`), so the page being filled stays on screen.
+- **The chip** is a page of its own (`src/renderer/fill.html`) in a transparent view laid over the
+  page above the field's top right corner, one width (500 px) in every state, following the field
+  as it scrolls. Working, it shows the step the model is on, read from its own tool calls
+  (`describeStep`), the time, Sources (a count; the list opens on click and fills in live) and
+  Stop (or Esc in the page). Done, it offers Sources, **Another go** (Sound like you, Shorter, More
+  detail, Friendlier, A different take, With instructions…) and **Undo**, and goes away when the
+  user types in a filled field or clicks elsewhere in the page. A failed fill says why, offers Try
+  again, and another provider when one has usage left. The tab being filled wears a turning ring.
+- **Text goes in as typing would**: `insertText` for text boxes (so Ctrl+Z undoes it too), and a
+  paste for rich editors (Lexical, ProseMirror and other contenteditables), which turn its lines
+  into their own paragraphs. Undo writes back the text the fields held before the last fill; in a
+  rich editor that is the text without its formatting.
+- **Sound like you** rewrites the fill in the user's voice from up to 40 of their own messages in
+  Rocket's chats (`Store.userMessages`, skipping goal prompts, eval and fill chats, pasted text and
+  very short or long messages). Those messages go to the provider doing the rewrite.
 
 ### Sources
 

@@ -694,6 +694,11 @@ export class Hub {
     else this.turnWaiters.delete(chatId)
   }
 
+  /** The pages the chat's turn in flight has opened so far; none when it has no turn running. */
+  opened(chatId: string): Array<{ url: string }> {
+    return [...this.live.get(chatId)?.opened ?? []]
+  }
+
   /** A page Rocket's browser opened for the chat's turn in flight. Nothing is recorded for a chat with no turn running. */
   noteOpened(chatId: string | null, url: string): void {
     const live = chatId ? this.live.get(chatId) : undefined

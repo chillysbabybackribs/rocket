@@ -48,6 +48,7 @@ export class UiTestAdapter implements ProviderAdapter {
         input: attachmentInput(request.text, request.attachments).text
       }))
       if (command === 'UI check: fail') return { status: 'failed', error: 'Controlled UI test failure.' }
+      if (request.text.includes('<rocket-fill>')) return await this.fill(request, sink, controller.signal)
       const demo = DEMO_TURNS[command ?? '']
       if (demo) return await runDemoTurn(demo, this.id, this.profile, request, sink, controller.signal)
       if (command === 'UI check: work') return this.work(request.turnId, sink, controller.signal)
@@ -104,6 +105,26 @@ export class UiTestAdapter implements ProviderAdapter {
     if (!this.active.has(chatId) || !PROVIDERS.some((entry) => entry.id === this.id && entry.steers)) return false
     this.steered.set(chatId, [...this.steered.get(chatId) ?? [], { text, taken }])
     return true
+  }
+
+  /**
+   * A fill (src/host/fill.ts): a page read, a source opened, a moment's work, then a fill block
+   * that names each field it filled. A field labelled as an email is left for the user, and a
+   * page that says "UI check: hold" keeps the fill working until it is stopped.
+   */
+  private async fill(request: RunRequest, sink: TurnSink, signal: AbortSignal): Promise<RunResult> {
+    const { turnId, text } = request
+    sink.item({ type: 'tool', id: `${turnId}:read`, turnId, kind: 'mcp', label: 'rocket · browser_read {"tab":"t1"}', output: '', status: 'done' })
+    sink.item({ type: 'tool', id: `${turnId}:web`, turnId, kind: 'web', label: 'https://wiki.example/rules', output: '', status: 'done' })
+    const hold = text.includes('UI check: hold')
+    const until = Date.now() + (hold ? 60_000 : 1_500)
+    while (Date.now() < until) await delay(25, undefined, { signal })
+    const how = text.includes('<user-messages>') ? 'In your voice' : text.includes('Make it shorter') ? 'Shorter' : 'Filled'
+    const fields = [...text.matchAll(/^- (f\d+) · "([^"]*)"/gm)].map((match) => ({ id: match[1]!, label: match[2]! }))
+    const values = Object.fromEntries(fields.filter((field) => !/email/i.test(field.label)).map((field) => [field.id, `${how} by ${this.id}: ${field.label}\nSecond line.`]))
+    const left = Object.fromEntries(fields.filter((field) => /email/i.test(field.label)).map((field) => [field.id, 'needs your email']))
+    sink.item({ type: 'assistant', id: `${turnId}:reply`, turnId, streaming: false, text: `Read the page.\n\`\`\`rocket-fill\n${JSON.stringify({ fields: values, left })}\n\`\`\`` })
+    return { status: 'completed' }
   }
 
   /** A turn that really changes files in the chat's folder, so what the app records of a turn's changes can be seen. */

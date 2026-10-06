@@ -21,7 +21,7 @@ type Rocket = {
   profile: string
   workspace: string
   origin: string
-  surface: (kind: 'browser' | 'suggestions') => Promise<Page>
+  surface: (kind: 'browser' | 'suggestions' | 'fill') => Promise<Page>
   request: () => Promise<Request>
   release: () => Promise<void>
   capture: (name: string) => Promise<void>
@@ -75,6 +75,25 @@ export const test = base.extend<{ rocket: Rocket }>({
         response.end(`<!doctype html><title>A long read</title>
           <style>body{font:19px/1.7 Georgia,serif;max-width:640px;margin:40px auto;padding:0 24px;background:#fbfaf7;color:#26272b}</style>
           <h1>The slow return of the night train</h1>${paragraph.repeat(60)}<a href="/one">Next page</a>`)
+        return
+      }
+      // A thread with a reply box, a rich editor and a form, for Fill with Rocket; /hold keeps a fill working.
+      if (path === '/forum' || path === '/hold') {
+        const hold = path === '/hold'
+        response.setHeader('Content-Type', 'text/html')
+        response.end(`<!doctype html><title>${hold ? 'A slow thread' : 'Desktop forum'}</title>
+          <style>body{font:16px system-ui;max-width:720px;margin:24px auto;padding:0 24px;background:#f6f7f9;color:#1d2026}
+            textarea,input,[contenteditable]{display:block;width:100%;box-sizing:border-box;font:inherit;padding:8px;margin:6px 0 14px;border:1px solid #cfd3da;border-radius:7px;background:#fff}
+            textarea{height:120px}[contenteditable]{min-height:70px}label{display:block;font-weight:600}</style>
+          <h1>${hold ? 'UI check: hold' : 'Is there a way to permanently enable floating windows?'}</h1>
+          <p>I like Hyprland for the ricing, but I am not digging the window tiling. Is there a way to permanently make windows float?</p>
+          <label for="reply">Your reply</label><textarea id="reply"></textarea>
+          <button id="post" onclick="document.getElementById('posted').textContent='Posted'">Post reply</button><p id="posted">Not posted</p>
+          ${hold ? '' : `<label>Rich reply</label><div id="rich" contenteditable="true" aria-label="Rich reply"></div>
+          <form id="issue" onsubmit="event.preventDefault();document.title='Submitted'"><h2>Report a bug</h2>
+            <label>Title <input name="title"></label><label>What happened <textarea name="body"></textarea></label>
+            <label>Contact email <input type="email" name="email"></label><label>Password <input type="password" name="password"></label>
+            <button type="submit">Submit</button></form>`}`)
         return
       }
       if (path !== '/one' && path !== '/two') {
@@ -151,10 +170,10 @@ export const test = base.extend<{ rocket: Rocket }>({
     }
     try {
       await launch()
-      const surface = async (kind: 'browser' | 'suggestions'): Promise<Page> => {
+      const surface = async (kind: 'browser' | 'suggestions' | 'fill'): Promise<Page> => {
         const matches = (candidate: Page): boolean => kind === 'browser'
           ? candidate.url().startsWith(origin)
-          : candidate.url().endsWith('/suggest.html')
+          : candidate.url().endsWith(kind === 'fill' ? '/fill.html' : '/suggest.html')
         await expect.poll(() => app!.context().pages().some(matches)).toBe(true)
         return app!.context().pages().find(matches)!
       }

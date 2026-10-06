@@ -398,6 +398,22 @@ export class Store {
     return typeof row?.at === 'number' ? row.at : null
   }
 
+  /**
+   * The user's own messages, newest first, with the folder of the chat each was sent in. A goal's
+   * turns open with the app's prompt, not the user's words, so they are left out.
+   */
+  userMessages(limit: number): Array<{ text: string; cwd: string }> {
+    return this.sql(
+      `SELECT items.data AS data, chats.cwd AS cwd FROM items
+       JOIN chats ON chats.id = items.chat_id JOIN turns ON turns.id = items.turn_id
+       WHERE json_extract(items.data, '$.type') = 'user' AND turns.goal_role IS NULL
+       ORDER BY items.seq DESC LIMIT ?`
+    ).all(limit).flatMap((row) => {
+      const item = itemOf(row)
+      return item.type === 'user' && item.text ? [{ text: item.text, cwd: String(row.cwd) }] : []
+    })
+  }
+
   /** Turns that ended after `since` in other chats working in the same folder, oldest first. */
   turnsEndedInFolder(cwd: string, exceptChatId: string, since: number): StoredTurn[] {
     return this.sql(
