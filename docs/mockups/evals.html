@@ -1,0 +1,486 @@
+<!doctype html>
+<!-- Mockup of the eval panel rebuilt around one question: how does each provider handle this
+     scenario? Replaces the Braintrust-shaped panel (Overview/Logs/Playgrounds/Experiments/
+     Datasets/Scorers). Static; the data is invented. Tabs at the top switch between the
+     scenario list, a scenario's page, one run's detail, and notes on what changes. Borrows
+     Rocket's palette and card language from src/renderer/src/styles.css. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rocket · Evals (mockup)</title>
+<style>
+:root {
+  color-scheme: dark;
+  --font: 'Inter Variable', Inter, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+  --canvas: #08090a; --panel: #0f1011; --raised: #17181a; --menu: #1b1c1e; --bubble: #1c1d20;
+  --composer: #151617; --composer-line: #2f3031;
+  --line: rgba(255,255,255,.07); --line-strong: rgba(255,255,255,.11); --line-focus: rgba(255,255,255,.2);
+  --text: #f7f8f8; --text-2: #b4b8c0; --text-3: #8a8f98; --text-4: #62666d;
+  --hover: rgba(255,255,255,.045); --selected: rgba(255,255,255,.08);
+  --accent: #7170ff; --button: #e6e6e6; --button-text: #08090a;
+  --ok: #4cb782; --warn: #f2c94c; --bad: #eb5757;
+  --add: #3fb950; --del: #f85149;
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,0) 180px);
+  --gap: 8px; --radius: 12px;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--canvas); color: var(--text); font: 13px/1.5 var(--font); letter-spacing: -.006em; -webkit-font-smoothing: antialiased; overflow: hidden; }
+button, select, textarea, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; }
+.mono { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0; }
+.muted { color: var(--text-3); } .faint { color: var(--text-4); }
+.ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+svg { flex: none; }
+
+/* Mockup chrome: page tabs. Not part of the app. */
+.mock-bar { position: fixed; top: 0; left: 0; right: 0; height: 28px; display: flex; align-items: center; gap: 4px; padding: 0 12px 0 76px; z-index: 20; font-size: 11.5px; color: var(--text-4); }
+.mock-bar b { font-weight: 500; color: var(--text-3); margin-right: 6px; }
+.mock-tab { height: 20px; padding: 0 8px; border-radius: 5px; color: var(--text-3); }
+.mock-tab:hover { background: var(--hover); color: var(--text); }
+.mock-tab.on { background: var(--selected); color: var(--text); }
+.page { display: none; height: 100%; flex-direction: column; min-height: 0; }
+.page.on { display: flex; }
+
+.app { height: 100%; display: grid; gap: var(--gap); grid-template-columns: 68px minmax(360px, .8fr) minmax(620px, 1.2fr); padding: 28px var(--gap) var(--gap) 0; }
+.card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheen), var(--panel); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+
+/* Rail */
+.rail { display: flex; flex-direction: column; align-items: center; margin-top: -28px; gap: 10px; }
+.traffic { display: flex; gap: 7px; padding: 8px 0 18px; }
+.traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.rail-btn { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; color: var(--text-3); }
+.rail-btn.on { background: var(--selected); color: var(--text); }
+.rail .bottom { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
+
+/* The user's own chat, left alone while evals run. */
+.chat { opacity: .55; }
+.transcript { flex: 1; overflow: hidden; padding: 24px 26px; }
+.user-bubble { width: fit-content; max-width: 85%; margin: 0 0 14px auto; padding: 9px 13px; background: var(--bubble); border-radius: 10px; font-size: 14px; }
+.prose { font-size: 14px; line-height: 1.65; color: #d7d9de; } .prose p { margin: 0 0 11px; }
+.composer { margin: 0 14px 14px; border: 1px solid var(--composer-line); border-radius: 12px; background: var(--composer); padding: 10px 12px; color: var(--text-4); height: 74px; }
+
+/* Eval panel */
+.ev-head { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--line); flex: none; }
+.ev-tabs { display: flex; gap: 2px; }
+.ev-tab { height: 26px; padding: 0 10px; border-radius: 6px; color: var(--text-3); font-size: 12.5px; }
+.ev-tab.on { background: var(--selected); color: var(--text); }
+.ev-head .sp { flex: 1; }
+.icon-btn { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; color: var(--text-3); }
+.icon-btn:hover { background: var(--hover); color: var(--text); }
+.btn { height: 28px; padding: 0 11px; border-radius: 7px; border: 1px solid var(--line-strong); color: var(--text-2); font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:hover { background: var(--hover); color: var(--text); }
+.btn.primary { background: var(--button); color: var(--button-text); border-color: transparent; font-weight: 550; }
+.btn.small { height: 24px; padding: 0 8px; font-size: 12px; }
+.ev-body { flex: 1; overflow-y: auto; padding: 16px 18px 24px; min-height: 0; }
+.crumb { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); }
+.crumb b { color: var(--text); font-weight: 560; }
+h2 { font-size: 12px; font-weight: 560; color: var(--text-3); text-transform: none; margin: 22px 0 8px; display: flex; align-items: center; gap: 8px; }
+h2 .sp { flex: 1; }
+
+/* Scenario list */
+.list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.list-row { display: grid; grid-template-columns: minmax(0, 1fr) 260px 74px 18px; align-items: center; gap: 14px; padding: 11px 14px; border-top: 1px solid var(--line); cursor: pointer; }
+.list-row:first-child { border-top: 0; }
+.list-row:hover { background: var(--hover); }
+.list-row .name { font-weight: 550; font-size: 13px; }
+.list-row .msg { color: var(--text-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.list-row .when { color: var(--text-4); font-size: 12px; text-align: right; }
+.list-head { display: grid; grid-template-columns: minmax(0, 1fr) 260px 74px 18px; gap: 14px; padding: 0 14px 6px; font-size: 11.5px; color: var(--text-4); }
+.prov-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.pchip { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border-radius: 5px; background: rgba(255,255,255,.04); border: 1px solid var(--line); font-size: 11.5px; color: var(--text-2); }
+.pchip i { width: 6px; height: 6px; border-radius: 50%; }
+.pchip .mono { font-size: 11px; color: var(--text-3); }
+
+/* Scenario page */
+.title-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.title-row h1 { font-size: 17px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+.title-row .sp { flex: 1; }
+.meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; font-size: 12px; color: var(--text-3); }
+.meta span { display: inline-flex; align-items: center; gap: 5px; }
+.message { border: 1px solid var(--composer-line); background: var(--composer); border-radius: 10px; padding: 10px 12px 8px; }
+.message textarea { width: 100%; resize: none; border: 0; outline: 0; background: none; font-size: 13.5px; line-height: 1.55; color: var(--text); height: 44px; }
+.message .foot { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--text-4); }
+.message .foot .sp { flex: 1; }
+.edited { color: var(--warn); }
+.link { color: var(--text-2); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+.graders { display: flex; flex-wrap: wrap; gap: 6px; }
+.gchip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 6px; background: var(--raised); border: 1px solid var(--line); font-size: 12px; color: var(--text-2); }
+.gchip .k { font-size: 10.5px; color: var(--text-4); text-transform: uppercase; letter-spacing: .04em; }
+.gchip.add { background: none; border-style: dashed; color: var(--text-3); }
+
+.matrix { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.matrix th { text-align: left; font-weight: 500; font-size: 11.5px; color: var(--text-4); padding: 8px 12px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.015); }
+.matrix td { padding: 0; border-top: 1px solid var(--line); vertical-align: middle; }
+.matrix tr:nth-child(2) td { border-top: 0; }
+.matrix .prov { padding: 10px 12px; width: 170px; }
+.prov-name { display: flex; align-items: center; gap: 7px; font-weight: 550; }
+.prov-name i { width: 7px; height: 7px; border-radius: 50%; }
+.prov-model { color: var(--text-4); font-size: 11.5px; margin-left: 14px; }
+.cell { margin: 6px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,255,255,.02); cursor: pointer; min-height: 52px; }
+.cell:hover { border-color: var(--line-focus); }
+.cell.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.cell-top { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 550; }
+.cell-top .sp { flex: 1; }
+.cell-top .t { font-family: var(--mono); font-size: 11px; color: var(--text-4); font-weight: 400; }
+.dots { display: flex; gap: 3px; margin-top: 6px; }
+.dots i { width: 14px; height: 4px; border-radius: 2px; background: var(--ok); }
+.dots i.f { background: var(--bad); } .dots i.p { background: var(--line-strong); }
+.cell.running { border-color: rgba(113,112,255,.4); background: rgba(113,112,255,.05); }
+.cell .live { font-size: 11.5px; color: var(--text-3); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spin { width: 11px; height: 11px; border: 1.5px solid rgba(113,112,255,.3); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.cell.queued { color: var(--text-4); border-style: dashed; }
+.stat { padding: 10px 12px; font-size: 12.5px; white-space: nowrap; }
+.stat .big { font-weight: 600; font-size: 13.5px; }
+.stat .sub { color: var(--text-4); font-size: 11.5px; }
+.delta { font-size: 11px; font-family: var(--mono); margin-left: 4px; }
+
+.runs { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.run-row { display: grid; grid-template-columns: 150px 1fr 70px 80px; align-items: center; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12.5px; }
+.run-row:first-child { border-top: 0; }
+.run-row.cur { background: rgba(255,255,255,.025); }
+.bars { display: flex; gap: 10px; }
+.bar { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-3); }
+.bar span { display: block; width: 34px; height: 5px; border-radius: 3px; background: var(--line-strong); overflow: hidden; }
+.bar span b { display: block; height: 100%; background: var(--ok); }
+.tag { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,.06); color: var(--text-3); }
+
+/* Run detail */
+.detail { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 16px; margin-top: 14px; }
+.side { display: flex; flex-direction: column; gap: 14px; }
+.box { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.box h3 { margin: 0 0 8px; font-size: 11.5px; font-weight: 500; color: var(--text-4); }
+.grade { display: flex; gap: 8px; padding: 5px 0; font-size: 12.5px; border-top: 1px solid var(--line); }
+.grade:first-of-type { border-top: 0; }
+.grade .why { color: var(--text-3); font-size: 11.5px; margin-top: 1px; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 12.5px; }
+.kv dt { color: var(--text-3); } .kv dd { margin: 0; text-align: right; }
+.file { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.counts .a { color: var(--add); } .counts .d { color: var(--del); }
+.diff { margin-top: 8px; border-radius: 6px; background: rgba(0,0,0,.25); border: 1px solid var(--line); font-family: var(--mono); font-size: 11px; line-height: 1.6; padding: 6px 8px; overflow: hidden; }
+.diff .a { color: var(--add); background: rgba(63,185,80,.08); display: block; }
+.tool { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 3px 0; color: var(--text-2); }
+.tool .mono { color: var(--text-3); }
+.tx { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+.tx .prose { font-size: 13.5px; }
+.tx .prose code { font-family: var(--mono); font-size: .86em; padding: 1px 5px; border-radius: 5px; background: rgba(255,255,255,.06); border: 1px solid var(--line); }
+.steps { font-size: 12.5px; color: var(--text-4); padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
+.judge { margin-top: 8px; padding: 8px 10px; border-left: 2px solid var(--bad); background: rgba(235,87,87,.05); border-radius: 0 6px 6px 0; font-size: 12px; color: var(--text-2); }
+
+/* Notes */
+.notes { max-width: 760px; }
+.notes h2 { font-size: 13px; color: var(--text); margin-top: 20px; }
+.notes ul { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 13px; line-height: 1.65; }
+.notes li + li { margin-top: 3px; }
+.notes code { font-family: var(--mono); font-size: .86em; padding: 1px 5px; border-radius: 5px; background: rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-x" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="i-play" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="currentColor"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-back" viewBox="0 0 16 16"><path d="M10 4L6 8l4 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-cross" viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 16 16"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 16 16"><path d="M6 2h4M6.5 2v4L3 13h10L9.5 6V2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M2.5 8h11M8 2.5c2 2 2 9 0 11M8 2.5c-2 2-2 9 0 11" stroke="currentColor" stroke-width="1.1" fill="none"/></symbol>
+</svg>
+
+<div class="mock-bar">
+  <b>Evals mockup</b>
+  <button class="mock-tab on" data-page="list">1 · Scenarios</button>
+  <button class="mock-tab" data-page="scenario">2 · Scenario</button>
+  <button class="mock-tab" data-page="detail">3 · One run</button>
+  <button class="mock-tab" data-page="notes">Notes</button>
+</div>
+
+<div class="app">
+  <nav class="rail">
+    <div class="traffic"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <button class="rail-btn"><svg width="17" height="17"><use href="#i-chat"/></svg></button>
+    <div class="bottom">
+      <button class="rail-btn on" title="Evals"><svg width="17" height="17"><use href="#i-flask"/></svg></button>
+      <button class="rail-btn"><svg width="17" height="17"><use href="#i-globe"/></svg></button>
+    </div>
+  </nav>
+
+  <!-- The user's own chat. An eval run never opens here. -->
+  <section class="card chat">
+    <div class="transcript">
+      <div class="user-bubble">can you look into the eval UI — im not convinced we are on the correct track</div>
+      <div class="prose">
+        <p>I think your instinct is right. The backend pieces are mostly sound, but the UI has been built as a copy of Braintrust's layout…</p>
+        <p>Per the project rules, the next step would be a mockup in <span class="mono">docs/mockups</span>…</p>
+      </div>
+    </div>
+    <div class="composer">Reply…</div>
+  </section>
+
+  <section class="card">
+    <header class="ev-head">
+      <div class="ev-tabs">
+        <button class="ev-tab on">Scenarios</button>
+        <button class="ev-tab">Tool health</button>
+      </div>
+      <span class="sp"></span>
+      <button class="icon-btn" aria-label="Close"><svg width="14" height="14"><use href="#i-x"/></svg></button>
+    </header>
+
+    <!-- 1 · Scenario list -->
+    <div class="page on" id="list">
+      <div class="ev-body">
+        <div class="title-row">
+          <h1>Scenarios</h1>
+          <span class="muted" style="font-size:12px">5 in <span class="mono">docs/evals/scenarios</span></span>
+          <span class="sp"></span>
+          <button class="btn"><svg width="13" height="13"><use href="#i-plus"/></svg>New scenario</button>
+        </div>
+        <h2 style="margin-top:16px">Latest run, passed / trials per provider</h2>
+        <div class="list-head"><span>Scenario</span><span>Providers</span><span style="text-align:right">Last run</span><span></span></div>
+        <div class="list">
+          <div class="list-row" data-go="scenario">
+            <div><div class="name">goal-draft-minimal</div><div class="msg">Draft a goal for: add a one-line health check to this repo's README. Use goal_report when…</div></div>
+            <div class="prov-chips">
+              <span class="pchip"><i style="background:var(--ok)"></i>Claude <span class="mono">2/2</span></span>
+              <span class="pchip"><i style="background:var(--ok)"></i>Codex <span class="mono">2/2</span></span>
+              <span class="pchip"><i style="background:var(--warn)"></i>Cursor <span class="mono">1/2</span></span>
+              <span class="pchip"><i style="background:var(--text-4)"></i>Antigravity <span class="mono">…</span></span>
+            </div>
+            <div class="when">running</div>
+            <svg width="14" height="14" class="faint"><use href="#i-chev"/></svg>
+          </div>
+          <div class="list-row">
+            <div><div class="name">tool-ui-readonly</div><div class="msg">Without editing any file, use rocket_ui_snapshot or ui.read to describe whether the Plan…</div></div>
+            <div class="prov-chips">
+              <span class="pchip"><i style="background:var(--ok)"></i>Claude <span class="mono">1/1</span></span>
+              <span class="pchip"><i style="background:var(--ok)"></i>Codex <span class="mono">1/1</span></span>
+              <span class="pchip"><i style="background:var(--bad)"></i>Cursor <span class="mono">0/1</span></span>
+              <span class="pchip"><i style="background:var(--ok)"></i>Antigravity <span class="mono">1/1</span></span>
+            </div>
+            <div class="when">yesterday</div>
+            <svg width="14" height="14" class="faint"><use href="#i-chev"/></svg>
+          </div>
+          <div class="list-row">
+            <div><div class="name">tool-history-summary-smoke</div><div class="msg">Call rocket_tool_history with mode summary, since 0, limit 3. In one sentence, state…</div></div>
+            <div class="prov-chips"><span class="pchip"><i style="background:var(--ok)"></i>Codex <span class="mono">1/1</span></span></div>
+            <div class="when">2 days ago</div>
+            <svg width="14" height="14" class="faint"><use href="#i-chev"/></svg>
+          </div>
+          <div class="list-row">
+            <div><div class="name">tool-ui-snapshot-smoke</div><div class="msg">Use rocket_ui_snapshot once to inspect the Rocket app shell. Reply in one short sentence…</div></div>
+            <div class="prov-chips">
+              <span class="pchip"><i style="background:var(--ok)"></i>Codex <span class="mono">1/1</span></span>
+              <span class="pchip"><i style="background:var(--bad)"></i>Claude <span class="mono">0/1</span></span>
+            </div>
+            <div class="when">2 days ago</div>
+            <svg width="14" height="14" class="faint"><use href="#i-chev"/></svg>
+          </div>
+          <div class="list-row">
+            <div><div class="name">matrix-smoke</div><div class="msg">Reply with one sentence confirming you received this eval prompt. Do not edit files.</div></div>
+            <div class="prov-chips"><span class="faint" style="font-size:12px">Never run</span></div>
+            <div class="when">—</div>
+            <svg width="14" height="14" class="faint"><use href="#i-chev"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · Scenario page -->
+    <div class="page" id="scenario">
+      <div class="ev-body">
+        <div class="crumb"><button class="link" data-go="list" style="text-decoration:none;color:var(--text-3)">Scenarios</button><svg width="12" height="12"><use href="#i-chev"/></svg><b>goal-draft-minimal</b></div>
+        <div class="title-row">
+          <h1>goal-draft-minimal</h1>
+          <span class="sp"></span>
+          <span class="faint" style="font-size:11.5px">8 turns · spends subscription usage</span>
+          <button class="btn">Stop</button>
+          <button class="btn primary"><svg width="12" height="12"><use href="#i-play"/></svg>Run all</button>
+        </div>
+        <div class="meta">
+          <span><svg width="13" height="13"><use href="#i-folder"/></svg>Fresh copy of <span class="mono">evals/fixtures/minimal-repo</span> per run</span>
+          <span>2 trials</span>
+          <span>Starts as a goal draft</span>
+        </div>
+
+        <h2>Message</h2>
+        <div class="message">
+          <textarea>Draft a goal for: add a one-line health check to this repo's README. Use goal_report when the brief is ready; change no files.</textarea>
+          <div class="foot"><span class="edited">Edited, not yet run</span><span class="sp"></span><button class="link">Revert</button><button class="link">Save to scenario file</button></div>
+        </div>
+
+        <h2>Graders</h2>
+        <div class="graders">
+          <span class="gchip"><span class="k">check</span>turn_completed</span>
+          <span class="gchip"><span class="k">check</span>goal_report_called</span>
+          <span class="gchip"><span class="k">check</span>files_unchanged</span>
+          <span class="gchip"><span class="k">judge</span>The brief names a check that proves it is done <span class="faint">· by Codex</span></span>
+          <button class="gchip add"><svg width="11" height="11"><use href="#i-plus"/></svg>Add grader</button>
+        </div>
+
+        <h2>This run <span class="faint" style="font-weight:400">· started 1:04 AM · 6 of 8 done</span></h2>
+        <table class="matrix">
+          <tr><th>Provider</th><th style="width:24%">Trial 1</th><th style="width:24%">Trial 2</th><th>Passed</th><th>Median time</th><th>Usage</th></tr>
+          <tr>
+            <td class="prov"><div class="prov-name"><i style="background:#d97757"></i>Claude</div><div class="prov-model">opus-5.5</div></td>
+            <td><div class="cell"><div class="cell-top"><svg width="13" height="13" class="ok"><use href="#i-check"/></svg>Pass<span class="sp"></span><span class="t">48s</span></div><div class="dots"><i></i><i></i><i></i><i></i></div></div></td>
+            <td><div class="cell"><div class="cell-top"><svg width="13" height="13" class="ok"><use href="#i-check"/></svg>Pass<span class="sp"></span><span class="t">55s</span></div><div class="dots"><i></i><i></i><i></i><i></i></div></div></td>
+            <td class="stat"><div class="big ok">2/2</div><div class="sub">was 2/2</div></td>
+            <td class="stat">52s<span class="delta ok">−9s</span></td>
+            <td class="stat">3%<div class="sub">of 5h window</div></td>
+          </tr>
+          <tr>
+            <td class="prov"><div class="prov-name"><i style="background:#e6e6e6"></i>Codex</div><div class="prov-model">GPT-6-Astra</div></td>
+            <td><div class="cell"><div class="cell-top"><svg width="13" height="13" class="ok"><use href="#i-check"/></svg>Pass<span class="sp"></span><span class="t">1m 04s</span></div><div class="dots"><i></i><i></i><i></i><i></i></div></div></td>
+            <td><div class="cell"><div class="cell-top"><svg width="13" height="13" class="ok"><use href="#i-check"/></svg>Pass<span class="sp"></span><span class="t">58s</span></div><div class="dots"><i></i><i></i><i></i><i></i></div></div></td>
+            <td class="stat"><div class="big ok">2/2</div><div class="sub">was 1/2</div></td>
+            <td class="stat">1m 01s<span class="delta faint">+2s</span></td>
+            <td class="stat">2%<div class="sub">of weekly</div></td>
+          </tr>
+          <tr>
+            <td class="prov"><div class="prov-name"><i style="background:#8a8f98"></i>Cursor</div><div class="prov-model">composer-2.5</div></td>
+            <td><div class="cell"><div class="cell-top"><svg width="13" height="13" class="ok"><use href="#i-check"/></svg>Pass<span class="sp"></span><span class="t">39s</span></div><div class="dots"><i></i><i></i><i></i><i></i></div></div></td>
+            <td><div class="cell sel" data-go="detail"><div class="cell-top"><svg width="13" height="13" class="bad"><use href="#i-cross"/></svg>Fail<span class="sp"></span><span class="t">1m 12s</span></div><div class="dots"><i></i><i></i><i class="f"></i><i class="f"></i></div></div></td>
+            <td class="stat"><div class="big warn">1/2</div><div class="sub">was 2/2</div></td>
+            <td class="stat">56s<span class="delta bad">+21s</span></td>
+            <td class="stat">4%<div class="sub">of monthly</div></td>
+          </tr>
+          <tr>
+            <td class="prov"><div class="prov-name"><i style="background:#60a5fa"></i>Antigravity</div><div class="prov-model">default</div></td>
+            <td><div class="cell running"><div class="cell-top"><span class="spin"></span>Running<span class="sp"></span><span class="t">0:42</span></div><div class="live">Reading README.md…</div></div></td>
+            <td><div class="cell queued"><div class="cell-top" style="font-weight:400">Queued</div></div></td>
+            <td class="stat"><div class="big faint">—</div><div class="sub">was 0/2</div></td>
+            <td class="stat faint">—</td>
+            <td class="stat faint">—</td>
+          </tr>
+        </table>
+        <div class="faint" style="font-size:11.5px;margin-top:6px">Bars are the four graders in order. Click a cell to read that run here; your own chat is left alone.</div>
+
+        <h2>Earlier runs <span class="sp"></span><span class="faint" style="font-weight:400">Compare with</span>
+          <select style="background:var(--raised);border:1px solid var(--line-strong);border-radius:6px;height:24px;font-size:12px;padding:0 6px;color:var(--text-2)"><option>Yesterday 11:20 PM</option></select></h2>
+        <div class="runs">
+          <div class="run-row cur"><span>Today 1:04 AM <span class="tag">running</span></span>
+            <div class="bars"><span class="bar">Cl<span><b style="width:100%"></b></span></span><span class="bar">Cx<span><b style="width:100%"></b></span></span><span class="bar">Cu<span><b style="width:50%"></b></span></span><span class="bar">Ag<span></span></span></div>
+            <span class="mono muted">5/6</span><span class="faint">edited msg</span></div>
+          <div class="run-row"><span>Yesterday 11:20 PM</span>
+            <div class="bars"><span class="bar">Cl<span><b style="width:100%"></b></span></span><span class="bar">Cx<span><b style="width:50%"></b></span></span><span class="bar">Cu<span><b style="width:100%"></b></span></span><span class="bar">Ag<span><b style="width:0"></b></span></span></div>
+            <span class="mono muted">5/8</span><span class="faint">file msg</span></div>
+          <div class="run-row"><span>Oct 5, 9:02 PM</span>
+            <div class="bars"><span class="bar">Cl<span><b style="width:50%"></b></span></span><span class="bar">Cx<span><b style="width:50%"></b></span></span><span class="bar">Cu<span><b style="width:100%"></b></span></span><span class="bar">Ag<span><b style="width:0"></b></span></span></div>
+            <span class="mono muted">4/8</span><span class="faint">file msg</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · One run -->
+    <div class="page" id="detail">
+      <div class="ev-body">
+        <div class="crumb"><button data-go="scenario" style="display:inline-flex;align-items:center;gap:4px;color:var(--text-3)"><svg width="12" height="12"><use href="#i-back"/></svg>goal-draft-minimal</button><svg width="12" height="12"><use href="#i-chev"/></svg><b>Cursor · trial 2</b></div>
+        <div class="title-row">
+          <h1 style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" class="bad"><use href="#i-cross"/></svg>Cursor · composer-2.5 · trial 2</h1>
+          <span class="sp"></span>
+          <button class="btn">Open as chat</button>
+          <button class="btn"><svg width="12" height="12"><use href="#i-play"/></svg>Run again</button>
+        </div>
+
+        <div class="detail">
+          <div class="side">
+            <div class="box">
+              <h3>Graders</h3>
+              <div class="grade"><svg width="14" height="14" class="ok"><use href="#i-check"/></svg><div>turn_completed</div></div>
+              <div class="grade"><svg width="14" height="14" class="ok"><use href="#i-check"/></svg><div>goal_report_called</div></div>
+              <div class="grade"><svg width="14" height="14" class="bad"><use href="#i-cross"/></svg><div>files_unchanged<div class="why">README.md was changed, though the message said to change no files.</div></div></div>
+              <div class="grade"><svg width="14" height="14" class="bad"><use href="#i-cross"/></svg><div>judge · by Codex<div class="judge">The brief says "add a health check line" but gives no way to tell it is done: no command to run and no expected output.</div></div></div>
+            </div>
+            <div class="box">
+              <h3>Turn</h3>
+              <dl class="kv">
+                <dt>Time</dt><dd>1m 12s</dd>
+                <dt>First reply</dt><dd>6.1s</dd>
+                <dt>Steps</dt><dd>9</dd>
+                <dt>Usage</dt><dd>2% of monthly</dd>
+              </dl>
+            </div>
+            <div class="box">
+              <h3>Files changed</h3>
+              <div class="file"><span class="mono">README.md</span><span class="sp" style="flex:1"></span><span class="counts mono"><span class="a">+1</span> <span class="d">−0</span></span></div>
+              <div class="diff"><span>## Usage</span><span class="a">+ Health: `curl -fs localhost:3000/health`</span><span>Run `npm start`.</span></div>
+            </div>
+            <div class="box">
+              <h3>Tool calls</h3>
+              <div class="tool"><svg width="12" height="12" class="ok"><use href="#i-check"/></svg>read_file <span class="mono">README.md</span></div>
+              <div class="tool"><svg width="12" height="12" class="ok"><use href="#i-check"/></svg>edit_file <span class="mono">README.md</span></div>
+              <div class="tool"><svg width="12" height="12" class="ok"><use href="#i-check"/></svg>goal_report <span class="mono">brief ready</span></div>
+            </div>
+          </div>
+
+          <div class="tx">
+            <div class="user-bubble" style="font-size:13.5px">Draft a goal for: add a one-line health check to this repo's README. Use goal_report when the brief is ready; change no files.</div>
+            <div class="steps">Worked · 9 steps <svg width="12" height="12"><use href="#i-chev"/></svg></div>
+            <div class="prose">
+              <p>I read the README and added the health check line under <strong>Usage</strong> so the brief has something concrete to point at.</p>
+              <p><strong>Goal:</strong> add a health check line to the README.</p>
+              <p><strong>Checklist</strong></p>
+              <p>1. The README has a health check line.<br>2. The line fits the existing style.</p>
+              <p>I've reported the brief with <code>goal_report</code>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="page" id="notes">
+      <div class="ev-body notes">
+        <div class="title-row"><h1>What changes</h1></div>
+        <h2>The panel</h2>
+        <ul>
+          <li>Two tabs: <b>Scenarios</b> and <b>Tool health</b> (today's Configure → Tools, kept as is).</li>
+          <li>Removed: the Braintrust sidebar, Overview, Logs, Playgrounds, Experiments, Datasets, Scorers, Compare/Diff/Tie, the disabled + buttons, and the mock sample data.</li>
+          <li>The Playwright cases (<code>rocket-ui-regression</code>) leave this panel; they stay in <code>check:ui</code> and the Braintrust CLI.</li>
+        </ul>
+        <h2>A scenario's page</h2>
+        <ul>
+          <li>The message can be edited and run straight away. That is the playground. "Save to scenario file" writes it back to the JSONL.</li>
+          <li>The grid is providers × trials. Cells fill in live, and each one shows a bar per grader.</li>
+          <li>"Earlier runs" is the history. Every run is saved by the host, with per-grader results, the message it used, and time and usage, so it survives a reload. The Passed and time columns show the change from the run you compare with.</li>
+          <li>Run all and Run again spend usage. Each starts only on a click and says so beside the button.</li>
+        </ul>
+        <h2>One run</h2>
+        <ul>
+          <li>Opens inside the eval panel: graders with reasons, files changed, tool calls, time and usage, and the transcript. "Open as chat" moves it into the chat column only if you want it there.</li>
+          <li>Eval chats stay out of the normal chat list.</li>
+        </ul>
+        <h2>Behind it</h2>
+        <ul>
+          <li>Each run works in a fresh temporary copy of the test project, outside this repo, so it can't touch real work or get credited with it.</li>
+          <li>New graders: <code>files_unchanged</code>, reply matches a pattern, time and usage limits, and a <b>judge</b>: a different provider reads the turn against a sentence you write.</li>
+          <li>Runs go through the same hub path as today (<code>startEvalCell</code> / <code>finishEvalCell</code>), and the app map keeps the actions models can drive.</li>
+        </ul>
+        <h2>Open questions</h2>
+        <ul>
+          <li>Run cells one at a time (as now), or one per provider in parallel? Parallel is faster, but uses several subscriptions at once.</li>
+          <li>Should the judge's provider be chosen per grader, or always "a different provider from the one being graded"?</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+// Mockup only: the tabs at the top, and clicking a scenario or cell, switch pages.
+const show = (id) => {
+  document.querySelectorAll('.page').forEach((p) => p.classList.toggle('on', p.id === id))
+  document.querySelectorAll('.mock-tab').forEach((t) => t.classList.toggle('on', t.dataset.page === id))
+}
+document.querySelectorAll('.mock-tab').forEach((t) => t.addEventListener('click', () => show(t.dataset.page)))
+document.querySelectorAll('[data-go]').forEach((el) => el.addEventListener('click', () => show(el.dataset.go)))
+if (location.hash) show(location.hash.slice(1))
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { Chat, ChatSnapshot, Goal, GoalRole, Item, ProviderId, Turn, TurnChanges, TurnStatus, TurnTokens } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, Goal, GoalRole, ImageAttachment, Item, ProviderId, QueuedMessage, Turn, TurnChanges, TurnStatus, TurnTokens } from '../shared/types.ts'
 
 // The canonical transcript. The app owns the conversation; a provider's own session is a cache
 // of the part of it that provider has already seen. Each (chat, provider) pair records the
@@ -23,6 +23,8 @@ export function publicTurn(turn: StoredTurn): Turn {
 export type Note = { seq: number; cwd: string; text: string; provider: ProviderId; chatId: string | null; createdAt: number }
 
 const SCHEMA = `
+  CREATE TABLE IF NOT EXISTS attachments (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL);
+  CREATE TABLE IF NOT EXISTS message_queues (chat_id TEXT PRIMARY KEY, data TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS chats (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -118,6 +120,24 @@ export class Store {
     this.db.close()
   }
 
+  saveAttachment(image: ImageAttachment): void {
+    this.sql('INSERT INTO attachments (id, data, created_at) VALUES (?, ?, ?)').run(image.id, JSON.stringify(image), Date.now())
+  }
+
+  attachment(id: string): ImageAttachment | null {
+    const row = this.sql('SELECT data FROM attachments WHERE id = ?').get(id)
+    return row ? JSON.parse(String(row.data)) as ImageAttachment : null
+  }
+
+  saveQueue(chatId: string, queue: Array<QueuedMessage & { model: string | null }>): void {
+    if (!queue.length) this.sql('DELETE FROM message_queues WHERE chat_id = ?').run(chatId)
+    else this.sql('INSERT OR REPLACE INTO message_queues (chat_id, data) VALUES (?, ?)').run(chatId, JSON.stringify(queue))
+  }
+
+  queues(): Array<{ chatId: string; messages: Array<QueuedMessage & { model: string | null }> }> {
+    return this.sql('SELECT chat_id, data FROM message_queues').all().map(row => ({ chatId: String(row.chat_id), messages: JSON.parse(String(row.data)) }))
+  }
+
   listChats(): Chat[] {
     return this.sql('SELECT * FROM chats ORDER BY updated_at DESC').all().map(chatOf)
   }
@@ -138,6 +158,7 @@ export class Store {
   }
 
   deleteChat(chatId: string): void {
+    this.saveQueue(chatId, [])
     this.sql('DELETE FROM chats WHERE id = ?').run(chatId)
   }
 

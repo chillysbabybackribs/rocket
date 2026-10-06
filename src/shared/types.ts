@@ -3,6 +3,20 @@
 
 export type ProviderId = 'codex' | 'claude' | 'cursor' | 'antigravity'
 
+/** Image bytes live in Rocket's data directory; messages carry stable references only. */
+export type ImageAttachment = {
+  id: string
+  name: string
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
+  size: number
+  width: number
+  height: number
+}
+export type MessageDraft = { text: string; attachments?: ImageAttachment[] }
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+export const MAX_MESSAGE_IMAGE_BYTES = 20 * 1024 * 1024
+export const MAX_MESSAGE_IMAGES = 10
+
 /**
  * `steers`: a message sent while this provider is answering joins the turn in flight. For the
  * others it waits for the turn to end. The host decides; this only sets what the composer says.
@@ -24,7 +38,7 @@ export type ToolStatus = 'running' | 'done' | 'failed'
 /** One row of the transcript. Ids are unique within a chat and stable across updates. */
 export type Item =
   /** `steer`: sent while the turn was running and taken into it, after the turn's first message. */
-  | { type: 'user'; id: string; turnId: string; text: string; steer?: boolean }
+  | { type: 'user'; id: string; turnId: string; text: string; attachments?: ImageAttachment[]; steer?: boolean }
   | { type: 'assistant'; id: string; turnId: string; text: string; streaming: boolean }
   | { type: 'reasoning'; id: string; turnId: string; text: string; streaming: boolean }
   | {
@@ -216,7 +230,7 @@ export type Chat = {
 
 /** A message waiting for the chat's turn in flight to end, to be sent as the next one. Kept in memory only. */
 /** `taking`: sent into the running turn, and its model has not read it yet. */
-export type QueuedMessage = { id: string; provider: ProviderId; text: string; taking?: boolean }
+export type QueuedMessage = { id: string; provider: ProviderId; text: string; attachments?: ImageAttachment[]; taking?: boolean }
 
 export type ChatSnapshot = { chat: Chat; turns: Turn[]; items: Item[]; queued?: QueuedMessage[] }
 
@@ -250,6 +264,8 @@ export type HostEvent =
 
 /** Request name → [params, result]. */
 export type HostApi = {
+  'attachment.import': [{ name: string; bytes: Uint8Array; thumbnail: Uint8Array }, ImageAttachment]
+  'attachment.read': [{ id: string; thumbnail?: boolean }, string]
   'chats.list': [Record<string, never>, Chat[]]
   'chat.create': [{ cwd: string }, Chat]
   'chat.open': [{ chatId: string }, ChatSnapshot]
@@ -260,14 +276,14 @@ export type HostApi = {
    * Sent at once when the chat is idle. While a turn runs, it joins that turn when its provider
    * is the one answering and can take it, and otherwise waits for the turn to end.
    */
-  'chat.send': [{ chatId: string; provider: ProviderId; model: string | null; text: string }, null]
+  'chat.send': [{ chatId: string; provider: ProviderId; model: string | null; text: string; attachmentIds?: string[] }, null]
   /**
    * Stop the turn in flight. Waiting messages are withdrawn and their text returned, for the
    * composer to take back; with `sendQueued` they stay and go out as soon as the turn has stopped.
    */
-  'chat.stop': [{ chatId: string; sendQueued?: boolean }, string | null]
+  'chat.stop': [{ chatId: string; sendQueued?: boolean }, string | MessageDraft | null]
   /** Take one waiting message back; returns its text. */
-  'chat.unqueue': [{ chatId: string; id: string }, string]
+  'chat.unqueue': [{ chatId: string; id: string }, string | MessageDraft]
   /** A turn's changes as a unified patch; null when the turn changed nothing or its folder is not a repository. */
   'turn.changes': [{ chatId: string; turnId: string }, TurnPatch | null]
   /** Put the turn's files back as they were before it; the reversal is committed like a turn. Returns the turn as it now stands. */
