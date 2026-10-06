@@ -1,0 +1,1303 @@
+{
+  "log": {
+    "version": "1.2",
+    "creator": {
+      "name": "rocket",
+      "version": "0.1"
+    },
+    "entries": [
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 991,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 991
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r141",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/client/lib/flotr2.js?r=1790857974",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 0,
+            "mimeType": "application/javascript"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 0
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r142",
+          "kind": "Script"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/layout/sidePanelsDetail",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 460,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 460
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r143",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/layout/defaultSidePanel",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 358,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 358
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r144",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/layout/detail",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 503,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 503
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r145",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/layout/bottomPanelsDetail",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 682,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 682
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r146",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/client/custom/modules/advanced/lib/module-advanced.js?r=1790857974",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 0,
+            "mimeType": "application/javascript"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 0
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r147",
+          "kind": "Script"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Activities/Account/5f5f1fcec41c41354/activities?entityType=&maxSize=5&offset=0&orderBy=dateStart&order=desc",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 599,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 599
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r148",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Activities/Account/5f5f1fcec41c41354/history?entityType=&maxSize=5&offset=0&orderBy=dateStart&order=desc",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 982,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 982
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r149",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/stream?filter=&maxSize=5&offset=0&orderBy=number&order=desc",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 988,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 988
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r150",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/tasksPrimary?primaryFilter=&maxSize=5&offset=0&orderBy=createdAt&order=desc&attributeSelect=name%2CisOverdue%2CassignedUserId%2CassignedUserName%2CdateEnd%2CdateEndDate%2Cstatus",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 506,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 506
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r151",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Contact/layout/listForAccount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 444,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 444
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r152",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Opportunity/layout/listForAccount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 404,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 404
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r153",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Document/layout/listSmall",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 392,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 392
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r154",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Case/layout/listForAccount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 388,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 388
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r155",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Quote/layout/listForAccount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 404,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 404
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r156",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/SalesOrder/layout/listForAccount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 405,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 405
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r157",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/DeliveryOrder/layout/listForAccount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 381,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 381
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r158",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Invoice/layout/listForAccount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 416,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 416
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r159",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/CreditNote/layout/listForAccount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 414,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 414
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r160",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/PaymentRequest/layout/listForAccount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 397,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 397
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r161",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/PaymentEntry/layout/listForAccount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 418,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 418
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r162",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/?entryPoint=image&id=63bacbd772680426e&size=medium",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 0,
+            "mimeType": "image/png"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 0
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r163",
+          "kind": "Image"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/opportunities?primaryFilter=&maxSize=5&offset=0&orderBy=createdAt&order=desc&attributeSelect=name%2Cstage%2CcloseDate%2CamountCurrency%2Camount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 633,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 633
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r164",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/cases?primaryFilter=&maxSize=5&offset=0&orderBy=number&order=desc&attributeSelect=name%2Cnumber%2Cstatus%2Cpriority",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 462,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 462
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r165",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/contacts?primaryFilter=&maxSize=5&offset=0&orderBy=name&order=asc&attributeSelect=salutationName%2CfirstName%2ClastName%2CmiddleName%2Cname%2CaccountRole%2CemailAddressIsOptedOut%2CemailAddressIsInvalid%2CemailAddress%2CemailAddressData",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 643,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 643
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r166",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/documents?primaryFilter=&maxSize=5&offset=0&orderBy=createdAt&order=desc&attributeSelect=name%2CfileId%2CfileName%2CcreatedAt",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 343,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 343
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r167",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/deliveryOrders?primaryFilter=&maxSize=5&offset=0&orderBy=createdAt&order=desc&attributeSelect=name%2Cstatus%2CdateOrdered",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 343,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 343
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r168",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/salesOrders?primaryFilter=&maxSize=5&offset=0&orderBy=createdAt&order=desc&attributeSelect=name%2Cstatus%2CdateOrdered%2CamountCurrency%2Camount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 343,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 343
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r169",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/invoices?primaryFilter=&maxSize=5&offset=0&orderBy=createdAt&order=desc&attributeSelect=name%2Cstatus%2CdateInvoiced%2CgrandTotalAmountCurrency%2CgrandTotalAmount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 343,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 343
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r170",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/quotes?primaryFilter=&maxSize=5&offset=0&orderBy=createdAt&order=desc&attributeSelect=name%2Cstatus%2CdateQuoted%2CamountCurrency%2Camount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 343,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 343
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r171",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/paymentRequests?primaryFilter=&maxSize=5&offset=0&orderBy=createdAt&order=desc&attributeSelect=number%2Cstatus%2CamountCurrency%2Camount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 343,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 343
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r172",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/creditNotes?primaryFilter=&maxSize=5&offset=0&orderBy=createdAt&order=desc&attributeSelect=name%2Cstatus%2CdateIssued%2CgrandTotalAmountCurrency%2CgrandTotalAmount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 343,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 343
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r173",
+          "kind": "XHR"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:18:36.347Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://demo.us.espocrm.com/api/v1/Account/5f5f1fcec41c41354/paymentEntries?primaryFilter=&maxSize=5&offset=0&orderBy=createdAt&order=desc&attributeSelect=number%2Ctype%2Cstatus%2CdatePaid%2CamountCurrency%2Camount",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 343,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 343
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r174",
+          "kind": "XHR"
+        }
+      }
+    ]
+  }
+}
