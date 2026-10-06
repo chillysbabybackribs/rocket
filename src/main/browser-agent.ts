@@ -4,7 +4,9 @@ import { BrowserDownloads } from './browser-downloads.ts'
 import { buildA11ySnapshot, filterReadByQuery, type AxNode } from './browser-a11y.ts'
 import { formatAttachedJson } from './browser-json-attach.ts'
 import { formatNetworkDelta, formatReadDelta } from './browser-run-delta.ts'
+import { buildHar, harSummary, type HarRequestRow } from './browser-har.ts'
 import { SPA_HOOK } from './browser-spa-hook.ts'
+import { writeFileSync } from 'node:fs'
 import { PAGE_LIB, type DigestOptions } from './browser-page-lib.ts'
 import type { BrowserPane, TabHandle } from './browser-pane.ts'
 import { toUrl } from './browser-url.ts'
@@ -208,7 +210,28 @@ export class BrowserAgent {
         const tab = this.tab(op)
         this.pane.agentShow(tab.id)
         await this.attach(tab)
-        return { ...(await this.capture(tab)), ...this.info(tab) }
+        let markers = 0
+        if (op.som) {
+          markers = Number(await this.evaluate(tab, `__rocket.somOverlay(${op.somMax ?? 40})`, true) ?? 0)
+        }
+        try {
+          return { ...(await this.capture(tab)), ...this.info(tab), ...(op.som ? { som: true, markers } : {}) }
+        } finally {
+          if (op.som) await this.evaluate(tab, '__rocket.somClear()', true).catch(() => {})
+        }
+      }
+      case 'har': {
+        const tab = this.tab(op)
+        const state = await this.attach(tab)
+        const since = op.sinceSeq ?? state.scriptMark ?? state.pageStart
+        const rows: HarRequestRow[] = state.requests.map(({ id, method, url, kind, status, mime, size }) =>
+          ({ id, method, url, kind, status, mime, size }))
+        const har = buildHar(rows, since)
+        if (op.saveTo) {
+          writeFileSync(op.saveTo, `${JSON.stringify(har, null, 2)}\n`)
+          return { path: op.saveTo, entries: har.log.entries.length, summary: harSummary(har, tab.contents.getURL()) }
+        }
+        return har
       }
       case 'rest':
         this.rest(op.chat)

@@ -68,7 +68,16 @@ function makeTab(tab: string | null): Record<string, unknown> {
     }),
     requests: (match?: string) => call({ op: 'requests', tab, match: match ?? null }),
     body: (request: string | { id: string }) => call({ op: 'body', tab, request: typeof request === 'string' ? request : request.id }),
-    screenshot: () => call({ op: 'screenshot', tab })
+    screenshot: (options: { som?: boolean; max?: number } = {}) => call({
+      op: 'screenshot', tab,
+      som: options.som ?? null,
+      somMax: options.max ?? null
+    }),
+    exportHar: (options: { sinceRequest?: number; saveTo?: string } = {}) => call({
+      op: 'har', tab,
+      sinceSeq: options.sinceRequest ?? null,
+      saveTo: options.saveTo ?? null
+    })
   }
 }
 

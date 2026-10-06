@@ -252,6 +252,38 @@ export function pageLib(): void {
       else if (el.isContentEditable) getSelection()?.selectAllChildren(el)
       else throw new Error(`${target} is not something that can be typed into.`)
       return 'typed'
+    },
+    /** Set-of-Marks overlay: numbered ref badges on visible controls (removed by somClear). */
+    somOverlay(max = 40): number {
+      document.querySelectorAll('[data-rocket-som-badge]').forEach((node) => node.remove())
+      const pool = [...document.querySelectorAll(INTERACTIVE)].filter(visible).slice(0, max)
+      for (const el of pool) {
+        const ref = refOf(el)
+        const box = el.getBoundingClientRect()
+        const badge = document.createElement('div')
+        badge.dataset.rocketSomBadge = ref
+        badge.textContent = ref
+        badge.setAttribute('aria-hidden', 'true')
+        Object.assign(badge.style, {
+          position: 'fixed',
+          zIndex: '2147483646',
+          pointerEvents: 'none',
+          left: `${Math.max(0, box.left)}px`,
+          top: `${Math.max(0, box.top)}px`,
+          background: '#dc2626',
+          color: '#fff',
+          font: 'bold 11px/1.2 system-ui,sans-serif',
+          padding: '2px 5px',
+          borderRadius: '4px',
+          border: '1.5px solid #fff',
+          boxShadow: '0 1px 4px rgba(0,0,0,.35)'
+        })
+        document.body.appendChild(badge)
+      }
+      return pool.length
+    },
+    somClear(): void {
+      document.querySelectorAll('[data-rocket-som-badge]').forEach((node) => node.remove())
     }
   }
 }

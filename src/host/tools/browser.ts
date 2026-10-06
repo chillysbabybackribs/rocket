@@ -45,7 +45,7 @@ Use this rather than fetching a URL yourself when a page needs the user's login 
 
 const RUN_DESCRIPTION = `Run a script in Rocket's built-in browser. One script should do a whole task on a destination page: act, wait, extract, and return the result—not automate search engines or collect sources from SERPs. Use your provider's native web search to pick URLs first. Do as much per call as you can.
 The script is the body of an async function. It has:
-- tab: your tab, or the one named by the tab argument. tab.goto(url) waits for document ready; tab.goto(url, { until: 'hash' | 'title' | 'request', untilValue, timeout }) optionally waits for the hash, a title substring, or a GET URL fragment with status 200 (cap ~5s) — use on hash CRM/SPA routes instead of extra sleep. tab.follow(href) resolves a link from the current page (hash or relative) and goes there with hash settle when the URL has a fragment. tab.read({focus, selector, query, max}) matches browser_read — focus a11y for an accessibility snapshot with refs; query filters lines (text or /regex/). tab.eval(fn, arg); tab.click(target); tab.fill(target, value); tab.press('Enter') or 'Control+a'; tab.type(text); tab.waitFor(target or fn, {timeout}); tab.requests(match); tab.body(requestId); tab.info(); tab.screenshot(); tab.close().
+- tab: your tab, or the one named by the tab argument. tab.screenshot({ som: true }) captures Set-of-Marks badges on controls; tab.exportHar({ saveTo }) writes a debug HAR of requests since script mark (or page load). tab.goto(url) waits for document ready; tab.goto(url, { until: 'hash' | 'title' | 'request', untilValue, timeout }) optionally waits for the hash, a title substring, or a GET URL fragment with status 200 (cap ~5s) — use on hash CRM/SPA routes instead of extra sleep. tab.follow(href) resolves a link from the current page (hash or relative) and goes there with hash settle when the URL has a fragment. tab.read({focus, selector, query, max}) matches browser_read — focus a11y for an accessibility snapshot with refs; query filters lines (text or /regex/). tab.eval(fn, arg); tab.click(target); tab.fill(target, value); tab.press('Enter') or 'Control+a'; tab.type(text); tab.waitFor(target or fn, {timeout}); tab.requests(match); tab.body(requestId); tab.info(); tab.screenshot(); tab.close().
 - browser: browser.open(url); browser.tab(id); browser.tabs(); browser.fetch(url, {method, headers, body}) — session cookies, no CORS, {status, body} with json().
 - sleep(ms), console.log.
 A target is a ref from browser_read (e12), text=Visible label, or a CSS selector. Clicks scroll into view only when needed.
@@ -57,7 +57,7 @@ Use this whenever you need a file from the web: never click through a save or fi
 Files go to the user's Downloads folder unless saveTo names a folder or a file (relative to the chat's working folder). Existing files are never overwritten.`
 
 const SHOT_DESCRIPTION = `See a tab of Rocket's built-in browser as an image. For what text cannot tell you: layout, charts, images, canvas apps, or checking how a page looks. To read a page or find its controls, use browser_read, which is faster and exact.
-Pass tab (an id such as t2 from the tab list) for a tab that is already open; without it, your own tab is captured (Rocket switches the view to it).`
+Pass tab (an id such as t2 from the tab list) for a tab that is already open; without it, your own tab is captured (Rocket switches the view to it). Pass som: true to draw ref badges (e1, e2, …) on visible controls for vision models — overlays are removed after capture.`
 
 /**
  * `cwdOf` gives a chat's working folder, which a relative saveTo is taken from. `onOpen` hears
@@ -112,12 +112,17 @@ export function browserTools(
         required: ['code'],
         additionalProperties: false
       },
-      run: (args, context) => runScript({ request: (op) => request(op, context.chatId) }, resultsDir, {
-        code: stringOf(args.code),
-        tab: stringOf(args.tab) || null,
-        chat: context.chatId,
-        seconds: Math.min(Math.max(typeof args.timeout === 'number' ? args.timeout : RUN_SECONDS.default, 1), RUN_SECONDS.max)
-      })
+      run: (args, context) => runScript(
+        { request: (op) => request(op, context.chatId) },
+        resultsDir,
+        cwdOf(context.chatId),
+        {
+          code: stringOf(args.code),
+          tab: stringOf(args.tab) || null,
+          chat: context.chatId,
+          seconds: Math.min(Math.max(typeof args.timeout === 'number' ? args.timeout : RUN_SECONDS.default, 1), RUN_SECONDS.max)
+        }
+      )
     },
     {
       name: 'browser_download',
@@ -151,14 +156,18 @@ export function browserTools(
       inputSchema: {
         type: 'object',
         properties: {
-          tab: { type: 'string', description: 'A tab id such as t2. Default: your own tab.' }
+          tab: { type: 'string', description: 'A tab id such as t2. Default: your own tab.' },
+          som: { type: 'boolean', description: 'Overlay Set-of-Marks ref badges on visible controls before capture.' },
+          somMax: { type: 'number', description: 'Most controls to badge when som is true (default 40).' }
         },
         additionalProperties: false
       },
       run: async (args, context) => screenshotResult(await link.request({
         op: 'screenshot',
         chat: context.chatId,
-        tab: stringOf(args.tab) || null
+        tab: stringOf(args.tab) || null,
+        som: args.som === true ? true : null,
+        somMax: typeof args.somMax === 'number' && args.somMax > 0 ? Math.round(args.somMax) : null
       }))
     }
   ]
@@ -206,7 +215,7 @@ type WorkerMessage =
   | { type: 'done'; ok: false; error: string }
 
 async function runScript(
-  link: BrowserLink, resultsDir: string, run: { code: string; tab: string | null; chat: string | null; seconds: number }
+  link: BrowserLink, resultsDir: string, cwd: string | null, run: { code: string; tab: string | null; chat: string | null; seconds: number }
 ): Promise<ToolResult> {
   if (!run.code.trim()) return { ...textResult('There is no script to run.'), isError: true }
   const logs: string[] = []
@@ -228,6 +237,7 @@ async function runScript(
         touchedTab ||= forTab || message.op.op === 'open'
         // The worker names tabs; which chat is asking is added here.
         const op = { ...message.op, ...(forTab || message.op.op === 'open' ? { chat: run.chat } : {}) } as BrowserAgentOp
+        if (op.op === 'har' && op.saveTo) op.saveTo = savePath(op.saveTo, cwd) ?? op.saveTo
         const runOp = async (): Promise<void> => {
           if ((forTab || message.op.op === 'open') && !marked) {
             marked = true
@@ -236,7 +246,17 @@ async function runScript(
           }
           return link.request(op).then(
           // A script has no use for image bytes; it gets a file it can name in what it returns.
-          (result) => worker.postMessage({ id: message.id, ok: true, result: op.op === 'screenshot' ? saveShot(result, resultsDir, run.chat) : result }),
+          (result) => {
+            if (op.op === 'screenshot') {
+              const shot = result as { som?: boolean; markers?: number }
+              worker.postMessage({
+                id: message.id, ok: true,
+                result: { ...saveShot(result, resultsDir, run.chat), ...(shot.som ? { som: true, markers: shot.markers ?? 0 } : {}) }
+              })
+              return
+            }
+            worker.postMessage({ id: message.id, ok: true, result })
+          },
           (error: unknown) => worker.postMessage({ id: message.id, ok: false, error: messageOf(error) })
           )
         }

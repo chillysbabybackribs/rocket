@@ -220,9 +220,12 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 
 ### Phase 4 — Optional / research
 
-- SoM screenshot — WS4.3  
-- Provider-specific observation policies in eval matrix — WS1.5  
-- HAR export — WS3.3  
+**Status (6 Oct 2026): landed.**
+
+- [x] SoM screenshot — `browser_screenshot` / `tab.screenshot({ som: true })` — WS4.3 (`browser-page-lib` overlay)
+- [x] Observation policy eval matrix — WS1.5 (`docs/evals/browser-observation-policies.md`, scenarios jsonl)
+- [x] HAR export — `tab.exportHar({ saveTo })` since script mark — WS3.3 (`browser-har.ts`)
+- [x] Harness: Phase 4 cases in `browser-capabilities.spec.ts`
 
 ---
 

@@ -209,6 +209,34 @@ test.describe('Browser Phase 0 baseline (harness)', () => {
     expect(out.text).toMatch(/ALPHA-42/)
   })
 
+  test('Phase 4: som screenshot reports marker count', async ({ rocket }) => {
+    const { origin, profile } = rocket
+    const { run } = await browserMcp(profile)
+    const out = await run(`
+      await tab.goto(${JSON.stringify(`${origin}/spa`)});
+      const shot = await tab.screenshot({ som: true, max: 20 });
+      return JSON.stringify({ som: shot.som, markers: shot.markers, path: shot.path });
+    `)
+    expect(out.isError).toBeFalsy()
+    expect(out.text).toMatch(/"som":true/)
+    expect(Number(out.text.match(/"markers":(\d+)/)?.[1] ?? 0)).toBeGreaterThan(2)
+  })
+
+  test('Phase 4: exportHar writes entries after navigation', async ({ rocket }) => {
+    const { origin, profile } = rocket
+    const { run } = await browserMcp(profile)
+    const out = await run(`
+      await tab.goto(${JSON.stringify(`${origin}/spa`)});
+      await tab.click('text=Alpha Corp');
+      await tab.waitFor('text=ALPHA-42', { timeout: 8000 });
+      const har = await tab.exportHar({ saveTo: 'phase4.har.json' });
+      return har.entries + ' ' + (har.summary || '');
+    `)
+    expect(out.isError).toBeFalsy()
+    expect(out.text).toMatch(/HAR export/)
+    expect(out.text).toMatch(/[1-9]\d*/)
+  })
+
   test('SPA: network log lists record API on detail navigation', async ({ rocket }) => {
     const { origin, profile } = rocket
     const { run } = await browserMcp(profile)

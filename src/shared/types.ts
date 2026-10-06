@@ -637,7 +637,8 @@ export type BrowserAgentOp =
   | (OnTab & { op: 'wait'; target: string | null; expression: string | null; timeout: number })
   | (OnTab & { op: 'requests'; match: string | null })
   | (OnTab & { op: 'body'; request: string })
-  | (OnTab & { op: 'screenshot' })
+  | (OnTab & { op: 'screenshot'; som?: boolean | null; somMax?: number | null })
+  | (OnTab & { op: 'har'; sinceSeq: number | null; saveTo: string | null })
   /**
    * Save a file without a dialog: `url` (absolute, or relative to the tab's page) or what clicking
    * `target` downloads. `saveTo` is an absolute folder or file, or null for the downloads folder.

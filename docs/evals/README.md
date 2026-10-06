@@ -14,6 +14,8 @@ UI check: `npm run check:ui -- evals.spec.ts eval-tools.spec.ts`.
 
 Browser Phase 0 harness (no LLM): `npm run check:browser-phase0` — see `docs/browser-agent-capabilities-plan.md` and `tests/ui/browser-capabilities.spec.ts`.
 
+Browser observation policy evals (LLM): `docs/evals/scenarios/browser-observation-policies.jsonl` — see `docs/evals/browser-observation-policies.md`.
+
 The standalone Braintrust-style mock (`npm run eval:mock-ui`, `mock-ui/`) and the Lane A / Lane B
 command lines below are separate from the panel.
 
