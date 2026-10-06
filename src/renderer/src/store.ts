@@ -4,7 +4,7 @@ import type { ChatLinkTarget, Chat, Goal, GoalEdit, HostEvent, Item, ModelInfo, 
 export type ArtifactView =
   | Extract<ChatLinkTarget, { kind: 'artifact' }>
   | { kind: 'changes'; chatId: string; turnId: string; patch: TurnPatch }
-import { PROVIDERS, providerLabel } from '../../shared/types.ts'
+import { PROVIDERS, planItemId, providerLabel } from '../../shared/types.ts'
 import { call, connectHost } from './host.ts'
 
 // Client state. Two kinds of subscription keep a fast token stream cheap: components that care
@@ -43,6 +43,11 @@ export type AppState = {
   goalPaneOpen: boolean
   /** The goal side's width, in pixels. */
   goalWidth: number
+  /**
+   * The turn whose plan shows in the drawer beside the chat, or null while it is closed. It opens
+   * by itself on the first plan of a running turn unless this chat has closed it before.
+   */
+  planTurnId: string | null
   /** The new-goal dialog: closed, describing, or following the goal it drafted. */
   newGoal: { goalId: string | null } | null
   /** The folder a new chat starts in: the last one the user chose, or their home folder. */
@@ -66,6 +71,8 @@ type Prefs = {
   browserOpen?: boolean
   goalPaneOpen?: boolean
   goalWidth?: number
+  /** Chats whose plan drawer the user closed; it no longer opens by itself there. */
+  planClosed?: Record<string, true>
   activeChatId?: string | null
   tabs?: string[]
   cwd?: string
@@ -109,8 +116,10 @@ function saveSelection(chatId: string | null, selection: Selection): void {
 }
 
 function forgetSelection(chatId: string): void {
-  const { [chatId]: _gone, ...selections } = readPrefs().selections ?? {}
-  writePrefs({ selections })
+  const saved = readPrefs()
+  const { [chatId]: _gone, ...selections } = saved.selections ?? {}
+  const { [chatId]: _closed, ...planClosed } = saved.planClosed ?? {}
+  writePrefs({ selections, planClosed })
 }
 
 let state: AppState = {
@@ -132,6 +141,7 @@ let state: AppState = {
   goals: [],
   goalPaneOpen: prefs.goalPaneOpen !== false,
   goalWidth: prefs.goalWidth ?? 400,
+  planTurnId: null,
   newGoal: null,
   defaultCwd: prefs.cwd || window.rocket.homeDir,
   error: null
@@ -198,7 +208,9 @@ function applyEvents(events: HostEvent[]): void {
   for (const event of events) {
     switch (event.type) {
       case 'item':
-        if (event.chatId === state.activeChatId) putItem(event.item)
+        if (event.chatId !== state.activeChatId) break
+        putItem(event.item)
+        if (event.item.type === 'plan') openPlanIfNew(event.chatId, event.item.turnId)
         break
       case 'delta': {
         const item = event.chatId === state.activeChatId ? items.get(event.itemId) : undefined
@@ -257,8 +269,38 @@ function showChat(chatId: string | null, turns: Turn[] = [], loaded: Item[] = []
   const running = new Set(state.running)
   for (const turn of turns) if (turn.status === 'running') running.add(turn.chatId)
   const tabs = chatId && !state.tabs.includes(chatId) ? [...state.tabs, chatId] : state.tabs
-  setState({ activeChatId: chatId, tabs, turns, turnItems, running, queued, ...selectionFor(chatId) })
+  setState({ activeChatId: chatId, tabs, turns, turnItems, running, queued, planTurnId: null, ...selectionFor(chatId) })
   writePrefs({ activeChatId: chatId, tabs })
+  // Coming back to a chat whose turn is still planning shows the plan again, as it did when it started.
+  const planning = turns.findLast((turn) => turn.status === 'running' && items.has(planItemId(turn.id)))
+  if (chatId && planning) openPlanIfNew(chatId, planning.id)
+}
+
+/** The drawer opens itself for a running turn's plan, once per chat, until the user closes it there. */
+function openPlanIfNew(chatId: string, turnId: string): void {
+  if (state.planTurnId !== null || readPrefs().planClosed?.[chatId]) return
+  if (goalOf(chatId)) return
+  if (state.turns.find((turn) => turn.id === turnId)?.status !== 'running') return
+  setState({ planTurnId: turnId })
+}
+
+/** Show a turn's plan beside the chat, or close the drawer; closing is remembered for this chat. */
+export function togglePlan(turnId: string): void {
+  const chatId = state.activeChatId
+  if (!chatId) return
+  if (state.planTurnId === turnId) {
+    closePlan()
+    return
+  }
+  const { [chatId]: _reopened, ...planClosed } = readPrefs().planClosed ?? {}
+  writePrefs({ planClosed })
+  setState({ planTurnId: turnId })
+}
+
+export function closePlan(): void {
+  const chatId = state.activeChatId
+  if (chatId) writePrefs({ planClosed: { ...readPrefs().planClosed, [chatId]: true } })
+  setState({ planTurnId: null })
 }
 
 function setTabs(tabs: string[]): void {

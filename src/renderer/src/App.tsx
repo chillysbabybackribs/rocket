@@ -24,16 +24,13 @@ const GOAL_MIN = 320
 const CHAT_MIN = 300
 
 /**
- * A goal's chat, split like an artifact: the conversation on the left, the goal on the right,
- * with a divider to drag. The note box stands in for the composer while the goal runs; once it
- * has ended, the chat carries on as any other.
+ * A chat with something beside it, split like an artifact: the conversation on the left, `side`
+ * on the right, with a divider to drag. The goal pane and the plan drawer both live here and
+ * share one width.
  */
-function GoalChat({ goal }: { goal: Goal }) {
-  const open = useApp((state) => state.goalPaneOpen)
+function Split({ side, children }: { side: React.ReactNode; children: React.ReactNode }) {
   const width = useApp((state) => state.goalWidth)
-  const chatId = useApp((state) => state.activeChatId)
   const split = useRef<HTMLElement>(null)
-  const ended = goal.status === 'done' || goal.status === 'stopped'
 
   const drag = (event: React.PointerEvent<HTMLDivElement>): void => {
     const handle = event.currentTarget
