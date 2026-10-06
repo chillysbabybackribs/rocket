@@ -1,0 +1,163 @@
+{
+  "log": {
+    "version": "1.2",
+    "creator": {
+      "name": "rocket",
+      "version": "0.1"
+    },
+    "entries": [
+      {
+        "startedDateTime": "2026-10-06T10:12:55.228Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "http://127.0.0.1:38451/spa",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 2733,
+            "mimeType": "text/html"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 2733
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r3",
+          "kind": "Document"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:12:55.228Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "http://127.0.0.1:38451/spa/api/records/alpha",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 194,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 194
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r4",
+          "kind": "Fetch"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:12:55.228Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "http://127.0.0.1:38451/spa",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 2733,
+            "mimeType": "text/html"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 2733
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r5",
+          "kind": "Document"
+        }
+      },
+      {
+        "startedDateTime": "2026-10-06T10:12:55.228Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "http://127.0.0.1:38451/spa/api/records/beta",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": 191,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 191
+        },
+        "cache": {},
+        "timings": {
+          "send": 0,
+          "wait": 0,
+          "receive": 0
+        },
+        "rocket": {
+          "id": "r6",
+          "kind": "Fetch"
+        }
+      }
+    ]
+  }
+}
