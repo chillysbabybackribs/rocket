@@ -66,3 +66,16 @@ export function reveal(view: WebContentsView, bounds: Rectangle): void {
   view.setBounds(bounds)
   if (INVISIBLE) view.setVisible(true)
 }
+
+/** The languages pages are told the user reads. Electron's default repeats "en". */
+export const ACCEPT_LANGUAGES = 'en-US,en'
+
+/**
+ * A session's user agent with the app's and Electron's names taken out. Electron's default is
+ * Chrome's with `<app>/<version>` and `Electron/<version>` added, and login pages read those as a
+ * bot. The Chrome version is kept as it is, so it stays true across Electron upgrades.
+ */
+export function plainUserAgent(userAgent: string, appName: string): string {
+  const name = appName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return userAgent.replace(new RegExp(` (?:${name}|Electron)/\\S+`, 'g'), '')
+}

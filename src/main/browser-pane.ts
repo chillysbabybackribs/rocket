@@ -9,7 +9,9 @@ import { join } from 'node:path'
 import type { AgentTab, Bounds, BrowserCommand, BrowserState, BrowserTab } from '../shared/types.ts'
 import { detectCookieSources, importCookies, type CookieSource } from './cookie-import.ts'
 import { Suggestions } from './browser-suggest.ts'
-import { BROWSER_PARTITION, conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, PAGE_BACKGROUND, reveal, toUrl } from './browser-url.ts'
+import {
+  ACCEPT_LANGUAGES, BROWSER_PARTITION, conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, PAGE_BACKGROUND, plainUserAgent, reveal, toUrl
+} from './browser-url.ts'
 
 // The embedded browser: a strip of tabs, each a WebContentsView laid over the region of the
 // window the UI reserves for the page. A view is a native surface, so it paints above every DOM
@@ -64,6 +66,9 @@ export class BrowserPane {
   private refSeq = 0
 
   constructor(private readonly window: BrowserWindow) {
+    // Set before any tab exists: a session's user agent only reaches pages made after it.
+    const pages = session.fromPartition(PARTITION)
+    pages.setUserAgent(plainUserAgent(pages.getUserAgent(), app.name), ACCEPT_LANGUAGES)
     this.suggestions = new Suggestions(window)
     window.on('resize', () => {
       for (const tab of this.tabs) {

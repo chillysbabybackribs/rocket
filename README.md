@@ -211,6 +211,14 @@ only the active one is on screen. The address field's dropdown is a view of its 
 (`browser-suggest.ts`, `src/renderer/suggest.html`) stacked above the page, so it overlays the
 page and never moves it. Tabs, history and the last session are kept in the profile folder.
 
+Pages see an ordinary Chrome. Electron's default user agent adds `Rocket/<version>` and
+`Electron/<version>`, and Chromium sets `navigator.webdriver` in every page when the remote
+debugging port it is started with is 0 (`content/child/runtime_features.cc`); login pages read
+both as a bot, and X locked logins out for a while after a model visited it. So the browser session's
+user agent is Chrome's own (`plainUserAgent` in `src/main/browser-url.ts`, keeping the real Chrome
+version), and main finds a free loopback port itself and passes it by number. The debugging port
+is still only on loopback and still read from `DevToolsActivePort` by the live UI connection.
+
 Background tabs are hidden with `setVisible(false)`, so Chromium stops drawing them.
 `ROCKET_BROWSER_HIDE=park npm run dev` moves them off screen instead, the older way, in case a
 tab ever comes back blank; see the note in `src/main/browser-url.ts`.

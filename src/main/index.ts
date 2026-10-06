@@ -3,6 +3,7 @@ import {
 } from 'electron'
 import { existsSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
+import { createServer, type AddressInfo } from 'node:net'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -27,7 +28,22 @@ import { liveUiConnection } from './ui-connection.ts'
 const testProfile = uiTestProfile()
 if (process.env.ROCKET_USER_DATA) app.setPath('userData', process.env.ROCKET_USER_DATA)
 app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1')
-app.commandLine.appendSwitch('remote-debugging-port', '0')
+// Chromium takes a remote debugging port of 0 as a sign of automation and sets
+// navigator.webdriver in every page (content/child/runtime_features.cc), which login pages read as
+// a bot. So the free port is found here and passed by number; the live UI connection still reads
+// it from DevToolsActivePort.
+app.commandLine.appendSwitch('remote-debugging-port', String(await freeLoopbackPort()))
+
+function freeLoopbackPort(): Promise<number> {
+  return new Promise((done, fail) => {
+    const probe = createServer()
+    probe.once('error', fail)
+    probe.listen(0, '127.0.0.1', () => {
+      const { port } = probe.address() as AddressInfo
+      probe.close(() => done(port))
+    })
+  })
+}
 
 let window: BrowserWindow | null = null
 let host: UtilityProcess | null = null
