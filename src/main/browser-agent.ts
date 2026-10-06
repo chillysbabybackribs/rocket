@@ -7,6 +7,7 @@ import { formatNetworkDelta, formatReadDelta } from './browser-run-delta.ts'
 import { buildHar, harSummary, type HarRequestRow } from './browser-har.ts'
 import { SPA_HOOK } from './browser-spa-hook.ts'
 import { writeFileSync } from 'node:fs'
+import { compositeSomMarkers, type SomMarker } from './browser-som-composite.ts'
 import { PAGE_LIB, type DigestOptions } from './browser-page-lib.ts'
 import type { BrowserPane, TabHandle } from './browser-pane.ts'
 import { toUrl } from './browser-url.ts'
@@ -210,14 +211,20 @@ export class BrowserAgent {
         const tab = this.tab(op)
         this.pane.agentShow(tab.id)
         await this.attach(tab)
-        let markers = 0
+        let somMarkers: SomMarker[] = []
+        let viewportWidth = 0
         if (op.som) {
-          markers = Number(await this.evaluate(tab, `__rocket.somOverlay(${op.somMax ?? 40})`, true) ?? 0)
+          const layout = await this.evaluate(tab, `__rocket.somMarkers(${op.somMax ?? 40})`, true) as {
+            markers?: SomMarker[]
+            viewportWidth?: number
+          }
+          somMarkers = layout?.markers ?? []
+          viewportWidth = layout?.viewportWidth ?? 0
         }
-        try {
-          return { ...(await this.capture(tab)), ...this.info(tab), ...(op.som ? { som: true, markers } : {}) }
-        } finally {
-          if (op.som) await this.evaluate(tab, '__rocket.somClear()', true).catch(() => {})
+        return {
+          ...(await this.capture(tab, somMarkers.length ? { somMarkers, viewportWidth } : null)),
+          ...this.info(tab),
+          ...(op.som ? { som: true, markers: somMarkers.length } : {})
         }
       }
       case 'har': {
@@ -250,7 +257,10 @@ export class BrowserAgent {
    * What the tab's page looks like, as a JPEG no wider than a model can use. A picture goes into
    * the model's context whole, so it is kept small: a full-size PNG of a page runs to megabytes.
    */
-  private async capture(tab: TabHandle): Promise<{ base64: string; mimeType: string }> {
+  private async capture(
+    tab: TabHandle,
+    som: { somMarkers: SomMarker[]; viewportWidth: number } | null = null
+  ): Promise<{ base64: string; mimeType: string }> {
     let image = await tab.contents.capturePage()
     if (image.isEmpty()) {
       // A hidden view may have no surface to copy; the protocol renders the page afresh instead.
@@ -259,6 +269,9 @@ export class BrowserAgent {
     }
     if (image.isEmpty()) throw new Error(`Tab ${tab.id} has nothing drawn to capture.`)
     if (image.getSize().width > SHOT_WIDTH) image = image.resize({ width: SHOT_WIDTH, quality: 'good' })
+    if (som?.somMarkers.length && som.viewportWidth > 0) {
+      image = compositeSomMarkers(image, som.somMarkers, som.viewportWidth)
+    }
     return { base64: image.toJPEG(SHOT_QUALITY).toString('base64'), mimeType: 'image/jpeg' }
   }
 
