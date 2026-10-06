@@ -14,6 +14,7 @@ import {
 import type { HostApi, ProviderId } from '../../../shared/types.ts'
 import { call } from '../host.ts'
 import { setEvalsOpen } from '../store.ts'
+import { EvalPlayground } from './EvalPlayground.tsx'
 import { EvalRunSheet } from './EvalRunSheet.tsx'
 
 type DashboardData = HostApi['eval.loadDashboard'][1]
@@ -318,11 +319,6 @@ export function EvalDashboard() {
   const renderPlaceholder = (name: string): React.ReactNode => (
     <p className="eval-bt-muted">
       {name} mirrors Braintrust’s project nav. Use <strong>Experiments</strong> and <strong>Datasets</strong> for Rocket matrix and harness artifacts.
-      {view === 'playgrounds' && (
-        <>
-          {' '}For prompt comparison, open Braintrust Playgrounds or run cells from a dataset row.
-        </>
-      )}
     </p>
   )
 
@@ -333,9 +329,16 @@ export function EvalDashboard() {
   else if (view === 'experiment-detail' && selectedExperiment) content = renderExperimentDetail(selectedExperiment)
   else if (view === 'datasets') content = renderDatasets()
   else if (view === 'dataset-detail' && selectedDataset) content = renderDatasetDetail(selectedDataset)
+  else if (view === 'playgrounds') content = (
+    <EvalPlayground
+      datasets={datasets}
+      onRunCell={(seed) => openRun({ scenarioId: seed.scenarioId, provider: seed.provider, trial: seed.trial })}
+    />
+  )
   else content = renderPlaceholder(pageTitle)
 
   const showExpToolbar = view === 'experiments' || view === 'experiment-detail'
+  const showPlaygroundChrome = view === 'playgrounds'
 
   return (
     <div className="eval-bt-root">
@@ -363,9 +366,9 @@ export function EvalDashboard() {
       </aside>
 
       <div className="eval-bt-main">
-        <header className="eval-bt-topbar">
+        <header className={`eval-bt-topbar${showPlaygroundChrome ? ' is-compact' : ''}`}>
           <div>
-            <h1 className="eval-bt-page-title">{pageTitle}</h1>
+            {!showPlaygroundChrome && <h1 className="eval-bt-page-title">{pageTitle}</h1>}
           </div>
           <div className="eval-bt-topbar-actions">
             <button type="button" className="icon-button" title="Refresh dashboard" aria-label="Refresh dashboard" onClick={() => void load()}>
@@ -417,7 +420,7 @@ export function EvalDashboard() {
           </div>
         )}
 
-        <div className="eval-bt-content">
+        <div className={`eval-bt-content${showPlaygroundChrome ? ' is-flush' : ''}`}>
           {content}
         </div>
 
