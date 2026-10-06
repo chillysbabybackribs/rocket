@@ -1,13 +1,15 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { homedir } from 'node:os'
+import { isAbsolute, join, resolve } from 'node:path'
 import { Worker } from 'node:worker_threads'
-import type { AgentTab, BrowserAgentOp, ProviderId, ReadFocus } from '../../shared/types.ts'
+import type { AgentTab, BrowserAgentOp, BrowserDownload, ProviderId, ReadFocus } from '../../shared/types.ts'
 import { messageOf, stringOf } from '../json.ts'
 import { textResult, type Tool, type ToolContent, type ToolResult } from './registry.ts'
 
-// The browser tools: three of them. `browser_read` turns a page into text a model can act on;
+// The browser tools: four of them. `browser_read` turns a page into text a model can act on;
 // `browser_run` runs a script the model writes, so a whole task (go, act, wait, extract) is one
-// call rather than one call per click; `browser_screenshot` shows a tab as an image. The pages live in Electron's main process, so everything
+// call rather than one call per click; `browser_screenshot` shows a tab as an image;
+// `browser_download` saves a file without the save dialog a model cannot answer. The pages live in Electron's main process, so everything
 // here ends as requests to main (shared/types.ts, BrowserAgentOp).
 //
 // Which tabs exist is not a tool: it rides at the head of the user's message (`browserContext`),
@@ -17,6 +19,7 @@ import { textResult, type Tool, type ToolContent, type ToolResult } from './regi
 export type BrowserLink = { request: (op: BrowserAgentOp) => Promise<unknown> }
 
 const RUN_SECONDS = { default: 30, max: 120 }
+const DOWNLOAD_SECONDS = { default: 120, max: 600 }
 /** A result longer than this goes to a file, and the model is told where. */
 const RESULT_LIMIT = 12_000
 const RESULT_PREVIEW = 1_500
@@ -47,10 +50,15 @@ A target is a ref from browser_read (e12), text=Visible label, or a CSS selector
 Prefer data to UI: when a page loads what you need from a JSON endpoint (browser_read lists them), get it with tab.eval(() => fetch(...).then(r => r.json())) or browser.fetch rather than reading the screen.
 A large result is saved to a file and its path returned.`
 
+const DOWNLOAD_DESCRIPTION = `Save a file from Rocket's built-in browser to disk, with the user's sign-ins and no save dialog. Give url (a direct file address, absolute or relative to the tab's page) or click (a ref from browser_read, text=Label or a CSS selector for a download button). Waits for the file and returns its path, size and type.
+Use this whenever you need a file from the web: never click through a save or file dialog, and do not ask the user to download for you. A click in browser_run that starts a download is also saved without a dialog, and its result lists the file.
+Files go to the user's Downloads folder unless saveTo names a folder or a file (relative to the chat's working folder). Existing files are never overwritten.`
+
 const SHOT_DESCRIPTION = `See a tab of Rocket's built-in browser as an image. For what text cannot tell you: layout, charts, images, canvas apps, or checking how a page looks. To read a page or find its controls, use browser_read, which is faster and exact.
 Pass tab (an id such as t2 from the tab list) for a tab that is already open; without it, your own tab is captured (Rocket switches the view to it).`
 
-export function browserTools(link: BrowserLink, resultsDir: string): Tool[] {
+/** `cwdOf` gives a chat's working folder, which a relative saveTo is taken from. */
+export function browserTools(link: BrowserLink, resultsDir: string, cwdOf: (chatId: string | null) => string | null = () => null): Tool[] {
   return [
     {
       name: 'browser_read',
@@ -97,6 +105,32 @@ export function browserTools(link: BrowserLink, resultsDir: string): Tool[] {
       })
     },
     {
+      name: 'browser_download',
+      description: DOWNLOAD_DESCRIPTION,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'The file to save: a full URL, or one relative to the tab\'s page.' },
+          click: { type: 'string', description: 'Instead of url: what to click to start the download (a ref such as e12, text=Download, or a CSS selector).' },
+          tab: { type: 'string', description: 'A tab id such as t3. Default: your own tab.' },
+          saveTo: { type: 'string', description: 'A folder, or a file path to save as. Relative paths start in the chat\'s working folder. Default: the user\'s Downloads folder.' },
+          timeout: { type: 'number', description: `Seconds to wait for the file to finish. Default ${DOWNLOAD_SECONDS.default}, at most ${DOWNLOAD_SECONDS.max}.` }
+        },
+        additionalProperties: false
+      },
+      run: async (args, context) => {
+        const url = stringOf(args.url).trim() || null
+        const click = stringOf(args.click).trim() || null
+        if (!url === !click) return { ...textResult('Give either url or click: the file\'s address, or what to click to start its download.'), isError: true }
+        const seconds = Math.min(Math.max(typeof args.timeout === 'number' ? args.timeout : DOWNLOAD_SECONDS.default, 1), DOWNLOAD_SECONDS.max)
+        const download = await link.request({
+          op: 'download', chat: context.chatId, tab: stringOf(args.tab) || null, url, target: click,
+          saveTo: savePath(stringOf(args.saveTo).trim(), cwdOf(context.chatId)), timeout: seconds * 1_000
+        }) as BrowserDownload
+        return { ...textResult(describeDownload(download, seconds)), isError: download.state === 'cancelled' || download.state === 'interrupted' }
+      }
+    },
+    {
       name: 'browser_screenshot',
       description: SHOT_DESCRIPTION,
       inputSchema: {
@@ -113,6 +147,30 @@ export function browserTools(link: BrowserLink, resultsDir: string): Tool[] {
       }))
     }
   ]
+}
+
+/** A saveTo as main needs it: absolute, with ~ and relative paths resolved; empty means the default. */
+export function savePath(saveTo: string, cwd: string | null): string | null {
+  if (!saveTo) return null
+  const slash = /[\\/]$/.test(saveTo) ? '/' : ''
+  // join and resolve drop a trailing slash, which is how a model says "this folder", so it is put back.
+  if (saveTo === '~' || saveTo.startsWith('~/')) return join(homedir(), saveTo.slice(2)).replace(/\/$/, '') + slash
+  if (isAbsolute(saveTo)) return saveTo
+  return resolve(cwd ?? homedir(), saveTo) + slash
+}
+
+function bytes(count: number): string {
+  return count < 1024 ? `${count} B` : count < 1024 * 1024 ? `${(count / 1024).toFixed(count < 10 * 1024 ? 1 : 0)} KB` : `${(count / 1024 / 1024).toFixed(1)} MB`
+}
+
+export function describeDownload(download: BrowserDownload, seconds: number): string {
+  const type = download.mime ? `, ${download.mime}` : ''
+  if (download.state === 'completed') return `Downloaded ${download.name} (${bytes(download.size)}${type}) to ${download.path}`
+  if (download.state === 'progressing') {
+    const share = download.size ? ` (${Math.round((download.received / download.size) * 100)}% of ${bytes(download.size)})` : ''
+    return `Still downloading after ${seconds}s: ${bytes(download.received)} so far${share}. It will be at ${download.path} when done; check with browser_run's downloads list or wait longer next time.`
+  }
+  return `The download of ${download.url} was ${download.state} after ${bytes(download.received)}. Nothing complete is at ${download.path}; try again, or read the page for another link.`
 }
 
 function screenshotResult(raw: unknown): ToolResult {
@@ -137,6 +195,7 @@ async function runScript(
 ): Promise<ToolResult> {
   if (!run.code.trim()) return { ...textResult('There is no script to run.'), isError: true }
   const logs: string[] = []
+  const started = Date.now()
   let touchedTab = false
   const worker = new Worker(WORKER, { workerData: { code: run.code, tab: run.tab } })
   const outcome = await new Promise<{ ok: true; value: unknown } | { ok: false; error: string }>((resolve) => {
@@ -172,6 +231,11 @@ async function runScript(
   else if (!logs.length) parts.push('(The script returned nothing.)')
   let text = parts.join('\n')
   if (text.length > RESULT_LIMIT) text = spill(text, resultsDir, run.chat, outcome.ok && typeof outcome.value !== 'string' && !logs.length)
+  // Files a click in the script downloaded, saved without a dialog: the model is told where.
+  if (touchedTab) {
+    const files = await link.request({ op: 'downloads', chat: run.chat, since: started }).catch(() => []) as BrowserDownload[]
+    for (const file of files) text += `\n[download: ${describeDownload(file, Math.round((Date.now() - started) / 1000))}]`
+  }
   // Where the script left the tab, so the next step does not need a call to find out.
   if (touchedTab) {
     const where = await link.request({ op: 'info', chat: run.chat, tab: run.tab }).catch(() => null) as Pick<AgentTab, 'id' | 'url' | 'title'> | null
