@@ -72,17 +72,45 @@ th,td{text-align:left;padding:7px 12px;border-bottom:1px solid #eef0f5}th{color:
 .actions .btns{display:flex;gap:8px}.btn{padding:7px 13px;border-radius:7px;border:1px solid #38393c}.btn:hover{background:#ffffff0b}.btn.primary{background:#e6e6e6;color:#08090a;border-color:#e6e6e6}.btn.primary:hover{background:#fff}
 .notice{position:absolute;left:70px;bottom:20px;background:var(--menu);border:1px solid #38393c;border-radius:9px;padding:9px 12px 9px 14px;font-size:12px;box-shadow:0 10px 30px #0009;display:flex;gap:14px;align-items:center}
 .notice button{color:#b9b8ff;padding:2px 6px;border-radius:5px}.notice button:hover{background:#ffffff0d}
-.snap{position:relative;overflow:hidden;flex:none}.snap .win{transform-origin:0 0;pointer-events:none}
+.snap{position:relative;overflow:hidden;flex:none;line-height:1.5}.snap .win{transform-origin:0 0;pointer-events:none}
 .note{display:flex;justify-content:space-between;gap:15px;color:var(--muted);font-size:12px;margin-top:14px;max-width:1220px}.note p{margin:0;max-width:880px}
 .note button{white-space:nowrap;border:1px solid var(--line);padding:6px 10px;border-radius:6px;align-self:start}.note button:hover{background:#ffffff0b}
 #status{font-size:11px;color:#a4a8b0;margin-top:8px}
+
+/* Window picker: every open window and screen, from desktopCapturer on X11. */
+.picker{width:760px;background:#121315;border:1px solid #38393c;border-radius:12px;padding:16px;box-shadow:0 20px 60px #000c}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
+.src{display:flex;flex-direction:column;gap:7px;padding:8px;border-radius:9px;border:1px solid transparent;text-align:left}
+.src:hover,.src:focus-visible{background:#ffffff08;border-color:#3a3b40;outline:none}
+.src .pic{height:118px;border-radius:6px;overflow:hidden;background:#0a0a0b;display:grid;place-items:center;border:1px solid #26272a}
+.src .label{display:flex;align-items:center;gap:7px;font-size:12px;min-width:0}.src .label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.src .label i{flex:none;width:14px;height:14px;border-radius:4px}
+.picker-foot{margin-top:12px;font-size:11px;color:#7d828b;display:flex;justify-content:space-between;align-items:center}
+/* Stand-in apps, drawn so window captures have pixels. */
+.app{position:relative;width:900px;height:560px;font:14px/1.5 Inter,system-ui,sans-serif;overflow:hidden}
+.app .chrome{height:34px;background:#2b2b2e;display:flex;align-items:center;padding:0 12px;color:#ccc;font-size:12px;gap:8px}
+.term{background:#14161a;color:#c8f7c5;font:13px/1.6 ui-monospace,monospace;padding:14px 16px}.term .err{color:#ff8a80}
+.files{display:flex;height:526px;background:#fafafa;color:#222}.files aside{width:180px;background:#ececec;padding:14px}.files .g{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:18px;padding:22px}.files .g div{height:70px;border-radius:8px;background:#d7dcf5}
+.ff{background:#fff;color:#1b2333;padding:28px 36px}.ff h3{font-size:26px;margin:0 0 8px}.ff p{color:#555;max-width:640px}
+.desk{width:1600px;height:900px;background:linear-gradient(135deg,#2c3e70,#6a3d7a);position:relative;overflow:hidden}
+.desk .w{position:absolute;border-radius:8px;overflow:hidden;box-shadow:0 10px 40px #0008;transform-origin:0 0}
+/* The pen in the review dialog: drawing sits on top of the capture and is flattened when added. */
+.paint{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.ptool{height:30px;padding:0 10px;border-radius:7px;border:1px solid #2e2f32;display:flex;align-items:center;gap:6px;font-size:12px;color:#c3c6cc}
+.ptool:hover{background:#ffffff0b}.ptool[aria-pressed=true]{background:#7170ff26;border-color:#7170ff;color:#fff}
+.swatch{width:20px;height:20px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 1px #0006}.swatch[aria-pressed=true]{border-color:#fff}
+.psep{width:1px;height:20px;background:#2e2f32;margin:0 4px}.paint .grow{flex:1}.paint .hint2{font-size:11px;color:#7d828b}
+.canvas-wrap{position:relative;line-height:0}.canvas-wrap canvas{position:absolute;inset:0;cursor:crosshair;touch-action:none}
+.canvas-wrap canvas.erasing{cursor:cell}
+.thumb .canvas-wrap{transform-origin:0 0}
 </style>
-<header><div class="eyebrow">Rocket / Phase 3</div><h1>Show the agent what you see.</h1><p>A camera beside the paperclip captures the browser page, the whole Rocket window, or a region you drag out, straight into this chat's draft. You review it first, and nothing is sent.</p>
+<header><div class="eyebrow">Rocket / Phase 3</div><h1>Show the agent what you see.</h1><p>A camera beside the paperclip captures the browser page, the Rocket window, any other app's window, the whole screen, or a region you drag out. You can draw on it before it goes into this chat's draft, and nothing is sent.</p>
 <nav class="nav" aria-label="Mockup states">
 <button data-state="menu" aria-pressed="true">01 · Capture menu</button>
-<button data-state="region" aria-pressed="false">02 · Select a region</button>
-<button data-state="review" aria-pressed="false">03 · Review the capture</button>
-<button data-state="draft" aria-pressed="false">04 · In the draft</button>
+<button data-state="apps" aria-pressed="false">02 · Another app</button>
+<button data-state="region" aria-pressed="false">03 · Select a region</button>
+<button data-state="review" aria-pressed="false">04 · Review and draw</button>
+<button data-state="draft" aria-pressed="false">05 · In the draft</button>
 </nav></header>
 <main><div class="stage" id="stage">
 <div class="win" id="win">
@@ -126,28 +154,56 @@ th,td{text-align:left;padding:7px 12px;border-bottom:1px solid #eef0f5}th{color:
 const $=s=>document.querySelector(s),stage=$('#stage'),win=$('#win'),layer=$('#layer'),tray=$('#tray'),camera=$('#camera'),status=$('#status')
 const I={page:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>',
 win:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="16" rx="2"/><path d="M2 8h20M6 5.5h.01M9 5.5h.01"/></svg>',
+apps:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="13" height="10" rx="2"/><rect x="8" y="11" width="13" height="10" rx="2"/></svg>',
+screen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
 region:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3a2 2 0 0 0-2 2M19 3a2 2 0 0 1 2 2M21 19a2 2 0 0 1-2 2M5 21a2 2 0 0 1-2-2M9 3h1M9 21h1M14 3h1M14 21h1M3 9v1M21 9v1M3 14v1M21 14v1"/></svg>',
+pen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.06 11.9 17.1 3.86a2.12 2.12 0 0 1 3 3L12.1 14.9"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/></svg>',
+eraser:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l10-10a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L11 21"/><path d="M22 21H7M5 11l9 9"/></svg>',
+trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
 x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'}
-let mode='menu',shot=null,count=0
-function rel(el){const a=el.getBoundingClientRect(),b=win.getBoundingClientRect();return{x:a.left-b.left,y:a.top-b.top,w:a.width,h:a.height}}
-// A capture is a copy of the drawn window, clipped to the rectangle: real pixels, no reconstruction.
-function snap(rect,box){const s=Math.min(box.w/rect.w,box.h/rect.h,1.6),o=document.createElement('div');o.className='snap';o.style.width=rect.w*s+'px';o.style.height=rect.h*s+'px'
-  const c=win.cloneNode(true);c.removeAttribute('id');c.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));c.style.transform=`scale(${s})`;c.style.left=-rect.x*s+'px';c.style.top=-rect.y*s+'px';o.append(c);return o}
+let mode='menu',shot=null
 const stamp=()=>'2026-10-06 07.42'
+function rel(el){const a=el.getBoundingClientRect(),b=win.getBoundingClientRect();return{x:a.left-b.left,y:a.top-b.top,w:a.width,h:a.height}}
+function scaled(node,w,h,box,dx=0,dy=0,cw=w,ch=h){const s=Math.min(box.w/cw,box.h/ch,1.6),o=document.createElement('div');o.className='snap';o.style.width=cw*s+'px';o.style.height=ch*s+'px'
+  node.style.position='absolute';node.style.transformOrigin='0 0';node.style.transform=`scale(${s})`;node.style.left=-dx*s+'px';node.style.top=-dy*s+'px';o.append(node);return o}
+function cloneWin(){const c=win.cloneNode(true);c.removeAttribute('id');c.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));return c}
+// Other apps are drawn stand-ins; in Rocket they come from desktopCapturer as real pixels.
+const APPS={
+  term:{name:'Terminal — npm run dev',color:'#2ea043',make(){const d=document.createElement('div');d.className='app';d.innerHTML='<div class="chrome">Terminal — npm run dev</div><div class="term" style="height:526px">$ npm run dev<br>&gt; northstar@2.4.0 dev<br>ready on http://localhost:3000<br>POST /api/invites 201 in 84ms<br><span class="err">POST /api/invites 422 in 61ms</span><br><span class="err">  ValidationError: role "admin" requires a verified domain</span><br><span class="err">    at assertRole (src/invites/policy.ts:41:11)</span><br>POST /api/invites 201 in 77ms<br><span class="err">POST /api/invites 422 in 58ms</span><br>_</div>';return d}},
+  files:{name:'Files — Downloads',color:'#e5b454',make(){const d=document.createElement('div');d.className='app';d.innerHTML='<div class="chrome">Downloads</div><div class="files"><aside>Home<br>Desktop<br><b>Downloads</b><br>Documents<br>Pictures</aside><div class="g">'+'<div></div>'.repeat(15)+'</div></div>';return d}},
+  firefox:{name:'Invites API — Mozilla Firefox',color:'#ff7139',make(){const d=document.createElement('div');d.className='app';d.innerHTML='<div class="chrome">Invites API — Mozilla Firefox</div><div class="ff" style="height:526px"><h3>Invites API</h3><p>POST /api/invites creates an invitation. Admin invitations require the workspace to have a verified email domain; otherwise the request fails with <b>422 Unprocessable Entity</b>.</p><p>Members can be invited from any domain.</p></div>';return d}},
+  rocket:{name:'Rocket',color:'#7170ff',make(){const d=document.createElement('div');d.style.cssText='width:1220px;height:640px;position:relative';d.append(cloneWin());return d}}}
+function desktop(){const d=document.createElement('div');d.className='desk'
+  const place=(k,x,y,s)=>{const w=document.createElement('div');w.className='w';w.style.left=x+'px';w.style.top=y+'px';const n=APPS[k].make();n.style.transform=`scale(${s})`;n.style.transformOrigin='0 0';w.style.width=(k==='rocket'?1220:900)*s+'px';w.style.height=(k==='rocket'?640:560)*s+'px';w.append(n);d.append(w)}
+  place('firefox',60,60,.8);place('term',820,80,.8);place('rocket',300,330,.95);return d}
 function closeMenu(){layer.querySelector('.menu')?.remove();camera.setAttribute('aria-expanded','false')}
 function openMenu(){closeMenu();camera.setAttribute('aria-expanded','true');const m=document.createElement('div');m.className='menu';m.setAttribute('role','menu');m.setAttribute('aria-label','Capture')
   m.innerHTML=`<button class="item" role="menuitem" data-kind="page">${I.page}<span>Browser page<small>What's visible in Northstar · Invites</small></span></button>
   <button class="item" role="menuitem" data-kind="window">${I.win}<span>Rocket window<small>Chats, browser and panels as they are</small></span></button>
-  <button class="item" role="menuitem" data-kind="region">${I.region}<span>Select a region…<small>Drag over anything in the window</small></span></button>
+  <button class="item" role="menuitem" data-kind="apps">${I.apps}<span>Another app's window…<small>Terminal, Firefox, Files or anything open</small></span></button>
+  <button class="item" role="menuitem" data-kind="screen">${I.screen}<span>Entire screen<small>Everything on your display</small></span></button>
+  <button class="item" role="menuitem" data-kind="region">${I.region}<span>Select a region…<small>Drag over anything on screen</small></span></button>
   <div class="menu-foot">Adds to this chat's draft. You review it first; nothing is sent.</div>`
-  layer.append(m);const c=rel(camera);m.style.left=c.x+'px';m.style.top=(c.y-m.offsetHeight-8)+'px'
-  m.onclick=e=>{const k=e.target.closest('[data-kind]')?.dataset.kind;if(!k)return;closeMenu();k==='region'?region():capture(k)}
+  layer.append(m);const c=rel(camera);m.style.left=c.x+'px';m.style.top=Math.max(8,c.y-m.offsetHeight-8)+'px'
+  m.onclick=e=>{const k=e.target.closest('[data-kind]')?.dataset.kind;if(!k)return;closeMenu();k==='region'?region():k==='apps'?picker():capture(k)}
   m.querySelector('.item').focus({preventScroll:true})}
 function flash(){const f=$('#flash');f.classList.remove('go');void f.offsetWidth;f.classList.add('go')}
-function capture(kind,rect){
-  const r=kind==='page'?rel($('#page')):kind==='window'?{x:0,y:0,w:1220,h:640}:rect
-  flash();shot={kind,rect:r,name:kind==='page'?`app.northstar.io invites ${stamp()}.png`:kind==='window'?`Rocket ${stamp()}.png`:`Region ${stamp()}.png`}
-  setTimeout(review,kind==='region'?0:250)}
+function capture(kind,rect,app){
+  if(kind==='page'||kind==='window'||kind==='region'){const r=kind==='page'?rel($('#page')):kind==='window'?{x:0,y:0,w:1220,h:640}:rect
+    shot={kind,w:r.w,h:r.h,from:kind==='window'?'Rocket':'https://app.northstar.io/admin/invites',name:kind==='page'?`app.northstar.io invites ${stamp()}.png`:kind==='window'?`Rocket ${stamp()}.png`:`Region ${stamp()}.png`,make:box=>scaled(cloneWin(),1220,640,box,r.x,r.y,r.w,r.h)}}
+  else if(kind==='screen')shot={kind,w:1600,h:900,from:'Screen 1 · 3200 × 1800',name:`Screen ${stamp()}.png`,make:box=>scaled(desktop(),1600,900,box)}
+  else{const a=APPS[app],w=app==='rocket'?1220:900,h=app==='rocket'?640:560;shot={kind,app,w,h,from:a.name,name:`${a.name.split(' — ')[0]} ${stamp()}.png`,make:box=>scaled(a.make(),w,h,box)}}
+  flash();setTimeout(review,kind==='region'?0:250)}
+function picker(){
+  layer.replaceChildren();const r=document.createElement('div');r.className='review'
+  r.innerHTML=`<div class="picker" role="dialog" aria-label="Choose a window"><div class="dialog-head"><b>Capture a window or screen</b><button class="tool" data-a="cancel" aria-label="Cancel">${I.x}</button></div><div class="grid"></div>
+  <div class="picker-foot"><span>Previews are live from your desktop. Pick one to capture it as it is now.</span><button class="btn" data-a="cancel">Cancel</button></div></div>`
+  const grid=r.querySelector('.grid')
+  const tile=(label,color,node,w,h,on)=>{const b=document.createElement('button');b.className='src';const pic=document.createElement('div');pic.className='pic';pic.append(scaled(node,w,h,{w:220,h:116}));b.append(pic);b.insertAdjacentHTML('beforeend',`<span class="label"><i style="background:${color}"></i><span>${label}</span></span>`);b.onclick=on;grid.append(b)}
+  tile('Entire screen','#9aa0a8',desktop(),1600,900,()=>capture('screen'))
+  for(const k of ['term','firefox','files','rocket'])tile(APPS[k].name,APPS[k].color,APPS[k].make(),k==='rocket'?1220:900,k==='rocket'?640:560,()=>capture('app',null,k))
+  layer.append(r);r.onclick=e=>{if(e.target.closest('[data-a=cancel]'))layer.replaceChildren()}
+  grid.querySelector('.src').focus({preventScroll:true})}
 function region(preset){
   closeMenu();layer.replaceChildren();const o=document.createElement('div');o.className='region';o.tabIndex=-1
   o.innerHTML='<div class="hint">Drag to select <kbd>Enter</kbd> capture <kbd>Esc</kbd> cancel</div>';layer.append(o);o.focus({preventScroll:true})
@@ -164,37 +220,70 @@ function region(preset){
   o.onmouseup=()=>{start=null;if(box&&box.w>8&&box.h>8)tools()}
   o.onkeydown=e=>{if(e.key==='Escape')cancel();if(e.key==='Enter')done()}
   if(preset){const t=rel($('#table'));draw({x:t.x-6,y:t.y-6,w:t.w+12,h:t.h+12});tools()}}
-function review(){
+// The pen: a canvas the size of the shown capture. Erase removes paint only, never the capture.
+function painter(wrap,w,h){
+  const c=document.createElement('canvas'),dpr=devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;c.style.width=w+'px';c.style.height=h+'px';wrap.append(c)
+  const g=c.getContext('2d');g.scale(dpr,dpr);g.lineCap='round';g.lineJoin='round'
+  const st={tool:'pen',color:'#ff3b30'};let last=null
+  c.onpointerdown=e=>{c.setPointerCapture(e.pointerId);last=[e.offsetX,e.offsetY];line(last,last)}
+  c.onpointermove=e=>{if(!last)return;const p=[e.offsetX,e.offsetY];line(last,p);last=p}
+  c.onpointerup=c.onpointercancel=()=>{last=null}
+  function line(a,b){g.globalCompositeOperation=st.tool==='eraser'?'destination-out':'source-over';g.strokeStyle=st.color;g.lineWidth=st.tool==='eraser'?18:4;g.beginPath();g.moveTo(...a);g.lineTo(...b);g.stroke()}
+  return{canvas:c,st,clear:()=>g.clearRect(0,0,w,h),line,setTool(t){st.tool=t;c.classList.toggle('erasing',t==='eraser')},blank:()=>!g.getImageData(0,0,c.width,c.height).data.some((v,i)=>i%4===3&&v)}}
+function review(preset){
   layer.replaceChildren();const r=document.createElement('div');r.className='review'
-  const where=shot.kind==='window'?'Rocket window':'https://app.northstar.io/admin/invites'
   r.innerHTML=`<div class="dialog" role="dialog" aria-label="Review capture"><div class="dialog-head"><b>Review capture</b><button class="tool" data-a="cancel" aria-label="Cancel">${I.x}</button></div>
+  <div class="paint" role="toolbar" aria-label="Draw on the capture">
+    <button class="ptool" data-tool="pen" aria-pressed="true">${I.pen}Pen</button>
+    <button class="swatch" data-color="#ff3b30" style="background:#ff3b30" aria-label="Red" aria-pressed="true"></button>
+    <button class="swatch" data-color="#ffd60a" style="background:#ffd60a" aria-label="Yellow" aria-pressed="false"></button>
+    <button class="swatch" data-color="#0a84ff" style="background:#0a84ff" aria-label="Blue" aria-pressed="false"></button>
+    <button class="swatch" data-color="#ffffff" style="background:#fff" aria-label="White" aria-pressed="false"></button>
+    <span class="psep"></span><button class="ptool" data-tool="eraser" aria-pressed="false">${I.eraser}Eraser</button>
+    <button class="ptool" data-a="clear">${I.trash}Clear</button><span class="grow"></span><span class="hint2">Draw over what matters</span></div>
   <div class="frame"></div><div class="fields"><label for="cap-name">Name</label><input id="cap-name" value="${shot.name}">
-  <label>Size</label><span class="val">${Math.round(shot.rect.w*2)} × ${Math.round(shot.rect.h*2)} px · PNG · source pixels</span>
-  <label>From</label><span class="val">${where}</span></div>
+  <label>Size</label><span class="val">${Math.round(shot.w*2)} × ${Math.round(shot.h*2)} px · PNG · source pixels</span>
+  <label>From</label><span class="val">${shot.from}</span></div>
   <div class="actions"><span class="to">Adds to: Invite failures (this chat's draft)</span><span class="btns"><button class="btn" data-a="retake">Retake</button><button class="btn" data-a="cancel">Cancel</button><button class="btn primary" data-a="add">Add to draft</button></span></div></div>`
-  layer.append(r);r.querySelector('.frame').append(snap(shot.rect,{w:666,h:326}));r.querySelector('.primary').focus({preventScroll:true})
-  r.onclick=e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(a==='cancel'){layer.replaceChildren();status.textContent='Capture discarded. The draft is unchanged.'}
-    if(a==='retake'){shot.kind==='region'?region():capture(shot.kind)}if(a==='add')add(r.querySelector('input').value)}
-  r.onkeydown=e=>{if(e.key==='Escape'){layer.replaceChildren()}}}
+  layer.append(r)
+  const img=shot.make({w:666,h:290}),wrap=document.createElement('div');wrap.className='canvas-wrap';wrap.append(img);r.querySelector('.frame').append(wrap)
+  const P=painter(wrap,parseFloat(img.style.width),parseFloat(img.style.height));shot.paint=P
+  if(preset){// a sample mark around the two failed rows
+    const W=parseFloat(img.style.width),H=parseFloat(img.style.height);P.st.color='#ff3b30';for(let i=0;i<=40;i++){const t=i/40*Math.PI*2,u=(i+1)/40*Math.PI*2;P.line([W*.78+Math.cos(t)*W*.13,H*.52+Math.sin(t)*H*.33],[W*.78+Math.cos(u)*W*.13,H*.52+Math.sin(u)*H*.33])}}
+  const bar=r.querySelector('.paint')
+  bar.onclick=e=>{const b=e.target.closest('button');if(!b)return
+    if(b.dataset.tool){P.setTool(b.dataset.tool);bar.querySelectorAll('[data-tool]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))}
+    if(b.dataset.color){P.st.color=b.dataset.color;P.setTool('pen');bar.querySelectorAll('[data-tool]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.tool==='pen')));bar.querySelectorAll('[data-color]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))}
+    if(b.dataset.a==='clear'){P.clear();status.textContent='Drawing cleared. The capture itself is untouched.'}}
+  r.querySelector('.primary').focus({preventScroll:true})
+  r.querySelector('.actions').onclick=r.querySelector('.dialog-head').onclick=e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(a==='cancel'){layer.replaceChildren();status.textContent='Capture discarded. The draft is unchanged.'}
+    if(a==='retake'){shot.kind==='region'?region():shot.kind==='app'?picker():capture(shot.kind)}if(a==='add')add(r.querySelector('input').value)}
+  r.onkeydown=e=>{if(e.key==='Escape')layer.replaceChildren()}}
 function add(name){
-  layer.replaceChildren();const a=document.createElement('div');a.className='att is-new';const t=document.createElement('div');t.className='thumb';t.append(snap(shot.rect,{w:118,h:72}))
-  a.append(t);a.insertAdjacentHTML('beforeend',`<span class="name" title="${name}">${name}</span><button class="remove" aria-label="Remove ${name}">${I.x}</button>`);a.querySelector('.remove').onclick=()=>a.remove();tray.append(a)
-  const n=document.createElement('div');n.className='notice';n.setAttribute('role','status');n.innerHTML=`<span>Added ${name} to Invite failures. Nothing was sent.</span><button>Undo</button>`;layer.append(n)
+  const painted=shot.paint&&!shot.paint.blank()?shot.paint.canvas.toDataURL():null,pw=shot.paint?parseFloat(shot.paint.canvas.style.width):0
+  layer.replaceChildren();const a=document.createElement('div');a.className='att is-new';const t=document.createElement('div');t.className='thumb'
+  const img=shot.make({w:118,h:72}),wrap=document.createElement('div');wrap.className='canvas-wrap';wrap.append(img)
+  if(painted){const o=new Image();o.src=painted;o.style.cssText=`position:absolute;inset:0;width:${img.style.width};height:${img.style.height}`;wrap.append(o)}
+  t.append(wrap);a.append(t);a.insertAdjacentHTML('beforeend',`<span class="name" title="${name}">${name}</span><button class="remove" aria-label="Remove ${name}">${I.x}</button>`);a.querySelector('.remove').onclick=()=>a.remove();tray.append(a)
+  const n=document.createElement('div');n.className='notice';n.setAttribute('role','status');n.innerHTML=`<span>Added ${name}${painted?' with your drawing':''} to Invite failures. Nothing was sent.</span><button>Undo</button>`;layer.append(n)
   n.querySelector('button').onclick=()=>{a.remove();n.remove()};setTimeout(()=>n.remove(),7000)}
 camera.onclick=e=>{e.stopPropagation();camera.getAttribute('aria-expanded')==='true'?closeMenu():openMenu()}
 document.addEventListener('mousedown',e=>{if(!e.target.closest('.menu,#camera'))closeMenu()})
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()})
-function render(){layer.replaceChildren();tray.replaceChildren();closeMenu();status.textContent='Interactive mockup · captures here copy the drawn page · no model calls'
+function tableShot(){const t=rel($('#table')),r={x:t.x-6,y:t.y-6,w:t.w+12,h:t.h+12};return{kind:'region',w:r.w,h:r.h,from:'https://app.northstar.io/admin/invites',name:`Region ${stamp()}.png`,make:box=>scaled(cloneWin(),1220,640,box,r.x,r.y,r.w,r.h)}}
+function render(){layer.replaceChildren();tray.replaceChildren();closeMenu();status.textContent='Interactive mockup · captures here copy drawn stand-ins · no model calls'
   if(mode==='menu')openMenu()
+  if(mode==='apps')picker()
   if(mode==='region')region(true)
-  if(mode==='review'){const t=rel($('#table'));shot={kind:'region',rect:{x:t.x-6,y:t.y-6,w:t.w+12,h:t.h+12},name:`Region ${stamp()}.png`};review()}
-  if(mode==='draft'){const t=rel($('#table'));shot={kind:'region',rect:{x:t.x-6,y:t.y-6,w:t.w+12,h:t.h+12}};add(`Region ${stamp()}.png`)}
+  if(mode==='review'){shot=tableShot();review(true)}
+  if(mode==='draft'){shot=tableShot();review(true);add(shot.name)}
   document.querySelectorAll('[data-state]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.state===mode)))
   $('#note').textContent={
-    menu:'The camera sits beside the paperclip in every composer. Browser page takes the visible part of the current tab (full-page capture can come later); Rocket window takes everything on screen; Select a region lets you drag over any of it. The menu disappears before anything is captured.',
-    region:'The whole window dims and the pointer becomes a crosshair; drag a box, then Capture or press Enter. Redraw starts over and Esc cancels. Sizes are in real screen pixels (this display is 2×), so the agent gets full resolution.',
-    review:'Nothing reaches the draft until you add it. The name is editable, Retake goes back to the same kind of capture, and the destination is fixed to the chat whose camera you pressed, even if you click another pane meanwhile.',
-    draft:'The capture is an ordinary image attachment: preview, the ⋯ menu, copy to another chat, remove. The prompt stays in its own bubble when sent, and the source address goes to the model with the image.'}[mode]}
+    menu:'The camera sits beside the paperclip in every composer. Browser page takes the visible part of the current tab; Rocket window takes Rocket as it is; Another app\'s window and Entire screen reach outside Rocket; Select a region lets you drag over anything on screen. The menu disappears before anything is captured.',
+    apps:'Every open window and screen, with a live preview and its app icon (Electron desktopCapturer, which lists them all on X11, your session). Pick one to capture it. Rocket stays as it is; nothing is sent.',
+    region:'Rocket steps aside and the screen freezes and dims, so you can drag over another app as easily as over Rocket (shown here over the Rocket window). Capture or Enter takes it, Redraw starts over, Esc cancels. Sizes are real screen pixels.',
+    review:'Draw on the capture with the pen in red, yellow, blue or white. Eraser rubs out paint only, never the capture underneath, and Clear removes all of it. Your drawing is flattened into the image added to the draft. Retake, Cancel and the fixed destination work as before.',
+    draft:'The capture, with its drawing, is an ordinary image attachment: preview, the ⋯ menu, copy to another chat, remove. The prompt stays in its own bubble when sent, and where it came from goes to the model with the image.'}[mode]}
 document.querySelectorAll('[data-state]').forEach(b=>b.onclick=()=>{mode=b.dataset.state;render()});$('#reset').onclick=render
 render()
 </script></html>

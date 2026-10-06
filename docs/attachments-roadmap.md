@@ -10,7 +10,7 @@ keep importing, previewing and sending distinct actions.
 | --- | --- | --- |
 | 1 | PDF, text and code attachments | Built: cards, side-panel preview, provider delivery as text; real model turns not yet run |
 | 2 | Copy to chat, Save as and Reveal stored file | Built to the approved [attachment reuse](mockups/attachment-reuse.html) mockup |
-| 3 | Browser, window and region capture | Mockup for review: [screen capture](mockups/screen-capture.html) |
+| 3 | Browser, window, other-app, screen and region capture, with a pen | Mockup for review: [screen capture](mockups/screen-capture.html) |
 | 4 | Crop and annotate images | Planned |
 
 The image upload baseline is implemented: paste, file selection, per-pane drop targets,
@@ -82,28 +82,37 @@ storage contract stable before adding document parsing and rendering dependencie
 **Done when:** Copying survives restart and deleting the source chat does not remove the
 destination's attachment. Exported originals match the stored bytes.
 
-## Phase 3 Capture directly from Rocket
+## Phase 3 Capture the screen into a chat
 
-**Outcome:** Attach what is visible without leaving the app.
+**Outcome:** Attach what is visible in Rocket or any other app, marked up, without leaving the chat.
+Mockup: [screen capture](mockups/screen-capture.html).
 
-1. Add explicit choices for Capture browser page, Capture Rocket window and Select a region.
-2. Define browser-page capture as the visible viewport for the first release. Full-page capture
-   is a later extension; make the initial scope clear in the UI.
-3. Use main-process capture for native browser/window surfaces and account for device scale,
-   pane bounds and scrolling when converting a selected region into source pixels.
-4. Hide capture controls before capture and route the result through the normal attachment importer.
-5. Retain the originating draft as the destination, with a useful filename and optional source URL.
-6. Support Escape, Retake and confirmation before adding the capture; adding still does not send.
+1. A camera beside the paperclip offers Browser page, Rocket window, Another app's window, Entire
+   screen and Select a region.
+2. Browser page is the visible viewport for the first release; full-page capture is a later extension.
+3. Other windows and screens come from Electron's `desktopCapturer.getSources` in main, shown in
+   a picker with previews. It lists every window and screen on X11 (this machine's session); with
+   PipeWire on Wayland it returns only the one source chosen in the system picker, so the picker
+   must fall back to that.
+4. Select a region freezes the whole screen (Rocket steps aside) so it can cover other apps. Account
+   for device scale when converting the selection into source pixels.
+5. Hide capture controls before capture and route the result through the normal image importer.
+6. The review dialog shows the capture with a pen (red, yellow, blue, white), Eraser (paint only,
+   never the capture) and Clear. The drawing is flattened into the attached image.
+7. Retain the originating draft as the destination, with a useful filename and the source (URL or
+   window title). Escape, Retake and Cancel change nothing; adding still does not send.
 
-**Done when:** Browser, window and region captures contain the intended pixels, exclude the
-capture UI and reach the originating draft across split-pane layouts.
+**Done when:** Browser, Rocket, other-window, screen and region captures contain the intended
+pixels, exclude the capture UI, carry any drawing, and reach the originating draft across
+split-pane layouts.
 
 ## Phase 4 Annotate images before sending
 
 **Outcome:** Point the agent at the relevant area of an image.
 
 1. Open an editor from an image attachment preview.
-2. Add crop, arrows, rectangles, freehand drawing and highlights, with zoom, undo/redo and Reset.
+2. Add crop, arrows, rectangles and highlights, with zoom, undo/redo and Reset, building on the
+   phase 3 pen.
 3. Keep edits as source-relative operations until export. Cropping preserves source pixels;
    zooming changes the view, and resizing uses ordinary resampling. Never regenerate screenshot text.
 4. Preserve the original. Apply creates a derived attachment and replaces only the current
