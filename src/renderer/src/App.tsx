@@ -9,6 +9,7 @@ import { GoalStatusIcon } from './components/GoalIcons.tsx'
 import { goalStatusText } from './components/Goals.tsx'
 import { GoalNote, GoalPane } from './components/GoalPane.tsx'
 import { NewGoal } from './components/NewGoal.tsx'
+import { PlanDrawer } from './components/PlanDrawer.tsx'
 import { Rail } from './components/Rail.tsx'
 import { Transcript } from './components/Transcript.tsx'
 
@@ -53,30 +54,44 @@ function Split({ side, children }: { side: React.ReactNode; children: React.Reac
   }
 
   return (
-    <main ref={split} className={`chat has-goal${open ? ' is-split' : ''}`} style={{ '--goal-width': `${width}px` } as React.CSSProperties}>
-      <div className="goal-chat">
-        {!open && (
-          <div className="goal-chat-head">
-            <button type="button" className="goal-chip-toggle" title="Show the goal" onClick={() => setGoalPaneOpen(true)}>
-              <GoalStatusIcon status={goal.status} size={12} />
-              <span>{goal.title}</span>
-              <span className="goal-chip-status">{goalStatusText(goal)}</span>
-              <PanelRightOpen size={13} aria-hidden />
-            </button>
-          </div>
-        )}
-        <Transcript />
-        <div className="composer-dock">
-          {ended ? <Composer key={chatId ?? 'new'} placeholder="Reply…" /> : <GoalNote goal={goal} />}
-        </div>
-      </div>
-      {open && (
+    <main ref={split} className={`chat has-goal${side ? ' is-split' : ''}`} style={{ '--goal-width': `${width}px` } as React.CSSProperties}>
+      <div className="goal-chat">{children}</div>
+      {side && (
         <>
-          <div className="goal-divider" role="separator" aria-orientation="vertical" aria-label="Resize the goal" onPointerDown={drag} />
-          <GoalPane goal={goal} />
+          <div className="goal-divider" role="separator" aria-orientation="vertical" aria-label="Resize the side pane" onPointerDown={drag} />
+          {side}
         </>
       )}
     </main>
+  )
+}
+
+/**
+ * A goal's chat: the goal beside the conversation. The note box stands in for the composer while
+ * the goal runs; once it has ended, the chat carries on as any other. A goal's chat has no plan
+ * drawer: the round's plan is a section of the goal pane.
+ */
+function GoalChat({ goal }: { goal: Goal }) {
+  const open = useApp((state) => state.goalPaneOpen)
+  const chatId = useApp((state) => state.activeChatId)
+  const ended = goal.status === 'done' || goal.status === 'stopped'
+  return (
+    <Split side={open ? <GoalPane goal={goal} /> : null}>
+      {!open && (
+        <div className="goal-chat-head">
+          <button type="button" className="goal-chip-toggle" title="Show the goal" onClick={() => setGoalPaneOpen(true)}>
+            <GoalStatusIcon status={goal.status} size={12} />
+            <span>{goal.title}</span>
+            <span className="goal-chip-status">{goalStatusText(goal)}</span>
+            <PanelRightOpen size={13} aria-hidden />
+          </button>
+        </div>
+      )}
+      <Transcript />
+      <div className="composer-dock">
+        {ended ? <Composer key={chatId ?? 'new'} placeholder="Reply…" /> : <GoalNote goal={goal} />}
+      </div>
+    </Split>
   )
 }
 
@@ -85,6 +100,9 @@ function ChatPane() {
   const chatId = useApp((state) => state.activeChatId)
   const hasTurns = useApp((state) => state.turns.length > 0)
   const goal = useApp((state) => state.goals.find((entry) => entry.chatId === state.activeChatId) ?? null)
+  // The turn whose plan is open beside the chat, with the message that started it for the title.
+  const planTurn = useApp((state) => state.turns.find((turn) => turn.id === state.planTurnId) ?? null)
+  const planUserId = useApp((state) => (state.planTurnId ? state.turnItems[state.planTurnId]?.[0] : undefined))
 
   if (goal) return <GoalChat goal={goal} />
   if (!chat || !hasTurns) {
@@ -98,12 +116,23 @@ function ChatPane() {
       </main>
     )
   }
+  const composer = (
+    <div className="composer-dock">
+      <Composer key={chatId ?? 'new'} placeholder="Reply…" />
+    </div>
+  )
+  if (planTurn) {
+    return (
+      <Split side={<PlanDrawer turn={planTurn} userItemId={planUserId} />}>
+        <Transcript />
+        {composer}
+      </Split>
+    )
+  }
   return (
     <main className="chat">
       <Transcript />
-      <div className="composer-dock">
-        <Composer key={chatId ?? 'new'} placeholder="Reply…" />
-      </div>
+      {composer}
     </main>
   )
 }
@@ -113,7 +142,7 @@ export function App() {
   const browserOpen = useApp((state) => state.browserOpen)
   const error = useApp((state) => state.error)
   const newGoal = useApp((state) => state.newGoal !== null)
-  const split = useApp((state) => state.goalPaneOpen && state.goals.some((goal) => goal.chatId === state.activeChatId))
+  const split = useApp((state) => (state.goals.some((goal) => goal.chatId === state.activeChatId) ? state.goalPaneOpen : state.planTurnId !== null))
   return (
     <div className={`app${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}`}>
       <Rail />
