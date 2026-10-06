@@ -4,15 +4,17 @@ import { test, expect } from './app'
 import { seedLongChat, type LongChat } from '../fixtures/long-chat'
 
 // The window's half of the long-chat benchmark: chats of real and larger sizes are written into
-// the isolated profile, and the app opens each from the history, switches back to it from
-// another tab and scrolls it to the top. Times are taken inside the page, from the click to the
-// second frame after every turn is in the DOM, with the longest main-thread task in each phase.
+// the isolated profile, and the app opens each from the history, brings in the page above, reads
+// up to the first turn, and switches back to it from another tab. Times are taken inside the
+// page, from the action to the second frame after the result is in the DOM, with the longest
+// main-thread task in each phase.
 // Run alone with `npm run check:ui -- long-chat`; results are attached and saved under
 // .artifacts/bench/. The host's half is src/host/transcript-bench.ts.
 
 const SIZES = (process.env.LONG_CHAT_TURNS ?? '45,250,1000').split(',').map(Number)
 
-type Phase = { ms: number; longestTaskMs: number }
+/** `shiftPx`: how far the turn that was first on screen moved while turns went in above it. */
+type Phase = { ms: number; longestTaskMs: number; shiftPx: number }
 type Profile = { nodes: Array<{ id: number; callFrame: { functionName: string; url: string; lineNumber: number } }>; samples?: number[]; timeDeltas?: number[] }
 
 /** Save the profile beside the results and print the functions that took the most time themselves. */
@@ -48,34 +50,50 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
       .observe({ type: 'longtask', buffered: true })
   })
 
-  // Click `target` inside the page and resolve two frames after the first pane shows `turns` turns.
-  const measure = (target: { selector: string; text: string } | 'scrollTop', turns: number): Promise<Phase> => page.evaluate(async ({ target, turns }) => {
+  // Act inside the page, then resolve two frames after the first pane shows what `until` asks:
+  // the newest reply, more turns than before, or the chat's first turn. Reaching the first turn
+  // scrolls to the top on every frame, as a reader would, until the last page is in.
+  type Until = { newest: number } | { more: number } | 'first'
+  const measure = (act: { click: string; text: string } | 'top', until: Until): Promise<Phase> => page.evaluate(async ({ act, until }) => {
     const w = window as unknown as { tasks: number[][] }
     const frame = (): Promise<void> => new Promise((done) => requestAnimationFrame(() => done()))
     const pane = (): Element => document.querySelector('.pane')!
+    const top = (): void => { pane().querySelector('.transcript')!.scrollTop = 0 }
+    const turns = (): NodeListOf<Element> => pane().querySelectorAll('.turn')
+    const done = (): boolean => until === 'first'
+      ? Boolean(turns()[0]?.textContent?.includes('Turn 1:'))
+      : 'more' in until
+        ? turns().length > until.more
+        : Boolean(turns()[turns().length - 1]?.querySelector('.prose')?.textContent?.includes(`Reply ${until.newest}.`))
     const start = performance.now()
-    if (target === 'scrollTop') {
-      pane().querySelector('.transcript')!.scrollTop = 0
-    } else {
-      const element = [...document.querySelectorAll(target.selector)].find((candidate) => candidate.textContent?.includes(target.text))
-      if (!element) throw new Error(`Nothing matches ${target.selector} with "${target.text}".`)
+    // Only a scroll keeps the same chat on screen; a click may open one where there was none.
+    const scroller = pane().querySelector('.transcript')
+    const anchor = turns()[0]
+    const offset = (): number => anchor && scroller ? anchor.getBoundingClientRect().top - scroller.getBoundingClientRect().top : 0
+    if (act === 'top') top()
+    else {
+      const element = [...document.querySelectorAll(act.click)].find((candidate) => candidate.textContent?.includes(act.text))
+      if (!element) throw new Error(`Nothing matches ${act.click} with "${act.text}".`)
       ;(element as HTMLElement).click()
     }
-    while (pane().querySelectorAll('.turn').length !== turns || !pane().querySelector('.turn:last-of-type .prose')) {
-      if (performance.now() - start > 120_000) throw new Error(`The chat did not show ${turns} turns within two minutes.`)
+    const placed = offset()
+    while (!done()) {
+      if (performance.now() - start > 120_000) throw new Error(`The chat did not reach ${JSON.stringify(until)} within two minutes.`)
       await frame()
+      if (until === 'first') top()
     }
     await frame()
     await frame()
     const end = performance.now()
     const longest = w.tasks.filter(([at, duration]) => at + duration >= start && at <= end).reduce((max, [, duration]) => Math.max(max, duration), 0)
-    return { ms: Math.round(end - start), longestTaskMs: Math.round(longest) }
-  }, { target, turns })
+    return { ms: Math.round(end - start), longestTaskMs: Math.round(longest), shiftPx: Math.round(Math.abs(offset() - placed)) }
+  }, { act, until })
+  const shown = (): Promise<number> => page.locator('.pane').first().locator('.turn').count()
 
-  const openFromHistory = async (title: string, turns: number): Promise<Phase> => {
+  const openFromHistory = async (title: string, newest: number): Promise<Phase> => {
     await page.getByRole('button', { name: 'Chat history', exact: true }).click()
     await expect(page.getByRole('menu', { name: 'Chat history' })).toBeVisible()
-    return await measure({ selector: '[role="menuitem"]', text: title }, turns)
+    return await measure({ click: '[role="menuitem"]', text: title }, { newest })
   }
 
   await openFromHistory('Short chat', small.turns)
@@ -88,26 +106,46 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
     if (cdp) { await cdp.send('Profiler.enable'); await cdp.send('Profiler.start') }
     const open = await openFromHistory(title, chat.turns)
     if (cdp) await saveProfile(await cdp.send('Profiler.stop'))
+    const opened = await shown()
+    expect(opened, 'a chat opens with one page of turns').toBe(Math.min(chat.turns, 20))
+    const page2 = opened < chat.turns ? await measure('top', { more: opened }) : null
+    const all = await measure('top', 'first')
+    await expect(page.locator('.pane').first().locator('.turn')).toHaveCount(chat.turns)
     const stats = await page.evaluate(() => ({
       nodes: document.querySelectorAll('*').length,
       heapMB: Math.round(((performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? 0) / 1e6)
     }))
-    const scroll = await measure('scrollTop', chat.turns)
     await page.getByRole('tab').filter({ hasText: 'Short chat' }).click()
     await expect(page.locator('.pane').first().locator('.turn')).toHaveCount(small.turns)
-    const back = await measure({ selector: '[role="tab"]', text: title }, chat.turns)
+    const back = await measure({ click: '[role="tab"]', text: title }, { newest: chat.turns })
     rows.push({
       turns: chat.turns,
       items: chat.items,
+      'turns on open': opened,
       'open ms': open.ms,
       'open longest task ms': open.longestTaskMs,
       'switch back ms': back.ms,
       'switch longest task ms': back.longestTaskMs,
-      'scroll to top ms': scroll.ms,
-      'DOM nodes': stats.nodes,
+      'next page ms': page2?.ms ?? 0,
+      'next page longest task ms': page2?.longestTaskMs ?? 0,
+      'next page shift px': page2?.shiftPx ?? 0,
+      'scroll to first turn ms': all.ms,
+      'scroll longest task ms': all.longestTaskMs,
+      'DOM nodes, all loaded': stats.nodes,
       'JS heap MB (approx.)': stats.heapMB
     })
     await expect(page.locator('.pane').first().locator('.turn').last()).toContainText(`Reply ${chat.turns}.`)
+    // Budgets, about twice what this machine measured (docs/long-chat-plan.md), so a chat's
+    // length showing up in its open time again fails the check rather than passing slowly.
+    const at = `${chat.turns} turns`
+    expect(open.longestTaskMs, `opening ${at} freezes the window no longer than 250 ms`).toBeLessThan(250)
+    expect(open.ms, `opening ${at} shows the newest reply within 600 ms`).toBeLessThan(600)
+    expect(back.longestTaskMs, `switching back to ${at} freezes the window no longer than 250 ms`).toBeLessThan(250)
+    if (page2) {
+      expect(page2.longestTaskMs, `the page above ${at} goes in without a freeze over 250 ms`).toBeLessThan(250)
+      expect(page2.shiftPx, 'turns put in above leave the reader where they were').toBeLessThanOrEqual(2)
+    }
+    expect(all.longestTaskMs, `reading ${at} up to the first turn never freezes the window over 250 ms`).toBeLessThan(250)
   }
 
   console.table(rows)
