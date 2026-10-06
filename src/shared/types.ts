@@ -551,6 +551,21 @@ export type BrowserTab = {
 export type BrowserState = { tabs: BrowserTab[]; activeId: string | null }
 
 /** One browser tab, as a model is told about it. `id` is short (t3) and lasts until the app quits. */
+/** A file a model's browsing saved, in main's record of it. */
+export type BrowserDownload = {
+  id: string
+  chat: string
+  url: string
+  name: string
+  path: string
+  mime: string
+  /** Bytes in all, 0 while unknown. */
+  size: number
+  received: number
+  state: 'progressing' | 'completed' | 'cancelled' | 'interrupted'
+  startedAt: number
+}
+
 export type AgentTab = {
   id: string
   url: string
@@ -592,6 +607,14 @@ export type BrowserAgentOp =
   | (OnTab & { op: 'requests'; match: string | null })
   | (OnTab & { op: 'body'; request: string })
   | (OnTab & { op: 'screenshot' })
+  /**
+   * Save a file without a dialog: `url` (absolute, or relative to the tab's page) or what clicking
+   * `target` downloads. `saveTo` is an absolute folder or file, or null for the downloads folder.
+   * Waits up to `timeout` ms for the file to finish.
+   */
+  | (OnTab & { op: 'download'; url: string | null; target: string | null; saveTo: string | null; timeout: number })
+  /** The chat's downloads that started at or after `since` (ms since the epoch). */
+  | { op: 'downloads'; chat: string | null; since: number }
   /** The chat's turn is over: the tabs it worked in go back to being ordinary background tabs. */
   | { op: 'rest'; chat: string }
   /** The chat is gone: its own tab is closed. */

@@ -1,5 +1,6 @@
 import { nativeImage, session, type WebContents } from 'electron'
 import type { AgentTab, BrowserAgentOp } from '../shared/types.ts'
+import { BrowserDownloads } from './browser-downloads.ts'
 import { PAGE_LIB, type DigestOptions } from './browser-page-lib.ts'
 import type { BrowserPane, TabHandle } from './browser-pane.ts'
 import { toUrl } from './browser-url.ts'
@@ -67,7 +68,18 @@ export class BrowserAgent {
   /** chat → the pages its running turn has used. */
   private readonly touched = new Map<string, Set<WebContents>>()
 
-  constructor(private readonly pane: BrowserPane) {}
+  private readonly downloads: BrowserDownloads
+
+  constructor(private readonly pane: BrowserPane) {
+    this.downloads = new BrowserDownloads(session.fromPartition(PARTITION), (contents) => this.ownerOf(contents))
+  }
+
+  /** The chat whose turn is working in a page (its own tab, or one it touched), or null for the user's alone. */
+  private ownerOf(contents: WebContents): string | null {
+    for (const [chat, used] of this.touched) if (used.has(contents)) return chat
+    for (const [chat, id] of this.workTabs) if (this.pane.agentTab(id)?.contents === contents) return chat
+    return null
+  }
 
   async handle(op: BrowserAgentOp): Promise<unknown> {
     switch (op.op) {
@@ -99,16 +111,30 @@ export class BrowserAgent {
       }
       case 'eval':
         return await this.evaluate(this.tab(op), op.expression, false) ?? null
-      case 'click': {
-        const tab = this.tab(op)
-        const { x, y } = await this.evaluate(tab, `__rocket.locate(${JSON.stringify(op.target)})`, true) as { x: number; y: number }
-        const point = { x, y, button: 'left', clickCount: 1 }
-        await this.send(tab, 'Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
-        await this.send(tab, 'Input.dispatchMouseEvent', { type: 'mousePressed', ...point })
-        await this.send(tab, 'Input.dispatchMouseEvent', { type: 'mouseReleased', ...point })
-        await this.settle(tab)
+      case 'click':
+        await this.click(this.tab(op), op.target)
         return null
+      case 'download': {
+        const tab = this.tab(op)
+        let url: string | null = null
+        if (op.url) {
+          const base = /^https?:/.test(tab.contents.getURL()) ? tab.contents.getURL() : undefined
+          try { url = new URL(op.url, base).href } catch { throw new Error(`"${op.url}" is not an address. Give a full URL, or one relative to the tab's page.`) }
+        } else if (!op.target) throw new Error('Say what to download: a url, or a click target that starts the download.')
+        const startWithin = url ? 30_000 : 15_000
+        const pending = this.downloads.expect(tab.contents, op.chat ?? '', op.saveTo, url, startWithin)
+        if (url) tab.contents.downloadURL(url)
+        else await this.click(tab, op.target!)
+        const entry = await pending
+        if (!entry) {
+          throw new Error(url
+            ? `${url} did not start downloading within ${startWithin / 1000}s. Check the address in browser_read, or get it with browser.fetch in browser_run.`
+            : `Clicking ${op.target} did not start a download within ${startWithin / 1000}s. Read the page for the real download link and pass it as url.`)
+        }
+        return this.downloads.settle(entry, op.timeout)
       }
+      case 'downloads':
+        return this.downloads.since(op.chat ?? '', op.since)
       case 'fill': {
         const tab = this.tab(op)
         const how = await this.evaluate(tab, `__rocket.focus(${JSON.stringify(op.target)}, ${JSON.stringify(op.value)})`, true)
@@ -397,6 +423,16 @@ export class BrowserAgent {
       } else if (all) parts.push('(No requests logged. The log starts when a tool first touches the tab; reload to capture a page\'s own.)')
     }
     return parts.join('\n\n')
+  }
+
+  /** A real click at the target's centre; if it starts a navigation, the new page is waited for. */
+  private async click(tab: TabHandle, target: string): Promise<void> {
+    const { x, y } = await this.evaluate(tab, `__rocket.locate(${JSON.stringify(target)})`, true) as { x: number; y: number }
+    const point = { x, y, button: 'left', clickCount: 1 }
+    await this.send(tab, 'Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
+    await this.send(tab, 'Input.dispatchMouseEvent', { type: 'mousePressed', ...point })
+    await this.send(tab, 'Input.dispatchMouseEvent', { type: 'mouseReleased', ...point })
+    await this.settle(tab)
   }
 
   private async press(tab: TabHandle, combo: string): Promise<void> {
