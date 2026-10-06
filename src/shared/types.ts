@@ -368,6 +368,8 @@ export type RocketBridge = {
   }
   pickFolder: (current: string | null) => Promise<string | null>
   openChatLink: (href: string, cwd: string) => Promise<ChatLinkTarget>
+  /** Main hands over something to open as a chat link would: a second launch of the app with a path or URL. */
+  onOpen: (listener: (target: { href: string; cwd: string }) => void) => () => void
   homeDir: string
   browser: {
     send: (command: BrowserCommand) => void

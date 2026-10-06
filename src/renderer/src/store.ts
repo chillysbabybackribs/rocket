@@ -509,6 +509,8 @@ export function start(): void {
   }
   setInterval(refreshAll, 5 * 60_000)
   document.addEventListener('visibilitychange', refreshAll)
+  // Something handed to a running app from the command line opens as a chat link would.
+  window.rocket.onOpen(({ href, cwd }) => void openChatLink(href, cwd))
 }
 
 // A later click or pane close wins over an earlier file read that is still in flight.

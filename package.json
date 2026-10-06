@@ -10,6 +10,7 @@
     "dev": "node scripts/launch.mjs dev",
     "build": "tsc --noEmit && electron-vite build",
     "preview": "node scripts/launch.mjs preview",
+    "open": "node scripts/open.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-transform-types --disable-warning=ExperimentalWarning --test \"src/**/*.test.ts\" \"scripts/*.test.mjs\"",
     "check:live": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/live-check.ts",
