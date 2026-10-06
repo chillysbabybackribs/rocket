@@ -563,7 +563,7 @@ function pdfViewer(f) {
       <div class="loc"><code>document.annotate</code>links to another library file</div></div>
     <div class="mark"><div class="by"><span class="av you">D</span><b>You</b>Highlight · p.1<span class="when">2 days ago</span></div>
       <q>reasoning traces help the model induce, track, and update action plans as well as handle exceptions,</q></div>
-    <div class="note">Marks are kept beside the download in <code>react.pdf.marks.json</code>; the file itself is untouched. <b style="color:var(--text-2);font-weight:500">Save annotated copy</b> writes them into a new PDF.</div>`
+    <div class="note">Marks are kept in Rocket's library store; the download itself is untouched. <b style="color:var(--text-2);font-weight:500">Save annotated copy</b> writes them into a new PDF.</div>`
     : `<div class="note">No marks yet. Select text and press H, or ask Claude to mark something.</div>`
   return `${viewerHead(f, middle, right)}
     <div class="v-body">
@@ -642,7 +642,7 @@ function imageViewer(f) {
             <div class="loc"><code>document.mark</code>x 30% · y 18% · 40 × 74%</div></div>` : '<div class="note">No marks yet. Drag a region, or ask Claude to mark one.</div>'}
           <div class="sect">Details</div>
           <dl class="dl"><dt>Size</dt><dd>${f.px} · ${f.size}</dd><dt>From</dt><dd><a>${f.origin}</a></dd><dt>Chat</dt><dd>${CHATS[f.chat]}</dd><dt>Added</dt><dd>${f.added}</dd><dt>Licence</dt><dd>On the source page</dd></dl>
-          <div class="note">Region marks live in the library's sidecar, like PDF marks; the image is never rewritten.</div>
+          <div class="note">Region marks live in Rocket's library store, like PDF marks; the image is never rewritten.</div>
         </div></aside>
     </div>`
 }
@@ -720,7 +720,7 @@ const STATES = [
   { id: 'filter', label: '02 · Filter', cap: '<b>Filter.</b> Each filter shows its counts before you pick. The same filters are a tool call, so when Claude filters, the panel shows it.' },
   { id: 'pdf', label: '03 · PDF marks', cap: '<b>PDF.</b> Claude opened the paper, read page 1, and marked the result on the actual words. Your highlight stays yellow; the download is never rewritten.' },
   { id: 'plan', label: '04 · Plan edit', cap: '<b>Plan.</b> The real file in a CodeMirror-style editor. Claude edits the file on disk, and its new lines are marked in place. Outline jumps to any section.' },
-  { id: 'image', label: '05 · Image mark', cap: '<b>Image.</b> A region mark with handles; the film strip shows the other photos from the chat. Marks are saved in the sidecar, so the photo stays untouched.' },
+  { id: 'image', label: '05 · Image mark', cap: '<b>Image.</b> A region mark with handles; the film strip shows the other photos from the chat. Marks are saved in Rocket's library store, so the photo stays untouched.' },
   { id: 'deck', label: '06 · Office', cap: '<b>Office.</b> v1 is honest about Office: it shows the file\'s own preview, Claude reads the text, and editing opens your default app.' },
   { id: 'list', label: '07 · List', cap: '<b>List.</b> The same index, dense, for when names and sizes matter more than pictures.' },
 ]

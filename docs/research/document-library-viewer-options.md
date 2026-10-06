@@ -207,6 +207,10 @@ Keep raster PDF pages + `<pre>` text + `ChatMarkdown`; add library list in SQLit
 
 ## Decisions (locked for mock)
 
+> **Revised 2026-10-06 in [library-plan.md](../library-plan.md):** the PDF engine is **PDF.js**, not
+> Nutrient (Nutrient is commercial with a watermarked 30-day trial), and marks live in a
+> `library_marks` table in the host store rather than sidecar JSON files. The rest stands.
+
 These choices follow Rocket’s existing contract: host-owned bytes, agents strong on file tools,
 viewer SDK for what files cannot express cleanly (PDF marks), and no second MCP server inside the
 app.
