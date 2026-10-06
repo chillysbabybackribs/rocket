@@ -179,6 +179,7 @@ function ChatCard() {
 export function App() {
   const artifact = useApp((state) => state.artifact)
   const browserOpen = useApp((state) => state.browserOpen)
+  const railOpen = useApp((state) => state.railOpen)
   const error = useApp((state) => state.error)
   const newGoal = useApp((state) => state.newGoal !== null)
   // The side of the only pane, when it has one: the card then takes the larger share beside the browser.
@@ -188,7 +189,7 @@ export function App() {
     return state.goals.some((goal) => goal.chatId === chatId) ? state.goalPaneOpen : (chatId !== null && state.views[chatId]?.planTurnId != null)
   })
   return (
-    <div className={`app${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}`}>
+    <div className={`app${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}${railOpen ? '' : ' rail-folded'}`}>
       <Rail />
       <ChatCard />
       {artifact ? <ArtifactPanel /> : browserOpen && <BrowserPanel />}

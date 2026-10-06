@@ -60,9 +60,9 @@ async function stopTree(child, graceMs) {
   }
 }
 
-export async function runCommand(command, args, { cwd, env, signal, onOutput, graceMs = 1_000 }) {
+export async function runCommand(command, args, { cwd, env, signal, onOutput, onStart, graceMs = 1_000 }) {
   if (signal.aborted) return 1
-  const child = spawn(command, args, { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
+  const child = spawn(command, args, { cwd, env, detached: true, stdio: [onStart ? 'pipe' : 'ignore', 'pipe', 'pipe'] })
   for (const stream of [child.stdout, child.stderr]) stream.on('data', data => onOutput(data))
   let stopping
   // Observe rejection immediately; the main await still reports cleanup failures.
@@ -75,6 +75,7 @@ export async function runCommand(command, args, { cwd, env, signal, onOutput, gr
   signal.addEventListener('abort', stop, { once: true })
   if (signal.aborted) stop()
   try {
+    onStart?.(child)
     const result = await new Promise((resolve, reject) => {
       child.once('error', reject)
       child.once('close', code => resolve(code ?? 1))

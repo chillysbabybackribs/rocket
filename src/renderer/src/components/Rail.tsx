@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { Globe, RefreshCw } from 'lucide-react'
+import { Globe, PanelLeftClose, PanelLeftOpen, RefreshCw } from 'lucide-react'
 import { PROVIDERS, providerLabel, type ProviderId, type UsageSnapshot, type UsageWindow } from '../../../shared/types.ts'
-import { refreshUsage, setBrowserOpen, useApp } from '../store.ts'
+import { refreshUsage, setBrowserOpen, setRailOpen, useApp } from '../store.ts'
 import { ProviderGlyph } from './glyphs.tsx'
-import { Goals } from './Goals.tsx'
+import { Goals, UNDER_WAY } from './Goals.tsx'
 import { History } from './History.tsx'
 
-// The left edge of the window: window controls, the usage notch, and two global actions (chat history and the browser). The
-// notch is the app's signature: a black tab growing out of the window edge with one ring per
-// provider, each showing how much of that subscription's nearest limit is used.
+// The left edge of the window: window controls, the usage notch, and the global actions (goals,
+// chat history, the browser). The notch is the app's signature: a black tab growing out of the
+// window edge with one ring per provider, each showing how much of that subscription's nearest
+// limit is used. The rail folds to a strip to give the chat its width; the strip keeps a dot per
+// provider and peeks the whole rail over the chat while the pointer rests on it.
 
 const RING = 42
 const STROKE = 3.5
@@ -172,21 +174,27 @@ function UsageNotch() {
   )
 }
 
-export function Rail() {
+function Traffic() {
+  return (
+    <div className="traffic" role="group" aria-label="Window controls">
+      <button type="button" className="light light-close" aria-label="Close window" onClick={() => window.rocket.window.close()}>
+        <LightGlyph d="M4 4l4 4M8 4l-4 4" />
+      </button>
+      <button type="button" className="light light-min" aria-label="Minimize window" onClick={() => window.rocket.window.minimize()}>
+        <LightGlyph d="M3.5 6h5" />
+      </button>
+      <button type="button" className="light light-max" aria-label="Zoom window" onClick={() => window.rocket.window.toggleMaximize()}>
+        <LightGlyph d="M3.5 6h5M6 3.5v5" />
+      </button>
+    </div>
+  )
+}
+
+/** The notch and the actions: the rail's body, whether it stands in its column or peeks over the chat. */
+function RailBody({ open }: { open: boolean }) {
   const browserOpen = useApp((state) => state.browserOpen && !state.artifact)
   return (
-    <aside className="rail">
-      <div className="traffic" role="group" aria-label="Window controls">
-        <button type="button" className="light light-close" aria-label="Close window" onClick={() => window.rocket.window.close()}>
-          <LightGlyph d="M4 4l4 4M8 4l-4 4" />
-        </button>
-        <button type="button" className="light light-min" aria-label="Minimize window" onClick={() => window.rocket.window.minimize()}>
-          <LightGlyph d="M3.5 6h5" />
-        </button>
-        <button type="button" className="light light-max" aria-label="Zoom window" onClick={() => window.rocket.window.toggleMaximize()}>
-          <LightGlyph d="M3.5 6h5M6 3.5v5" />
-        </button>
-      </div>
+    <>
       <div className="rail-middle">
         <UsageNotch />
       </div>
@@ -203,7 +211,81 @@ export function Rail() {
         >
           <Globe size={17} />
         </button>
+        <button
+          type="button"
+          className="rail-button rail-fold"
+          title={open ? 'Hide the rail' : 'Show the rail'}
+          aria-label={open ? 'Hide the rail' : 'Show the rail'}
+          aria-pressed={!open}
+          onClick={() => setRailOpen(!open)}
+        >
+          {open ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+        </button>
       </div>
+    </>
+  )
+}
+
+/**
+ * The rail folded: a strip with a dot per provider in its usage colour and the goals count, so
+ * the glance survives the fold. Resting the pointer on it slides the whole rail out over the chat;
+ * it goes back when the pointer leaves. Menus and flyouts are children of the rail, so being in
+ * one counts as being on the rail.
+ */
+function FoldedRail() {
+  const usage = useApp((state) => state.usage)
+  const waiting = useApp((state) => state.goals.filter((goal) => UNDER_WAY.includes(goal.status)).length)
+  const asking = useApp((state) => state.goals.some((goal) => goal.status === 'needs_you' || goal.status === 'confirming'))
+  const [peek, setPeek] = useState(false)
+  const timer = useRef<number | null>(null)
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
+  const show = (): void => {
+    if (timer.current) window.clearTimeout(timer.current)
+    timer.current = null
+    setPeek(true)
+  }
+  const hide = (): void => {
+    if (timer.current) window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setPeek(false), 220)
+  }
+  const summary = PROVIDERS.map(({ id, label }) => {
+    const lead = usage[id]?.windows[0]
+    return `${label} ${lead ? `${lead.percent}%` : '–'}`
+  }).join(', ')
+  return (
+    <aside className="rail is-folded" onMouseEnter={show} onMouseLeave={hide}>
+      <Traffic />
+      <div className="rail-middle">
+        <div className="rail-dots" role="img" aria-label={`Usage: ${summary}`} title={`Usage: ${summary}`}>
+          {PROVIDERS.map(({ id }) => {
+            const lead = usage[id]?.windows[0]
+            return <span key={id} className={`rail-dot${lead ? ` level-${levelOf(lead.percent)}` : ''}`} />
+          })}
+        </div>
+      </div>
+      <div className="rail-actions">
+        {waiting > 0 && <span className={`rail-count${asking ? ' is-asking' : ''}`} title={`${waiting} ${waiting === 1 ? 'goal' : 'goals'} under way`}>{waiting}</span>}
+        <button type="button" className="rail-button rail-fold" title="Show the rail" aria-label="Show the rail" aria-pressed onClick={() => setRailOpen(true)}>
+          <PanelLeftOpen size={14} />
+        </button>
+      </div>
+      {peek && (
+        <div className="rail-peek" aria-label="Rail">
+          <Traffic />
+          <RailBody open={false} />
+        </div>
+      )}
+    </aside>
+  )
+}
+
+export function Rail() {
+  const open = useApp((state) => state.railOpen)
+  if (!open) return <FoldedRail />
+  return (
+    <aside className="rail">
+      <Traffic />
+      <RailBody open />
     </aside>
   )
 }

@@ -1,0 +1,175 @@
+<!doctype html>
+<!-- Mockup of the retractable rail: a collapse button under the browser button folds the 68px
+     rail into a 24px strip, giving the width to the chat card. The strip keeps the window lights,
+     one small dot per provider's usage level, the goals count and an expand button. Hovering the
+     strip slides the whole rail out over the chat as an overlay, so usage, history and goals are
+     a hover away without moving the card; the expand button pins it open again. Static; the data
+     is invented. Borrows Rocket's palette from src/renderer/src/styles.css. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rocket · Retractable rail (mockup)</title>
+<style>
+:root {
+  color-scheme: dark;
+  --font: 'Inter Variable', Inter, -apple-system, 'Segoe UI', sans-serif;
+  --canvas: #08090a; --panel: #0f1011; --bubble: #1c1d20; --menu: #1b1c1e;
+  --composer: #151617; --composer-line: #2f3031;
+  --line: rgba(255,255,255,.07); --line-strong: rgba(255,255,255,.11);
+  --text: #f7f8f8; --text-2: #b4b8c0; --text-3: #8a8f98; --text-4: #62666d;
+  --hover: rgba(255,255,255,.045); --selected: rgba(255,255,255,.08); --accent: #7170ff;
+  --ok: #4cb782; --warn: #f2c94c; --high: #eb5757;
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,0) 180px);
+  --menu-shadow: 0 0 0 1px rgba(0,0,0,.5), 0 12px 40px rgba(0,0,0,.6);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--canvas); color: var(--text); font: 13px/1.5 var(--font); letter-spacing: -.006em; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+svg { display: block; }
+code { font-family: ui-monospace, Menlo, monospace; font-size: .86em; padding: 1px 5px; border-radius: 5px; background: rgba(255,255,255,.06); border: 1px solid var(--line); }
+
+.wrap { min-height: 100%; display: grid; grid-template-rows: auto 1fr; gap: 14px; padding: 16px; }
+.legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.legend div { color: var(--text-3); font-size: 12px; line-height: 1.5; padding: 0 4px; }
+.legend b { display: block; color: var(--text); font-weight: 560; font-size: 13px; margin-bottom: 2px; }
+.frames { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 520px; gap: 14px; }
+.frame { position: relative; }
+.frame-label { position: absolute; top: -9px; left: 12px; z-index: 5; padding: 0 6px; background: var(--canvas); color: var(--text-4); font-size: 11px; font-weight: 560; letter-spacing: .02em; text-transform: uppercase; }
+
+/* A window: the titlebar strip, the rail column, the chat card. */
+.win { position: relative; height: 100%; display: grid; grid-template-columns: var(--rail) 1fr; padding: 28px 8px 8px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); overflow: hidden; }
+.win.open { --rail: 68px; }
+.win.shut { --rail: 24px; }
+.lights { position: absolute; top: 8px; left: 13px; display: flex; gap: 8px; z-index: 4; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+.card { border: 1px solid var(--line); border-radius: 12px; background: var(--sheen), var(--panel); display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.transcript { flex: 1; padding: 18px 20px; display: flex; flex-direction: column; justify-content: flex-end; }
+.bubble { width: fit-content; max-width: 80%; margin: 0 0 12px auto; padding: 7px 11px; background: var(--bubble); border-radius: 10px; font-size: 12.5px; }
+.reply { color: var(--text-2); font-size: 12.5px; }
+.dock { padding: 2px 20px 14px; }
+.composer { height: 74px; background: var(--composer); border: 1px solid var(--composer-line); border-radius: 10px; }
+
+/* The rail, open. */
+.rail { position: relative; display: flex; flex-direction: column; align-items: stretch; margin: -28px 0 -8px; }
+.rail-mid { flex: 1; display: flex; align-items: center; }
+.notch { position: relative; width: 56px; padding: 16px 0 12px; display: flex; flex-direction: column; align-items: center; gap: 13px; background: #151618; border-radius: 0 22px 22px 0; }
+.notch::before, .notch::after { content: ''; position: absolute; left: 0; width: 20px; height: 20px; }
+.notch::before { top: -20px; background: radial-gradient(circle at 100% 0, transparent 19.5px, #151618 20px); }
+.notch::after { bottom: -20px; background: radial-gradient(circle at 100% 100%, transparent 19.5px, #151618 20px); }
+.ring { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.ring svg circle { fill: none; stroke-width: 3.5; }
+.ring .track { stroke: rgba(255,255,255,.09); }
+.ring .val { stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; }
+.actions { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-bottom: 14px; }
+.rb { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; color: var(--text-3); }
+.rb:hover { background: var(--hover); color: var(--text); }
+.rb.is-on { background: var(--selected); color: var(--text); }
+.rb.pointed { outline: 1px solid var(--accent); outline-offset: 1px; color: var(--text); background: var(--hover); }
+.badge { position: absolute; top: 1px; right: 0; min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px; display: grid; place-items: center; background: var(--accent); color: #fff; font-size: 9px; font-weight: 600; }
+.rb { position: relative; }
+
+/* The rail, shut: a 24px strip. */
+.strip { position: relative; display: flex; flex-direction: column; align-items: center; margin: -28px 0 -8px; }
+.strip-mid { flex: 1; display: flex; align-items: center; }
+.dots { display: flex; flex-direction: column; gap: 9px; padding: 10px 0; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; }
+.strip .actions { padding-bottom: 14px; gap: 6px; }
+.strip .rb { width: 20px; height: 22px; }
+.strip .count { width: 16px; height: 16px; border-radius: 8px; display: grid; place-items: center; background: var(--accent); color: #fff; font-size: 9px; font-weight: 600; }
+
+/* The peek: the whole rail over the card, with its own fill and shadow. */
+.peek { position: absolute; top: 0; bottom: 0; left: 0; width: 68px; z-index: 3; display: flex; flex-direction: column; background: var(--canvas); border-right: 1px solid var(--line-strong); box-shadow: 12px 0 40px rgba(0,0,0,.55); }
+.peek .rail { margin: 0; flex: 1; padding-top: 28px; }
+.callout { position: absolute; z-index: 6; padding: 7px 10px; border-radius: 8px; background: var(--menu); border: 1px solid var(--line-strong); box-shadow: var(--menu-shadow); font-size: 11.5px; color: var(--text-2); line-height: 1.45; max-width: 220px; }
+.callout b { color: var(--text); font-weight: 560; }
+.flyout { position: absolute; z-index: 6; left: 82px; width: 200px; padding: 11px 12px; border-radius: 10px; background: var(--sheen), var(--menu); border: 1px solid var(--line-strong); box-shadow: var(--menu-shadow); font-size: 12px; }
+.flyout b { display: block; font-weight: 560; margin-bottom: 8px; }
+.flyout .bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,.08); margin: 5px 0 3px; }
+.flyout .bar i { display: block; height: 100%; width: 66%; border-radius: 2px; background: var(--warn); }
+.flyout small { color: var(--text-4); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="legend">
+    <div><b>1 · Open, with a way to fold it</b>The rail as it is today, plus one button under the browser button: <em>Hide the rail</em>. Nothing else moves. Remembered across restarts like the browser toggle.</div>
+    <div><b>2 · Folded: a 24px strip</b>The chat card takes the 44px. The window lights stay where they are (they sit in the title strip, above the card). The strip keeps one 6px dot per provider in its usage colour, the goals count when any are under way, and an <em>Show the rail</em> button at the bottom.</div>
+    <div><b>3 · Hover peeks, click pins</b>Resting the pointer on the strip slides the whole rail out <em>over</em> the card (an overlay, the card never moves), so usage flyouts, history and goals are a hover away. It retracts when the pointer leaves, unless a menu or flyout is open. The button at its foot pins it open again.</div>
+  </div>
+
+  <div class="frames">
+    <!-- 1 open -->
+    <div class="frame">
+      <span class="frame-label">1 · open</span>
+      <div class="win open">
+        <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+        <div class="rail">
+          <div class="rail-mid"><div class="notch">
+            <div class="ring"><svg width="38" height="38" viewBox="0 0 42 42"><circle class="track" cx="21" cy="21" r="19.25"/><circle class="val" cx="21" cy="21" r="19.25" stroke="#4cb782" stroke-dasharray="23 121"/></svg>19%</div>
+            <div class="ring"><svg width="38" height="38" viewBox="0 0 42 42"><circle class="track" cx="21" cy="21" r="19.25"/><circle class="val" cx="21" cy="21" r="19.25" stroke="#f2c94c" stroke-dasharray="80 121"/></svg>66%</div>
+            <div class="ring"><svg width="38" height="38" viewBox="0 0 42 42"><circle class="track" cx="21" cy="21" r="19.25"/><circle class="val" cx="21" cy="21" r="19.25" stroke="#4cb782" stroke-dasharray="30 121"/></svg>25%</div>
+            <div class="ring"><svg width="38" height="38" viewBox="0 0 42 42"><circle class="track" cx="21" cy="21" r="19.25"/><circle class="val" cx="21" cy="21" r="19.25" stroke="#4cb782" stroke-dasharray="5 121"/></svg>4%</div>
+          </div></div>
+          <div class="actions">
+            <button class="rb"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span class="badge">2</span></button>
+            <button class="rb"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></button>
+            <button class="rb"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></button>
+            <button class="rb pointed" title="Hide the rail"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg></button>
+          </div>
+        </div>
+        <div class="callout" style="left: 54px; bottom: 14px;"><b>Hide the rail</b> · folds it to a strip.</div>
+        <div class="card"><div class="transcript"><div class="bubble">ok it looks pretty good</div><div class="reply">Both layouts match the mockup…</div></div><div class="dock"><div class="composer"></div></div></div>
+      </div>
+    </div>
+
+    <!-- 2 shut -->
+    <div class="frame">
+      <span class="frame-label">2 · folded</span>
+      <div class="win shut">
+        <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+        <div class="strip">
+          <div class="strip-mid"><div class="dots" title="Usage: Claude 19%, Codex 66%, Cursor 25%, Antigravity 4%"><i style="background:var(--ok)"></i><i style="background:var(--warn)"></i><i style="background:var(--ok)"></i><i style="background:var(--ok)"></i></div></div>
+          <div class="actions">
+            <span class="count" title="2 goals under way">2</span>
+            <button class="rb" title="Show the rail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg></button>
+          </div>
+        </div>
+        <div class="callout" style="left: 34px; top: 190px;">Four dots: each provider's usage level. Hover for the rail.</div>
+        <div class="card"><div class="transcript"><div class="bubble">ok it looks pretty good</div><div class="reply">Both layouts match the mockup…</div></div><div class="dock"><div class="composer"></div></div></div>
+      </div>
+    </div>
+
+    <!-- 3 peek -->
+    <div class="frame">
+      <span class="frame-label">3 · folded · hover peeks</span>
+      <div class="win shut">
+        <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+        <div class="strip">
+          <div class="strip-mid"><div class="dots"><i style="background:var(--ok)"></i><i style="background:var(--warn)"></i><i style="background:var(--ok)"></i><i style="background:var(--ok)"></i></div></div>
+          <div class="actions"><span class="count">2</span><button class="rb"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button></div>
+        </div>
+        <div class="peek">
+          <div class="rail">
+            <div class="rail-mid"><div class="notch">
+              <div class="ring"><svg width="38" height="38" viewBox="0 0 42 42"><circle class="track" cx="21" cy="21" r="19.25"/><circle class="val" cx="21" cy="21" r="19.25" stroke="#4cb782" stroke-dasharray="23 121"/></svg>19%</div>
+              <div class="ring" style="color:var(--text)"><svg width="38" height="38" viewBox="0 0 42 42"><circle class="track" cx="21" cy="21" r="19.25"/><circle class="val" cx="21" cy="21" r="19.25" stroke="#f2c94c" stroke-dasharray="80 121"/></svg>66%</div>
+              <div class="ring"><svg width="38" height="38" viewBox="0 0 42 42"><circle class="track" cx="21" cy="21" r="19.25"/><circle class="val" cx="21" cy="21" r="19.25" stroke="#4cb782" stroke-dasharray="30 121"/></svg>25%</div>
+              <div class="ring"><svg width="38" height="38" viewBox="0 0 42 42"><circle class="track" cx="21" cy="21" r="19.25"/><circle class="val" cx="21" cy="21" r="19.25" stroke="#4cb782" stroke-dasharray="5 121"/></svg>4%</div>
+            </div></div>
+            <div class="actions">
+              <button class="rb"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span class="badge">2</span></button>
+              <button class="rb"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></button>
+              <button class="rb"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></button>
+              <button class="rb" title="Show the rail"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="flyout" style="top: 196px;"><b>Codex Usage</b>5-hour window <small>· Resets in 2 h</small><div class="bar"><i></i></div><small>66% Used</small></div>
+        <div class="card"><div class="transcript"><div class="bubble">ok it looks pretty good</div><div class="reply">Both layouts match the mockup…</div></div><div class="dock"><div class="composer"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

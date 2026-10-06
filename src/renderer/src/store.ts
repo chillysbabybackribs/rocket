@@ -66,6 +66,8 @@ export type AppState = {
   /** What the panel beside the chat shows: a file a link opened, or what a turn changed. */
   artifact: ArtifactView | null
   browserOpen: boolean
+  /** Whether the rail stands open at its full width, or is folded to a strip that peeks on hover. */
+  railOpen: boolean
   /** Every goal, newest first. A goal's chat is an ordinary chat with the goal beside it. */
   goals: Goal[]
   /** Whether the goal shows beside its chat; hiding it does not stop the goal. */
@@ -93,6 +95,7 @@ type Prefs = {
   /** chatId → that chat's choice. */
   selections?: Record<string, Selection>
   browserOpen?: boolean
+  railOpen?: boolean
   goalPaneOpen?: boolean
   goalWidth?: number
   /** Chats whose plan drawer the user closed; it no longer opens by itself there. */
@@ -167,6 +170,7 @@ let state: AppState = {
   usage: {},
   models: {},
   browserOpen: prefs.browserOpen === true,
+  railOpen: prefs.railOpen !== false,
   goals: [],
   goalPaneOpen: prefs.goalPaneOpen !== false,
   goalWidth: prefs.goalWidth ?? 400,
@@ -662,6 +666,11 @@ export function setGoalWidth(goalWidth: number, save: boolean): void {
 
 export function agentLabel(agent: { provider: ProviderId }): string {
   return providerLabel(agent.provider)
+}
+
+export function setRailOpen(railOpen: boolean): void {
+  setState({ railOpen })
+  writePrefs({ railOpen })
 }
 
 export function setBrowserOpen(browserOpen: boolean): void {

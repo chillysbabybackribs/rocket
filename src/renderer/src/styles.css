@@ -591,6 +591,53 @@ a.gd-source:hover { color: var(--text); text-decoration: underline; }
 }
 .rail-button:hover { background: var(--hover); color: var(--text); }
 .rail-button.is-on { background: var(--selected); color: var(--text); }
+.rail-fold { margin-top: 4px; color: var(--text-4); }
+
+/* ── The rail folded ───────────────────────────────────────────────── */
+
+/* Folded, the rail is a strip and the chat takes the rest. The window lights stay where they
+   are: they sit in the title strip above the card, wider than the column, and overflow into it. */
+.app.rail-folded { --rail-width: 24px; }
+.rail.is-folded { position: relative; align-items: center; }
+.rail.is-folded .traffic { align-self: flex-start; }
+.rail-dots {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px 0;
+  -webkit-app-region: no-drag;
+}
+.rail-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); }
+.rail-dot.level-ok { background: var(--ok); }
+.rail-dot.level-warn { background: var(--warn); }
+.rail-dot.level-high { background: var(--high); }
+.rail.is-folded .rail-actions { gap: 6px; }
+.rail.is-folded .rail-fold { width: 20px; height: 22px; margin-top: 0; }
+.rail-count {
+  display: grid; place-items: center; width: 16px; height: 16px; border-radius: 8px;
+  background: var(--accent); color: #fff; font-size: 9px; font-weight: 600;
+}
+.rail-count.is-asking { background: var(--warn); color: #1a1500; }
+/* The peek: the whole rail over the chat, in its own fill, with the shadow of something on top.
+   It is fixed to the window so the chat beneath never moves. */
+.rail-peek {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 45;
+  width: 68px;
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas);
+  border-right: 1px solid var(--line-strong);
+  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.55);
+  animation: rail-peek-in 140ms ease-out;
+  -webkit-app-region: no-drag;
+}
+@keyframes rail-peek-in {
+  from { transform: translateX(-12px); opacity: 0; }
+}
 
 /* ── Chat history ──────────────────────────────────────────────────── */
 

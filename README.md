@@ -79,6 +79,15 @@ keyed by chat, holds what a shown chat has loaded, so two panes on one chat shar
 components inside a pane read their chat through `PaneContext` (`pane.ts`); every store action
 that means "in this chat" takes the pane it was asked in.
 
+### The rail
+
+The left edge holds the window lights, the usage notch (one ring per provider) and the goals,
+history and browser buttons. The button under them folds the rail to a 24px strip, giving the
+chat the width; the fold is remembered. The strip keeps the lights, a dot per provider in its
+usage colour and the goals count, and resting the pointer on it slides the whole rail out over the
+chat as an overlay (the chat never moves) until the pointer leaves, so usage, history and goals
+stay a hover away. The button at the strip's foot, or at the peek's, opens the rail again.
+
 ### Messages sent while a turn runs
 
 The composer stays open while a turn runs; Esc or the Stop button beside Send stops it. A message
@@ -359,7 +368,7 @@ TERM-resistant children are killed after a grace period. Interrupted runs exit w
 The checks exercise composer input, folder selection, usage, model selection, streaming,
 completion, tool output, provider handoff, cancellation, failure recovery, chat drafts,
 history, chat panes (splitting to four, a turn streaming into one pane, closing, and the layout
-after a restart), renderer reload, full app restart, recovery from a host crash during a response,
+after a restart), the folding rail (its strip, the hover peek, and the fold after a restart), renderer reload, full app restart, recovery from a host crash during a response,
 minimum window size, browser navigation/tabs, the address dropdown, chat links (browser tabs
 and local artifact preview), and model question cards from `ask_user`. The shell, embedded
 page and dropdown are separate Playwright targets. Their

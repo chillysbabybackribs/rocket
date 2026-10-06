@@ -7,7 +7,7 @@ import { GoalStatusIcon } from './GoalIcons.tsx'
 // Goals, from the rail: the ones under way first, then the finished ones, and "New goal". Like
 // the history menu, it grows to the right over the chat column and never reaches the browser.
 
-const UNDER_WAY: GoalStatus[] = ['drafting', 'confirming', 'working', 'checking', 'needs_you', 'paused']
+export const UNDER_WAY: GoalStatus[] = ['drafting', 'confirming', 'working', 'checking', 'needs_you', 'paused']
 
 export function goalStatusText(goal: Goal): string {
   const round = goal.rounds.at(-1)?.n ?? 0
