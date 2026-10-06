@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { providerLabel, type ProviderId } from '../../../shared/types.ts'
 import { call } from '../host.ts'
-import { openChat, useApp, viewOf } from '../store.ts'
+import { runScenarioCell } from '../eval-run.ts'
+import { openChat } from '../store.ts'
 
 type Scenario = {
   id: string
@@ -12,15 +13,7 @@ type Scenario = {
   matrix: Array<{ provider: ProviderId; model: string | null }>
 }
 
-type ActiveRun = {
-  chatId: string
-  turnId: string
-  cellDir: string
-  graders: string[]
-  provider: ProviderId
-}
-
-type Phase = 'idle' | 'running' | 'grading' | 'done' | 'error'
+type Phase = 'idle' | 'running' | 'done' | 'error'
 
 type Props = {
   open: boolean
@@ -37,13 +30,11 @@ export function EvalRunSheet({ open, onClose, initialScenarioId, initialProvider
   const [provider, setProvider] = useState<ProviderId>('claude')
   const [trial, setTrial] = useState(0)
   const [phase, setPhase] = useState<Phase>('idle')
-  const [active, setActive] = useState<ActiveRun | null>(null)
+  const [focusChatId, setFocusChatId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [grade, setGrade] = useState<{ allPass: boolean; rows: Array<{ name: string; pass: boolean; reason?: string }> } | null>(null)
 
   const scenario = useMemo(() => scenarios.find((row) => row.id === scenarioId) ?? null, [scenarios, scenarioId])
-  const turn = useApp((state) => (active ? viewOf(state, active.chatId).turns.find((row) => row.id === active.turnId) ?? null : null))
-  const running = useApp((state) => (active ? state.running.has(active.chatId) : false))
 
   useEffect(() => {
     if (!open) return
@@ -61,7 +52,7 @@ export function EvalRunSheet({ open, onClose, initialScenarioId, initialProvider
     if (initialProvider) setProvider(initialProvider)
     if (initialTrial != null) setTrial(initialTrial)
     setPhase('idle')
-    setActive(null)
+    setFocusChatId(null)
     setGrade(null)
     setError(null)
   }, [open, initialProvider, initialTrial])
@@ -78,37 +69,9 @@ export function EvalRunSheet({ open, onClose, initialScenarioId, initialProvider
     setGrade(null)
     setPhase('running')
     try {
-      const started = await call('eval.startScenarioCell', {
-        scenarioId: scenario.id,
-        provider,
-        model: scenario.matrix.find((cell) => cell.provider === provider)?.model ?? null,
-        trial,
-        timeoutMs: 600_000
-      })
-      setActive({
-        chatId: started.chatId,
-        turnId: started.turnId,
-        cellDir: started.cellDir,
-        graders: started.graders,
-        provider: started.provider
-      })
-      await openChat(started.chatId)
-      setPhase('grading')
-      const finished = await call('eval.finishScenarioCell', {
-        chatId: started.chatId,
-        turnId: started.turnId,
-        cellDir: started.cellDir,
-        graders: started.graders,
-        timeoutMs: 600_000
-      })
-      setGrade({
-        allPass: finished.graders.allPass,
-        rows: Object.entries(finished.graders.graders).map(([name, row]) => ({
-          name,
-          pass: row.pass,
-          reason: typeof row.metadata?.reason === 'string' ? row.metadata.reason : undefined
-        }))
-      })
+      const result = await runScenarioCell({ scenarioId: scenario.id, provider, trial })
+      setFocusChatId(result.chatId)
+      setGrade({ allPass: result.allPass, rows: result.grades })
       setPhase('done')
       onFinished?.()
     } catch (err) {
@@ -121,10 +84,7 @@ export function EvalRunSheet({ open, onClose, initialScenarioId, initialProvider
 
   const statusText = (() => {
     if (phase === 'idle') return 'Run one matrix cell. The eval chat opens in the center column so you can watch the turn live.'
-    if (phase === 'running') return 'Starting turn…'
-    if (phase === 'grading' && running) return `Turn in flight · ${providerLabel(active?.provider ?? provider)}`
-    if (phase === 'grading' && turn?.status === 'running') return 'Waiting for provider…'
-    if (phase === 'grading') return 'Exporting and grading…'
+    if (phase === 'running') return `Running · ${providerLabel(provider)} — watch the chat column.`
     if (phase === 'done') return grade?.allPass ? 'All graders passed.' : 'Some graders failed.'
     return error ?? 'Something went wrong.'
   })()
@@ -140,14 +100,14 @@ export function EvalRunSheet({ open, onClose, initialScenarioId, initialProvider
 
       <label className="eval-field">
         <span>Scenario</span>
-        <select value={scenarioId} disabled={phase === 'running' || phase === 'grading'} onChange={(event) => setScenarioId(event.target.value)}>
+        <select value={scenarioId} disabled={phase === 'running'} onChange={(event) => setScenarioId(event.target.value)}>
           {scenarios.map((row) => <option key={row.id} value={row.id}>{row.id}</option>)}
         </select>
       </label>
 
       <label className="eval-field">
         <span>Provider</span>
-        <select value={provider} disabled={!scenario || phase === 'running' || phase === 'grading'} onChange={(event) => setProvider(event.target.value as ProviderId)}>
+        <select value={provider} disabled={!scenario || phase === 'running'} onChange={(event) => setProvider(event.target.value as ProviderId)}>
           {(scenario?.matrix ?? []).map((cell) => (
             <option key={cell.provider} value={cell.provider}>{providerLabel(cell.provider)}</option>
           ))}
@@ -161,7 +121,7 @@ export function EvalRunSheet({ open, onClose, initialScenarioId, initialProvider
           min={0}
           max={Math.max(0, (scenario?.trials ?? 1) - 1)}
           value={trial}
-          disabled={!scenario || phase === 'running' || phase === 'grading'}
+          disabled={!scenario || phase === 'running'}
           onChange={(event) => setTrial(Number(event.target.value))}
         />
       </label>
@@ -178,13 +138,13 @@ export function EvalRunSheet({ open, onClose, initialScenarioId, initialProvider
         <button
           type="button"
           className="eval-run"
-          disabled={!scenario || phase === 'running' || phase === 'grading'}
+          disabled={!scenario || phase === 'running'}
           onClick={() => void run()}
         >
-          {phase === 'running' || phase === 'grading' ? 'Running…' : 'Run'}
+          {phase === 'running' ? 'Running…' : 'Run'}
         </button>
-        {active && (
-          <button type="button" className="text-button" onClick={() => void openChat(active.chatId)}>Focus eval chat</button>
+        {focusChatId && (
+          <button type="button" className="text-button" onClick={() => void openChat(focusChatId)}>Focus eval chat</button>
         )}
       </div>
 

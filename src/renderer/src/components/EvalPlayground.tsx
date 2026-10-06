@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FlaskConical, Plus } from 'lucide-react'
+import { FlaskConical, Play, Plus } from 'lucide-react'
 import { providerLabel, type ProviderId } from '../../../shared/types.ts'
 import { call } from '../host.ts'
+import { runScenarioCell } from '../eval-run.ts'
 
 type Scenario = {
   id: string
@@ -29,7 +30,7 @@ type CellState = {
 
 type Props = {
   datasets: Array<{ id: string; rows: DatasetRow[] }>
-  onRunCell: (seed: { scenarioId: string; provider: ProviderId; trial?: number; rowId?: string }) => void
+  onFinished?: () => void
 }
 
 const TASK_DOTS = ['#fafafa', '#a78bfa', '#60a5fa', '#34d399']
@@ -39,7 +40,7 @@ function applyInput(template: string, input: string): string {
   return `${template}\n\nInput: ${input}`
 }
 
-export function EvalPlayground({ datasets, onRunCell }: Props) {
+export function EvalPlayground({ datasets, onFinished }: Props) {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [scenarioId, setScenarioId] = useState('')
   const [datasetId, setDatasetId] = useState('')
@@ -47,6 +48,8 @@ export function EvalPlayground({ datasets, onRunCell }: Props) {
   const [compareMode, setCompareMode] = useState<'base' | string>('base')
   const [filter, setFilter] = useState('')
   const [cells, setCells] = useState<Record<string, CellState>>({})
+  const [busy, setBusy] = useState(false)
+  const [runError, setRunError] = useState<string | null>(null)
 
   useEffect(() => {
     void call('eval.listScenarios', {}).then((data) => {
@@ -56,6 +59,12 @@ export function EvalPlayground({ datasets, onRunCell }: Props) {
   }, [])
 
   const scenario = useMemo(() => scenarios.find((s) => s.id === scenarioId) ?? null, [scenarios, scenarioId])
+
+  useEffect(() => {
+    if (!scenario) return
+    if (datasets.some((d) => d.id === scenario.id)) setDatasetId(scenario.id)
+    else if (!datasetId && datasets[0]) setDatasetId(datasets[0].id)
+  }, [scenario, datasets, datasetId])
 
   const tasks: Task[] = useMemo(() => {
     if (!scenario) return []
@@ -77,13 +86,6 @@ export function EvalPlayground({ datasets, onRunCell }: Props) {
     return []
   }, [datasets, datasetId, scenario])
 
-  useEffect(() => {
-    if (!datasetId && datasets[0]) setDatasetId(datasets[0].id)
-    if (scenario && !datasets.some((d) => d.id === scenario.id)) {
-      setDatasetId(datasets[0]?.id ?? scenario.id)
-    }
-  }, [datasets, datasetId, scenario])
-
   const filteredRows = useMemo(
     () => rows.filter((r) => r.input.toLowerCase().includes(filter.toLowerCase())),
     [rows, filter]
@@ -95,21 +97,62 @@ export function EvalPlayground({ datasets, onRunCell }: Props) {
     setCells((prev) => ({ ...prev, [key]: { ...prev[key], status: prev[key]?.status ?? 'idle', ...patch } }))
   }, [])
 
-  const runRow = (row: DatasetRow): void => {
+  const executeCell = useCallback(async (row: DatasetRow, task: Task): Promise<void> => {
     if (!scenario) return
-    for (const task of tasks) {
-      markCell(cellKey(row.id, task.id), { status: 'running' })
-      onRunCell({ scenarioId: scenario.id, provider: task.provider, trial: 0, rowId: row.id })
+    const key = cellKey(row.id, task.id)
+    markCell(key, { status: 'running', output: undefined })
+    setRunError(null)
+    try {
+      const result = await runScenarioCell({
+        scenarioId: scenario.id,
+        provider: task.provider,
+        trial: 0
+      })
+      markCell(key, { status: 'done', output: result.summary, pass: result.allPass })
+      onFinished?.()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      markCell(key, { status: 'error', output: message.slice(0, 120) })
+      setRunError(message)
+    }
+  }, [scenario, markCell, onFinished])
+
+  const runOne = (row: DatasetRow, task: Task): void => {
+    if (busy || !scenario) return
+    setBusy(true)
+    void executeCell(row, task).finally(() => setBusy(false))
+  }
+
+  const runRow = async (row: DatasetRow): Promise<void> => {
+    if (!scenario || tasks.length === 0) return
+    setBusy(true)
+    setRunError(null)
+    try {
+      for (const task of tasks) {
+        await executeCell(row, task)
+      }
+    } finally {
+      setBusy(false)
     }
   }
 
-  const runOne = (row: DatasetRow, task: Task): void => {
-    if (!scenario) return
-    markCell(cellKey(row.id, task.id), { status: 'running' })
-    onRunCell({ scenarioId: scenario.id, provider: task.provider, trial: 0, rowId: row.id })
+  const runAll = async (): Promise<void> => {
+    if (!scenario || filteredRows.length === 0) return
+    setBusy(true)
+    setRunError(null)
+    try {
+      for (const row of filteredRows) {
+        for (const task of tasks) {
+          await executeCell(row, task)
+        }
+      }
+    } finally {
+      setBusy(false)
+    }
   }
 
   const promptTemplate = scenario?.message ?? ''
+  const canRun = Boolean(scenario && tasks.length > 0 && filteredRows.length > 0 && !busy)
 
   return (
     <div className="eval-pg">
@@ -124,21 +167,26 @@ export function EvalPlayground({ datasets, onRunCell }: Props) {
             <select
               className="eval-pg-select"
               value={scenarioId}
+              disabled={busy}
               onChange={(ev) => { setScenarioId(ev.target.value); setCells({}) }}
             >
               {scenarios.map((s) => <option key={s.id} value={s.id}>{s.id}</option>)}
             </select>
           </label>
-          <select className="eval-pg-select" value={compareMode} onChange={(ev) => setCompareMode(ev.target.value)} aria-label="Comparison baseline">
+          <select className="eval-pg-select" value={compareMode} disabled={busy} onChange={(ev) => setCompareMode(ev.target.value)} aria-label="Comparison baseline">
             <option value="base">Comparison → Base</option>
             {tasks.filter((t) => t.role === 'comparison').map((t) => (
               <option key={t.id} value={t.id}>Comparison → {providerLabel(t.provider)}</option>
             ))}
           </select>
           <label className="eval-pg-diff">
-            <input type="checkbox" checked={diffOn} onChange={(ev) => setDiffOn(ev.target.checked)} />
+            <input type="checkbox" checked={diffOn} disabled={busy} onChange={(ev) => setDiffOn(ev.target.checked)} />
             Diff
           </label>
+          <button type="button" className="eval-bt-btn eval-bt-btn-primary eval-pg-run-main" disabled={!canRun} onClick={() => void runAll()}>
+            <Play size={14} aria-hidden fill="currentColor" />
+            {busy ? 'Running…' : 'Run'}
+          </button>
           <button type="button" className="eval-bt-btn" disabled title="Promote to Experiments after a matrix run">
             <FlaskConical size={14} aria-hidden />
             Experiments
@@ -148,6 +196,8 @@ export function EvalPlayground({ datasets, onRunCell }: Props) {
           </button>
         </div>
       </header>
+
+      {runError && <p className="eval-pg-run-error" role="alert">{runError}</p>}
 
       <div className="eval-pg-tasks" role="region" aria-label="Task definitions">
         {tasks.map((task, index) => (
@@ -197,12 +247,13 @@ export function EvalPlayground({ datasets, onRunCell }: Props) {
           className="eval-bt-filter"
           placeholder="Add filter…"
           value={filter}
+          disabled={busy}
           onChange={(ev) => setFilter(ev.target.value)}
         />
         <button type="button" className="eval-bt-btn eval-bt-btn-ghost" disabled>+ Row</button>
         <button type="button" className="eval-bt-btn eval-bt-btn-ghost" disabled>+ Task</button>
         <button type="button" className="eval-bt-btn eval-bt-btn-ghost" disabled>+ Scorer</button>
-        <select className="eval-pg-select" value={datasetId} onChange={(ev) => setDatasetId(ev.target.value)} aria-label="Dataset">
+        <select className="eval-pg-select" value={datasetId} disabled={busy} onChange={(ev) => setDatasetId(ev.target.value)} aria-label="Dataset">
           {datasets.map((d) => <option key={d.id} value={d.id}>Dataset · {d.id} ({d.rows.length})</option>)}
         </select>
         <button type="button" className="eval-bt-btn eval-bt-btn-ghost" disabled>Display</button>
@@ -238,16 +289,19 @@ export function EvalPlayground({ datasets, onRunCell }: Props) {
                 {tasks.map((task) => {
                   const key = cellKey(row.id, task.id)
                   const state = cells[key]
-                  const preview = state?.output ?? (state?.status === 'running' ? 'Running…' : 'This cell has not been run yet.')
+                  const preview = state?.output
+                    ?? (state?.status === 'running' ? 'Running…'
+                      : state?.status === 'error' ? 'Run failed'
+                        : 'This cell has not been run yet.')
                   return (
                     <td
                       key={task.id}
-                      className={`eval-pg-cell${state?.status === 'running' ? ' is-running' : ''}${diffOn && task.role === 'comparison' ? ' is-diff' : ''}`}
+                      className={`eval-pg-cell${state?.status === 'running' ? ' is-running' : ''}${state?.status === 'done' ? (state.pass ? ' is-pass' : ' is-fail') : ''}${state?.status === 'error' ? ' is-fail' : ''}${diffOn && task.role === 'comparison' ? ' is-diff' : ''}`}
                       role="button"
-                      tabIndex={0}
+                      tabIndex={busy ? -1 : 0}
                       title={applyInput(promptTemplate, row.input).slice(0, 200)}
                       onClick={() => runOne(row, task)}
-                      onKeyDown={(ev) => { if (ev.key === 'Enter') runOne(row, task) }}
+                      onKeyDown={(ev) => { if (ev.key === 'Enter' && !busy) runOne(row, task) }}
                     >
                       {preview}
                     </td>
@@ -263,10 +317,15 @@ export function EvalPlayground({ datasets, onRunCell }: Props) {
       </div>
 
       <footer className="eval-pg-foot">
-        <button type="button" className="eval-bt-btn eval-bt-btn-primary" disabled={!scenario || tasks.length === 0} onClick={() => filteredRows[0] && runRow(filteredRows[0])}>
+        <button
+          type="button"
+          className="eval-bt-btn"
+          disabled={!canRun || filteredRows.length === 0}
+          onClick={() => void runRow(filteredRows[0]!)}
+        >
           Run row (all tasks)
         </button>
-        <span className="eval-bt-muted">Click a cell to run one provider; watch the turn in the chat column.</span>
+        <span className="eval-bt-muted">Run runs every visible row × task. Click a cell for one provider.</span>
       </footer>
     </div>
   )

@@ -2085,6 +2085,18 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 .eval-pg-cell:hover { background: rgba(255, 255, 255, 0.03); color: var(--text-3); }
 .eval-pg-cell.is-running { color: var(--accent); }
 .eval-pg-cell.is-diff { background: rgba(59, 130, 246, 0.04); }
+.eval-pg-cell.is-pass { color: #86efac; }
+.eval-pg-cell.is-fail { color: #fca5a5; }
+.eval-pg-run-main { font-weight: 600; }
+.eval-pg-run-error {
+  flex: none;
+  margin: 0;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: #fca5a5;
+  border-bottom: 1px solid rgba(248, 113, 113, 0.25);
+  background: rgba(248, 113, 113, 0.08);
+}
 .eval-pg-scorer-cell { color: var(--text-4); font-variant-numeric: tabular-nums; }
 .eval-pg-foot {
   flex: none;

@@ -330,10 +330,7 @@ export function EvalDashboard() {
   else if (view === 'datasets') content = renderDatasets()
   else if (view === 'dataset-detail' && selectedDataset) content = renderDatasetDetail(selectedDataset)
   else if (view === 'playgrounds') content = (
-    <EvalPlayground
-      datasets={datasets}
-      onRunCell={(seed) => openRun({ scenarioId: seed.scenarioId, provider: seed.provider, trial: seed.trial })}
-    />
+    <EvalPlayground datasets={datasets} onFinished={() => void load()} />
   )
   else content = renderPlaceholder(pageTitle)
 
