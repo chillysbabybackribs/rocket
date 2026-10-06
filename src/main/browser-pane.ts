@@ -125,7 +125,7 @@ export class BrowserPane {
       case 'suggestSelect': this.suggestions.select(Number(command.index)); break
       case 'suggestHide': this.suggestions.hide(); break
       case 'reading': void this.readingAction(command.action); break
-      case 'readingSpeed': console.log('RDEBUG main', command.speed); this.reading.setSpeed(Number(command.speed)); console.log('RDEBUG now', this.reading.speed); this.saveSoon(); break
+      case 'readingSpeed': this.reading.setSpeed(Number(command.speed)); this.saveSoon(); break
     }
   }
 

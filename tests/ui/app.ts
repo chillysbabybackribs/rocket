@@ -68,6 +68,15 @@ export const test = base.extend<{ rocket: Rocket }>({
         response.end(JSON.stringify(row))
         return
       }
+      // A long read, for hands-free reading.
+      if (path === '/long') {
+        const paragraph = '<p>The night train leaves at half past nine. The cabins are small, the sheets are real, and the blind has a gap at the bottom through which the fields go grey and then gold before breakfast.</p>'
+        response.setHeader('Content-Type', 'text/html')
+        response.end(`<!doctype html><title>A long read</title>
+          <style>body{font:19px/1.7 Georgia,serif;max-width:640px;margin:40px auto;padding:0 24px;background:#fbfaf7;color:#26272b}</style>
+          <h1>The slow return of the night train</h1>${paragraph.repeat(60)}<a href="/one">Next page</a>`)
+        return
+      }
       if (path !== '/one' && path !== '/two') {
         response.writeHead(404).end('Not found')
         return

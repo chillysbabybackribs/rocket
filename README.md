@@ -293,6 +293,19 @@ iframe's `chrome` still sees it empty for an instant, since the fill is a script
 native. Notification permission is the one tell left as is: Electron's permission handlers are
 yes/no, so a fresh site cannot be shown Chrome's "default" state.
 
+Hands-free reading scrolls the page at a steady pace (the double chevron at the right of the
+toolbar, or Alt+S; the design is `docs/mockups/reading-scroll.html`). While a tab reads, the
+button opens into a pill (`ReadingControl.tsx`): play/pause in a ring that fills with the page,
+a log-scale speed slider from ¼× to 8× (1× is 30 px/s; the maths is `src/shared/reading.ts`),
+the speed with the time the rest of the page takes, and stop. The scrolling runs in the page, in an
+isolated world of its own (`src/main/reading-scroll.ts`), so it moves every frame and sees the
+reader's own input: the wheel, scrollbar and scroll keys move the page and reading carries on from
+there half a second later, Space pauses, a click or typing pauses, and at the foot it waits a few
+seconds for a feed to load more before it calls the page done. Main starts and stops it, pauses a
+tab that leaves the screen, forgets it when the page navigates, takes Esc and Alt+↑/↓ (slower,
+faster), and asks the page on screen for its progress four times a second. The speed is shared by
+every tab and kept with the session in `browser-tabs.json`.
+
 Background tabs are hidden with `setVisible(false)`, so Chromium stops drawing them.
 `ROCKET_BROWSER_HIDE=park npm run dev` moves them off screen instead, the older way, in case a
 tab ever comes back blank; see the note in `src/main/browser-url.ts`.

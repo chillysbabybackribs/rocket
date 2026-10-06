@@ -570,10 +570,15 @@ export type BrowserTab = {
   muted: boolean
   /** Opened by a model for its own work. */
   agent: boolean
+  /** Hands-free reading in this tab, or null when it is not reading (src/main/reading-scroll.ts). */
+  reading: BrowserReading | null
 }
 
-/** Tabs in strip order: pinned ones first. */
-export type BrowserState = { tabs: BrowserTab[]; activeId: string | null }
+/** A tab's hands-free reading: how far down the page it is, and how long the rest takes at the current speed. */
+export type BrowserReading = { state: 'running' | 'paused' | 'end'; progress: number; secondsLeft: number }
+
+/** Tabs in strip order: pinned ones first. `readingSpeed` is the one speed every tab reads at. */
+export type BrowserState = { tabs: BrowserTab[]; activeId: string | null; readingSpeed: number }
 
 /** One browser tab, as a model is told about it. `id` is short (t3) and lasts until the app quits. */
 /** A file a model's browsing saved, in main's record of it. */
@@ -748,6 +753,9 @@ export type BrowserCommand =
   | { type: 'suggestHide' }
   /** Sent by the dropdown itself when a row is clicked. */
   | { type: 'suggestPick'; value: string }
+  /** Hands-free reading in the active tab: start or stop it, or pause and carry on (`toggle`). */
+  | { type: 'reading'; action: 'flip' | 'toggle' | 'stop' }
+  | { type: 'readingSpeed'; speed: number }
 
 export type ChatLinkTarget =
   | { kind: 'browser'; url: string }

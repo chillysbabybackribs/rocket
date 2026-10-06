@@ -1509,12 +1509,13 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   flex-direction: column;
   background: var(--chrome);
 }
-/* The address field sits in the middle of the toolbar whatever stands beside it. */
+/* The address field sits in the middle of the toolbar whatever stands beside it. `--bar-side`
+   keeps room on both sides for the reading control while it is open (reading.css). */
 .browser-bar {
   flex: none;
   height: 44px;
   display: grid;
-  grid-template-columns: 1fr minmax(0, 560px) 1fr;
+  grid-template-columns: minmax(var(--bar-side, 0px), 1fr) minmax(0, 560px) minmax(var(--bar-side, 0px), 1fr);
   align-items: center;
   gap: 8px;
   padding: 0 8px 0 6px;

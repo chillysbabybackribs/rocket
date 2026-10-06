@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Lock, RotateCw, Search, X } from 'lucide-react'
 import type { BrowserState, BrowserTab, Suggestion } from '../../../shared/types.ts'
 import { useApp } from '../store.ts'
 import { BrowserTabs } from './BrowserTabs.tsx'
+import { ReadingControl } from './ReadingControl.tsx'
 
 // The UI's half of the embedded browser: the tab strip, a toolbar, and an empty box whose
 // position is reported to main, which lays the active tab's page (a native view) exactly over
@@ -11,7 +12,7 @@ import { BrowserTabs } from './BrowserTabs.tsx'
 // top; the address field's dropdown is therefore drawn by main too, in a view above the page.
 
 const send = window.rocket.browser.send
-const EMPTY: BrowserState = { tabs: [], activeId: null }
+const EMPTY: BrowserState = { tabs: [], activeId: null, readingSpeed: 1 }
 
 /** How Safari shows an address at rest: the site's name alone, with a lock when it is secure. */
 function atRest(url: string): { kind: 'secure' | 'insecure' | 'other'; label: string } {
@@ -174,7 +175,7 @@ export function BrowserPanel() {
     >
       <BrowserTabs tabs={state.tabs} activeId={state.activeId} />
       <div className="browser-frame">
-        <div className="browser-bar">
+        <div className={`browser-bar${active?.reading ? ' is-reading' : ''}`}>
           <div className="browser-nav">
             <button type="button" className="icon-button" aria-label="Back" disabled={!active?.canGoBack} onClick={() => send({ type: 'back' })}>
               <ArrowLeft size={15} />
@@ -193,6 +194,9 @@ export function BrowserPanel() {
             </button>
           </div>
           <AddressField tab={active} />
+          <div className="browser-tools">
+            <ReadingControl tab={active} speed={state.readingSpeed} />
+          </div>
         </div>
         <div className="browser-stage" ref={stage} />
       </div>
