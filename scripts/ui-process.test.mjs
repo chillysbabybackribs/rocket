@@ -62,3 +62,45 @@ test('UI command preserves exit status and does not start work after interruptio
   controller.abort()
   assert.notEqual(await runCommand('/must/not/start', [], options), 0)
 })
+
+test('persistent UI supervisors receive stdin and callback failures clean up the child', { timeout: 10_000 }, async () => {
+  let output = ''
+  const status = await runCommand(process.execPath, ['-e', "process.stdin.once('data', data => { process.stdout.write(data); process.exit(0) })"], {
+    cwd: tmpdir(), env: process.env, signal: new AbortController().signal,
+    onOutput: data => { output += String(data) }, onStart: child => child.stdin.write('private request\n')
+  })
+  assert.equal(status, 0)
+  assert.equal(output, 'private request\n')
+  let pid
+  await assert.rejects(runCommand(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+    cwd: tmpdir(), env: process.env, signal: new AbortController().signal, onOutput: () => {},
+    onStart: child => { pid = child.pid; throw new Error('Setup failed') }, graceMs: 150
+  }), /Setup failed/)
+  assert.equal(await alive(pid), false)
+})
+
+test('an exited UI supervisor cannot leave a detached child behind', { timeout: 10_000 }, async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'rocket-ui-supervisor-'))
+  let pid
+  try {
+    await writeFile(join(dir, 'child.mjs'), `
+      import { writeFileSync } from 'node:fs'
+      process.on('SIGTERM', () => {})
+      writeFileSync('child.pid', String(process.pid))
+      setInterval(() => {}, 1000)
+    `)
+    await writeFile(join(dir, 'supervisor.mjs'), `
+      import { spawn } from 'node:child_process'
+      spawn(process.execPath, ['child.mjs'], {detached:true,stdio:'ignore'}).unref()
+      setTimeout(() => process.exit(9), 700)
+    `)
+    assert.equal(await runCommand(process.execPath, ['supervisor.mjs'], {
+      cwd: dir, env: process.env, signal: new AbortController().signal, onOutput: () => {}, cleanupOnExit: true, graceMs: 150
+    }), 9)
+    pid = Number(await readFile(join(dir, 'child.pid'), 'utf8'))
+    assert.equal(await alive(pid), false)
+  } finally {
+    if (pid) { try { process.kill(pid, 'SIGKILL') } catch {} }
+    await rm(dir, { recursive: true, force: true })
+  }
+})

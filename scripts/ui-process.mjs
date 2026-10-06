@@ -38,9 +38,9 @@ async function signalOwned(processes, signal) {
   }
 }
 
-async function stopTree(child, graceMs) {
+async function stopTree(child, graceMs, known = new Map()) {
   const root = await processInfo(child.pid)
-  const known = new Map(root ? [[root.pid, root]] : [])
+  if (root && !known.has(root.pid)) known.set(root.pid, root)
   const signalled = new Set()
   const deadline = Date.now() + graceMs
   while (Date.now() < deadline) {
@@ -60,29 +60,44 @@ async function stopTree(child, graceMs) {
   }
 }
 
-export async function runCommand(command, args, { cwd, env, signal, onOutput, onStart, graceMs = 1_000 }) {
+export async function runCommand(command, args, { cwd, env, signal, onOutput, onStart, cleanupOnExit = false, graceMs = 1_000 }) {
   if (signal.aborted) return 1
   const child = spawn(command, args, { cwd, env, detached: true, stdio: [onStart ? 'pipe' : 'ignore', 'pipe', 'pipe'] })
   for (const stream of [child.stdout, child.stderr]) stream.on('data', data => onOutput(data))
+  const known = new Map()
+  let tracking = Promise.resolve()
+  let tracker
+  if (cleanupOnExit && child.pid) {
+    const poll = async () => {
+      const root = await processInfo(child.pid)
+      if (root && !known.has(root.pid)) known.set(root.pid, root)
+      await discover(child.pid, known)
+    }
+    tracking = poll()
+    tracker = setInterval(() => { tracking = tracking.then(poll).catch(() => {}) }, 250)
+    tracker.unref()
+  }
   let stopping
   // Observe rejection immediately; the main await still reports cleanup failures.
   const stop = () => {
     if (child.pid) {
-      stopping ??= stopTree(child, graceMs)
+      stopping ??= tracking.then(() => stopTree(child, graceMs, known))
       void stopping.catch(() => {})
     }
   }
   signal.addEventListener('abort', stop, { once: true })
   if (signal.aborted) stop()
   try {
-    onStart?.(child)
+    try { onStart?.(child) } catch (error) { stop(); throw error }
     const result = await new Promise((resolve, reject) => {
       child.once('error', reject)
       child.once('close', code => resolve(code ?? 1))
     })
+    if (cleanupOnExit) stop()
     if (stopping) await stopping
     return signal.aborted ? 1 : result
   } finally {
+    clearInterval(tracker)
     signal.removeEventListener('abort', stop)
     if (stopping) await stopping
   }

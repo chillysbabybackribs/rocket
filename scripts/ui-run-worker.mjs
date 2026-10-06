@@ -25,7 +25,7 @@ function locator(surface, chain = []) {
   for (const method of ['click', 'dblclick', 'fill', 'press', 'pressSequentially', 'hover', 'check', 'uncheck', 'selectOption', 'scrollIntoViewIfNeeded', 'waitFor', 'count', 'isVisible', 'isEnabled', 'textContent', 'innerText', 'inputValue', 'getAttribute', 'boundingBox']) {
     result[method] = (...args) => call({ type: 'locator', surface, chain, method, args })
   }
-  result.evaluate = (fn, arg) => call({ type: 'evaluate', surface, chain, expression: expression(fn, arg) })
+  result.evaluate = (fn, arg) => call({ type: 'evaluate', surface, chain, expression: `(element) => (${fn})(element, ${arg === undefined ? 'undefined' : JSON.stringify(arg)})` })
   return result
 }
 function page(surface) {

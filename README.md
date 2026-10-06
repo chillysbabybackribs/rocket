@@ -184,7 +184,54 @@ cannot verify overlap or stacking. Full-resolution PNGs and `snapshot.json` are 
 Snapshots show the running instance, so source edits may still require a rebuild or reload.
 This read-only tool is always available to all providers; it does not require self-check mode.
 
-Besides the browser and snapshot tools there is `remember` (see Workspace and memory), `ask_user` (below),
+`rocket_ui_run` (`src/host/tools/ui-run.ts`, `scripts/ui-runner.mjs`) drives an isolated
+Rocket instance through a persistent Playwright-style session belonging to the calling chat.
+The first call typechecks and builds current Rocket source into its own app folder under
+`.artifacts/ui-run/`, then launches Electron on a private Xvfb display with a marked fresh
+profile, scratch workspace, controlled providers and the same app/browser network filter as
+the desktop self-check. The live app's build, chats, browser login and keyboard focus are not
+used. All providers in the same chat share its inspection session.
+
+The tool accepts `code`, the body of an async function, with `page`, `ui`, `sleep` and
+`console`. Await every action. `page.getByRole`, `getByText`, `getByLabel`, `getByPlaceholder`,
+`getByTestId` and CSS `locator` support locator chaining, clicks, filling, keys, hovering,
+visibility waits and reads. Locator option names/text must be strings, not regular expressions.
+Use DOM evaluation for inspection, never to mutate renderer state to manufacture a passing UI.
+For example:
+
+```js
+await page.locator('.composer-folder').click()
+await page.getByRole('textbox', { name: 'Message', exact: true }).fill('UI check: plan')
+await page.getByRole('button', { name: 'Send', exact: true }).click()
+await page.getByRole('complementary', { name: 'Plan', exact: true }).waitFor({ state: 'visible' })
+await ui.snapshot()
+await ui.release()
+await page.getByRole('button', { name: 'Stop', exact: true }).waitFor({ state: 'hidden' })
+return await page.locator('.turn').last().innerText()
+```
+
+`ui.surface('browser' | 'suggestions')` returns the page API for a native view;
+`ui.resize(width, height)` accepts 880×560 through 2400×1400; `ui.read()` returns shell
+controls and panels; `ui.snapshot()` includes a capture in the result; `ui.request()` reads
+the latest controlled turn; `ui.release()` finishes a held response or plan; `ui.restart()`
+restarts the same profile and build. Select the scratch folder through the normal folder
+button before sending controlled `UI check:` prompts. Stream, stop, recover and plan wait
+for release; fail, ask, edit and work are also supported. Ordinary prompts fail instead of
+starting real provider CLIs.
+
+Later calls reuse the UI state. `reset=true` discards the session and rebuilds current source;
+`build=false` uses the existing `out/` build when starting a new session; `close=true` closes
+the session without a script. A final snapshot is included by default; `capture=false` skips
+it on success, while script failures still capture. Results identify the isolated instance,
+build and saved paths, and include script logs and renderer errors. The default script timeout
+is 30 seconds (maximum 120), with a separate three-minute build/startup deadline. Scripts run
+in worker threads, so an infinite loop can be stopped; a timeout discards the session. Four
+sessions may be open at once, and idle sessions close after ten minutes. Chat deletion and
+host shutdown close their sessions; subprocess cleanup covers detached Electron descendants.
+Captures, per-call JSON results, `runner.log` and traces remain in the session directory.
+`rocket_ui_snapshot` continues to show the live app; `rocket_ui_run` shows the isolated app.
+
+Besides the browser and UI tools there is `remember` (see Workspace and memory), `ask_user` (below),
 `goal_report` (see Goals) and, with `ROCKET_SELF_CHECK=1`, the three self-check tools. Every
 tool's schema is in every session's prompt, so what a model should simply know goes ahead of the
 user's message instead (tabs, the file map, notes, trouble reports), and a tool is added only for

@@ -384,6 +384,9 @@ export type BrowserAgentReply =
   | { type: 'browserReply'; id: number; ok: true; result: unknown }
   | { type: 'browserReply'; id: number; ok: false; error: string }
 
+/** Host → isolated UI supervisor, over its private JSON-lines stdin. */
+export type UiRunRequest = { id: number; code?: string; timeout?: number; capture?: boolean; close?: boolean }
+
 export type Bounds = { x: number; y: number; width: number; height: number }
 
 /** One row of the address field's dropdown. `value` is what choosing it navigates to. */

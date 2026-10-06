@@ -2,7 +2,7 @@ import { _electron } from 'playwright'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:http'
 import { mkdir, readFile, writeFile, symlink } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { Worker } from 'node:worker_threads'
 import { runCommand } from './ui-process.mjs'
@@ -84,9 +84,24 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { void clos
 async function surface(kind) {
   if (kind === 'shell') return shell
   if (!['browser', 'suggestions'].includes(kind)) throw new Error('Choose shell, browser or suggestions as the UI surface.')
-  const matches = page => kind === 'browser' ? page.url().startsWith(origin) : page.url().endsWith('/suggest.html')
-  const current = application.context().pages().find(matches)
-  return current ?? application.context().waitForEvent('page', { predicate: matches, timeout: 10_000 })
+  const deadline = Date.now() + 10_000
+  while (Date.now() < deadline) {
+    // Resolve the visible native view each time, including after navigation or switching
+    // between tabs with identical URLs. The local fixture need not remain the active page.
+    const url = await application.evaluate(({ BrowserWindow, WebContentsView }, kind) => {
+      const views = BrowserWindow.getAllWindows()[0].contentView.children
+      const current = views.find(view => view instanceof WebContentsView && view.getVisible()
+        && (kind === 'suggestions' ? view.webContents.getURL().endsWith('/suggest.html') : !view.webContents.getURL().endsWith('/suggest.html')))
+      return current?.webContents.getURL()
+    }, kind)
+    const candidates = application.context().pages().filter(page => page.url() === url)
+    if (candidates.length === 1) return candidates[0]
+    for (const candidate of candidates) {
+      if (await candidate.evaluate(() => document.visibilityState === 'visible').catch(() => false)) return candidate
+    }
+    await new Promise(resolve => setTimeout(resolve, 25))
+  }
+  throw new Error(`The ${kind} surface is not open. Open it through the app UI first.`)
 }
 
 async function snapshot() {
@@ -105,7 +120,10 @@ const ACTIONS = new Set(['click', 'dblclick', 'fill', 'press', 'pressSequentiall
 async function operate(op, captures) {
   switch (op.type) {
     case 'surface': await surface(op.surface); return null
-    case 'snapshot': { const capture = await snapshot(); captures.push(capture); return capture.metadata }
+    case 'snapshot': {
+      if (captures.length >= 5) throw new Error('Use at most five explicit snapshots per UI script; continue inspecting in another call.')
+      const capture = await snapshot(); captures.push(capture); return capture.metadata
+    }
     case 'read': return (await snapshot()).metadata.shell
     case 'request': return JSON.parse(await readFile(join(profile, 'ui-request.json'), 'utf8'))
     case 'release': {
@@ -170,10 +188,10 @@ async function run(request) {
   await worker.terminate()
   // Capture failure states as evidence too. A timed-out operation may still be in flight, so
   // discard that session instead of letting it change the UI underneath a later script.
-  if (outcome.timedOut) await closeApp()
-  else if (request.capture !== false || !outcome.ok) {
+  if (request.capture !== false || !outcome.ok) {
     try { captures.push(await snapshot()) } catch (error) { logs.push(`Capture failed: ${error.message}`); outcome.ok = false; outcome.error ??= error.message }
   }
+  if (outcome.timedOut) await closeApp()
   const result = { ...outcome, type: undefined, session: { ...session, origin, open: !!application }, logs, errors: [...errors], captures }
   if (errors.length) { result.ok = false; result.error ??= 'The inspected app reported renderer errors. Read errors and runner.log.' }
   await writeFile(join(directory, `run-${request.id}.json`), JSON.stringify({ ...result, captures: captures.map(capture => capture.metadata) }, null, 2))
