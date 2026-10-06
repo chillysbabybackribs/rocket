@@ -432,6 +432,10 @@ redacted arguments and artifact references. Failure rates include successes in t
 version/operation scope. UI operation failures are distinct from script-authored exceptions.
 History stays out of session prompts; tool descriptions are not automatically rewritten.
 
+`rocket_tool_review` records investigator annotations separately from call evidence: lifecycle
+stage, cause notes, proposed fix and optional retry links. Use `action=queue` to list failures
+still needing review.
+
 Records are pruned after 30 days or beyond 10,000 finished/previous-instance calls, at startup
 and every 100 starts. Active calls are preserved. Captures and traces are not deleted by ledger
 pruning. See [tool-failure-history.md](docs/tool-failure-history.md) for format, redaction,

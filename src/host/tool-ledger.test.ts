@@ -7,6 +7,7 @@ import test from 'node:test'
 import { ToolLedger, safeEvidence, normalizedError } from './tool-ledger.ts'
 import { failureResult, ToolRegistry, type Tool } from './tools/registry.ts'
 import { toolHistoryTools } from './tools/tool-history.ts'
+import { toolReviewTools } from './tools/tool-review.ts'
 
 const context = { provider: 'codex' as const, chatId: 'chat-1' }
 const tool: Tool = { name: 'probe', description: 'Probe a fixture.', inputSchema: { type: 'object' }, run: () => ({ content: [] }) }
@@ -106,6 +107,36 @@ test('query tool validates filters and bounds JSON responses without returning a
     const data = JSON.parse(response.content[0].text)
     assert.equal(data.truncated, true)
     assert.equal(data.calls[0].arguments, undefined)
+  } finally { f.ledger.close(); f.cleanup() }
+})
+
+test('review annotations stay separate, support retry links and a bounded queue', async () => {
+  const f = fixture()
+  try {
+    const failId = f.ledger.start('probe', tool, { pane: 'top-right' }, context)
+    f.ledger.finish(failId, failureResult('AMBIGUOUS_TARGET', 'Two matching targets.', 'operation'))
+    const okId = f.ledger.start('probe', tool, {}, context)
+    f.ledger.finish(okId, { content: [{ type: 'text', text: '{}' }] })
+    const reviewTool = toolReviewTools(f.ledger)[0]
+    const missing = await reviewTool.run({ action: 'get', callId: '00000000-0000-4000-8000-000000000000' }, context)
+    assert.equal(missing.structuredContent?.error?.code, 'NOT_FOUND')
+    const annotated = await reviewTool.run({ action: 'annotate', callId: failId, lifecycle: 'diagnosed', causeCode: 'AMBIGUOUS_TARGET', causeNote: 'Matched greeting text in another pane.', proposedFix: 'Select pane by tab label or pane id.' }, context)
+    assert.equal(JSON.parse(String(annotated.content[0].type === 'text' && annotated.content[0].text)).review.lifecycle, 'diagnosed')
+    const linked = await reviewTool.run({ action: 'link_retry', callId: failId, retryCallId: okId }, context)
+    assert.equal(JSON.parse(String(linked.content[0].type === 'text' && linked.content[0].text)).review.retryCallId, okId)
+    const detail = (f.ledger.query({ callId: failId, since: 0 }) as any).calls[0]
+    assert.equal(detail.review.lifecycle, 'diagnosed')
+    assert.equal(detail.finish.error.code, 'AMBIGUOUS_TARGET')
+    const queueResponse = await reviewTool.run({ action: 'queue', since: 0 }, context)
+    const queue = JSON.parse(String(queueResponse.content[0].type === 'text' && queueResponse.content[0].text))
+    assert.equal(queue.queue.some((row: any) => row.callId === failId), true)
+    await reviewTool.run({ action: 'annotate', callId: failId, lifecycle: 'verified' }, context)
+    const clearedResponse = await reviewTool.run({ action: 'queue', since: 0 }, context)
+    const cleared = JSON.parse(String(clearedResponse.content[0].type === 'text' && clearedResponse.content[0].text))
+    assert.equal(cleared.queue.some((row: any) => row.callId === failId), false)
+    f.advance(31 * 86_400_000)
+    f.ledger.prune()
+    assert.equal(f.ledger.review(failId), null)
   } finally { f.ledger.close(); f.cleanup() }
 })
 

@@ -1,6 +1,6 @@
 # Tool failure history plan
 
-Status: first deliverable implemented and exercised through unit tests and the Electron MCP integration. Review/recovery annotations and regression promotion remain next. Full-project typecheck and the isolated source-build check currently encounter an unrelated unused-property error in `src/host/eval-export.ts:122`, which is being changed in another chat.
+Status: review annotations and retry links are implemented (step 5). Regression promotion and retention verification remain next. Full-project typecheck and the isolated source-build check currently encounter an unrelated unused-property error in `src/host/eval-export.ts:122`, which is being changed in another chat.
 
 ## Objective
 
@@ -10,7 +10,7 @@ Rocket already records tool errors in `journal.jsonl` and saves UI-run results a
 
 ## Implementation checklist
 
-**Progress: 4 of 7 steps complete.**
+**Progress: 5 of 7 steps complete.**
 
 
 - **✅ COMPLETE — 1. Define the record format.** Record every call with a unique ID, timestamps, tool and schema versions, app build, provider/model, chat/turn identity, arguments, duration, outcome, structured error, and artifact references. Keep observed facts separate from later diagnoses. Define record size limits and secret redaction rules.
@@ -21,7 +21,7 @@ Rocket already records tool errors in `journal.jsonl` and saves UI-run results a
 
 - **✅ COMPLETE — 4. Add bounded queries and deterministic grouping.** Filter by tool, version, error code, date, and outcome. Group using stable fields, with documented text normalization only as a fallback. Return counts, representative call IDs, and artifact links. Record successes to calculate failure rates.
 
-- **⬜ PENDING — 5. Track review and recovery separately.** Allow an investigator to link a retry, classify the cause, and attach a proposed fix. Keep annotations separate from original records. Track the lifecycle: unreviewed → diagnosed → regression added → fixed → verified.
+- **✅ COMPLETE — 5. Track review and recovery separately.** `rocket_tool_review` stores annotations in a separate table, links retries, and exposes a review queue. Original call evidence stays immutable; lifecycles run unreviewed → diagnosed → regression_added → fixed → verified.
 
 - **⬜ PENDING — 6. Turn lessons into regression cases.** Build controlled fixtures from selected failures. Start with the ambiguous pane selector: a conversation contains the same greeting as the empty pane. Verify that improved pane selection identifies the intended target. Replay tests in isolated apps, never automatically against live chats.
 
@@ -57,4 +57,5 @@ Rocket already records tool errors in `journal.jsonl` and saves UI-run results a
 - Bundling completed successfully. Full-project typecheck and the isolated runner's fresh-source check are blocked by the concurrent eval-export unused-property error noted above; that file was left untouched.
 - Recording begins in the live app after restart. No tool descriptions are automatically rewritten and no failed actions are replayed against live chats.
 - See [tool-failure-history.md](tool-failure-history.md) for record format, retention, redaction limitations and query examples.
-- Next: step 5, separate review annotations and explicit retry links. Steps 6–7 will complete the regression promotion workflow and remaining retention/context verification.
+- Step 5 adds `rocket_tool_review` (`get`, `annotate`, `link_retry`, `queue`) and embeds reviews on call-detail history lookups. Restart Rocket to load the new tool.
+- Next: step 6, turn the ambiguous pane-selector failure into an isolated regression case. Step 7 completes retention/context verification.

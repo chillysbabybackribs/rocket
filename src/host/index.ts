@@ -29,6 +29,7 @@ import { rocketSourceRoot, UiRunManager } from './tools/ui-run.ts'
 import { LiveUiRunner } from './tools/ui-live.ts'
 import { redactText, ToolLedger } from './tool-ledger.ts'
 import { toolHistoryTools } from './tools/tool-history.ts'
+import { toolReviewTools } from './tools/tool-review.ts'
 import { Teamwork } from './teamwork.ts'
 import { workspaceContext } from './workspace.ts'
 import { UiTestAdapter, uiTestProfile } from './ui-test.ts'
@@ -146,7 +147,7 @@ const tools = new ToolChannel(
     .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
     .add(...uiSnapshotTools(async () => await askBrowser({ op: 'uiSnapshot' }) as UiSnapshot))
     .add(...uiRuns.tools())
-    .add(...(ledger ? toolHistoryTools(ledger) : []))
+    .add(...(ledger ? [...toolHistoryTools(ledger), ...toolReviewTools(ledger)] : []))
     .add(...memoryTools(store))
     .add(...askTools(() => hub))
     .add(...goalTools(() => goals))

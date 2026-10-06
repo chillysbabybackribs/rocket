@@ -50,6 +50,21 @@ Lists omit arguments; an individual call lookup includes the redacted arguments.
 
 Result limits range from 1 to 50. The tool reduces list lengths to fit a 12 KB JSON response budget and returns valid JSON. If even one record exceeds that budget, it returns a truncation notice and the local database path. Full redacted records remain queryable locally in SQLite. Artifact references are available through call details.
 
+## Review annotations
+
+Investigator judgments live in a separate `reviews` table keyed by call ID. Original `calls` and `finishes` rows are never edited. Pruning a call removes its review row.
+
+Each review records creation and update times, lifecycle stage, optional cause code and notes, an optional proposed fix and an optional `retryCallId` pointing at a later call (typically a successful retry). Lifecycle stages are `diagnosed`, `regression_added`, `fixed` and `verified`. Failures without a review row are treated as `unreviewed`.
+
+`rocket_tool_review` supports:
+
+- `action=get` with `callId` — call evidence plus the review, if any.
+- `action=annotate` with `callId` and `lifecycle` — set or update cause/fix fields (bounded and redacted like other ledger text).
+- `action=link_retry` with `callId` and `retryCallId` — attach a retry link without changing other fields unless the call was still unreviewed (then lifecycle becomes `diagnosed`).
+- `action=queue` — list recent failures that still need attention (default excludes `verified`; use `lifecycle=unreviewed` to filter further).
+
+Call detail lookups through `rocket_tool_history` include an embedded `review` when present.
+
 ## Remaining work
 
-The review lifecycle, explicit retry links, diagnosis annotations and regression-case promotion are the next milestone. They will remain separate from the original evidence. The first integration regression already checks that an ambiguous selector produces a structured failure, preserves existing drafts, and can be retrieved through the history tool with successful calls included in its denominator.
+Regression-case promotion from reviewed failures and the remaining retention/context verification are next. The first integration regression already checks that an ambiguous selector produces a structured failure, preserves existing drafts, and can be retrieved through the history tool with successful calls included in its denominator.

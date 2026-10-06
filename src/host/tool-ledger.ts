@@ -46,6 +46,16 @@ export function safeEvidence(value: unknown, budget = 16_000): unknown {
 }
 
 export type LedgerQuery = { tool?: string; version?: string; code?: string; since?: number; until?: number; outcome?: string; limit?: number; callId?: string }
+export const REVIEW_LIFECYCLES = ['diagnosed', 'regression_added', 'fixed', 'verified'] as const
+export type ReviewLifecycle = typeof REVIEW_LIFECYCLES[number]
+export type ReviewRecord = {
+  callId: string; at: number; updatedAt: number; lifecycle: ReviewLifecycle; causeCode: string | null
+  causeNote: string | null; proposedFix: string | null; retryCallId: string | null
+}
+export type ReviewInput = {
+  lifecycle: ReviewLifecycle; causeCode?: string | null; causeNote?: string | null; proposedFix?: string | null; retryCallId?: string | null
+}
+export type ReviewQueueQuery = { since?: number; until?: number; lifecycle?: ReviewLifecycle | 'unreviewed'; limit?: number }
 type Start = {
   id: string; at: number; instance: string; formatVersion: number; tool: string; toolVersion: string; schemaHash: string
   build: string; descriptionBytes: number; provider: string; model: string | null; chatId: string | null; turnId: string | null
@@ -73,6 +83,12 @@ export class ToolLedger implements ToolObserver {
       CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, at INTEGER NOT NULL, instance TEXT NOT NULL, start TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS calls_at ON calls(at);
       CREATE TABLE IF NOT EXISTS finishes (id TEXT PRIMARY KEY REFERENCES calls(id) ON DELETE CASCADE, finish TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS reviews (
+        call_id TEXT PRIMARY KEY REFERENCES calls(id) ON DELETE CASCADE,
+        at INTEGER NOT NULL, updated_at INTEGER NOT NULL, lifecycle TEXT NOT NULL,
+        cause_code TEXT, cause_note TEXT, proposed_fix TEXT,
+        retry_call_id TEXT REFERENCES calls(id) ON DELETE SET NULL);
+      CREATE INDEX IF NOT EXISTS reviews_lifecycle ON reviews(lifecycle);
       PRAGMA foreign_keys=ON;`)
     this.prune()
   }
@@ -126,10 +142,76 @@ export class ToolLedger implements ToolObserver {
     })
   }
 
+  private boundedNote(text: string | null | undefined, max = 2000): string | null {
+    if (text == null || text === '') return null
+    const cleaned = redactText(String(text)).trim()
+    return cleaned ? cleaned.slice(0, max) : null
+  }
+
+  private callExists(id: string): boolean {
+    return Boolean(this.db.prepare('SELECT 1 FROM calls WHERE id=?').get(id))
+  }
+
+  review(callId: string): ReviewRecord | null {
+    const row = this.db.prepare('SELECT call_id, at, updated_at, lifecycle, cause_code, cause_note, proposed_fix, retry_call_id FROM reviews WHERE call_id=?').get(callId) as
+      | { call_id: string; at: number; updated_at: number; lifecycle: string; cause_code: string | null; cause_note: string | null; proposed_fix: string | null; retry_call_id: string | null }
+      | undefined
+    if (!row || !REVIEW_LIFECYCLES.includes(row.lifecycle as ReviewLifecycle)) return null
+    return { callId: row.call_id, at: row.at, updatedAt: row.updated_at, lifecycle: row.lifecycle as ReviewLifecycle,
+      causeCode: row.cause_code, causeNote: row.cause_note, proposedFix: row.proposed_fix, retryCallId: row.retry_call_id }
+  }
+
+  upsertReview(callId: string, input: ReviewInput): ReviewRecord {
+    if (!this.callExists(callId)) throw new Error(`Unknown call ID ${callId}.`)
+    if (!REVIEW_LIFECYCLES.includes(input.lifecycle)) throw new Error(`Unsupported lifecycle ${input.lifecycle}.`)
+    const retryCallId = input.retryCallId ?? null
+    if (retryCallId && !this.callExists(retryCallId)) throw new Error(`Unknown retry call ID ${retryCallId}.`)
+    const at = this.now()
+    const existing = this.review(callId)
+    const causeCode = input.causeCode === undefined ? existing?.causeCode ?? null : this.boundedNote(input.causeCode, 120)
+    const causeNote = input.causeNote === undefined ? existing?.causeNote ?? null : this.boundedNote(input.causeNote)
+    const proposedFix = input.proposedFix === undefined ? existing?.proposedFix ?? null : this.boundedNote(input.proposedFix)
+    const row: ReviewRecord = { callId, at: existing?.at ?? at, updatedAt: at, lifecycle: input.lifecycle, causeCode, causeNote, proposedFix, retryCallId: retryCallId ?? existing?.retryCallId ?? null }
+    this.db.prepare(`INSERT INTO reviews (call_id, at, updated_at, lifecycle, cause_code, cause_note, proposed_fix, retry_call_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(call_id) DO UPDATE SET updated_at=excluded.updated_at, lifecycle=excluded.lifecycle, cause_code=excluded.cause_code,
+      cause_note=excluded.cause_note, proposed_fix=excluded.proposed_fix, retry_call_id=excluded.retry_call_id`).run(
+      row.callId, row.at, row.updatedAt, row.lifecycle, row.causeCode, row.causeNote, row.proposedFix, row.retryCallId)
+    return row
+  }
+
+  linkRetry(callId: string, retryCallId: string): ReviewRecord {
+    if (callId === retryCallId) throw new Error('A call cannot retry itself.')
+    const existing = this.review(callId)
+    return this.upsertReview(callId, { lifecycle: existing?.lifecycle ?? 'diagnosed', retryCallId })
+  }
+
+  reviewQueue(query: ReviewQueueQuery = {}) {
+    const since = query.since ?? this.now() - 86_400_000 * 7
+    const until = query.until ?? this.now()
+    const limit = Math.max(1, Math.min(50, Math.floor(query.limit ?? 20)))
+    const rows = this.rows({ since, until, limit: MAX_CALLS }).filter(row => row.outcome === 'failure')
+    const items = rows.flatMap(row => {
+      const review = this.review(row.id)
+      const lifecycle = review?.lifecycle ?? 'unreviewed'
+      if (query.lifecycle === 'unreviewed' && review) return []
+      if (query.lifecycle && query.lifecycle !== 'unreviewed' && lifecycle !== query.lifecycle) return []
+      if (!query.lifecycle && lifecycle === 'verified') return []
+      return [{ callId: row.id, at: row.at, tool: row.tool, operation: row.operation, code: row.finish?.error?.code ?? null,
+        lifecycle, retryCallId: review?.retryCallId ?? null, causeCode: review?.causeCode ?? null }]
+    })
+    return { path: this.path, matching: items.length, queue: items.slice(0, limit), truncated: items.length > limit,
+      lifecycleOrder: ['unreviewed', ...REVIEW_LIFECYCLES] }
+  }
+
   query(query: LedgerQuery = {}) {
     const limit = Math.max(1, Math.min(50, Math.floor(query.limit ?? 20)))
     const rows = this.rows(query).filter(row => (!query.outcome || row.outcome === query.outcome) && (!query.code || row.finish?.error?.code === query.code))
-    return { path: this.path, matching: rows.length, calls: rows.slice(0, limit), truncated: rows.length > limit }
+    const calls = rows.slice(0, limit).map(row => {
+      const review = query.callId ? this.review(row.id) : undefined
+      return review ? { ...row, review } : row
+    })
+    return { path: this.path, matching: rows.length, calls, truncated: rows.length > limit }
   }
 
   summary(query: LedgerQuery = {}) {
