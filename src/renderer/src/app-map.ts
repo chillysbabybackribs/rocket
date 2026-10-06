@@ -57,7 +57,7 @@ export function where(): UiWhere {
         filter: evals.playground.filter, busy: evals.playground.busy, error: evals.playground.error,
         cells: Object.entries(evals.playground.cells).map(([key, cell]) => {
           const [rowId = '', taskId = ''] = key.split('::')
-          return { row: Number(rowId) + 1 || 1, provider: taskId.replace(/-\d+$/, '') as ProviderId, status: cell.status, pass: cell.pass ?? null, output: cell.output ?? null }
+          return { rowId, provider: taskId.replace(/-\d+$/, '') as ProviderId, status: cell.status, pass: cell.pass ?? null, output: cell.output ?? null }
         })
       },
       runSheet: { open: evals.runSheet.open, scenario: evals.runSheet.scenarioId, provider: evals.runSheet.provider, trial: evals.runSheet.trial, phase: evals.runSheet.phase, chatId: evals.runSheet.chatId, error: evals.runSheet.error, grades: evals.runSheet.grades },
@@ -110,7 +110,7 @@ function paneIndex(params: Params, name = 'pane', required = false): number {
 
 async function scenarioNamed(id: string | undefined, fallback: string): Promise<Scenario> {
   const { scenarios } = await call('eval.listScenarios', {})
-  const wanted = id ?? fallback ?? scenarios[0]?.id
+  const wanted = id || fallback || scenarios[0]?.id
   const found = scenarios.find((entry) => entry.id === wanted)
   if (!found) throw new Error(`There is no scenario "${wanted ?? ''}". The scenarios are ${scenarios.map((entry) => entry.id).join(', ') || 'none; add one under evals/'}.`)
   return found

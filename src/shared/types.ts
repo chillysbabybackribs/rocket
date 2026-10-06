@@ -557,7 +557,7 @@ export type UiWhere = {
     datasetId: string | null
     playground: {
       scenario: string; dataset: string; compare: string; diff: boolean; filter: string; busy: boolean; error: string | null
-      cells: Array<{ row: number; provider: ProviderId; status: string; pass: boolean | null; output: string | null }>
+      cells: Array<{ rowId: string; provider: ProviderId; status: string; pass: boolean | null; output: string | null }>
     }
     runSheet: { open: boolean; scenario: string; provider: ProviderId; trial: number; phase: string; chatId: string | null; error: string | null; grades: Array<{ name: string; pass: boolean; reason?: string }> | null }
     tools: { section: 'health' | 'evaluate' }

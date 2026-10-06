@@ -4,7 +4,7 @@ import { providerLabel } from '../../../shared/types.ts'
 import { act, go } from '../app-map.ts'
 import { call } from '../host.ts'
 import { cellKey, playgroundRows, playgroundTasks, visibleRows, type Dataset, type Scenario } from '../eval-run.ts'
-import { patchPlayground, useApp } from '../store.ts'
+import { patchPlayground, peekState, useApp } from '../store.ts'
 
 // The playground is a view of the store's `evals.playground`: what it shows and what is running
 // come from there, and every button goes through the app map, so rocket_ui_act runs the same
@@ -19,9 +19,9 @@ export function EvalPlayground({ datasets }: { datasets: Dataset[] }) {
   useEffect(() => {
     void call('eval.listScenarios', {}).then((data) => {
       setScenarios(data.scenarios)
-      if (!scenarioId && data.scenarios[0]) patchPlayground({ scenarioId: data.scenarios[0].id })
+      if (!peekState().evals.playground.scenarioId && data.scenarios[0]) patchPlayground({ scenarioId: data.scenarios[0].id })
     })
-  }, [scenarioId])
+  }, [])
 
   const scenario = useMemo(() => scenarios.find((s) => s.id === scenarioId) ?? null, [scenarios, scenarioId])
 

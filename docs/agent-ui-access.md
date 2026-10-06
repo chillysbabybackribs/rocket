@@ -2,43 +2,47 @@
 
 ## Problem
 
-Models often behave as if they were a generic cloud assistant: they guess UI state, confuse the **built-in browser** with the **Rocket app shell**, and skip live inspection even when the user is staring at the same window.
+Models often behave as if they were a generic cloud assistant: they guess UI state, confuse the **built-in browser** with the **Rocket app shell**, and skip live inspection even when the user is staring at the same window. Told "run a tool eval" with the eval panel closed, they searched a 1600px screenshot for a button, clicked through `rocket_ui_run` with guessed locators (two `Message` textboxes, `page.waitForTimeout` that does not exist), and wrote paragraphs about CSS instead of doing the four-step thing.
 
-That is a **global positioning** issue, not an eval feature or a one-off prompt tweak.
+The app is finite. Navigation should be deterministic, by name, with the same code a click runs.
 
 ## Design
 
-Every user message sent through the hub is prefixed with context blocks (see `hub.ts` → `context` callback in `index.ts`):
+**The app map** (`src/shared/app-map.ts`) names every place and action, hand-written:
 
-| Block | When | Purpose |
-|-------|------|---------|
-| `<agent-environment>` | **Every turn** | Where the agent runs, local MCP host, shell vs browser, when to snapshot/drive UI |
-| `<workspace>` | Fresh session (+ notes delta) | Cwd, file map, remember notes |
-| `<others>` | When relevant | Parallel assistants, recent edits |
-| `<browser>` | When tabs change | Open browser tabs |
-| `<git>` | Fresh session | Commit rules |
+| | Examples |
+|---|---|
+| Places (`rocket_ui_go`) | `chat`, `browser`, `evals.playgrounds {scenario, dataset, compare, diff}`, `evals.experiment {id}`, `evals.tools {section}` |
+| Actions (`rocket_ui_act`) | `pane.add`, `pane.close {pane}`, `chat.open {chatId}`, `evals.playgrounds.run {row, provider, wait}`, `evals.runSheet.run {scenario, provider, trial, wait}`, `evals.tools.refresh` |
 
-Implementation: `src/host/agent-situation.ts` — `agentSituationContext()`.
+**One dispatcher** (`src/renderer/src/app-map.ts`): `where()`, `go()`, `act()`. The dashboard's buttons call it; main's `uiMap` op calls it for the host's tools. Its handler tables are typed against the map, so a map entry without a handler fails `npm run typecheck`. The eval dashboard's navigation and run state moved into the store so the dispatcher can read and set them.
 
-Tool descriptions for `rocket_ui_snapshot` / `rocket_ui_run` add a short shell-vs-browser note for MCP-only discovery (e.g. Antigravity `<app-tools>` on first message).
+**Per turn**, `<agent-environment>` (`src/host/agent-situation.ts`) now carries a live line read from the renderer as the turn starts:
 
-## What models should internalize
+```
+Where you are: 3 chat panes, this chat is pane 1 (ui.pane(1)) (pane 0: run a research task…; pane 2: hello); evals open at evals.playgrounds, scenario goal-draft-minimal.
+```
 
-1. **Embedded in Rocket on the user's machine** — tools hit loopback MCP, not a remote sandbox.
-2. **Two visual surfaces** — browser tabs vs app shell; different tools.
-3. **Look before claiming UI** — `rocket_ui_snapshot` when layout/visibility matters.
-4. **Act on the live app** — `rocket_ui_run` (default live), not isolated, for normal tasks.
+followed by the map, so a model knows its pane (no more strict-mode locator failures) and what is on screen before it reads the user's message.
 
-Eval panel, tool ledger, and playground are just parts of the shell; they are not called out separately in `<agent-environment>`.
+**Tools** (`src/host/tools/ui-map.ts`): `rocket_ui_where` (state only), `rocket_ui_go` and `rocket_ui_act` (state plus an image of the window afterwards). A wrong name or parameter is refused with the valid choices; nothing moves. Long runs return after `wait` seconds as still running; `rocket_ui_where` follows the cells.
 
-## Eval UI Tools tab
+`rocket_ui_snapshot` stays the read-only look; `rocket_ui_run` stays for what the map does not cover (UI a model is building that has no name yet).
 
-The eval panel **Tools** view (`EvalToolsPanel`) surfaces registered MCP tools and `rocket_tool_history` for humans and debugging. It does not replace message-level `<agent-environment>` for models.
+## The loop a model should run
+
+1. Read "Where you are" (or call `rocket_ui_where`).
+2. `rocket_ui_go` to the place by name, with its parameters.
+3. `rocket_ui_act` the action by name; read its result and the returned `where`.
+4. Check the image against the ask before saying it is done.
+5. For UI edits: the place names its component file; edit, then `go` there again and compare the capture. Renderer edits hot-reload; main/host edits need a restart, and the block says so.
+
+"Run a tool eval" is: `rocket_ui_go evals.tools {section: evaluate}` → `rocket_ui_act evals.runSheet.run {scenario}` → report the grades with the capture.
 
 ## Verification
 
-- Unit: `src/host/agent-situation.test.ts`
-- Matrix: `tool-ui-readonly` scenario in `goal-draft-minimal.jsonl`
-- Manual: new chat → first user message in host/journal should include `<agent-environment>`
+- Unit: `src/shared/app-map.test.ts`, `src/host/tools/ui-map.test.ts`, `src/host/agent-situation.test.ts`
+- UI: `tests/ui/app-map.spec.ts` walks every place through the dispatcher and the MCP tools in the isolated app
+- Manual: new chat → first user message in `journal.jsonl` should include `<agent-environment>` with a `Where you are:` line
 
-Restart Rocket after host changes.
+Restart Rocket after host or main changes.

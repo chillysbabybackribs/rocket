@@ -256,6 +256,34 @@ Four sessions may be open at once, idle sessions close after ten minutes, and ch
 and host shutdown close their sessions. Subprocess cleanup covers detached Electron descendants.
 Captures, per-call JSON results, `runner.log` and traces remain in the session directory.
 
+### The app map
+
+The shell is finite, so a model navigates it by name rather than hunting for buttons in a
+screenshot. `src/shared/app-map.ts` is a hand-written map of every **place** the shell can show
+(`chat`, `browser`, `evals.overview` … `evals.tools`, with the parameters a place takes, such as
+the playground's scenario) and every **action** a model can take (`pane.add`, `chat.open`,
+`evals.playgrounds.run`, `evals.runSheet.run`, `evals.tools.refresh` …), each naming the component
+file that renders it. The renderer's dispatcher (`src/renderer/src/app-map.ts`) implements the map:
+`where()` reads the shell's state in the map's words, `go(place, params)` shows a place and
+`act(action, params)` does an action, going to its place first when that is not on screen. The
+dashboard's own buttons call the same `go` and `act`, so what a click does and what a model does is
+one path, and the tables are typed against the map so a missing handler fails the typecheck. The
+eval dashboard's navigation and run state live in the store (`evals` in `store.ts`) for this reason.
+Mapped controls carry `data-nav="<place>"`, which `rocket_ui_snapshot` reports as `nav`.
+
+The host serves the map as three tools (`src/host/tools/ui-map.ts`), run in the renderer through
+main's `uiMap` op: `rocket_ui_where` (no image; the panes, which one is the asking chat's, the
+side panel and what it shows, running cells, open dialogs), `rocket_ui_go` and `rocket_ui_act`
+(both return where the shell ended up and an image, `capture=false` to skip it). A wrong place,
+action or parameter is refused with the valid choices (`UI_MAP_REFUSED`) and nothing moves. Run
+actions start real provider turns in eval chats; they return when the run ends or after `wait`
+seconds (default 100, at most 120) with it still running, and `rocket_ui_where` then follows the
+cells. `tests/ui/app-map.spec.ts` walks every place through the dispatcher and the tools.
+
+Every turn's `<agent-environment>` block (`src/host/agent-situation.ts`) says where the model runs,
+carries one live "Where you are" line read through `rocket_ui_where` as the turn starts, and prints
+the map, so a prompt such as "run a tool eval" is three named calls rather than a search.
+
 Besides the browser and UI tools there is `remember` (see Workspace and memory), `ask_user` (below),
 `goal_report` (see Goals) and, with `ROCKET_SELF_CHECK=1`, the three self-check tools. Every
 tool's schema is in every session's prompt, so what a model should simply know goes ahead of the

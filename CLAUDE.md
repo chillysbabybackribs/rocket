@@ -39,6 +39,12 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
   the CLI behaviour it depends on, with the version and date it was verified.
 - `src/host/journal.ts`: the journal of errors, slow turns and model notes (`journal.jsonl`); see Self-check.
 - `src/host/tools/`: the app's tools, served to all providers by one loopback MCP server.
+- `src/shared/app-map.ts`: the hand-written map of the shell's places and actions;
+  `src/renderer/src/app-map.ts` is the one dispatcher behind both the UI's buttons and the
+  `rocket_ui_where` / `go` / `act` tools. A new panel or button that a model may need goes in the
+  map, with its state in `store.ts`, not in component state.
+- `src/host/agent-situation.ts`: the `<agent-environment>` block ahead of every message: where
+  the shell is right now, and the map.
 - `src/host/workspace.ts`: the file map and saved notes a new session is told about its folder.
 - `src/host/teamwork.ts`, `git.ts`: what a model is told about others working in the folder, and
   the commit the app makes of a turn's changes.
