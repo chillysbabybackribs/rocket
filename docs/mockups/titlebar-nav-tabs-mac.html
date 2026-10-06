@@ -1,0 +1,442 @@
+<!doctype html>
+<!-- Mockup: the rail's destinations as a macOS-style unified toolbar. Goals and Chats are
+     pull-down buttons in one glass group on the leading side, the chat's title and subtitle
+     follow them, and Library / Evals / Browser are one segmented control on the trailing side
+     because they are mutually exclusive views of the side column. Menus follow Apple's HIG:
+     title-style capitalization, an ellipsis only where more input follows, a checkmark for the
+     current item, icons on every row of a group or none. Static invented data. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rocket · Mac toolbar nav (mockup)</title>
+<style>
+:root {
+  color-scheme: dark;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', Inter, sans-serif;
+  --canvas: #08090a; --panel: #0f1011; --bubble: #1c1d20;
+  --composer: #151617; --composer-line: #2f3031;
+  --line: rgba(255,255,255,.07); --line-strong: rgba(255,255,255,.11);
+  --text: #f7f8f8; --text-2: #b4b8c0; --text-3: #8a8f98; --text-4: #62666d;
+  --hover: rgba(255,255,255,.06); --accent: #7170ff; --highlight: #5e5ce6;
+  --warn: #f2c94c; --ok: #4cb782; --high: #eb5757;
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,0) 180px);
+  --rail: 68px; --gap: 8px; --toolbar: 48px; --card-radius: 12px;
+  /* Glass: the control lets the canvas through, blurred, with a lit top edge. */
+  --glass: rgba(255,255,255,.055);
+  --glass-edge: inset 0 .5px 0 rgba(255,255,255,.16), inset 0 0 0 .5px rgba(255,255,255,.08), 0 1px 3px rgba(0,0,0,.35);
+  --glass-raised: rgba(255,255,255,.14);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: #050506; color: var(--text);
+  font: 13px/1.45 var(--font); -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: default; }
+svg.i { display: block; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+.page { max-width: 1120px; margin: 0 auto; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 30px; }
+.intro h1 { margin: 0 0 6px; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+.intro p { margin: 0; max-width: 760px; color: var(--text-3); line-height: 1.55; }
+.intro b { color: var(--text-2); font-weight: 600; }
+.cap { margin: 0 0 10px 4px; color: var(--text-3); font-size: 12px; }
+.cap b { color: var(--text); font-weight: 600; margin-right: 6px; }
+
+/* A desktop for the window to sit on, so the glass and the window shadow have something to show. */
+.desk {
+  position: relative; padding: 26px; border-radius: 16px; overflow: visible;
+  background:
+    radial-gradient(120% 90% at 10% 0%, #1d2350 0%, transparent 55%),
+    radial-gradient(90% 80% at 100% 100%, #3a1c4a 0%, transparent 60%),
+    linear-gradient(160deg, #0d1020, #120c1a);
+}
+
+/* ── Window ─────────────────────────────────────────────── */
+.win {
+  position: relative; height: 400px;
+  display: grid; grid-template-columns: var(--rail) minmax(0, 1fr) minmax(0, 1.1fr);
+  padding: var(--toolbar) var(--gap) var(--gap) 0;
+  background: var(--canvas); border-radius: 16px;
+  box-shadow: 0 0 0 .5px rgba(255,255,255,.14), 0 0 0 1px rgba(0,0,0,.6), 0 30px 80px rgba(0,0,0,.6), 0 8px 24px rgba(0,0,0,.4);
+}
+.win.solo { grid-template-columns: var(--rail) minmax(0, 1fr); }
+.lights { position: absolute; top: 18px; left: 16px; display: flex; gap: 8px; z-index: 3; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+.lights i:nth-child(1) { background: #ff5f57; } .lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+
+/* The toolbar: leading pull-downs and title, trailing view switcher. */
+.toolbar {
+  position: absolute; top: 0; left: var(--rail); right: 0; height: var(--toolbar);
+  display: flex; align-items: center; gap: 12px; padding: 0 10px 0 6px; z-index: 4;
+}
+.group {
+  display: flex; align-items: center; height: 32px; padding: 2px; gap: 0;
+  border-radius: 999px; background: var(--glass); box-shadow: var(--glass-edge);
+  backdrop-filter: blur(20px) saturate(1.6);
+}
+.pull {
+  position: relative; display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 9px 0 10px; border-radius: 999px;
+  color: var(--text-2); font-weight: 500; white-space: nowrap;
+}
+.pull:hover { background: var(--hover); color: var(--text); }
+.pull.open { background: var(--glass-raised); color: var(--text); }
+.pull .chev { margin-left: -1px; opacity: .6; }
+.sep { width: .5px; height: 16px; background: rgba(255,255,255,.14); }
+.count {
+  min-width: 18px; height: 16px; padding: 0 5px; border-radius: 999px;
+  background: var(--warn); color: #1a1500; font-size: 10.5px; font-weight: 650; line-height: 16px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.title { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; padding-left: 2px; }
+.title strong { font-size: 13px; font-weight: 650; color: var(--text); white-space: nowrap; }
+.title span { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.grow { flex: 1; }
+.seg { gap: 0; }
+.seg button {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px;
+  border-radius: 999px; color: var(--text-3); font-weight: 500; white-space: nowrap;
+}
+.seg button:hover { color: var(--text); }
+.seg button.on { background: var(--glass-raised); color: var(--text); box-shadow: inset 0 .5px 0 rgba(255,255,255,.18), 0 1px 2px rgba(0,0,0,.4); }
+
+/* Narrow window: labels fold away and the controls keep their symbols, as a Mac toolbar does in Icon Only. */
+.win.narrow { width: 560px; height: auto; padding: 0; grid-template-columns: var(--rail) 1fr; }
+.win.narrow .toolbar { position: relative; left: 0; grid-column: 2; }
+.win.narrow .label { display: none; }
+.win.narrow .seg button { padding: 0 10px; }
+.win.narrow .pull { padding: 0 7px 0 9px; }
+
+/* ── Rail (unchanged: icons only) ───────────────────────── */
+.rail { display: flex; flex-direction: column; justify-content: flex-end; margin: calc(-1 * var(--toolbar)) 0 calc(-1 * var(--gap)); padding-bottom: 12px; }
+.rb { position: relative; display: grid; place-items: center; width: 32px; height: 32px; margin: 1px auto; border-radius: 8px; color: var(--text-3); }
+.rb.on { background: rgba(255,255,255,.08); color: var(--text); }
+.rb .count { position: absolute; top: -2px; right: -6px; min-width: 16px; height: 14px; font-size: 9px; line-height: 14px; padding: 0 4px; }
+
+/* ── Cards ──────────────────────────────────────────────── */
+.card { border: 1px solid var(--line); border-radius: var(--card-radius); background: var(--sheen), var(--panel); min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+.card + .card { margin-left: var(--gap); }
+.tabs { display: flex; gap: 4px; padding: 8px 14px 0; }
+.tab { height: 24px; padding: 0 10px; border-radius: 8px 8px 0 0; font-size: 11.5px; line-height: 24px; color: var(--text-4); }
+.tab.on { color: var(--text); background: var(--composer); }
+.chat { flex: 1; padding: 14px 18px; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; }
+.bubble { align-self: flex-end; max-width: 78%; padding: 7px 11px; background: var(--bubble); border-radius: 10px; font-size: 12.5px; }
+.say { color: var(--text-2); font-size: 12.5px; margin: 0; }
+.composer { margin: 0 14px 12px; height: 64px; background: var(--composer); border: 1px solid var(--composer-line); border-radius: 10px; }
+.side-head { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--text-3); }
+.side-body { flex: 1; padding: 12px; color: var(--text-4); font-size: 12px; display: flex; flex-direction: column; gap: 8px; }
+.url { flex: 1; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(255,255,255,.05); display: flex; align-items: center; color: var(--text-3); font-size: 11.5px; }
+.ph { height: 10px; border-radius: 4px; background: rgba(255,255,255,.05); }
+.mini-seg { display: inline-flex; padding: 2px; border-radius: 999px; background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.08); }
+.mini-seg span { height: 22px; line-height: 22px; padding: 0 10px; border-radius: 999px; font-size: 11.5px; color: var(--text-3); }
+.mini-seg span.on { background: var(--glass-raised); color: var(--text); }
+.row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 6px; background: rgba(255,255,255,.025); color: var(--text-3); font-size: 12px; }
+.row em { margin-left: auto; font-style: normal; color: var(--ok); font-variant-numeric: tabular-nums; }
+
+/* ── Menu (NSMenu in dark mode, with Rocket's indigo as the highlight) ── */
+.anchor { position: relative; }
+.menu {
+  position: absolute; top: calc(100% + 8px); left: -2px; z-index: 10; width: 268px;
+  padding: 5px; border-radius: 12px;
+  background: rgba(30,30,34,.96);
+  box-shadow: inset 0 0 0 .5px rgba(255,255,255,.14), 0 0 0 .5px rgba(0,0,0,.8), 0 14px 40px rgba(0,0,0,.55);
+  font-size: 13px; color: var(--text);
+}
+.m-head { padding: 6px 10px 3px 26px; font-size: 11px; font-weight: 650; color: var(--text-3); }
+.m-item {
+  display: flex; align-items: center; gap: 7px; height: 24px; padding: 0 10px 0 8px;
+  border-radius: 6px; white-space: nowrap;
+}
+.m-item .ck { width: 12px; display: grid; place-items: center; color: var(--text); }
+.m-item .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.m-item .name { overflow: hidden; text-overflow: ellipsis; }
+.m-item .aux { margin-left: auto; padding-left: 14px; color: var(--text-3); font-size: 12px; }
+.m-item .key { margin-left: auto; padding-left: 14px; color: var(--text-3); letter-spacing: .08em; font-size: 12px; }
+.m-item.hi { background: var(--highlight); color: #fff; }
+.m-item.hi .aux, .m-item.hi .key { color: rgba(255,255,255,.75); }
+.m-sep { height: .5px; margin: 5px 10px; background: rgba(255,255,255,.12); }
+
+/* Tooltip, as macOS draws one: small, plain, no arrow. */
+.tip {
+  position: absolute; z-index: 10; padding: 3px 7px; border-radius: 5px;
+  background: rgba(44,44,48,.95); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.14), 0 4px 12px rgba(0,0,0,.5);
+  font-size: 11.5px; color: var(--text); white-space: nowrap;
+}
+.tip kbd { font: inherit; color: var(--text-3); margin-left: 8px; letter-spacing: .08em; }
+.cursor { position: absolute; z-index: 11; width: 14px; height: 20px; }
+
+/* ── Label spec ─────────────────────────────────────────── */
+.spec { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+.spec table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.spec th, .spec td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.spec th { color: var(--text-4); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.spec td { color: var(--text-2); }
+.spec td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+.spec tr:last-child td { border-bottom: 0; }
+.spec kbd { font: inherit; color: var(--text-3); letter-spacing: .08em; }
+.notes { margin: 0; padding-left: 18px; color: var(--text-3); line-height: 1.7; max-width: 860px; }
+.notes b { color: var(--text-2); font-weight: 600; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></symbol>
+  <symbol id="history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="library" viewBox="0 0 24 24"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></symbol>
+  <symbol id="flask" viewBox="0 0 24 24"><path d="M14 2v6a2 2 0 0 0 .25.96l5.5 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.75-2.96l5.5-10.08A2 2 0 0 0 10 8V2"/><path d="M6.5 15h11"/><path d="M8.5 2h7"/></symbol>
+  <symbol id="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a13 13 0 0 0 0 18 13 13 0 0 0 0-18"/><path d="M3 12h18"/></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="fold" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+</svg>
+
+<div class="page">
+  <header class="intro">
+    <h1>Toolbar navigation, Mac style</h1>
+    <p>The strip above the cards becomes a <b>unified toolbar</b>: traffic lights, then a glass group of two
+      <b>pull-down buttons</b> (Goals, Chats), then the chat's <b>title and subtitle</b> the way Mail and Notes title a
+      window. On the trailing edge, one <b>segmented control</b> switches the side column between Library, Evals and
+      Browser, since only one can be open. The rail keeps its icons. Menus are drawn as macOS draws them.</p>
+  </header>
+
+  <!-- 1 · At rest, browser open, hover tooltip on Library -->
+  <section>
+    <p class="cap"><b>1 · At rest</b>Browser open; pointer resting on Library shows its tooltip with the shortcut.</p>
+    <div class="desk">
+      <div class="win">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="toolbar">
+          <div class="group">
+            <button class="pull"><svg class="i" width="15" height="15"><use href="#target"/></svg><span class="label">Goals</span><span class="count">19</span><svg class="i chev" width="11" height="11"><use href="#chev"/></svg></button>
+            <span class="sep"></span>
+            <button class="pull"><svg class="i" width="15" height="15"><use href="#history"/></svg><span class="label">Chats</span><svg class="i chev" width="11" height="11"><use href="#chev"/></svg></button>
+          </div>
+          <div class="title"><strong>Research task</strong><span>Claude · ~/rocketv1</span></div>
+          <div class="grow"></div>
+          <div class="group seg" style="position:relative">
+            <button style="background:var(--hover);color:var(--text)"><svg class="i" width="15" height="15"><use href="#library"/></svg><span class="label">Library</span></button>
+            <button><svg class="i" width="15" height="15"><use href="#flask"/></svg><span class="label">Evals</span></button>
+            <button class="on"><svg class="i" width="15" height="15"><use href="#globe"/></svg><span class="label">Browser</span></button>
+            <div class="tip" style="top:38px;left:18px">Show Library<kbd>⌥⌘1</kbd></div>
+          </div>
+        </div>
+        <aside class="rail">
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#target"/></svg><span class="count">19</span></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#history"/></svg></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#library"/></svg></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#flask"/></svg></button>
+          <button class="rb on"><svg class="i" width="17" height="17"><use href="#globe"/></svg></button>
+          <button class="rb" style="margin-top:6px"><svg class="i" width="17" height="17"><use href="#fold"/></svg></button>
+        </aside>
+        <main class="card">
+          <div class="tabs"><span class="tab on">Research task</span><span class="tab">New chat</span></div>
+          <div class="chat">
+            <p class="bubble">Compare Stripe pricing for teams vs enterprise.</p>
+            <p class="say">Opening the pricing page and reading both tiers.</p>
+          </div>
+          <div class="composer"></div>
+        </main>
+        <aside class="card">
+          <div class="side-head"><span>‹ ›</span><div class="url">stripe.com/pricing</div></div>
+          <div class="side-body"><div class="ph" style="width:60%"></div><div class="ph" style="width:85%"></div><div class="ph" style="width:40%"></div></div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · Chats pull-down -->
+  <section>
+    <p class="cap"><b>2 · Chats menu</b>Grouped by day, checkmark on the chat in this pane, status as secondary text, highlight follows the pointer.</p>
+    <div class="desk">
+      <div class="win solo">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="toolbar">
+          <div class="group">
+            <button class="pull"><svg class="i" width="15" height="15"><use href="#target"/></svg><span class="label">Goals</span><span class="count">19</span><svg class="i chev" width="11" height="11"><use href="#chev"/></svg></button>
+            <span class="sep"></span>
+            <div class="anchor">
+              <button class="pull open"><svg class="i" width="15" height="15"><use href="#history"/></svg><span class="label">Chats</span><svg class="i chev" width="11" height="11"><use href="#chev"/></svg></button>
+              <div class="menu" role="menu" aria-label="Chat history">
+                <div class="m-head">Today</div>
+                <div class="m-item"><span class="ck"><svg class="i" width="12" height="12" style="stroke-width:2.4"><use href="#check"/></svg></span><span class="name">Research task</span><span class="aux">Answering</span></div>
+                <div class="m-item hi"><span class="ck"></span><span class="name">Stripe pricing compare</span></div>
+                <div class="m-head">Yesterday</div>
+                <div class="m-item"><span class="ck"></span><span class="name">Fix eval mock data</span></div>
+                <div class="m-item"><span class="ck"></span><span class="name">Library filters</span></div>
+                <div class="m-head">This Week</div>
+                <div class="m-item"><span class="ck"></span><span class="name">Titlebar tab labels</span></div>
+                <div class="m-item"><span class="ck"></span><span class="name">Agent mail recon</span></div>
+                <div class="m-sep"></div>
+                <div class="m-item"><span class="ck"></span><span class="name">New Chat</span><span class="key">⌘N</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="title"><strong>Research task</strong><span>Claude · ~/rocketv1</span></div>
+          <div class="grow"></div>
+          <div class="group seg">
+            <button><svg class="i" width="15" height="15"><use href="#library"/></svg><span class="label">Library</span></button>
+            <button><svg class="i" width="15" height="15"><use href="#flask"/></svg><span class="label">Evals</span></button>
+            <button><svg class="i" width="15" height="15"><use href="#globe"/></svg><span class="label">Browser</span></button>
+          </div>
+        </div>
+        <aside class="rail">
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#target"/></svg><span class="count">19</span></button>
+          <button class="rb on"><svg class="i" width="17" height="17"><use href="#history"/></svg></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#library"/></svg></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#flask"/></svg></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#globe"/></svg></button>
+          <button class="rb" style="margin-top:6px"><svg class="i" width="17" height="17"><use href="#fold"/></svg></button>
+        </aside>
+        <main class="card">
+          <div class="tabs"><span class="tab on">Research task</span><span class="tab">New chat</span></div>
+          <div class="chat"><p class="bubble">Compare Stripe pricing for teams vs enterprise.</p><p class="say">Reading both tiers now.</p></div>
+          <div class="composer"></div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · Goals pull-down -->
+  <section>
+    <p class="cap"><b>3 · Goals menu</b>No menu title (the badge already says 19). Every row carries a status dot, so the group is uniform; New Goal… has an ellipsis because a brief follows.</p>
+    <div class="desk">
+      <div class="win solo">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="toolbar">
+          <div class="group">
+            <div class="anchor">
+              <button class="pull open"><svg class="i" width="15" height="15"><use href="#target"/></svg><span class="label">Goals</span><span class="count">19</span><svg class="i chev" width="11" height="11"><use href="#chev"/></svg></button>
+              <div class="menu" role="menu" aria-label="Goals" style="width:300px">
+                <div class="m-head">Under Way</div>
+                <div class="m-item hi"><span class="ck"></span><span class="dot" style="background:var(--warn)"></span><span class="name">Research competitors</span><span class="aux">Needs you</span></div>
+                <div class="m-item"><span class="ck"><svg class="i" width="12" height="12" style="stroke-width:2.4"><use href="#check"/></svg></span><span class="dot" style="background:var(--accent)"></span><span class="name">Ship titlebar nav</span><span class="aux">Round 2</span></div>
+                <div class="m-item"><span class="ck"></span><span class="dot" style="background:var(--accent)"></span><span class="name">Clean library assets</span><span class="aux">Working</span></div>
+                <div class="m-item"><span class="ck"></span><span class="dot" style="background:var(--accent)"></span><span class="name">Agent mail prototype</span><span class="aux">Checking</span></div>
+                <div class="m-head">Finished</div>
+                <div class="m-item"><span class="ck"></span><span class="dot" style="background:var(--ok)"></span><span class="name">Eval matrix smoke</span><span class="aux">3 rounds</span></div>
+                <div class="m-item"><span class="ck"></span><span class="dot" style="background:var(--high)"></span><span class="name">Cookie import on Arc</span><span class="aux">Stopped</span></div>
+                <div class="m-sep"></div>
+                <div class="m-item"><span class="ck"></span><span class="name">New Goal…</span><span class="key">⇧⌘G</span></div>
+              </div>
+            </div>
+            <span class="sep"></span>
+            <button class="pull"><svg class="i" width="15" height="15"><use href="#history"/></svg><span class="label">Chats</span><svg class="i chev" width="11" height="11"><use href="#chev"/></svg></button>
+          </div>
+          <div class="title"><strong>Ship titlebar nav</strong><span>Goal · round 2 of ?</span></div>
+          <div class="grow"></div>
+          <div class="group seg">
+            <button><svg class="i" width="15" height="15"><use href="#library"/></svg><span class="label">Library</span></button>
+            <button><svg class="i" width="15" height="15"><use href="#flask"/></svg><span class="label">Evals</span></button>
+            <button><svg class="i" width="15" height="15"><use href="#globe"/></svg><span class="label">Browser</span></button>
+          </div>
+        </div>
+        <aside class="rail">
+          <button class="rb on"><svg class="i" width="17" height="17"><use href="#target"/></svg><span class="count">19</span></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#history"/></svg></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#library"/></svg></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#flask"/></svg></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#globe"/></svg></button>
+          <button class="rb" style="margin-top:6px"><svg class="i" width="17" height="17"><use href="#fold"/></svg></button>
+        </aside>
+        <main class="card">
+          <div class="tabs"><span class="tab on">Ship titlebar nav</span></div>
+          <div class="chat"><p class="say">Round 2: building the toolbar group and wiring the segmented control to the side column.</p></div>
+          <div class="composer"></div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · Evals open -->
+  <section>
+    <p class="cap"><b>4 · Evals open</b>Evals is selected in the toolbar. Its two views stay a small segmented control in the panel header, not a pull-down: two choices are too few for a menu.</p>
+    <div class="desk">
+      <div class="win">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="toolbar">
+          <div class="group">
+            <button class="pull"><svg class="i" width="15" height="15"><use href="#target"/></svg><span class="label">Goals</span><span class="count">19</span><svg class="i chev" width="11" height="11"><use href="#chev"/></svg></button>
+            <span class="sep"></span>
+            <button class="pull"><svg class="i" width="15" height="15"><use href="#history"/></svg><span class="label">Chats</span><svg class="i chev" width="11" height="11"><use href="#chev"/></svg></button>
+          </div>
+          <div class="title"><strong>UI regression</strong><span>Claude · ~/rocketv1</span></div>
+          <div class="grow"></div>
+          <div class="group seg">
+            <button><svg class="i" width="15" height="15"><use href="#library"/></svg><span class="label">Library</span></button>
+            <button class="on"><svg class="i" width="15" height="15"><use href="#flask"/></svg><span class="label">Evals</span></button>
+            <button><svg class="i" width="15" height="15"><use href="#globe"/></svg><span class="label">Browser</span></button>
+          </div>
+        </div>
+        <aside class="rail">
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#target"/></svg><span class="count">19</span></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#history"/></svg></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#library"/></svg></button>
+          <button class="rb on"><svg class="i" width="17" height="17"><use href="#flask"/></svg></button>
+          <button class="rb"><svg class="i" width="17" height="17"><use href="#globe"/></svg></button>
+          <button class="rb" style="margin-top:6px"><svg class="i" width="17" height="17"><use href="#fold"/></svg></button>
+        </aside>
+        <main class="card">
+          <div class="tabs"><span class="tab on">UI regression</span></div>
+          <div class="chat"><p class="bubble">Run the UI regression scenario on all providers.</p></div>
+          <div class="composer"></div>
+        </main>
+        <aside class="card">
+          <div class="side-head"><div class="mini-seg"><span class="on">Scenarios</span><span>Tool Health</span></div><span style="margin-left:auto">↻</span></div>
+          <div class="side-body">
+            <div class="row">goal-draft-minimal<em>6 / 8</em></div>
+            <div class="row">rocket-ui-regression<em>8 / 8</em></div>
+            <div class="row">library-filters<em style="color:var(--warn)">5 / 8</em></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · Narrow -->
+  <section>
+    <p class="cap"><b>5 · Narrow window</b>The title drops first, then the labels fold away and the symbols stay. The badge and chevrons remain so Goals and Chats still read as menus.</p>
+    <div class="desk" style="display:flex;justify-content:center">
+      <div class="win narrow">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="toolbar">
+          <div class="group">
+            <button class="pull"><svg class="i" width="15" height="15"><use href="#target"/></svg><span class="label">Goals</span><span class="count">19</span><svg class="i chev" width="11" height="11"><use href="#chev"/></svg></button>
+            <span class="sep"></span>
+            <button class="pull"><svg class="i" width="15" height="15"><use href="#history"/></svg><span class="label">Chats</span><svg class="i chev" width="11" height="11"><use href="#chev"/></svg></button>
+          </div>
+          <div class="grow"></div>
+          <div class="group seg">
+            <button><svg class="i" width="15" height="15"><use href="#library"/></svg><span class="label">Library</span></button>
+            <button><svg class="i" width="15" height="15"><use href="#flask"/></svg><span class="label">Evals</span></button>
+            <button class="on"><svg class="i" width="15" height="15"><use href="#globe"/></svg><span class="label">Browser</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Label spec -->
+  <section>
+    <p class="cap"><b>Labels</b>Title-style capitalization in menus, as the HIG asks; toolbar labels are single nouns.</p>
+    <div class="spec">
+      <table>
+        <tr><th>Toolbar</th><th>Kind</th><th>Menu or tooltip</th><th>Shortcut (proposed)</th></tr>
+        <tr><td>Goals</td><td>Pull-down · count badge</td><td>Under Way · Finished · New Goal…</td><td><kbd>⇧⌘G</kbd> New Goal…</td></tr>
+        <tr><td>Chats</td><td>Pull-down</td><td>Today · Yesterday · This Week · Earlier · New Chat</td><td><kbd>⌘N</kbd> New Chat</td></tr>
+        <tr><td>Library</td><td>Segment</td><td>Show Library / Hide Library</td><td><kbd>⌥⌘1</kbd></td></tr>
+        <tr><td>Evals</td><td>Segment</td><td>Show Evals / Hide Evals; panel: Scenarios · Tool Health</td><td><kbd>⌥⌘2</kbd></td></tr>
+        <tr><td>Browser</td><td>Segment</td><td>Show Browser / Hide Browser</td><td><kbd>⌥⌘3</kbd></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <ul class="notes">
+    <li><b>Clicking the selected segment closes the side column</b>, so the control works as both a switcher and a toggle, the same as the rail buttons today.</li>
+    <li><b>The toolbar grows from 28px to 48px</b> so the glass controls have room and the traffic lights sit centred in it, as on a Mac window with a unified toolbar.</li>
+    <li><b>Shortcuts</b> are drawn with Mac glyphs; on Linux they read Ctrl and Alt. <kbd>⌘1–4</kbd> already picks the provider, so the panels take <kbd>⌥⌘1–3</kbd>. <kbd>⌘N</kbd> and <kbd>⇧⌘G</kbd> are free in Rocket today; ⌘N rather than ⌘T, which people expect to open a browser tab.</li>
+    <li><b>Highlight colour</b> is an indigo close to Rocket's accent, standing in for the Mac's accent colour.</li>
+  </ul>
+</div>
+</body>
+</html>
