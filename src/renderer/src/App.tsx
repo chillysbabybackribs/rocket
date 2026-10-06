@@ -1,6 +1,6 @@
 import { addDraftImages, addExistingImage, IMAGE_DRAG_TYPE, updateDraft } from './drafts.ts'
 import './images.css'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Images, PanelRightOpen, X } from 'lucide-react'
 import type { Goal } from '../../shared/types.ts'
 import { PaneContext, usePane, usePaneChatId, usePaneView } from './pane.ts'
@@ -169,6 +169,7 @@ function ChatPane() {
       }}
       onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropping(false) }}
       onDrop={event => {
+        if (!event.dataTransfer.types.includes('Files') && !event.dataTransfer.types.includes(IMAGE_DRAG_TYPE)) return
         event.preventDefault()
         setDropping(false)
         if (goal && goal.status !== 'done' && goal.status !== 'stopped') return
@@ -203,6 +204,18 @@ function ChatCard() {
 }
 
 export function App() {
+  useEffect(() => {
+    // Files dropped outside a chat must not navigate the Electron shell away from the app.
+    const preventNavigation = (event: DragEvent): void => {
+      if (event.dataTransfer?.types.includes('Files') || event.dataTransfer?.types.includes(IMAGE_DRAG_TYPE)) event.preventDefault()
+    }
+    window.addEventListener('dragover', preventNavigation)
+    window.addEventListener('drop', preventNavigation)
+    return () => {
+      window.removeEventListener('dragover', preventNavigation)
+      window.removeEventListener('drop', preventNavigation)
+    }
+  }, [])
   const artifact = useApp((state) => state.artifact)
   const browserOpen = useApp((state) => state.browserOpen)
   const evalsOpen = useApp((state) => state.evalsOpen)

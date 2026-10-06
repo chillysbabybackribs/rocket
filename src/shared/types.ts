@@ -279,11 +279,11 @@ export type HostApi = {
    */
   'chat.send': [{ chatId: string; provider: ProviderId; model: string | null; text: string; attachmentIds?: string[] }, null]
   /**
-   * Stop the turn in flight. Waiting messages are withdrawn and their text returned, for the
+   * Stop the turn in flight. Waiting messages are withdrawn with their images, for the
    * composer to take back; with `sendQueued` they stay and go out as soon as the turn has stopped.
    */
   'chat.stop': [{ chatId: string; sendQueued?: boolean }, string | MessageDraft | null]
-  /** Take one waiting message back; returns its text. */
+  /** Take one waiting message back, including any images. Text-only callers retain string results. */
   'chat.unqueue': [{ chatId: string; id: string }, string | MessageDraft]
   /** A turn's changes as a unified patch; null when the turn changed nothing or its folder is not a repository. */
   'turn.changes': [{ chatId: string; turnId: string }, TurnPatch | null]

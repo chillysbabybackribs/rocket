@@ -113,8 +113,6 @@ usage colour and the goals count, and resting the pointer on it slides the whole
 chat as an overlay (the chat never moves) until the pointer leaves, so usage, history and goals
 stay a hover away. The button at the strip's foot, or at the peek's, opens the rail again.
 
-### Messages sent while a turn runs
-
 ### Images in chat
 
 Paste a screenshot into the message field, choose **Attach images**, or drop files anywhere in

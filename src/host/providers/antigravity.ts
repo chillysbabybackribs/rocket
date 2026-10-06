@@ -198,7 +198,7 @@ export class AntigravityAdapter implements ProviderAdapter {
       try {
         // A conversation that has not started has not been told about the app's tools.
         const brief = agy.conversationId === null && this.tools ? toolBrief(this.serverName, this.tools.list()) : ''
-        const message = imageInput(withHandoff(request.handoff, request.text), request.attachments).text
+        const message = imageInput(withHandoff(request.handoff, request.text), request.attachments, false).text
         agy.write(brief ? `${brief}\n\n${message}` : message)
       } catch (error) {
         turn.finish({ status: 'failed', error: messageOf(error) })

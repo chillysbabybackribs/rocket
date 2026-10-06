@@ -39,6 +39,10 @@ export function restoreDraft(key: string, message: string | MessageDraft): void 
 
 export const IMAGE_DRAG_TYPE = 'application/x-rocket-image'
 export function addExistingImage(key: string, image: ImageAttachment): void {
+  if (!image || typeof image.id !== 'string' || typeof image.name !== 'string' || !Number.isFinite(image.size) || image.size <= 0) {
+    updateDraft(key, { error: 'This image could not be attached. Choose the file again.' })
+    return
+  }
   const current = draftOf(key)
   if (current.sending) return
   if (current.attachments.some(each => each.id === image.id)) return

@@ -18,10 +18,13 @@ test('image uploads, queue editing, Stop and restart preserve the whole message'
   page = rocket.page
   await expect(page.locator('.is-draft .image-thumbnail img')).toHaveCount(1)
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Compare this screen')
+  await page.getByRole('button', { name: 'Show browser', exact: true }).click()
   await page.getByRole('button', { name: 'Preview rocket.png' }).click()
   await expect(page.locator('dialog[open] > img')).toBeVisible()
+  await rocket.capture('images-preview-with-browser')
   await page.keyboard.press('Escape')
   await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Hide browser', exact: true }).click()
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('UI check: stream')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.locator('.prose')).toContainText('Streaming from claude.')

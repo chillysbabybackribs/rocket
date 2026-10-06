@@ -3,10 +3,10 @@ import { MAX_MESSAGE_IMAGES, MAX_MESSAGE_IMAGE_BYTES } from '../../shared/types.
 import type { ProviderImage } from '../attachments.ts'
 
 /** Current images come first. Large histories retain readable paths without replaying unbounded pixels. */
-export function imageInput(text: string, images: ProviderImage[] = []): { text: string; images: ProviderImage[] } {
+export function imageInput(text: string, images: ProviderImage[] = [], includePixels = true): { text: string; images: ProviderImage[] } {
   let size = 0
   const selected = images.filter((image, index) => {
-    if (index >= MAX_MESSAGE_IMAGES || size + image.size > MAX_MESSAGE_IMAGE_BYTES) return false
+    if (!includePixels || index >= MAX_MESSAGE_IMAGES || size + image.size > MAX_MESSAGE_IMAGE_BYTES) return false
     size += image.size
     return true
   })
