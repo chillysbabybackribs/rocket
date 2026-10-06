@@ -3,6 +3,7 @@ import { Folder } from 'lucide-react'
 import { providerLabel } from '../../../shared/types.ts'
 import { closeNewGoal, draftGoal, steerGoal, useApp } from '../store.ts'
 import { GoalBrief } from './GoalBrief.tsx'
+import { GoalStatusIcon } from './GoalIcons.tsx'
 
 // A new goal in two steps. Describe: what the user wants, in their own words. Confirm: the brief
 // the worker drafted from it. The draft runs in the goal's own chat, so closing the dialog loses
@@ -104,7 +105,7 @@ export function NewGoal() {
 
         {goal?.status === 'drafting' && (
           <div className="goal-drafting" role="status">
-            <span className="goal-dot is-run" aria-hidden />
+            <GoalStatusIcon status="drafting" />
             <span className="shimmer">{worker} is reading the folder and drafting the goal…</span>
             <button type="button" className="goal-button" onClick={closeNewGoal}>Wait in the chat</button>
           </div>
@@ -133,7 +134,7 @@ export function NewGoal() {
           <>
             <h2 className="goal-dialog-title">Is this what you mean?</h2>
             <p className="goal-dialog-sub">Edit anything that is off. The checklist is what “done” means: work carries on until a second model agrees every line is true.</p>
-            <GoalBrief goal={goal} onBack={closeNewGoal} />
+            <GoalBrief key={goal.id} goal={goal} onBack={closeNewGoal} />
           </>
         )}
 

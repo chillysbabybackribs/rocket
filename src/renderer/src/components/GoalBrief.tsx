@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { PROVIDERS, providerLabel, type Goal, type GoalAgent, type ProviderId } from '../../../shared/types.ts'
 import { startGoal } from '../store.ts'
+import { GoalDesignView } from './GoalDesign.tsx'
+import { LineIcon } from './GoalIcons.tsx'
 
 // The brief the worker drafted, for the user to look over before anything starts: the goal in a
 // sentence or two, the lines that define done, and at most one question. Everything is editable;
@@ -11,6 +13,7 @@ const PAUSE_LEVELS = [80, 90, 95, 100]
 
 export function GoalBrief({ goal, onBack }: { goal: Goal; onBack?: () => void }) {
   const [text, setText] = useState(goal.goal)
+  const [concept, setConcept] = useState(goal.design?.concept ?? '')
   const [lines, setLines] = useState(goal.criteria.map(({ text, how }) => ({ text, how })))
   const [answer, setAnswer] = useState<string | null>(goal.question?.answer ?? null)
   const [worker, setWorker] = useState<GoalAgent>(goal.worker)
@@ -24,7 +27,7 @@ export function GoalBrief({ goal, onBack }: { goal: Goal; onBack?: () => void })
   const setLine = (index: number, text: string): void => setLines(lines.map((line, at) => (at === index ? { ...line, text } : line)))
   const start = async (): Promise<void> => {
     setStarting(true)
-    await startGoal(goal.id, { goal: text, criteria: filled, answer, worker, checker, pauseAtPercent: pauseAt })
+    await startGoal(goal.id, { goal: text, criteria: filled, ...(goal.design ? { concept } : {}), answer, worker, checker, pauseAtPercent: pauseAt })
     setStarting(false)
   }
 
@@ -35,12 +38,19 @@ export function GoalBrief({ goal, onBack }: { goal: Goal; onBack?: () => void })
         <textarea className="brief-edit" rows={3} value={text} aria-label="Goal" onChange={(event) => setText(event.target.value)} />
       </section>
 
+      {goal.design && (
+        <section className="brief-section">
+          <h3 className="brief-label">Design <span>the idea, and the references it was built from</span></h3>
+          <GoalDesignView goal={goal} concept={concept} onConcept={setConcept} />
+        </section>
+      )}
+
       <section className="brief-section">
         <h3 className="brief-label">Done when <span>edit any line</span></h3>
         <div className="brief-lines">
           {lines.map((line, index) => (
             <div className="brief-line" key={index}>
-              <span className="goal-check is-ok" aria-hidden><Check size={10} strokeWidth={3} /></span>
+              <LineIcon met={null} />
               <textarea
                 className="brief-line-text"
                 rows={1}

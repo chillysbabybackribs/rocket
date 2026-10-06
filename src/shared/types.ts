@@ -71,6 +71,15 @@ export type GoalCriterion = { text: string; how: string; met: boolean | null; me
 
 export type GoalVerdict = { line: number; met: boolean; evidence: string }
 
+/** A reference the drafting model actually opened, with the screenshot it saved as proof. */
+export type GoalReference = { source: string; screenshot: string; takes: string }
+
+/**
+ * For visual work: the one idea that makes this design specific to its product, and the
+ * references behind it. The checker holds the result up against the same screenshots.
+ */
+export type GoalDesign = { concept: string; references: GoalReference[] }
+
 export type GoalRound = {
   n: number
   workTurnId: string
@@ -98,6 +107,8 @@ export type Goal = {
   /** The goal as the brief restates it; empty until drafted. */
   goal: string
   criteria: GoalCriterion[]
+  /** Present when the deliverable is visual. */
+  design: GoalDesign | null
   question: { text: string; options: string[]; answer: string | null } | null
   worker: GoalAgent
   checker: GoalAgent
@@ -121,6 +132,8 @@ export type Goal = {
 export type GoalEdit = {
   goal?: string
   criteria?: Array<{ text: string; how: string }>
+  /** The design concept as the user edited it. */
+  concept?: string
   answer?: string | null
   worker?: GoalAgent
   checker?: GoalAgent
@@ -189,6 +202,8 @@ export type HostApi = {
   /** Carry on from a pause, or from waiting on the user. */
   'goal.resume': [{ goalId: string }, Goal]
   'goal.stop': [{ goalId: string }, Goal]
+  /** One of a goal's reference screenshots, as a data URL; only images named in the goal's design are served. */
+  'goal.referenceImage': [{ goalId: string; index: number }, string]
   /** A note for the next work round. A goal waiting on the user takes it as the answer and carries on. */
   'goal.steer': [{ goalId: string; text: string }, Goal]
   /** An error the page caught, for the host's journal. */

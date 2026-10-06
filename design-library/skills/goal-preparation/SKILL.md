@@ -103,6 +103,19 @@ For each useful reference, capture:
 Choose a coherent direction rather than combining unrelated visual styles. Translate
 references into concrete decisions; "make it premium" or "make it like Linear" is insufficient.
 
+Save a screenshot of every reference you rely on (browser_screenshot returns the saved path)
+and report it with the reference. Rocket rejects a design whose screenshots do not exist, and
+the checker compares the finished work against those same screenshots.
+
+### Find the concept
+
+A design direction is not a style. "Dark surfaces, compact type, subtle borders, one accent"
+describes nearly every product dashboard and produces a template. Before writing the brief,
+decide the one idea that makes this design belong to this product and its users: what the
+main screen leads with and why, what is unusually dense or unusually generous, which moment
+someone will remember. State it in a sentence or two. A standalone product does not inherit
+the look of the tool it is being built in unless the user asks for that.
+
 ### Plan the actual experience
 
 Describe the main user action, information hierarchy, and how the experience responds.
@@ -120,11 +133,13 @@ Include only sections relevant to this goal:
 
 **What I'll deliver** — the concrete outcome and scope, preserving the user's original intent.
 
-**Design direction** — for visual work, the chosen layout and interaction approach, how it fits
-the product, and the useful reference patterns behind it.
+**Design** — for visual work, the concept (the one idea above), and two to five references you
+opened, each with its screenshot and what this design takes from it. Report them in goal_report's
+`design` field; Rocket shows them to the user and passes them to the worker and checker.
 
-**Done when** — observable outcomes paired with practical ways to check them. Include functional
-and visual quality where relevant. Avoid criteria that merely say files exist, a tool ran,
+**Done when** — observable outcomes paired with practical ways to check them. For visual work,
+Rocket adds a design-quality line itself: the result must hold up side by side against the
+references. Write the functional lines; do not repeat that one. Avoid criteria that merely say files exist, a tool ran,
 or the agent believes the result is good.
 
 **Decision needed** — only a material unresolved question. Otherwise omit it.
@@ -158,11 +173,12 @@ This illustrates the output format; it is not a claim of newly inspected referen
 Keep goals in the normal chat tabs and refine the resizable goal artifact inside the chat.
 The browser remains independently toggleable.
 
-**Design direction**
-Use Rocket's existing colors and components. Give the goal a clear title, quiet status
-indicators, and a compact checklist, with detailed activity available on demand. Research
-Linear's relevant detail panels to inform hierarchy and density before selecting specific
-patterns.
+**Design**
+Concept: the goal reads like an issue being worked on live. The checklist is the hero, each line
+lighting up as the checker confirms it, with the conversation one glance away rather than repeated.
+References: Linear's issue detail view (properties block and sub-issue progress) and its activity
+feed (who did what, when), each with a saved screenshot. Rocket's own colors and components stay,
+since this is Rocket's interface.
 
 **Done when**
 - Users can switch between goal chats and ordinary chats without losing their place.

@@ -150,6 +150,14 @@ asks a question, when two checks in a row find the same gap, when a turn fails t
 usage window reaches the goal's pause level (90% unless changed under Advanced); then it carries on
 by itself when the window resets. A goal cut off by the app closing waits for Resume.
 
+For a visual result the brief also carries a design: the concept (the one idea that makes it
+belong to its product, not a list of styles) and two to five references the drafting model
+opened, each with the screenshot it saved. Rocket rejects a design whose screenshots do not
+exist, shows them as cards in the brief and the pane (`GoalDesign.tsx`, served by
+`goal.referenceImage` since the window only loads its own images), adds a design-quality line to
+the checklist, and tells the worker to build against the screenshots and the checker to judge
+the result side by side with them. Without that line, functional checks pass a competent template.
+
 Models report through one tool, `goal_report`: the brief when drafting, done or needs-you when
 working, a verdict per line when checking. A worker that forgets to call it goes to the checker
 anyway; a checker that forgets is asked once more. A goal's turns are marked with their role

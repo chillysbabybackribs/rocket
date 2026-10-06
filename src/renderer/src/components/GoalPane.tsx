@@ -1,18 +1,55 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowUp, Check, Pause, Play, Square, Target, X } from 'lucide-react'
-import type { Goal, GoalRound } from '../../../shared/types.ts'
+import { ArrowUp, ChevronRight, Info, Pause, Play, PanelRightClose, Square } from 'lucide-react'
+import type { Goal, GoalAgent, GoalRound } from '../../../shared/types.ts'
 import { agentLabel, pauseGoal, resumeGoal, setGoalPaneOpen, steerGoal, stopGoal } from '../store.ts'
 import { GoalBrief } from './GoalBrief.tsx'
-import { goalStatusText, goalTone } from './Goals.tsx'
+import { GoalDesignView } from './GoalDesign.tsx'
+import { GoalStatusIcon, LineIcon, ProgressRing } from './GoalIcons.tsx'
+import { goalStatusText } from './Goals.tsx'
+import { ProviderGlyph } from './glyphs.tsx'
+import { Tabs } from './Tabs.tsx'
 
-// A goal, beside its chat like an artifact: what it is, the lines that define done and where
-// each stands, the rounds of work and checks with the checker's evidence, and when Rocket will
-// stop to ask. The chat on the left is the conversation itself; this is its summary.
+// A goal, beside its chat like an artifact, laid out the way Linear lays out an issue: the title
+// and what it means, a block of properties, the checklist as sub-items with a progress ring, and
+// the rounds as an activity feed. The chat on the left is the conversation; this is its summary.
 
-function elapsed(ms: number): string {
+const STATUS_LABEL: Record<Goal['status'], string> = {
+  drafting: 'Drafting',
+  confirming: 'Check the plan',
+  working: 'Working',
+  checking: 'Checking',
+  needs_you: 'Needs you',
+  paused: 'Paused',
+  done: 'Done',
+  stopped: 'Stopped'
+}
+
+function duration(ms: number): string {
   const minutes = Math.max(0, Math.round(ms / 60_000))
+  if (minutes < 1) return 'under a minute'
   if (minutes < 60) return `${minutes} min`
   return `${Math.floor(minutes / 60)} h ${minutes % 60} min`
+}
+
+function ago(at: number, now: number): string {
+  const minutes = Math.round((now - at) / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+function shortPath(path: string): string {
+  const home = window.rocket.homeDir
+  return path === home ? '~' : path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path
+}
+
+function firstSentence(text: string): string {
+  const flat = text.replace(/\s+/g, ' ').trim()
+  const end = flat.search(/[.!?](\s|$)/)
+  const sentence = end === -1 ? flat : flat.slice(0, end + 1)
+  return sentence.length > 160 ? `${sentence.slice(0, 159)}…` : sentence
 }
 
 function useNow(live: boolean): number {
@@ -25,157 +62,211 @@ function useNow(live: boolean): number {
   return now
 }
 
-function Round({ goal, round, open, onToggle }: { goal: Goal; round: GoalRound; open: boolean; onToggle: () => void }) {
-  const last = goal.rounds.at(-1) === round
-  const working = last && goal.status === 'working'
-  const checking = last && goal.status === 'checking'
-  const met = round.verdicts.filter((verdict) => verdict.met).length
-  const checked = round.findings !== null
-  const tone = working || checking ? 'run' : !checked ? 'idle' : met === goal.criteria.length ? 'ok' : 'fail'
-  const worker = agentLabel(goal.worker)
-  const checker = agentLabel(goal.checker)
+function Agent({ agent }: { agent: GoalAgent }) {
   return (
-    <div className={`goal-round${open ? ' is-open' : ''}`}>
-      <span className={`goal-dot is-${tone}`} aria-hidden />
-      <button type="button" className="goal-round-top" aria-expanded={open} onClick={onToggle}>
-        <span className="goal-round-n">Round {round.n}</span>
-        <span className={`goal-round-title${working || checking ? ' shimmer' : ''}`}>
-          {working ? `${worker} is working…` : checking ? `${checker} is checking…` : round.summary ? firstSentence(round.summary) : 'Stopped before it finished'}
-        </span>
-        {checked && <span className={`goal-verdict is-${met === goal.criteria.length ? 'ok' : 'part'}`}>{met} of {goal.criteria.length}</span>}
-      </button>
-      {checked && round.findings && <p className="goal-round-line"><b>{checker}</b>{firstSentence(round.findings)}</p>}
-      {open && (
-        <div className="goal-round-details">
-          {round.summary && <p className="goal-round-said"><b>{worker}</b> {round.summary}</p>}
-          {round.verdicts.length > 0 && (
-            <div className="goal-evidence">
-              {round.verdicts.map((verdict) => (
-                <div className="goal-evidence-row" key={verdict.line}>
-                  <span className={`goal-dot is-${verdict.met ? 'ok' : 'fail'}`} aria-hidden />
-                  <span><b>{goal.criteria[verdict.line - 1]?.text ?? `Line ${verdict.line}`}</b>{verdict.evidence && <span className="goal-evidence-text">{verdict.evidence}</span>}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {round.findings && <p className="goal-round-said"><b>{checker} found</b> {round.findings}</p>}
-          {round.files.length > 0 && (
-            <div className="goal-files">
-              {round.files.map((file) => <span key={file} className="goal-file">{file}</span>)}
-            </div>
-          )}
-        </div>
-      )}
+    <span className="gp-agent">
+      <span className="gp-avatar"><ProviderGlyph provider={agent.provider} size={11} /></span>
+      {agentLabel(agent)}
+      {agent.model && <span className="gp-faint">{agent.model}</span>}
+    </span>
+  )
+}
+
+function Property({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="gp-prop">
+      <span className="gp-prop-label">{label}</span>
+      <span className="gp-prop-value">{children}</span>
     </div>
   )
 }
 
-function firstSentence(text: string): string {
-  const flat = text.replace(/\s+/g, ' ').trim()
-  const end = flat.search(/[.!?](\s|$)/)
-  const sentence = end === -1 ? flat : flat.slice(0, end + 1)
-  return sentence.length > 140 ? `${sentence.slice(0, 139)}…` : sentence
+/** A round as two events in the feed: the worker's turn, then the checker's verdict. */
+function RoundEvents({ goal, round, now }: { goal: Goal; round: GoalRound; now: number }) {
+  const [open, setOpen] = useState(false)
+  const last = goal.rounds.at(-1) === round
+  const working = last && goal.status === 'working'
+  const checking = last && goal.status === 'checking'
+  const checked = round.findings !== null
+  const met = round.verdicts.filter((verdict) => verdict.met).length
+  const all = met === goal.criteria.length
+  return (
+    <>
+      <li className="gp-event">
+        <span className="gp-avatar"><ProviderGlyph provider={goal.worker.provider} size={11} /></span>
+        <div className="gp-event-body">
+          <div className="gp-event-line">
+            <b>{agentLabel(goal.worker)}</b>
+            <span className={working ? 'shimmer' : ''}>{working ? `is working on round ${round.n}` : `worked on round ${round.n}`}</span>
+            <span className="gp-event-time">{ago(round.startedAt, now)}</span>
+          </div>
+          {round.summary && !working && <p className="gp-event-text">{round.summary}</p>}
+          {round.files.length > 0 && (
+            <div className="gp-files">
+              {round.files.map((file) => <span key={file} className="gp-file">{file}</span>)}
+            </div>
+          )}
+        </div>
+      </li>
+      {(checked || checking) && (
+        <li className="gp-event">
+          <span className="gp-avatar"><ProviderGlyph provider={goal.checker.provider} size={11} /></span>
+          <div className="gp-event-body">
+            <div className="gp-event-line">
+              <b>{agentLabel(goal.checker)}</b>
+              {checking
+                ? <span className="shimmer">is checking every line</span>
+                : <span>checked: <span className={all ? 'gp-met' : 'gp-unmet'}>{met} of {goal.criteria.length} met</span></span>}
+              {round.endedAt && checked && <span className="gp-event-time">{ago(round.endedAt, now)}</span>}
+            </div>
+            {checked && round.findings && <p className="gp-event-text">{firstSentence(round.findings)}</p>}
+            {checked && round.verdicts.length > 0 && (
+              <button type="button" className="gp-disclose" aria-expanded={open} onClick={() => setOpen(!open)}>
+                <ChevronRight size={12} className={`tool-chevron${open ? ' is-open' : ''}`} /> Evidence
+              </button>
+            )}
+            {open && (
+              <ul className="gp-evidence">
+                {round.verdicts.map((verdict) => (
+                  <li key={verdict.line}>
+                    <LineIcon met={verdict.met} />
+                    <span>
+                      <span className="gp-evidence-line">{goal.criteria[verdict.line - 1]?.text ?? `Line ${verdict.line}`}</span>
+                      {verdict.evidence && <span className="gp-evidence-text">{verdict.evidence}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </li>
+      )}
+    </>
+  )
 }
 
 export function GoalPane({ goal }: { goal: Goal }) {
   const live = goal.status === 'working' || goal.status === 'checking' || goal.status === 'drafting'
-  const now = useNow(live)
-  const [openRound, setOpenRound] = useState<number | null>(null)
+  const now = useNow(true)
   const ended = goal.status === 'done' || goal.status === 'stopped'
   const started = goal.rounds[0]?.startedAt ?? null
   const finished = ended ? goal.rounds.at(-1)?.endedAt ?? goal.updatedAt : now
   const pausing = live && goal.reason !== null
-  const worker = agentLabel(goal.worker)
-  const checker = agentLabel(goal.checker)
+  const waiting = goal.status === 'paused' || goal.status === 'needs_you' || pausing
+  const met = goal.criteria.filter((line) => line.met).length
+  const planned = goal.status !== 'drafting' && goal.status !== 'confirming'
 
   return (
     <aside className="goal-pane" aria-label="Goal">
-      <div className="goal-pane-top">
-        <span className="goal-pane-label"><Target size={13} aria-hidden /> Goal</span>
-        <span className="goal-pane-space" />
-        {!ended && goal.status !== 'confirming' && (
-          goal.status === 'paused' || goal.status === 'needs_you' || pausing
-            ? <button type="button" className="goal-button" onClick={() => resumeGoal(goal.id)}><Play size={12} /> {pausing ? 'Keep going' : 'Resume'}</button>
-            : <button type="button" className="goal-button" onClick={() => pauseGoal(goal.id)}><Pause size={12} /> Pause</button>
+      <div className="gp-bar">
+        <GoalStatusIcon status={goal.status} />
+        <span className="gp-crumbs">
+          <span>Goal</span>
+          <ChevronRight size={12} aria-hidden />
+          <span className="gp-crumb-current">{goal.status === 'confirming' ? 'Plan' : goal.status === 'drafting' ? 'Drafting' : goal.rounds.length ? `Round ${goal.rounds.at(-1)!.n}` : STATUS_LABEL[goal.status]}</span>
+        </span>
+        {!ended && goal.status !== 'confirming' && goal.status !== 'drafting' && (
+          waiting
+            ? <button type="button" className="gp-button is-primary" onClick={() => resumeGoal(goal.id)}><Play size={11} fill="currentColor" /> {pausing ? 'Keep going' : 'Resume'}</button>
+            : <button type="button" className="gp-icon" title="Pause after this turn" aria-label="Pause after this turn" onClick={() => pauseGoal(goal.id)}><Pause size={14} /></button>
         )}
         {!ended && (
-          <button type="button" className="goal-button is-danger" onClick={() => { if (window.confirm('Stop this goal? The work so far is kept.')) stopGoal(goal.id) }}>
-            <Square size={10} fill="currentColor" /> Stop
+          <button type="button" className="gp-icon is-danger" title="Stop the goal" aria-label="Stop the goal" onClick={() => { if (window.confirm('Stop this goal? The work so far is kept.')) stopGoal(goal.id) }}>
+            <Square size={11} />
           </button>
         )}
-        <button type="button" className="icon-button" aria-label="Hide the goal (it keeps running)" title="Hide (the goal keeps running)" onClick={() => setGoalPaneOpen(false)}>
-          <X size={14} />
+        <button type="button" className="gp-icon" title="Hide (the goal keeps running)" aria-label="Hide the goal" onClick={() => setGoalPaneOpen(false)}>
+          <PanelRightClose size={15} />
         </button>
       </div>
 
-      <div className="goal-pane-scroll">
-        <header className="goal-head">
-          <div className="goal-head-meta">
-            <span className={`goal-pill is-${goalTone(goal.status)}`}><span className={`goal-dot is-${goalTone(goal.status)}`} aria-hidden />{goalStatusText(goal)}</span>
-            {started && <span>{elapsed(finished - started)}</span>}
-          </div>
-          <h2 className="goal-title">{goal.title}</h2>
-          {goal.goal && goal.status !== 'confirming' && <p className="goal-text">{goal.goal}</p>}
-          <p className="goal-said">You wrote: “{goal.request}”</p>
-          {goal.status !== 'drafting' && goal.status !== 'confirming' && (
-            <div className="goal-agents">
-              <span className="goal-pill"><b>{worker}</b> works</span>
-              <span className="goal-pill"><b>{checker}</b> checks</span>
-            </div>
-          )}
+      <div className="gp-scroll">
+        <header className="gp-head">
+          <h2 className="gp-title">{goal.title}</h2>
+          {goal.goal && goal.status !== 'confirming' && <p className="gp-description">{goal.goal}</p>}
+          <p className="gp-request">“{goal.request}”</p>
         </header>
 
-        {goal.reason && (goal.status === 'needs_you' || goal.status === 'paused' || pausing) && (
-          <div className={`goal-banner${goal.status === 'needs_you' ? ' is-ask' : ''}`} role="status">{goal.reason}</div>
+        {goal.reason && waiting && (
+          <div className={`gp-callout${goal.status === 'needs_you' ? ' is-ask' : ''}`} role="status">
+            <GoalStatusIcon status={goal.status === 'needs_you' ? 'needs_you' : 'paused'} />
+            <span>{goal.reason}</span>
+          </div>
         )}
+
+        <div className="gp-props">
+          <Property label="Status"><GoalStatusIcon status={goal.status} /> {STATUS_LABEL[goal.status]}{goal.rounds.length > 0 && <span className="gp-faint">· round {goal.rounds.at(-1)!.n}</span>}</Property>
+          <Property label="Works"><Agent agent={goal.worker} /></Property>
+          <Property label="Checks"><Agent agent={goal.checker} /></Property>
+          {goal.criteria.length > 0 && planned && (
+            <Property label="Progress"><ProgressRing done={met} total={goal.criteria.length} /> {met} of {goal.criteria.length} lines met</Property>
+          )}
+          {started && <Property label="Time">{duration(finished - started)}</Property>}
+          <Property label="Folder"><span className="gp-mono" title={goal.cwd}>{shortPath(goal.cwd)}</span></Property>
+        </div>
 
         {goal.status === 'drafting' && (
-          <p className="goal-drafting"><span className="shimmer">{worker} is reading the folder and drafting the goal…</span></p>
+          <p className="gp-drafting"><span className="shimmer">{agentLabel(goal.worker)} is reading the folder and drafting the plan…</span></p>
         )}
 
-        {goal.status === 'confirming' && <div className="goal-section"><GoalBrief goal={goal} /></div>}
+        {goal.status === 'confirming' && (
+          <section className="gp-section">
+            <GoalBrief key={goal.id} goal={goal} />
+          </section>
+        )}
 
-        {goal.criteria.length > 0 && goal.status !== 'confirming' && (
-          <section className="goal-section">
-            <h3 className="goal-section-title">Done when <span>{goal.criteria.filter((line) => line.met).length} of {goal.criteria.length} met · {checker} checks each line</span></h3>
-            {goal.criteria.map((line, index) => (
-              <div className="goal-line" key={index}>
-                <span className={`goal-check${line.met === true ? ' is-ok' : line.met === false ? ' is-fail' : ''}`} aria-label={line.met === true ? 'Met' : line.met === false ? 'Not met' : 'Not checked yet'}>
-                  {line.met === true ? <Check size={10} strokeWidth={3} /> : line.met === false ? <X size={10} strokeWidth={3} /> : null}
-                </span>
-                <span className="goal-line-text">{line.text}</span>
-                <span className="goal-line-by">{line.met === true ? `round ${line.metInRound}` : line.met === false ? 'being fixed' : line.how}</span>
-              </div>
-            ))}
+        {goal.design && planned && (
+          <section className="gp-section">
+            <h3 className="gp-section-title">Design</h3>
+            <GoalDesignView goal={goal} />
+          </section>
+        )}
+
+        {goal.criteria.length > 0 && planned && (
+          <section className="gp-section">
+            <h3 className="gp-section-title">
+              Done when
+              <span className="gp-count"><ProgressRing done={met} total={goal.criteria.length} size={12} /> {met}/{goal.criteria.length}</span>
+            </h3>
+            <ul className="gp-lines">
+              {goal.criteria.map((line, index) => (
+                <li key={index} className="gp-line">
+                  <LineIcon met={line.met} />
+                  <span className="gp-line-text">{line.text}</span>
+                  <span className="gp-line-meta">{line.met === true && line.metInRound ? `R${line.metInRound}` : line.how}</span>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
         {goal.rounds.length > 0 && (
-          <section className="goal-section">
-            <h3 className="goal-section-title">Rounds <span>{worker} works until it is done, then {checker} checks</span></h3>
-            <div className="goal-rounds">
-              {goal.rounds.map((round) => (
-                <Round key={round.workTurnId} goal={goal} round={round} open={openRound === round.n} onToggle={() => setOpenRound(openRound === round.n ? null : round.n)} />
-              ))}
-            </div>
+          <section className="gp-section">
+            <h3 className="gp-section-title">Activity</h3>
+            <ol className="gp-feed">
+              {goal.rounds.map((round) => <RoundEvents key={round.workTurnId} goal={goal} round={round} now={now} />)}
+              {goal.status === 'done' && (
+                <li className="gp-event">
+                  <span className="gp-avatar is-done"><GoalStatusIcon status="done" size={12} /></span>
+                  <div className="gp-event-body"><div className="gp-event-line"><b>Goal done</b><span>every line met</span></div></div>
+                </li>
+              )}
+            </ol>
           </section>
         )}
 
-        {goal.status !== 'drafting' && goal.status !== 'confirming' && !ended && (
-          <section className="goal-section">
-            <h3 className="goal-section-title">Left to the models</h3>
-            <div className="goal-guard">
-              Rocket pauses and asks you if the same gap comes back without progress, a decision only you can make comes up,
-              or a usage window reaches {goal.pauseAtPercent}%.
-            </div>
-          </section>
+        {planned && !ended && (
+          <p className="gp-footnote">
+            <Info size={12} aria-hidden />
+            No step or time limits. Rocket pauses only if the same gap comes back, a decision needs you, or usage reaches {goal.pauseAtPercent}%.
+          </p>
         )}
       </div>
     </aside>
   )
 }
 
-/** The goal chat's composer: a note for the worker's next round, not a message of its own. */
+/** The goal chat's composer: the open chats' tabs, then a note for the worker's next round. */
 export function GoalNote({ goal }: { goal: Goal }) {
   const [text, setText] = useState('')
   const input = useRef<HTMLTextAreaElement>(null)
@@ -193,6 +284,7 @@ export function GoalNote({ goal }: { goal: Goal }) {
   }
   return (
     <div className="composer-group">
+      <Tabs />
       <div className="composer">
         <textarea
           ref={input}
@@ -210,7 +302,9 @@ export function GoalNote({ goal }: { goal: Goal }) {
           }}
         />
         <div className="composer-bar">
-          <span className="goal-note-hint">{asking ? 'Your answer carries the goal on.' : goal.steer.length ? `${goal.steer.length} note${goal.steer.length === 1 ? '' : 's'} waiting for the next round` : 'Enter to add'}</span>
+          <span className="goal-note-hint">
+            {asking ? 'Your answer carries the goal on.' : goal.steer.length ? `${goal.steer.length} note${goal.steer.length === 1 ? '' : 's'} waiting for the next round` : `Goal · ${goalStatusText(goal)}`}
+          </span>
           <div className="composer-right">
             <button type="button" className="send" aria-label="Add note" title="Add note" disabled={!text.trim()} onClick={() => void submit()}>
               <ArrowUp size={17} strokeWidth={2.4} />

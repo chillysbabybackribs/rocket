@@ -203,6 +203,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'goal.resume': ({ goalId }) => goals.resume(goalId),
   'goal.stop': ({ goalId }) => goals.stop(goalId),
   'goal.steer': ({ goalId, text }) => goals.steer(goalId, text),
+  'goal.referenceImage': ({ goalId, index }) => goals.referenceImage(goalId, index),
   'journal.report': ({ message, stack }) => {
     journal.add('renderer', 'error', 'crash', oneLine(String(message), 300), { stack: String(stack ?? '').split('\n').slice(0, 6).join('\n') })
     return null

@@ -292,3 +292,55 @@ test('files a work turn changed through the shell are added to its round', async
   runner.noteFiles(work, ['cart.js'])
   assert.deepEqual(goal().rounds[0]!.files, ['cart.js'])
 })
+
+test('a visual brief needs a concept and screenshots that exist, and gains the design line', async () => {
+  const { mkdtempSync, writeFileSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const { DESIGN_LINE } = await import('./goals.ts')
+  const dir = mkdtempSync(join(tmpdir(), 'rocket-goal-refs-'))
+  writeFileSync(join(dir, 'linear.png'), 'png')
+  writeFileSync(join(dir, 'attio.jpg'), 'jpg')
+  const { hub, runner, goal, end, brief } = setup()
+  runner.draft({ cwd: dir, text: 'a project dashboard', provider: 'claude', model: null })
+  await settle()
+  const chatId = hub.last().chatId
+
+  const styles = runner.report(chatId, { ...brief, design: { concept: '', references: [] } })
+  assert.equal(styles.ok, false)
+  assert.match(styles.text, /concept/)
+  const unseen = runner.report(chatId, { ...brief, design: { concept: 'The week ahead leads.', references: [
+    { source: 'https://linear.app', screenshot: 'linear.png', takes: 'project header' },
+    { source: 'https://attio.com', screenshot: join(dir, 'never-taken.png'), takes: 'record list' }
+  ] } })
+  assert.equal(unseen.ok, false)
+  assert.match(unseen.text, /never-taken\.png/)
+
+  await end({ ...brief, design: { concept: 'The week ahead leads.', references: [
+    { source: 'https://linear.app', screenshot: 'linear.png', takes: 'project header' },
+    { source: 'https://attio.com', screenshot: 'attio.jpg', takes: 'record list density' }
+  ] } })
+  assert.equal(goal().status, 'confirming')
+  assert.equal(goal().design?.references[0]!.screenshot, join(dir, 'linear.png'), 'relative paths resolve against the folder')
+  assert.equal(goal().criteria.at(-1)!.text, DESIGN_LINE.text)
+  assert.match(runner.referenceImage(goal().id, 1), /^data:image\/jpeg;base64,/)
+
+  runner.update(goal().id, { concept: 'Deadlines lead.' })
+  runner.start(goal().id)
+  await settle()
+  assert.match(hub.last().text, /Design concept: Deadlines lead\./)
+  assert.match(hub.last().text, /Open the reference screenshots/)
+  await end({ status: 'done', summary: 'Built it.' })
+  assert.equal(hub.last().role, 'check')
+  assert.match(hub.last().text, /attio\.jpg/)
+  assert.match(hub.last().text, /demanding product designer/)
+})
+
+test('a brief without a design gets no design line', async () => {
+  const { runner, goal, end, brief } = setup()
+  runner.draft({ cwd: '/w', text: 'fix the parser', provider: 'claude', model: null })
+  await settle()
+  await end(brief)
+  assert.equal(goal().design, null)
+  assert.equal(goal().criteria.length, 2)
+})
