@@ -179,8 +179,8 @@ export function EvalPlayground({ datasets, onFinished, onRefresh, onClose }: Pro
       </header>
 
       <div className="eval-pg-subhead">
-        <label className="eval-pg-select-wrap">
-          <span className="eval-pg-select-label">Scenario</span>
+        <label className="eval-pg-field">
+          <span className="eval-pg-field-label">Scenario</span>
           <select
             className="eval-pg-select"
             aria-label="Scenario"
@@ -191,16 +191,30 @@ export function EvalPlayground({ datasets, onFinished, onRefresh, onClose }: Pro
             {scenarios.map((s) => <option key={s.id} value={s.id}>{s.id}</option>)}
           </select>
         </label>
-        <select className="eval-pg-select" value={compareMode} disabled={busy} onChange={(ev) => setCompareMode(ev.target.value)} aria-label="Comparison baseline">
-          <option value="base">Comparison → Base</option>
-          {tasks.filter((t) => t.role === 'comparison').map((t) => (
-            <option key={t.id} value={t.id}>Comparison → {providerLabel(t.provider)}</option>
-          ))}
-        </select>
-        <label className="eval-pg-diff">
-          <input type="checkbox" checked={diffOn} disabled={busy} onChange={(ev) => setDiffOn(ev.target.checked)} />
-          Diff
+        <label className="eval-pg-field">
+          <span className="eval-pg-field-label">Compare</span>
+          <select
+            className="eval-pg-select eval-pg-select-wide"
+            value={compareMode}
+            disabled={busy}
+            onChange={(ev) => setCompareMode(ev.target.value)}
+            aria-label="Comparison baseline"
+          >
+            <option value="base">Comparison → Base</option>
+            {tasks.filter((t) => t.role === 'comparison').map((t) => (
+              <option key={t.id} value={t.id}>Comparison → {providerLabel(t.provider)}</option>
+            ))}
+          </select>
         </label>
+        <div className="eval-pg-field">
+          <span className="eval-pg-field-label">Diff</span>
+          <div className="eval-pg-control">
+            <label className="eval-pg-diff">
+              <input type="checkbox" checked={diffOn} disabled={busy} onChange={(ev) => setDiffOn(ev.target.checked)} />
+              <span>On</span>
+            </label>
+          </div>
+        </div>
       </div>
 
       {runError && <p className="eval-pg-run-error" role="alert">{runError}</p>}
@@ -259,9 +273,12 @@ export function EvalPlayground({ datasets, onFinished, onRefresh, onClose }: Pro
         <button type="button" className="eval-bt-btn eval-bt-btn-ghost" disabled>+ Row</button>
         <button type="button" className="eval-bt-btn eval-bt-btn-ghost" disabled>+ Task</button>
         <button type="button" className="eval-bt-btn eval-bt-btn-ghost" disabled>+ Scorer</button>
-        <select className="eval-pg-select" value={datasetId} disabled={busy} onChange={(ev) => setDatasetId(ev.target.value)} aria-label="Dataset">
-          {datasets.map((d) => <option key={d.id} value={d.id}>Dataset · {d.id} ({d.rows.length})</option>)}
-        </select>
+        <label className="eval-pg-field eval-pg-field-inline">
+          <span className="eval-pg-field-label">Dataset</span>
+          <select className="eval-pg-select eval-pg-select-wide" value={datasetId} disabled={busy} onChange={(ev) => setDatasetId(ev.target.value)} aria-label="Dataset">
+            {datasets.map((d) => <option key={d.id} value={d.id}>{d.id} ({d.rows.length})</option>)}
+          </select>
+        </label>
         <button type="button" className="eval-bt-btn eval-bt-btn-ghost" disabled>Display</button>
       </div>
 

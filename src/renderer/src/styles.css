@@ -1951,25 +1951,59 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 .eval-pg-subhead {
   flex: none;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 8px 14px 10px;
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
 .eval-pg-panel-actions { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
-.eval-pg-select-wrap { display: flex; flex-direction: column; gap: 2px; }
-.eval-pg-select-label { font-size: 10px; color: var(--text-4); text-transform: uppercase; }
+.eval-pg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+.eval-pg-field-inline { flex: 1; max-width: 280px; }
+.eval-pg-field-label {
+  font-size: 10px;
+  line-height: 14px;
+  height: 14px;
+  color: var(--text-4);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.eval-pg-control {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
 .eval-pg-select {
-  padding: 5px 8px;
-  border-radius: 6px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
   border: 1px solid var(--line);
   background: rgba(0, 0, 0, 0.25);
   color: var(--text);
   font-size: 12px;
+  line-height: normal;
   max-width: 200px;
+  box-sizing: border-box;
 }
-.eval-pg-diff { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); cursor: pointer; }
+.eval-pg-select-wide { max-width: min(240px, 42vw); min-width: 160px; }
+.eval-pg-diff {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 12px;
+  margin: 0;
+}
+.eval-pg-diff input { width: 14px; height: 14px; margin: 0; }
 .eval-pg-tasks {
   flex: none;
   display: flex;
@@ -2065,11 +2099,23 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 .eval-pg-grid-toolbar {
   flex: none;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 8px 14px 10px;
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
+}
+.eval-pg-grid-toolbar .eval-bt-filter,
+.eval-pg-grid-toolbar .eval-bt-btn,
+.eval-pg-grid-toolbar .eval-pg-chip {
+  height: 32px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+}
+.eval-pg-grid-toolbar .eval-bt-filter {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .eval-pg-grid-wrap {
   flex: 1;
