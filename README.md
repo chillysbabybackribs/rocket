@@ -109,11 +109,26 @@ that means "in this chat" takes the pane it was asked in.
 ### The rail
 
 The left edge holds the window lights, the usage notch (one ring per provider) and the goals,
-history and browser buttons. The button under them folds the rail to a 24px strip, giving the
-chat the width; the fold is remembered. The strip keeps the lights, a dot per provider in its
+history, library, evals and browser buttons. The button under them folds the rail to a 24px
+strip, giving the chat the width; the fold is remembered. The strip keeps the lights, a dot per provider in its
 usage colour and the goals count, and resting the pointer on it slides the whole rail out over the
 chat as an overlay (the chat never moves) until the pointer leaves, so usage, history and goals
 stay a hover away. The button at the strip's foot, or at the peek's, opens the rail again.
+
+### The toolbar
+
+The 48px strip above the cards is a Mac-style unified toolbar (`Toolbar.tsx`, design in
+`docs/mockups/titlebar-nav-drawer-mac.html`). Its Sections icon slides a drawer out to the right
+with the rail's five destinations by name: Goals and Chats open their menus under them, Library,
+Evals and Browser show or hide the side column as the rail's buttons do. While Goals is in the
+closed drawer, its count rides on the icon. The drawer's last button, or a right-click on the icon,
+opens Customize: rename a section, drag it (or use the arrow keys on its handle) to reorder, and
+choose **Keep** to show it in the toolbar at all times or **Consolidate** to leave it in the
+drawer. A renamed section keeps its real name for screen readers and the app map, so a model asked
+for the evals still finds them. The choices, and whether the drawer is open, are kept with the
+other preferences (`toolbar.ts`). The focused chat's title, provider and folder follow. Every menu
+and popover is pulled left to end inside the chat card, since the browser's page is a native view
+that would paint over it.
 
 ### Images and files in chat
 

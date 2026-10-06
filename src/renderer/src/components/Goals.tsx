@@ -24,7 +24,7 @@ export function goalStatusText(goal: Goal): string {
   }
 }
 
-function GoalsMenu({ onPick }: { onPick: () => void }) {
+export function GoalsMenu({ onPick }: { onPick: () => void }) {
   const goals = useApp((state) => state.goals)
   const activeChatId = useApp(focusedChatId)
   const groups = [

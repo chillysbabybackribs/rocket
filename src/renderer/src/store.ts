@@ -13,6 +13,7 @@ import { PROVIDERS, TURN_PAGE, planItemId, providerLabel } from '../../shared/ty
 import type { LibraryEntry, LibraryFilters, LibraryPreview, LibraryView } from '../../shared/library.ts'
 import { call, connectHost } from './host.ts'
 import { clampSpeed } from '../../shared/reading.ts'
+import { DEFAULT_TOOLBAR, normalizeToolbar, type ToolbarPrefs } from './toolbar.ts'
 
 // Client state. Two kinds of subscription keep a fast token stream cheap: components that care
 // about structure (which chats, which turns, which items exist) read `useApp`, and each
@@ -123,6 +124,8 @@ export type AppState = {
   evals: EvalsState
   /** Whether the rail stands open at its full width, or is folded to a strip that peeks on hover. */
   railOpen: boolean
+  /** The toolbar's sections: the drawer open or not, and what the user kept, renamed and reordered. */
+  toolbar: ToolbarPrefs
   /** Every goal, newest first. A goal's chat is an ordinary chat with the goal beside it. */
   goals: Goal[]
   /** Whether the goal shows beside its chat; hiding it does not stop the goal. */
@@ -168,6 +171,7 @@ type Prefs = {
   libraryOpen?: boolean
   libraryView?: 'grid' | 'list'
   railOpen?: boolean
+  toolbar?: ToolbarPrefs
   goalPaneOpen?: boolean
   goalWidth?: number
   /** Chats whose plan drawer the user closed; it no longer opens by itself there. */
@@ -248,6 +252,7 @@ let state: AppState = {
   libraryOpen: prefs.libraryOpen === true,
   library: { entries: [], loaded: false, error: null, filters: {}, view: prefs.libraryView === 'list' ? 'list' : 'grid', selected: null, previews: {} },
   railOpen: prefs.railOpen !== false,
+  toolbar: normalizeToolbar(prefs.toolbar),
   goals: [],
   goalPaneOpen: prefs.goalPaneOpen !== false,
   goalWidth: prefs.goalWidth ?? 400,
@@ -813,6 +818,25 @@ export function setReadingSpeed(speed: number, fromBrowser = false): void {
 export function setRailOpen(railOpen: boolean): void {
   setState({ railOpen })
   writePrefs({ railOpen })
+}
+
+export function patchToolbar(patch: Partial<ToolbarPrefs>): void {
+  const toolbar = { ...state.toolbar, ...patch }
+  setState({ toolbar })
+  writePrefs({ toolbar })
+}
+
+/** Back to every section in the drawer under its own name, leaving the drawer as it stands. */
+export function resetToolbar(): void {
+  patchToolbar({ ...DEFAULT_TOOLBAR, open: state.toolbar.open })
+}
+
+/** The side panel the rail and the toolbar show as on: an artifact covers them all. */
+export function sideShown(state: AppState): 'library' | 'evals' | 'browser' | null {
+  if (state.artifact) return null
+  if (state.libraryOpen) return 'library'
+  if (state.evalsOpen) return 'evals'
+  return state.browserOpen ? 'browser' : null
 }
 
 export function setBrowserOpen(browserOpen: boolean): void {

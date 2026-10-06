@@ -22,7 +22,7 @@ function startOfDay(time: number): number {
   return date.getTime()
 }
 
-function HistoryMenu({ onPick }: { onPick: () => void }) {
+export function HistoryMenu({ onPick }: { onPick: () => void }) {
   const chats = useApp((state) => state.chats)
   const activeChatId = useApp(focusedChatId)
   const running = useApp((state) => state.running)

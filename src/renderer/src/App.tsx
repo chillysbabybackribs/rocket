@@ -19,6 +19,7 @@ import { GoalNote, GoalPane } from './components/GoalPane.tsx'
 import { NewGoal } from './components/NewGoal.tsx'
 import { PlanDrawer } from './components/PlanDrawer.tsx'
 import { Rail } from './components/Rail.tsx'
+import { Toolbar } from './components/Toolbar.tsx'
 import { Transcript } from './components/Transcript.tsx'
 
 function greeting(): string {
@@ -243,6 +244,7 @@ export function App() {
   return (
     <div className={`app${evalsOpen ? ' has-evals' : ''}${libraryOpen && !artifact ? ' has-library' : ''}${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}${railOpen ? '' : ' rail-folded'}`}>
       <Rail />
+      <Toolbar />
       <ChatCard />
       {artifact ? <ArtifactPanel /> : libraryOpen ? <LibraryPanel /> : evalsOpen ? <EvalPanel /> : browserOpen && <BrowserPanel />}
       {newGoal && <NewGoal />}
