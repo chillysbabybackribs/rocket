@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { copyFile } from 'node:fs/promises'
+import { copyFile, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { resolve } from 'node:path'
 import { oneLine } from './json.ts'
@@ -74,6 +74,25 @@ export async function patchBetween(top: string, before: string, after: string, p
   // Cut at a file boundary, so what is shown is whole files.
   const cut = text.lastIndexOf('\ndiff --git ', PATCH_LIMIT)
   return { patch: text.slice(0, cut > 0 ? cut : PATCH_LIMIT), truncated: true }
+}
+
+/** The paths among `paths` that exist in a snapshot. */
+export async function pathsIn(top: string, tree: string, paths: string[]): Promise<string[]> {
+  if (!paths.length) return []
+  const listed = nul(await git(top, ['ls-tree', '-r', '-z', '--name-only', tree, '--', ...paths]))
+  const wanted = new Set(paths)
+  return listed.filter((path) => wanted.has(path))
+}
+
+/**
+ * Put files back as a snapshot has them, in the working tree only: the user's index is not
+ * touched. Files the snapshot does not hold are removed; those are the ones made after it.
+ */
+export async function restoreFrom(top: string, tree: string, paths: string[]): Promise<void> {
+  const kept = await pathsIn(top, tree, paths)
+  if (kept.length) await git(top, ['restore', `--source=${tree}`, '--worktree', '--', ...kept])
+  const keptSet = new Set(kept)
+  for (const path of paths) if (!keptSet.has(path)) await rm(resolve(top, path), { force: true })
 }
 
 /** Why a commit should not be made right now, or null when one can be. */

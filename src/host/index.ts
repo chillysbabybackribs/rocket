@@ -212,7 +212,15 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'chat.delete': async ({ chatId }) => { await hub.deleteChat(chatId); return null },
   'chat.send': ({ chatId, provider, model, text }) => { hub.send(chatId, provider, model, text); return null },
   'chat.stop': async ({ chatId }) => { await hub.stop(chatId); return null },
-  'turn.changes': ({ chatId, turnId }) => (store.turn(turnId)?.chatId === chatId ? store.turnPatch(turnId) ?? null : null),
+  'turn.changes': async ({ chatId, turnId }) => {
+    const kept = store.turn(turnId)?.chatId === chatId ? store.turnPatch(turnId) : undefined
+    if (!kept) return null
+    return { patch: kept.patch, truncated: kept.truncated, undo: await teamwork.undoable(turnId) }
+  },
+  'turn.undo': ({ chatId, turnId }) => {
+    if (store.turn(turnId)?.chatId !== chatId) throw new Error('That turn is not in this chat.')
+    return teamwork.undo(turnId)
+  },
   'question.answer': ({ chatId, itemId, answer, provider, model }) => {
     const text = answer.trim()
     if (!text) throw new Error('Pick an option or type an answer first')

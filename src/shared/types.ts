@@ -75,11 +75,14 @@ export type Turn = {
   endedAt: number | null
 }
 
-/** The totals a transcript line shows for a turn's changes. The full patch is read with `turn.changes`. */
-export type TurnChanges = { files: number; added: number; removed: number }
+/** The totals a transcript line shows for a turn's changes, and whether the user has undone them. The full patch is read with `turn.changes`. */
+export type TurnChanges = { files: number; added: number; removed: number; undone: boolean }
 
-/** A turn's changes in full: the unified patch as git wrote it, cut to a size limit when a turn changed a great deal. */
-export type TurnPatch = { patch: string; truncated: boolean }
+/**
+ * A turn's changes in full: the unified patch as git wrote it, cut to a size limit when a turn
+ * changed a great deal, and whether they can be undone right now (`reason` says why not).
+ */
+export type TurnPatch = { patch: string; truncated: boolean; undo: { offered: boolean; reason: string | null } }
 
 // Goals: something the user wants done end to end. The worker drafts a brief, the user confirms
 // it, then the worker works in ordinary turns and a second provider checks each round against
@@ -217,6 +220,8 @@ export type HostApi = {
   'chat.stop': [{ chatId: string }, null]
   /** A turn's changes as a unified patch; null when the turn changed nothing or its folder is not a repository. */
   'turn.changes': [{ chatId: string; turnId: string }, TurnPatch | null]
+  /** Put the turn's files back as they were before it; the reversal is committed like a turn. Returns the turn as it now stands. */
+  'turn.undo': [{ chatId: string; turnId: string }, Turn]
   /**
    * Answer a question a model asked. The answer is sent as the chat's next message to `provider`,
    * or given to the chat's goal as a note when one is running there.

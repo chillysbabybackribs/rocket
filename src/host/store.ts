@@ -1,7 +1,7 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { Chat, ChatSnapshot, Goal, GoalRole, Item, ProviderId, Turn, TurnChanges, TurnPatch, TurnStatus } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, Goal, GoalRole, Item, ProviderId, Turn, TurnChanges, TurnStatus } from '../shared/types.ts'
 
 // The canonical transcript. The app owns the conversation; a provider's own session is a cache
 // of the part of it that provider has already seen. Each (chat, provider) pair records the
@@ -85,8 +85,13 @@ const SCHEMA = `
 // Columns added after the first release, for stores created before them.
 const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
   { table: 'turns', column: 'goal_role', definition: 'TEXT' },
-  { table: 'turns', column: 'changes', definition: 'TEXT' }
+  { table: 'turns', column: 'changes', definition: 'TEXT' },
+  { table: 'turn_patches', column: 'start_tree', definition: 'TEXT' },
+  { table: 'turn_patches', column: 'end_tree', definition: 'TEXT' }
 ]
+
+/** What the store keeps of a turn's changes: the patch, and the two snapshots it was taken between, for undoing it. */
+export type StoredPatch = { patch: string; truncated: boolean; startTree: string | null; endTree: string | null }
 
 type Row = Record<string, unknown>
 
@@ -171,17 +176,33 @@ export class Store {
     return row ? turnOf(row) : undefined
   }
 
-  /** Record what a turn changed: the totals on the turn, the patch beside it. Returns the turn as it now stands. */
-  setTurnChanges(turnId: string, changes: TurnChanges, patch: TurnPatch): StoredTurn | undefined {
+  /** Record what a turn changed: the totals on the turn, the patch and its snapshots beside it. Returns the turn as it now stands. */
+  setTurnChanges(turnId: string, changes: TurnChanges, patch: StoredPatch): StoredTurn | undefined {
     this.sql('UPDATE turns SET changes = ? WHERE id = ?').run(JSON.stringify(changes), turnId)
-    this.sql('INSERT INTO turn_patches (turn_id, patch, truncated) VALUES (?, ?, ?) ON CONFLICT (turn_id) DO UPDATE SET patch = excluded.patch, truncated = excluded.truncated')
-      .run(turnId, patch.patch, patch.truncated ? 1 : 0)
+    this.sql(
+      'INSERT INTO turn_patches (turn_id, patch, truncated, start_tree, end_tree) VALUES (?, ?, ?, ?, ?) '
+      + 'ON CONFLICT (turn_id) DO UPDATE SET patch = excluded.patch, truncated = excluded.truncated, start_tree = excluded.start_tree, end_tree = excluded.end_tree'
+    ).run(turnId, patch.patch, patch.truncated ? 1 : 0, patch.startTree, patch.endTree)
     return this.turn(turnId)
   }
 
-  turnPatch(turnId: string): TurnPatch | undefined {
-    const row = this.sql('SELECT patch, truncated FROM turn_patches WHERE turn_id = ?').get(turnId)
-    return row ? { patch: String(row.patch), truncated: Number(row.truncated) === 1 } : undefined
+  /** Mark a turn's changes undone. Returns the turn as it now stands. */
+  setTurnUndone(turnId: string): StoredTurn | undefined {
+    const turn = this.turn(turnId)
+    if (turn?.changes) this.sql('UPDATE turns SET changes = ? WHERE id = ?').run(JSON.stringify({ ...turn.changes, undone: true }), turnId)
+    return this.turn(turnId)
+  }
+
+  turnPatch(turnId: string): StoredPatch | undefined {
+    const row = this.sql('SELECT patch, truncated, start_tree, end_tree FROM turn_patches WHERE turn_id = ?').get(turnId)
+    return row
+      ? {
+          patch: String(row.patch),
+          truncated: Number(row.truncated) === 1,
+          startTree: typeof row.start_tree === 'string' ? row.start_tree : null,
+          endTree: typeof row.end_tree === 'string' ? row.end_tree : null
+        }
+      : undefined
   }
 
   /** Insert or update by id; an item keeps the position it first appeared at. */
@@ -301,7 +322,8 @@ function turnOf(row: Row): StoredTurn {
     error: typeof row.error === 'string' ? row.error : null,
     handoffTurns: Number(row.handoff_turns),
     goalRole: typeof row.goal_role === 'string' ? row.goal_role as GoalRole : null,
-    changes: typeof row.changes === 'string' ? JSON.parse(row.changes) as TurnChanges : null,
+    // Rows written before undo existed carry no `undone`.
+    changes: typeof row.changes === 'string' ? { undone: false, ...JSON.parse(row.changes) as Partial<TurnChanges> } as TurnChanges : null,
     startedAt: Number(row.started_at),
     endedAt: row.ended_at === null ? null : Number(row.ended_at)
   }

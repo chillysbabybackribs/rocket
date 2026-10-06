@@ -1,7 +1,7 @@
 import { isAbsolute, relative, resolve } from 'node:path'
 import { providerLabel, type Item, type ProviderId, type Turn } from '../shared/types.ts'
 import { parsePatch, patchTotals } from '../shared/patch.ts'
-import { changedBetween, commitBlocker, commitPaths, patchBetween, repoRoot, snapshot } from './git.ts'
+import { changedBetween, commitBlocker, commitPaths, patchBetween, repoRoot, restoreFrom, snapshot } from './git.ts'
 import { messageOf, oneLine } from './json.ts'
 import { publicTurn, type Store } from './store.ts'
 
@@ -136,7 +136,7 @@ export class Teamwork {
             const patch = await patchBetween(top, start, end, own)
             const files = parsePatch(patch.patch)
             if (files.length) {
-              const recorded = this.store.setTurnChanges(turn.id, patchTotals(files), patch)
+              const recorded = this.store.setTurnChanges(turn.id, { ...patchTotals(files), undone: false }, { ...patch, startTree: start, endTree: end })
               if (recorded) this.options.changed?.(publicTurn(recorded))
             }
           } catch (error) {
@@ -160,6 +160,72 @@ export class Teamwork {
       this.options.warn?.(`A turn's changes could not be committed: ${messageOf(error)}`, { chatId: turn.chatId })
     }
     return changed
+  }
+
+  /**
+   * Whether a turn's changes can be put back right now, and if not, why: the record is missing,
+   * a turn is running in that folder, or one of its files has changed since (named, so the user
+   * knows what to look at). Checked by comparing the folder now with the turn's end snapshot.
+   */
+  async undoable(turnId: string): Promise<{ offered: boolean; reason: string | null }> {
+    const turn = this.store.turn(turnId)
+    const kept = this.store.turnPatch(turnId)
+    const chat = turn && this.store.chat(turn.chatId)
+    if (!turn || !kept || !chat) return { offered: false, reason: 'The record of this turn is gone.' }
+    if (turn.changes?.undone) return { offered: false, reason: 'Already undone.' }
+    if (!kept.startTree || !kept.endTree) return { offered: false, reason: 'Undo needs the snapshots of the turn, and this turn has none.' }
+    const top = await repoRoot(chat.cwd)
+    if (!top) return { offered: false, reason: 'The folder is not a git repository any more.' }
+    if (await this.busy(top)) return { offered: false, reason: 'A turn is running in this folder.' }
+    const paths = parsePatch(kept.patch).map((file) => file.path)
+    const now = await snapshot(top)
+    const since = now ? (await changedBetween(top, kept.endTree, now)).filter((path) => paths.includes(path)) : paths
+    if (since.length) return { offered: false, reason: `${since[0]}${since.length > 1 ? ` and ${since.length - 1} more` : ''} changed since.` }
+    return { offered: true, reason: null }
+  }
+
+  /**
+   * Put a turn's files back as they were before it, and record the reversal as a commit of its
+   * own when the app commits, so the history says what happened. Throws, in words for the user,
+   * when it cannot be done.
+   */
+  async undo(turnId: string): Promise<Turn> {
+    const turn = this.store.turn(turnId)
+    const kept = this.store.turnPatch(turnId)
+    const chat = turn && this.store.chat(turn.chatId)
+    if (!turn || !kept?.startTree || !chat) throw new Error('This turn cannot be undone: its record is gone.')
+    const top = await repoRoot(chat.cwd)
+    if (!top) throw new Error('The folder is not a git repository any more.')
+    return this.queue(top, async () => {
+      const check = await this.undoable(turnId)
+      if (!check.offered) throw new Error(`This turn cannot be undone: ${check.reason}`)
+      const paths = parsePatch(kept.patch).map((file) => file.path)
+      await restoreFrom(top, kept.startTree!, paths)
+      if (this.options.commit) {
+        const blocker = await commitBlocker(top)
+        if (blocker) this.options.warn?.(`An undo was not committed: ${blocker}.`, { chatId: turn.chatId, top })
+        else {
+          const subject = oneLine(requestOf(this.store.turnItems(turn.chatId, turn.id)), 66) || 'a Rocket turn'
+          await commitPaths(top, paths, `Undo: ${subject}\n\nUndone by the user in Rocket, chat "${oneLine(chat.title, 80)}".`)
+        }
+      }
+      const end = await snapshot(top)
+      if (end) this.ends.set(turn.chatId, end)
+      const marked = this.store.setTurnUndone(turnId)
+      if (!marked) throw new Error('The turn vanished while being undone.')
+      const result = publicTurn(marked)
+      this.options.changed?.(result)
+      return result
+    })
+  }
+
+  /** Whether any turn is running in a chat whose folder is this repository. */
+  private async busy(top: string): Promise<boolean> {
+    for (const other of this.working()) {
+      const cwd = this.store.chat(other.chatId)?.cwd
+      if (cwd && (await repoRoot(cwd)) === top) return true
+    }
+    return false
   }
 
   forget(chatId: string): void {
