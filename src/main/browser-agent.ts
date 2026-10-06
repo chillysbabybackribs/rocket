@@ -74,6 +74,10 @@ export class BrowserAgent {
     this.downloads = new BrowserDownloads(session.fromPartition(PARTITION), (contents) => this.ownerOf(contents))
   }
 
+  dispose(): void {
+    this.downloads.dispose()
+  }
+
   /** The chat whose turn is working in a page (its own tab, or one it touched), or null for the user's alone. */
   private ownerOf(contents: WebContents): string | null {
     for (const [chat, used] of this.touched) if (used.has(contents)) return chat

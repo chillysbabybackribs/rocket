@@ -155,7 +155,7 @@ try {
 const evalExport = new EvalExport(dataDir, rocketSourceRoot(), () => store, () => ledger)
 const turnTiming = new Map<string, TurnTiming>()
 const toolRegistry = new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', redactText(message).slice(0, 500), { provider, chatId }), ledger)
-  .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
+  .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results'), (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)))
   .add(...uiSnapshotTools(async () => await askBrowser({ op: 'uiSnapshot' }) as UiSnapshot))
   .add(...uiMapTools(askBrowser))
   .add(...uiRuns.tools())

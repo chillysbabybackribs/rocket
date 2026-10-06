@@ -70,7 +70,8 @@ export function copyTo(attachment: Attachment, key: string, title: string): void
   addExistingAttachment(key, attachment)
   updateDraft(key, { fresh: attachment.id })
   setTimeout(() => { if (draftOf(key).fresh === attachment.id) updateDraft(key, { fresh: null }) }, 1600)
-  showNotice(`Copied ${attachment.name} to ${title}.`, () => updateDraft(key, { attachments: draftOf(key).attachments.filter(each => each.id !== attachment.id), fresh: null }))
+  // Chat titles may already end in an ellipsis; a full stop after it reads as a typo.
+  showNotice(`Copied ${attachment.name} to ${title}${title.endsWith('…') ? '' : '.'}`, () => updateDraft(key, { attachments: draftOf(key).attachments.filter(each => each.id !== attachment.id), fresh: null }))
 }
 
 async function saveAs(attachment: Attachment): Promise<void> {

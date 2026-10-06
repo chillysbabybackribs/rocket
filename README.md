@@ -253,7 +253,7 @@ as `rocket` (`agy mcp add`) and works out the chat from the turn that is running
 leaves MCP tools out of the model's prompt, so the adapter opens a new conversation's first
 message with the tools, their arguments and how to call them.
 
-There are three browser tools (`src/host/tools/browser.ts`). For research, models are told to use
+There are four browser tools (`src/host/tools/browser.ts`). For research, models are told to use
 their provider's native web search to find and vet URLs first, then open only a few validated
 destinations in the browser—not to scrape search-result pages or gather many live sources from
 the open web. `browser_read` returns a page as text with links, its controls with short refs, and
@@ -269,6 +269,17 @@ head of the user's message when they have changed, so listing them costs no call
 loaded when its document is ready, not when its last ad is. While a turn uses a tab, its page runs
 at full speed even when concealed; when the turn ends it goes back to being an ordinary background
 tab, and a deleted chat's own tab is closed.
+
+`browser_download` saves a file with the user's sign-ins and no save dialog: a `url` (absolute or
+relative to the tab's page) or a `click` target that starts the download. It waits for the file
+(default 120 s, at most 600) and returns its path, size and type, or how far it got. Files go to
+the user's Downloads folder unless `saveTo` names a folder or a file, relative paths starting in
+the chat's working folder; an existing file is never overwritten (`report (1).pdf`). A click in
+`browser_run` that starts a download is saved the same way and listed in the script's result.
+Electron shows a save dialog whenever `will-download` does not set a save path, and a model cannot
+answer one, so main (`src/main/browser-downloads.ts`) sets the path itself for any download from a
+page a model is working in: its own tab, or a tab its running turn touched. A download you start
+in a tab no model is using still opens the usual save dialog.
 
 Rocket's Codex process disables the bundled `unified-computer-use`, `browser` and `chrome`
 plugins through process-local configuration overrides, so `cua_repl` and the related browser

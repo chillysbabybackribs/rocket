@@ -160,6 +160,7 @@ function createWindow(): void {
   window.on('closed', () => {
     window = null
     browser = null
+    browserAgent?.dispose()
     browserAgent = null
   })
   // The UI never navigates or opens windows. A link that tries opens inside the app, in a
