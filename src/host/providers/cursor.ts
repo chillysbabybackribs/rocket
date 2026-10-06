@@ -1,3 +1,5 @@
+// Image input: ACP v1 base64 image blocks, gated on initialize promptCapabilities.image
+// (official ACP docs read 2026-10-06; image turns not yet verified live).
 import { cursorImageContent } from './images.ts'
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'

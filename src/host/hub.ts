@@ -67,6 +67,7 @@ type LiveTurn = {
 }
 
 export class Hub {
+  private closing = false
   /** chatId → the turn in flight. One turn per chat at a time. */
   private readonly live = new Map<string, LiveTurn>()
   /** chatId → messages waiting for its turn in flight to end, oldest first. */
@@ -337,6 +338,7 @@ export class Hub {
    * words sent while one turn ran belong to one next turn, as they would in a conversation.
    */
   private drain(chatId: string): void {
+    if (this.closing) return
     const queue = this.queues.get(chatId)
     if (!queue?.length || this.live.has(chatId)) return
     this.setQueue(chatId, [])
@@ -463,6 +465,7 @@ export class Hub {
   }
 
   async shutdown(): Promise<void> {
+    this.closing = true
     await Promise.all([...this.live.keys()].map((chatId) => this.stop(chatId)))
     for (const adapter of Object.values(this.adapters)) adapter.shutdown()
   }
@@ -490,7 +493,7 @@ export class Hub {
         const lines = context ? await context(chatId, provider, fresh).catch(() => null) : null
         return lines ? `${lines}\n\n${text}` : text
       }
-      const images = (history: Handoff | null): ProviderImage[] => this.resolveImages([...new Set([...attachments, ...(history?.attachments ?? [])].map(image => image.id))])
+      const images = (history: Handoff | null): ProviderImage[] => this.resolveImages([...new Set([...attachments, ...(history?.attachments ?? []).toReversed()].map(image => image.id))])
       const first = context ? await told(session.id === null) : text
       result = live.stopRequested ? { status: 'interrupted' }
         : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: session.id, model, text: first, handoff, attachments: images(handoff) }, sink)

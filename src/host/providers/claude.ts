@@ -1,3 +1,5 @@
+// Image input: SDKUserMessage content arrays with base64 image sources (SDK types inspected
+// and official streaming-input docs read 2026-10-06; image turns not yet verified live).
 import { claudeImageContent } from './images.ts'
 import { homedir } from 'node:os'
 import type { Options, Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'

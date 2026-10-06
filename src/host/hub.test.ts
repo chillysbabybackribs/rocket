@@ -4,6 +4,41 @@ import type { HostEvent } from '../shared/types.ts'
 import { Hub, type TurnTiming } from './hub.ts'
 import { unavailableUsage, type OpenUnprompted, type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type TurnSink } from './providers/provider.ts'
 import { Store } from './store.ts'
+import type { ImageAttachment } from '../shared/types.ts'
+
+test('image-only messages, queues, restart restoration and provider handoffs retain image references', async () => {
+  const store = new Store(':memory:')
+  const first = new FakeAdapter()
+  const second = new FakeAdapter()
+  const adapters = { claude: first, codex: second, cursor: second, antigravity: second }
+  const image: ImageAttachment = { id: 'image-1', name: 'screen.png', mimeType: 'image/png', size: 100, width: 10, height: 10 }
+  const hub = new Hub(store, adapters, () => {}, undefined, null, ids => ids.map(id => ({ ...image, id, path: `/images/${id}.png` })))
+  const chat = hub.createChat('/work')
+  await hub.post(chat.id, 'claude', null, '', [image])
+  const initial = hub.openChat(chat.id).items.find(item => item.type === 'user')
+  assert.equal(initial?.type === 'user' && initial.attachments?.[0].id, image.id)
+  assert.equal(first.ran[0].attachments?.[0].path, '/images/image-1.png')
+  await hub.post(chat.id, 'claude', null, 'Another view', [image])
+  assert.equal(hub.queued(chat.id)[0].taking, undefined, 'images never steer a live turn')
+  const restored = new Hub(store, adapters, () => {})
+  assert.deepEqual(restored.queued(chat.id)[0].attachments, [image])
+  assert.deepEqual(hub.unqueue(chat.id, hub.queued(chat.id)[0].id), { text: 'Another view', attachments: [image] })
+  await hub.post(chat.id, 'claude', null, '', [image])
+  assert.deepEqual(hub.withdraw(chat.id), { text: '', attachments: [image] })
+  first.complete()
+  await hub.waitForTurn(chat.id)
+  await hub.post(chat.id, 'codex', null, 'Compare with the earlier screen')
+  assert.deepEqual(second.ran[0].handoff?.attachments, [image])
+  assert.equal(second.ran[0].attachments?.[0].id, image.id)
+  second.lose()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(second.ran[1].sessionId, null)
+  assert.equal(second.ran[1].attachments?.[0].id, image.id)
+  second.complete()
+  await hub.waitForTurn(chat.id)
+  await assert.rejects(hub.post(chat.id, 'antigravity', null, '', [image]), /cannot receive images/)
+  store.close()
+})
 
 /** An adapter that records what it was asked and answers a turn when the test says so. */
 class FakeAdapter implements ProviderAdapter {

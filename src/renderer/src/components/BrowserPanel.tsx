@@ -1,3 +1,4 @@
+import { useImagePreviewOpen } from './Attachments.tsx'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Lock, RotateCw, Search, X } from 'lucide-react'
 import type { BrowserState, BrowserTab, Suggestion } from '../../../shared/types.ts'
@@ -129,6 +130,7 @@ function AddressField({ tab }: { tab: BrowserTab | null }) {
 }
 
 export function BrowserPanel() {
+  const imagePreview = useImagePreviewOpen()
   const [state, setState] = useState(EMPTY)
   const stage = useRef<HTMLDivElement>(null)
   const active = state.tabs.find((tab) => tab.id === state.activeId) ?? null
@@ -140,7 +142,7 @@ export function BrowserPanel() {
   }, [])
 
   // The page is a native view over the window; while a dialog is open it is hidden, not covered.
-  const covered = useApp((state) => state.newGoal !== null)
+  const covered = useApp((state) => state.newGoal !== null) || imagePreview
   useEffect(() => {
     const element = stage.current
     if (!element) return

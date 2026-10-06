@@ -1,8 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { X } from 'lucide-react'
 import type { ImageAttachment } from '../../../shared/types.ts'
 import { call } from '../host.ts'
 import { IMAGE_DRAG_TYPE } from '../drafts.ts'
+
+// Electron's native browser view must hide while the renderer's image dialog is open.
+let previewOpen = false
+const previewListeners = new Set<() => void>()
+function setPreviewOpen(open: boolean): void {
+  previewOpen = open
+  for (const notify of previewListeners) notify()
+}
+export function useImagePreviewOpen(): boolean {
+  return useSyncExternalStore(listener => { previewListeners.add(listener); return () => { previewListeners.delete(listener) } }, () => previewOpen)
+}
 
 function ImageTile({ image, remove }: { image: ImageAttachment; remove?: () => void }) {
   const [src, setSrc] = useState<string | null>(null)
@@ -11,10 +22,12 @@ function ImageTile({ image, remove }: { image: ImageAttachment; remove?: () => v
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     let alive = true
+    const element = dialog.current
     void call('attachment.read', { id: image.id, thumbnail: true }).then(value => { if (alive) setSrc(value) }, reason => { if (alive) setError(String(reason.message)) })
-    return () => { alive = false }
+    return () => { alive = false; if (element?.open) setPreviewOpen(false) }
   }, [image.id])
   const enlarge = async (): Promise<void> => {
+    setPreviewOpen(true)
     dialog.current?.showModal()
     try { setFull(await call('attachment.read', { id: image.id })) }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'This image could not be opened.') }
@@ -27,7 +40,7 @@ function ImageTile({ image, remove }: { image: ImageAttachment; remove?: () => v
       </button>
       {remove && <button type="button" className="image-remove" aria-label={`Remove ${image.name}`} onClick={remove}><X size={12} /></button>}
       <span className="image-name" title={image.name}>{image.name}</span>
-      <dialog ref={dialog} className="image-preview" onClick={event => { if (event.target === event.currentTarget) dialog.current?.close() }} onClose={() => setFull(null)}>
+      <dialog ref={dialog} className="image-preview" aria-label={`Image preview: ${image.name}`} onClick={event => { if (event.target === event.currentTarget) dialog.current?.close() }} onClose={() => { setFull(null); setPreviewOpen(false) }}>
         <div className="image-preview-bar"><span>{image.name}</span><button type="button" aria-label="Close image preview" onClick={() => dialog.current?.close()}><X size={18} /></button></div>
         {full ? <img src={full} alt={image.name} /> : <p>{error ?? 'Loading image…'}</p>}
       </dialog>

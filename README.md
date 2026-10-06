@@ -115,6 +115,32 @@ stay a hover away. The button at the strip's foot, or at the peek's, opens the r
 
 ### Messages sent while a turn runs
 
+### Images in chat
+
+Paste a screenshot into the message field, choose **Attach images**, or drop files anywhere in
+the receiving chat pane. A thumbnail tray keeps images beside the draft; click a thumbnail to
+enlarge it, remove it with its cross, or drag it into another chat to copy it there. Images may
+be sent without text. Attaching never sends automatically. PNG, JPEG, WebP and GIF are accepted,
+up to 5 MB each, 8000 pixels per side, 32 megapixels, and ten images totaling 20 MB per message.
+
+Rocket copies image bytes and thumbnails into its profile's `attachments/` directory and keeps
+metadata in SQLite. Draft references and text survive restarts in renderer preferences; sent
+and queued references live in SQLite. The existing MessagePort carries imports directly to the
+host. Original files may be moved after importing. Unreferenced images older than a day are
+collected when the renderer reconnects, preserving images still in drafts, queues or transcripts.
+
+Image messages wait for the active turn to finish, including with providers that support text
+steering. **Edit** and **Stop** restore the whole message. Queues recovered after a restart stay
+visible until sent or edited. Claude receives image content blocks, Codex receives local image
+paths, and Cursor receives ACP image blocks only when its handshake advertises support.
+Antigravity image submission and active-goal note attachments are not supported yet. Provider
+image formats have unit coverage and documented contracts; real image model turns have not yet
+been exercised. Switching providers or recovering a lost session carries image references in
+the handoff, sends current and recent images within the message budget, and supplies stored
+file paths for older images. Image files must remain available to the local provider processes.
+
+### Messages sent while a turn runs
+
 The composer stays open while a turn runs; Esc or the Stop button beside Send stops it. A message
 to the provider that is answering joins its turn (`Hub.post`, `ProviderAdapter.steer`): Claude
 Code gets it as a streamed user message with priority `next`, Codex through `turn/steer`. The

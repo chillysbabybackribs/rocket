@@ -33,7 +33,8 @@ export class UiTestAdapter implements ProviderAdapter {
       sink.model(request.model ?? 'ui-default')
       writeFileSync(join(this.profile, 'ui-request.json'), JSON.stringify({
         turnId: request.turnId, provider: this.id, model: request.model,
-        sessionId: request.sessionId, cwd: request.cwd, handoffTurns: request.handoff?.turns ?? 0
+        sessionId: request.sessionId, cwd: request.cwd, handoffTurns: request.handoff?.turns ?? 0,
+        attachments: request.attachments?.map(image => ({ id: image.id, name: image.name, path: image.path })) ?? []
       }))
       if (command === 'UI check: fail') return { status: 'failed', error: 'Controlled UI test failure.' }
       if (command === 'UI check: work') return this.work(request.turnId, sink, controller.signal)
@@ -42,6 +43,10 @@ export class UiTestAdapter implements ProviderAdapter {
       if (command === 'UI check: plan') return this.plan(request.turnId, sink, controller.signal)
       if (command === 'UI check: good evening') {
         sink.item({ type: 'assistant', id: `${request.turnId}:reply`, turnId: request.turnId, text: 'Good evening.', streaming: false })
+        return { status: 'completed' }
+      }
+      if (request.attachments?.length && !['UI check: stream', 'UI check: stop', 'UI check: recover'].includes(command ?? '')) {
+        sink.item({ type: 'assistant', id: `${request.turnId}:images`, turnId: request.turnId, text: `Received ${request.attachments.length} image(s).`, streaming: false })
         return { status: 'completed' }
       }
       if (!['UI check: stream', 'UI check: stop', 'UI check: recover'].includes(command ?? '')) {

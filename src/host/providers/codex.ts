@@ -1,3 +1,5 @@
+// Image input: turn/start accepts localImage paths (official app-server docs read
+// 2026-10-06; image turns not yet verified live against the installed CLI).
 import { codexImageContent } from './images.ts'
 import { homedir } from 'node:os'
 import type { Item, ModelInfo, ToolStatus, TurnTokens, UsageSnapshot } from '../../shared/types.ts'
