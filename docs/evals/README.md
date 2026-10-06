@@ -10,6 +10,30 @@ node scripts/run-agent-matrix.mjs docs/evals/scenarios/goal-draft-minimal.jsonl
 
 Produces a run plan under `.artifacts/evals/` (manual or future host automation).
 
+### Turn export + graders (manual matrix cells)
+
+1. Tag the eval chat (once per chat), or set `ROCKET_EVAL_EXPORT=all` when launching Rocket.
+2. Optional: point the next exports at a matrix cell folder:
+
+   ```bash
+   export ROCKET_EVAL_CELL=/path/to/.artifacts/evals/<run>/cells/goal-draft-minimal__claude__default__trial0
+   ```
+
+3. Run the scenario message in the live app; when the turn ends, the host writes `turn.json` + `ledger-slice.json`.
+4. Grade:
+
+   ```bash
+   npm run eval:grade-turn -- .artifacts/evals/inbox/<turnId>__*/turn.json --graders turn_completed,goal_report_called
+   ```
+
+Host RPC (from renderer or future runner): `eval.tagChat`, `eval.setCellDir`, `eval.exportTurn`.
+
+Offline export from the profile DB:
+
+```bash
+npm run eval:export-turn -- <turnId> [outDir]
+```
+
 ---
 
 ## Braintrust UI regression eval (Lane A — harness)

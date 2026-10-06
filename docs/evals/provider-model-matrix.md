@@ -160,9 +160,9 @@ Matrix eval then compares **worker** providers while holding checker constant, o
 
 ## Implementation order
 
-1. [ ] JSONL scenario format + 2–3 fixtures under `evals/fixtures/`
-2. [ ] Turn export to `turn.json` (host/store; one function, eval chats tagged)
-3. [ ] `scripts/grade-turn.mjs` — deterministic graders on exported turn + ledger path
+1. [x] JSONL scenario format + 2–3 fixtures under `evals/fixtures/`
+2. [x] Turn export to `turn.json` (`src/host/eval-export.ts`, eval chats tagged / `ROCKET_EVAL_CELL`)
+3. [x] `scripts/grade-turn.mjs` — deterministic graders on exported turn + ledger slice
 4. [ ] `scripts/run-agent-matrix.mjs` — Phase 1 manual manifest helper, then Phase 3 when RPC exists
 5. [ ] `report.html` generator from `summary.json`
 6. [ ] Optional: in-app “Eval runs” panel reading `.artifacts/evals/`

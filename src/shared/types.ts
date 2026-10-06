@@ -298,6 +298,15 @@ export type HostApi = {
   'goal.steer': [{ goalId: string; text: string }, Goal]
   /** An error the page caught, for the host's journal. */
   'journal.report': [{ message: string; stack?: string }, null]
+  /** Mark a chat so ended turns export to `.artifacts/evals/` when `ROCKET_EVAL_EXPORT=tagged` (default). */
+  'eval.tagChat': [{ chatId: string }, null]
+  'eval.untagChat': [{ chatId: string }, null]
+  /** List chat ids tagged for eval export. */
+  'eval.listTaggedChats': [Record<string, never>, string[]]
+  /** Write `turn.json` for a finished turn; optional `outDir` overrides `ROCKET_EVAL_CELL`. */
+  'eval.exportTurn': [{ turnId: string; outDir?: string | null }, string | null]
+  /** Directory for automatic export on the next ended turns (matrix cell folder). */
+  'eval.setCellDir': [{ dir: string | null }, null]
 }
 
 export type HostMethod = keyof HostApi
