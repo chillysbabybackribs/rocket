@@ -2041,6 +2041,8 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   display: flex;
   flex-direction: column;
   min-height: 220px;
+  max-height: min(280px, 34vh);
+  overflow: hidden;
 }
 .eval-pg-task-head {
   display: flex;
@@ -2057,6 +2059,13 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   background: var(--task-dot, #fafafa);
 }
 .eval-pg-task-section { padding: 10px 12px; }
+.eval-pg-task-section--messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .eval-pg-task-section-label { font-size: 11px; color: var(--text-4); margin-bottom: 6px; }
 .eval-pg-model-pick {
   width: 100%;
@@ -2076,8 +2085,12 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 }
 .eval-pg-prompt {
   width: 100%;
-  resize: vertical;
-  min-height: 100px;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 72px;
+  max-height: 108px;
+  height: 108px;
+  margin: 0;
   padding: 8px;
   border-radius: 8px;
   border: 1px solid var(--line);
@@ -2086,6 +2099,10 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   font-family: var(--mono);
   font-size: 11px;
   line-height: 1.45;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  field-sizing: fixed;
 }
 .eval-pg-prompt-chips { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .eval-pg-chip {

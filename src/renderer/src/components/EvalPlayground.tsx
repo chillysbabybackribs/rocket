@@ -233,14 +233,13 @@ export function EvalPlayground({ datasets, onFinished, onRefresh, onClose }: Pro
                 {task.model ? ` · ${task.model}` : ' · default'}
               </button>
             </div>
-            <div className="eval-pg-task-section">
+            <div className="eval-pg-task-section eval-pg-task-section--messages">
               <div className="eval-pg-task-section-label">Messages</div>
               <div className="eval-pg-msg-role">User</div>
               <textarea
                 className="eval-pg-prompt"
                 readOnly
                 value={promptTemplate}
-                rows={6}
                 aria-label={`Prompt for ${task.label}`}
               />
               <div className="eval-pg-prompt-chips">
