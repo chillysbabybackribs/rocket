@@ -44,6 +44,11 @@ function page(surface) {
   }
 }
 const ui = {
+  pane: index => {
+    const n = Number(index)
+    if (!Number.isInteger(n) || n < 0) throw new Error('ui.pane(index) requires a non-negative integer pane index.')
+    return locator('shell', [{ method: 'locator', args: [`.pane[data-pane-index="${n}"]`] }])
+  },
   surface: async kind => { await call({ type: 'surface', surface: kind }); return page(kind) },
   resize: (width, height) => call({ type: 'resize', width, height }),
   release: () => call({ type: 'release' }),

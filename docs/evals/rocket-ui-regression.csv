@@ -6,3 +6,4 @@ input,expected
 "{""scenario"":""Host crash reconnects and accepts new message"",""playwright_grep"":""host crash interrupts"",""spec_file"":""recovery.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
 "{""scenario"":""Full desktop self-check smoke"",""playwright_grep"":""Rocket desktop self-check"",""spec_file"":""rocket.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
 "{""scenario"":""UI-run isolated session lifecycle"",""playwright_grep"":""UI scripts reuse isolated sessions"",""spec_file"":""ui-run.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Pane index selection when greeting text duplicates"",""playwright_grep"":""ui.pane targets the intended chat"",""spec_file"":""tool-failure-pane.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"

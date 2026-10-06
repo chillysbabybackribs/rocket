@@ -10,7 +10,7 @@ Rocket already records tool errors in `journal.jsonl` and saves UI-run results a
 
 ## Implementation checklist
 
-**Progress: 5 of 7 steps complete.**
+**Progress: 6 of 7 steps complete.**
 
 
 - **✅ COMPLETE — 1. Define the record format.** Record every call with a unique ID, timestamps, tool and schema versions, app build, provider/model, chat/turn identity, arguments, duration, outcome, structured error, and artifact references. Keep observed facts separate from later diagnoses. Define record size limits and secret redaction rules.
@@ -23,7 +23,7 @@ Rocket already records tool errors in `journal.jsonl` and saves UI-run results a
 
 - **✅ COMPLETE — 5. Track review and recovery separately.** `rocket_tool_review` stores annotations in a separate table, links retries, and exposes a review queue. Original call evidence stays immutable; lifecycles run unreviewed → diagnosed → regression_added → fixed → verified.
 
-- **⬜ PENDING — 6. Turn lessons into regression cases.** Build controlled fixtures from selected failures. Start with the ambiguous pane selector: a conversation contains the same greeting as the empty pane. Verify that improved pane selection identifies the intended target. Replay tests in isolated apps, never automatically against live chats.
+- **✅ COMPLETE — 6. Turn lessons into regression cases.** Added `data-pane-index`, `ui.pane(index)` and isolated regression `tool-failure-pane.spec.ts` for duplicate “Good evening.” text with unscoped vs scoped composers.
 
 - **⬜ PENDING — 7. Verify retention and context limits.** Test restart recovery, interrupted calls, malformed records, concurrent calls, redaction, grouping, and bounded queries. Define retention for records and captures separately. Keep history out of session prompts and track tool-description size alongside success rate.
 
@@ -58,4 +58,4 @@ Rocket already records tool errors in `journal.jsonl` and saves UI-run results a
 - Recording begins in the live app after restart. No tool descriptions are automatically rewritten and no failed actions are replayed against live chats.
 - See [tool-failure-history.md](tool-failure-history.md) for record format, retention, redaction limitations and query examples.
 - Step 5 adds `rocket_tool_review` (`get`, `annotate`, `link_retry`, `queue`) and embeds reviews on call-detail history lookups. Restart Rocket to load the new tool.
-- Next: step 6, turn the ambiguous pane-selector failure into an isolated regression case. Step 7 completes retention/context verification.
+- Step 6 adds `tests/ui/tool-failure-pane.spec.ts` and documents `ui.pane(index)` in `rocket_ui_run`. Step 7 completes retention/context verification.

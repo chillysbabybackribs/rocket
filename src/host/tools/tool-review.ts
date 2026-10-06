@@ -29,11 +29,12 @@ export function toolReviewTools(ledger: ToolLedger): Tool[] {
 
       try {
         if (action === 'queue') {
-          const since = args.since ?? Date.now() - 7 * 86_400_000
-          const until = args.until ?? Date.now()
+          const since = typeof args.since === 'number' ? args.since : Date.now() - 7 * 86_400_000
+          const until = typeof args.until === 'number' ? args.until : Date.now()
           if (since > until) return failureResult('INVALID_ARGUMENT', 'since must be at or before until.')
           const lifecycle = args.lifecycle === 'unreviewed' ? 'unreviewed' as const : args.lifecycle as typeof REVIEW_LIFECYCLES[number] | undefined
-          const data = ledger.reviewQueue({ since, until, lifecycle, limit: args.limit ?? 20 })
+          const limit = typeof args.limit === 'number' ? args.limit : 20
+          const data = ledger.reviewQueue({ since, until, lifecycle, limit })
           return textResult(JSON.stringify(data))
         }
 

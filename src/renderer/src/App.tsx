@@ -153,7 +153,7 @@ function ChatPane() {
       )
   }
   return (
-    <section className={`pane${empty ? ' is-empty' : ''}${focused ? ' is-focused' : ''}`} aria-label={chat?.title ?? 'New chat'} onPointerDownCapture={focus} onFocusCapture={focus}>
+    <section data-pane-index={usePane()} className={`pane${empty ? ' is-empty' : ''}${focused ? ' is-focused' : ''}`} aria-label={chat?.title ?? 'New chat'} onPointerDownCapture={focus} onFocusCapture={focus}>
       {body}
     </section>
   )

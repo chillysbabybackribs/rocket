@@ -40,6 +40,10 @@ export class UiTestAdapter implements ProviderAdapter {
       if (command === 'UI check: ask') return this.ask(request.turnId, sink)
       if (command === 'UI check: edit') return this.edit(request.turnId, request.cwd, sink)
       if (command === 'UI check: plan') return this.plan(request.turnId, sink, controller.signal)
+      if (command === 'UI check: good evening') {
+        sink.item({ type: 'assistant', id: `${request.turnId}:reply`, turnId: request.turnId, text: 'Good evening.', streaming: false })
+        return { status: 'completed' }
+      }
       if (!['UI check: stream', 'UI check: stop', 'UI check: recover'].includes(command ?? '')) {
         return { status: 'failed', error: 'This isolated window uses UI test responses only.' }
       }

@@ -65,6 +65,10 @@ Each review records creation and update times, lifecycle stage, optional cause c
 
 Call detail lookups through `rocket_tool_history` include an embedded `review` when present.
 
+## Regression: ambiguous pane selection
+
+When two panes show the same greeting text, unscoped `Message` textboxes fail with `AMBIGUOUS_TARGET`. Scope with `ui.pane(index)` (matching `data-pane-index` on each `.pane` in the shell). Isolated replay: `tests/ui/tool-failure-pane.spec.ts` (`UI check: good evening` fixture). Mark reviewed failures with `rocket_tool_review` lifecycle `regression_added` when promoting a lesson.
+
 ## Remaining work
 
-Regression-case promotion from reviewed failures and the remaining retention/context verification are next. The first integration regression already checks that an ambiguous selector produces a structured failure, preserves existing drafts, and can be retrieved through the history tool with successful calls included in its denominator.
+Retention/context verification (step 7) is next. The first integration regression already checks that an ambiguous selector produces a structured failure, preserves existing drafts, and can be retrieved through the history tool with successful calls included in its denominator.
