@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { electronEnv } from './electron-env.mjs'
+import { ensureElectronSandbox } from './electron-sandbox.mjs'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const target = process.argv[2]
@@ -23,5 +24,7 @@ const href = /^(https?|file):/i.test(target) ? target : resolve(process.cwd(), t
 // The app's own directory, so Electron reads package.json and the launch shares the running
 // instance's identity; `out/main/index.js` as the entry would make a second, separate app.
 const electron = join(root, 'node_modules', '.bin', 'electron')
-const child = spawn(electron, [root, href], { cwd: root, env: electronEnv(), stdio: 'inherit', detached: true })
+const env = electronEnv()
+ensureElectronSandbox(env)
+const child = spawn(electron, [root, href], { cwd: root, env, stdio: 'inherit', detached: true })
 child.unref()
