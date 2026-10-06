@@ -27,6 +27,7 @@
     "eval:mock-ui": "node scripts/serve-eval-mock.mjs",
     "simulate:slow-turn": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/simulate-slow-turn.ts",
     "design": "node scripts/design-library.mjs",
+    "bench:transcript": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/transcript-bench.ts",
     "demo:video": "electron-vite build --outDir .artifacts/demo/app/out && xvfb-run -a --server-args='-screen 0 3200x1800x24' node scripts/demo-video.mjs .artifacts/demo/run && python3 scripts/demo-edit.py .artifacts/demo/run"
   },
   "dependencies": {

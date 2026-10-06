@@ -498,6 +498,15 @@ below it), with pass counts and median time against the run before. A cell opens
 grades with reasons, the files it changed, and its turn in the real `Transcript`, mounted outside
 the panes through `ShownChatContext` (`pane.ts`) and read-only there.
 
+### Long chats
+
+Two benchmarks measure how the transcript copes with a long history, using seeded synthetic
+chats shaped like real ones (`tests/fixtures/long-chat.ts`). `npm run bench:transcript` times
+the host: reading a chat to open it, the payload, the attachment sweep and a full handoff.
+`npm run check:ui -- long-chat` times the isolated app opening a chat, switching back to its tab
+and scrolling it, with `LONG_CHAT_PROFILE=1` for a CPU profile. Both write to
+`.artifacts/bench/`. The audit, the baseline and the plan are in `docs/long-chat-plan.md`.
+
 ### Design reference library
 
 Goal drafting now points agents to an editable preparation skill and shared reference catalog.
