@@ -12,6 +12,7 @@ export type ArtifactView =
 import { PROVIDERS, TURN_PAGE, planItemId, providerLabel } from '../../shared/types.ts'
 import type { LibraryEntry, LibraryFilters, LibraryPreview, LibraryView } from '../../shared/library.ts'
 import { call, connectHost } from './host.ts'
+import { clampSpeed } from '../../shared/reading.ts'
 
 // Client state. Two kinds of subscription keep a fast token stream cheap: components that care
 // about structure (which chats, which turns, which items exist) read `useApp`, and each
@@ -110,6 +111,8 @@ export type AppState = {
   models: Partial<Record<ProviderId, ModelInfo[]>>
   /** What the panel beside the chat shows: a file a link opened, or what a turn changed. */
   artifact: ArtifactView | null
+  /** Hands-free reading's speed, one for web pages and files alike (shared/reading.ts). */
+  readingSpeed: number
   browserOpen: boolean
   /** Local eval dashboard (Braintrust-style mock UI) beside the chat. */
   evalsOpen: boolean
@@ -161,6 +164,7 @@ type Prefs = {
   selections?: Record<string, Selection>
   browserOpen?: boolean
   evalsOpen?: boolean
+  readingSpeed?: number
   libraryOpen?: boolean
   libraryView?: 'grid' | 'list'
   railOpen?: boolean
@@ -237,6 +241,7 @@ let state: AppState = {
   running: new Set(),
   usage: {},
   models: {},
+  readingSpeed: clampSpeed(prefs.readingSpeed ?? 1),
   browserOpen: prefs.browserOpen === true,
   evalsOpen: prefs.evalsOpen === true,
   evals: INITIAL_EVALS,
@@ -791,6 +796,18 @@ export function setGoalWidth(goalWidth: number, save: boolean): void {
 
 export function agentLabel(agent: { provider: ProviderId }): string {
   return providerLabel(agent.provider)
+}
+
+/**
+ * One reading speed everywhere. Main keeps the browser's (it scrolls web pages), so a change made
+ * here is passed on to it, and one made there (Alt+↑/↓ in a page) comes back through `fromBrowser`.
+ */
+export function setReadingSpeed(speed: number, fromBrowser = false): void {
+  const readingSpeed = clampSpeed(speed)
+  if (readingSpeed === state.readingSpeed) return
+  setState({ readingSpeed })
+  writePrefs({ readingSpeed })
+  if (!fromBrowser) window.rocket.browser.send({ type: 'readingSpeed', speed: readingSpeed })
 }
 
 export function setRailOpen(railOpen: boolean): void {

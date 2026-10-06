@@ -306,6 +306,14 @@ tab that leaves the screen, forgets it when the page navigates, takes Esc and Al
 faster), and asks the page on screen for its progress four times a second. The speed is shared by
 every tab and kept with the session in `browser-tabs.json`.
 
+The file panel beside the chat has the same reading in its header, for whatever it shows: a plan
+or other Markdown, a library document or PDF, an attachment, a turn's diff (`PanelReader.tsx`,
+with the scrolling in `src/renderer/src/panel-reader.ts`, which mirrors the page's because it cannot
+share its code). It scrolls the view's `.artifact-content`, takes the same keys while focus is in the
+panel, and starts at rest for each new file. One speed serves both: the renderer keeps it in its
+preferences and passes it to main, and a change main makes (Alt+↑/↓ in a page) comes back with the
+browser's state.
+
 Background tabs are hidden with `setVisible(false)`, so Chromium stops drawing them.
 `ROCKET_BROWSER_HIDE=park npm run dev` moves them off screen instead, the older way, in case a
 tab ever comes back blank; see the note in `src/main/browser-url.ts`.

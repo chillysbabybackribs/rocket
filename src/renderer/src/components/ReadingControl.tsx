@@ -1,27 +1,40 @@
 import '../reading.css'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ChevronsDown, X } from 'lucide-react'
-import type { BrowserTab } from '../../../shared/types.ts'
+import type { BrowserReading } from '../../../shared/types.ts'
 import { nudgeSpeed, READING_SLIDER_MAX, READING_SNAPS, snapSpeed, speedLabel, speedToSlider, timeLeftLabel } from '../../../shared/reading.ts'
 
-// Hands-free reading, at the right of the browser's toolbar (docs/mockups/reading-scroll.html).
-// At rest it is one button; reading, it opens into a pill: play/pause inside a ring that fills as
-// the page goes by, a speed slider, the speed with the time the rest of the page takes, and stop.
-// It stays in the toolbar, so it never covers or moves the page. The scrolling itself is main's
-// (src/main/reading-scroll.ts); this only shows its state and sends what the user asks for.
+// Hands-free reading's control (docs/mockups/reading-scroll.html), in the browser's toolbar and
+// in the file panel's header. At rest it is one button; reading, it opens into a pill: play/pause
+// inside a ring that fills as the page goes by, a speed slider, the speed with the time the rest
+// takes, and stop. It sits in a toolbar, so it never covers or moves what is being read. The
+// scrolling is someone else's (main's for a web page, PanelReader.tsx for a file); this only shows
+// its state and passes on what the user asks for.
 
-const send = window.rocket.browser.send
 /** The ring's circumference, for a radius of 12. */
 const RING = 2 * Math.PI * 12
 
-export function ReadingControl({ tab, speed }: { tab: BrowserTab | null; speed: number }) {
+export type ReadingActions = {
+  /** Start reading, or stop it if it is reading (the button at rest, and Alt+S). */
+  flip: () => void
+  /** Pause, carry on, or read from the top at the end. */
+  toggle: () => void
+  stop: () => void
+  setSpeed: (speed: number) => void
+}
+
+export function ReadingControl({ reading, speed, disabled = false, actions }: {
+  reading: BrowserReading | null
+  speed: number
+  disabled?: boolean
+  actions: ReadingActions
+}) {
   // The slider shows where it was put until main's answer comes back. Shown at the old speed in
   // between, it would hand that back in the `change` event that ends a drag or a key press.
   const [pending, setPending] = useState<number | null>(null)
   useEffect(() => setPending(null), [speed])
   /** Wheel travel not yet spent: a trackpad sends many small deltas, a wheel notch one large one. */
   const wheel = useRef(0)
-  const reading = tab?.reading ?? null
   if (!reading) {
     return (
       <button
@@ -29,8 +42,8 @@ export function ReadingControl({ tab, speed }: { tab: BrowserTab | null; speed: 
         className="icon-button"
         aria-label="Read hands-free"
         title="Read hands-free (Alt+S)"
-        disabled={!tab?.url}
-        onClick={() => send({ type: 'reading', action: 'flip' })}
+        disabled={disabled}
+        onClick={actions.flip}
       >
         <ChevronsDown size={16} />
       </button>
@@ -41,7 +54,7 @@ export function ReadingControl({ tab, speed }: { tab: BrowserTab | null; speed: 
     ? { label: 'Pause', hint: 'Pause (Space)' }
     : reading.state === 'end' ? { label: 'Read from the top', hint: 'Read from the top' } : { label: 'Carry on', hint: 'Carry on (Space)' }
   const value = pending ?? speedToSlider(speed)
-  const setSpeed = (next: number): void => send({ type: 'readingSpeed', speed: next })
+  const setSpeed = actions.setSpeed
   return (
     <div
       className={`reading is-${reading.state}`}
@@ -53,7 +66,7 @@ export function ReadingControl({ tab, speed }: { tab: BrowserTab | null; speed: 
         wheel.current = 0
       }}
     >
-      <button type="button" className="reading-ring" aria-label={play.label} title={play.hint} onClick={() => send({ type: 'reading', action: 'toggle' })}>
+      <button type="button" className="reading-ring" aria-label={play.label} title={play.hint} onClick={actions.toggle}>
         <svg className="reading-dial" width="26" height="26" viewBox="0 0 26 26" fill="none" strokeWidth="2">
           <circle className="reading-groove" cx="13" cy="13" r="12" />
           <circle className="reading-done" cx="13" cy="13" r="12" strokeLinecap="round" strokeDasharray={RING} strokeDashoffset={RING * (1 - reading.progress)} />
@@ -90,7 +103,7 @@ export function ReadingControl({ tab, speed }: { tab: BrowserTab | null; speed: 
         <span className="reading-left">{reading.state === 'end' ? 'Done' : timeLeftLabel(reading.secondsLeft)}</span>
       </div>
       <span className="reading-sep" />
-      <button type="button" className="reading-stop" aria-label="Stop reading" title="Stop (Esc)" onClick={() => send({ type: 'reading', action: 'stop' })}>
+      <button type="button" className="reading-stop" aria-label="Stop reading" title="Stop (Esc)" onClick={actions.stop}>
         <X size={12} strokeWidth={2.4} />
       </button>
     </div>

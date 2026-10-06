@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test, expect } from './app'
 
@@ -79,5 +79,63 @@ test('hands-free reading scrolls the page, follows the reader’s own scrolling 
 
   await test.step('The speed is kept for next time', async () => {
     await expect.poll(async () => JSON.parse(await readFile(join(profile, 'browser-tabs.json'), 'utf8')).readingSpeed).toBe(1.1)
+  })
+})
+
+// The same reading in the panel beside the chat, here on a plan file a reply linked to.
+test('hands-free reading scrolls a file in the panel, follows the reader and keeps one speed', async ({ rocket }) => {
+  const { page, workspace } = rocket
+  const sections = Array.from({ length: 30 }, (_, index) => `## Step ${index + 1}\n\nThe night train leaves at half past nine. The cabins are small, the sheets are real, and the blind has a gap at the bottom.\n`)
+  await writeFile(join(workspace, 'reading-plan.md'), `# A long plan\n\n${sections.join('\n')}`)
+  await page.locator('.composer-folder').click()
+  await page.getByRole('textbox', { name: 'Message', exact: true }).fill('[Plan](reading-plan.md)\n\nUI check: stream')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.locator('.prose').last()).toContainText('Streaming from')
+  await rocket.release()
+  await expect(page.getByRole('button', { name: 'Stop', exact: true })).toHaveCount(0)
+  await page.getByRole('link', { name: 'Plan', exact: true }).click()
+  const panel = page.getByRole('region', { name: 'Artifact preview' })
+  await expect(panel.getByRole('heading', { name: 'A long plan' })).toBeVisible()
+  const text = panel.locator('.artifact-content')
+  const top = (): Promise<number> => text.evaluate((element) => element.scrollTop)
+
+  await test.step('The header button starts the file moving', async () => {
+    await panel.getByRole('button', { name: 'Read hands-free', exact: true }).click()
+    await expect(panel.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+    await expect.poll(top).toBeGreaterThan(20)
+    await panel.getByRole('slider', { name: 'Reading speed' }).focus()
+    await page.keyboard.press('End')
+    await expect(panel.locator('.reading-speed')).toHaveText('8×')
+  })
+
+  await test.step('The wheel moves the file back, and reading carries on from there', async () => {
+    await expect.poll(top).toBeGreaterThan(700)
+    const box = (await text.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    const before = await top()
+    await page.mouse.wheel(0, -600)
+    await expect.poll(top).toBeLessThan(before - 300)
+    const landed = await top()
+    await expect.poll(top, { timeout: 3000 }).toBeGreaterThan(landed + 60)
+  })
+
+  await test.step('A click pauses, Space carries on, Esc stops and Alt+S starts', async () => {
+    await text.locator('p').nth(8).click()
+    await expect(panel.getByRole('button', { name: 'Carry on', exact: true })).toBeVisible()
+    await page.keyboard.press('Space')
+    await expect(panel.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+    await rocket.capture('panel-reading')
+    await page.keyboard.press('Escape')
+    await expect(panel.getByRole('button', { name: 'Read hands-free', exact: true })).toBeVisible()
+    await page.keyboard.press('Alt+s')
+    await expect(panel.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+  })
+
+  await test.step('Another file starts at rest, at the speed last chosen', async () => {
+    await page.getByRole('button', { name: 'Close artifact' }).click()
+    await page.getByRole('link', { name: 'Plan', exact: true }).click()
+    await expect(panel.getByRole('button', { name: 'Read hands-free', exact: true })).toBeVisible()
+    await panel.getByRole('button', { name: 'Read hands-free', exact: true }).click()
+    await expect(panel.locator('.reading-speed')).toHaveText('8×')
   })
 })

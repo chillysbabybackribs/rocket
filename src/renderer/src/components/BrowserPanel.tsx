@@ -145,7 +145,7 @@ export function BrowserPanel() {
 
   useEffect(() => {
     // The app's preference is the speed; main's saved one may be older, from before a file was read.
-    send({ type: 'readingSpeed', speed: useApp.getState?.().readingSpeed ?? 1 })
+    send({ type: 'readingSpeed', speed: readingSpeed })
     const off = window.rocket.browser.onState((next) => {
       setState(next)
       setReadingSpeed(next.readingSpeed, true)

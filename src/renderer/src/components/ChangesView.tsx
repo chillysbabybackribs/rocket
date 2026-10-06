@@ -96,7 +96,7 @@ export function ChangesView({ patch }: { patch: TurnPatch }) {
           </button>
         ))}
       </div>
-      <div className="artifact-content diff-body">
+      <div className="artifact-content diff-body" tabIndex={-1}>
         {files.map((file) => (
           <FileDiff key={file.path} file={file} anchor={(element) => { if (element) heads.current.set(file.path, element); else heads.current.delete(file.path) }} />
         ))}

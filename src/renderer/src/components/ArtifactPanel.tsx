@@ -6,10 +6,12 @@ import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { parsePatch } from '../../../shared/patch.ts'
 import { ChangesView, Counts } from './ChangesView.tsx'
 import { FileMark, fileMeta } from './Attachments.tsx'
+import { PanelReader } from './PanelReader.tsx'
 
 // The panel beside the chat: a file a link opened (Markdown rendered, anything else as source
 // with a highlighted line), an attached PDF or text file, a file opened from the library, or what
-// a turn changed, as a diff.
+// a turn changed, as a diff. Each has hands-free reading in its header (PanelReader.tsx), which
+// scrolls the view's `.artifact-content`.
 
 /**
  * Undo in the panel's header: offered as a quiet button; undone, a word in its place; not
@@ -46,6 +48,7 @@ export function ArtifactPanel() {
   const turn = useApp((state) => (artifact?.kind === 'changes' ? viewOf(state, artifact.chatId).turns.find((entry) => entry.id === artifact.turnId) ?? null : null))
   const running = useApp((state) => (artifact?.kind === 'changes' ? state.running.has(artifact.chatId) : false))
   const selected = useRef<HTMLSpanElement>(null)
+  const panel = useRef<HTMLElement>(null)
   const [asking, setAsking] = useState(false)
   useEffect(() => { selected.current?.scrollIntoView({ block: 'center' }) }, [artifact])
   useEffect(() => { setAsking(false) }, [artifact?.kind === 'changes' ? artifact.turnId : null])
@@ -55,7 +58,7 @@ export function ArtifactPanel() {
     const undone = changes?.undone === true
     const paths = parsePatch(artifact.patch.patch).map((file) => file.path)
     return (
-      <section className={`artifact${undone ? ' is-undone' : ''}`} aria-label="Turn changes">
+      <section ref={panel} className={`artifact${undone ? ' is-undone' : ''}`} aria-label="Turn changes">
         <header className="artifact-head">
           <span>
             Changes
@@ -63,6 +66,7 @@ export function ArtifactPanel() {
           </span>
           <span className="artifact-actions">
             <UndoControl undo={artifact.patch.undo} undone={undone} running={running} asking={asking} onAsk={() => setAsking(true)} />
+            <PanelReader panel={panel} file={`changes:${artifact.turnId}`} />
             <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
           </span>
         </header>
@@ -76,13 +80,16 @@ export function ArtifactPanel() {
     const { attachment: file, preview, error } = artifact
     const scanned = file.format === 'pdf' && !file.chars
     return (
-      <section className="artifact" aria-label="File preview">
+      <section ref={panel} className="artifact" aria-label="File preview">
         <header className="artifact-head">
           <span className="attachment-title" title={file.name}><FileMark file={file} small /><span>{file.name}</span></span>
-          <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
+          <span className="artifact-actions">
+            <PanelReader panel={panel} file={`attachment:${file.id}`} />
+            <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
+          </span>
         </header>
         <div className="artifact-path">{fileMeta(file)} · {error ? 'Preview unavailable' : 'Preview'}</div>
-        <div className="artifact-content attachment-preview">
+        <div className="artifact-content attachment-preview" tabIndex={-1}>
           {error ? <div className="attachment-error" role="alert">{error}</div>
             : !preview ? <p className="attachment-loading">Loading preview…</p>
             : preview.type === 'text' ? <pre className="artifact-source attachment-text">{preview.text}</pre>
@@ -100,16 +107,19 @@ export function ArtifactPanel() {
     const { entry, view, error } = artifact
     const folder = entry.path.slice(0, entry.path.lastIndexOf('/')) || '/'
     return (
-      <section className="artifact" aria-label="Library file">
+      <section ref={panel} className="artifact" aria-label="Library file">
         <header className="artifact-head">
           <span className="attachment-title" title={entry.name}>
             {fromLibrary && <button type="button" className="text-button library-back" onClick={closeArtifact}><ArrowLeft size={14} />Library</button>}
             <span>{entry.name}</span>
           </span>
-          <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
+          <span className="artifact-actions">
+            <PanelReader panel={panel} file={`library:${entry.path}`} />
+            <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
+          </span>
         </header>
         <div className="artifact-path" title={entry.path}>{formatSize(entry.size)} · {entry.path}</div>
-        <div className="artifact-content attachment-preview">
+        <div className="artifact-content attachment-preview" tabIndex={-1}>
           {error ? <div className="attachment-error" role="alert">{error}</div>
             : !view ? <p className="attachment-loading">Loading…</p>
             : view.type === 'none' ? <div className="attachment-error" role="status">{view.reason}</div>
@@ -126,13 +136,16 @@ export function ArtifactPanel() {
   }
   const cwd = artifact.path.slice(0, artifact.path.lastIndexOf('/')) || '/'
   return (
-    <section className="artifact" aria-label="Artifact preview">
+    <section ref={panel} className="artifact" aria-label="Artifact preview">
       <header className="artifact-head">
         <span title={artifact.path}>{artifact.path.split('/').pop()}</span>
-        <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
+        <span className="artifact-actions">
+          <PanelReader panel={panel} file={`file:${artifact.path}`} />
+          <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
+        </span>
       </header>
       <div className="artifact-path">{artifact.path}</div>
-      <div className="artifact-content">
+      <div className="artifact-content" tabIndex={-1}>
         {artifact.markdown && !artifact.line ? <div className="prose"><ChatMarkdown text={artifact.text} cwd={cwd} /></div> : (
           <pre className="artifact-source"><code>{artifact.text.split('\n').map((line, index) => (
             <span key={index} ref={index + 1 === artifact.line ? selected : undefined} className={index + 1 === artifact.line ? 'is-selected' : ''}>

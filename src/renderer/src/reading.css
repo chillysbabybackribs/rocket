@@ -98,3 +98,7 @@
   .browser-bar.is-reading { --bar-side: 120px; }
   .reading-slider { display: none; }
 }
+
+/* In the file panel the text takes focus when clicked (tabIndex -1), so Space and the reading keys
+   reach the panel; that focus is a means, not something to draw. */
+.artifact-content:focus { outline: none; }

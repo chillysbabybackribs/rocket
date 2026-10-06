@@ -180,6 +180,8 @@ export class ReadingScroll {
   private readonly tabs = new Map<WebContents, BrowserReading>()
   private timer: NodeJS.Timeout | null = null
   private speedValue = 1
+  /** Set this run, so the saved session's speed, read later, is older news. */
+  private speedSet = false
 
   /** `current` is the tab on screen, the only one that can be reading rather than paused. */
   constructor(private readonly changed: () => void, private readonly current: () => WebContents | null) {}
@@ -220,9 +222,10 @@ export class ReadingScroll {
     this.record(contents, null)
   }
 
-  /** One speed for every tab, kept for next time. */
+  /** One speed for every tab, kept for next time. The UI sends it, from the browser or the file panel. */
   setSpeed(speed: number): void {
     const next = clampSpeed(speed)
+    this.speedSet = true
     if (next === this.speedValue) return
     this.speedValue = next
     for (const contents of this.tabs.keys()) void this.call(contents, `speed(${next})`).then((reading) => this.record(contents, reading))
@@ -231,7 +234,7 @@ export class ReadingScroll {
 
   /** Restore the speed saved with the session, without telling anyone. */
   restoreSpeed(speed: unknown): void {
-    if (typeof speed === 'number') this.speedValue = clampSpeed(speed)
+    if (typeof speed === 'number' && !this.speedSet) this.speedValue = clampSpeed(speed)
   }
 
   /** The page went away (navigation, crash, close), and its reading with it. */
