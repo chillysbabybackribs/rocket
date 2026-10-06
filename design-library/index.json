@@ -35,6 +35,43 @@
           "savedAt": "2026-10-05"
         }
       ]
+    },
+    {
+      "id": "aisdkagents",
+      "title": "AI SDK Agents \u2014 blocks, components, and skills hub",
+      "summary": "User-selected discovery hub. Search by build needs; inspect public previews and distinguish paid source access. Read the search and access guide before selecting entries.",
+      "surface": "reference hub with public catalogs and mixed free/paid resources",
+      "verticals": [
+        "ai-applications",
+        "productivity",
+        "developer-tools",
+        "cross-vertical"
+      ],
+      "patterns": [
+        "reference-hub",
+        "chat",
+        "artifact",
+        "forms",
+        "workflow",
+        "research",
+        "marketing",
+        "skills"
+      ],
+      "character": [
+        "varied",
+        "interactive",
+        "component-based"
+      ],
+      "status": "reviewed",
+      "sources": [
+        "https://www.aisdkagents.com/",
+        "https://www.aisdkagents.com/patterns",
+        "https://www.aisdkagents.com/ai-components",
+        "https://www.aisdkagents.com/skills",
+        "https://www.aisdkagents.com/docs/free-vs-pro"
+      ],
+      "notes": "references/aisdkagents/reference.md",
+      "images": []
     }
   ]
 }

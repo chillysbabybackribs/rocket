@@ -47,7 +47,9 @@ inspected, not automatically approved for every project.
 Start with references that support real assignments. Suggested coverage: commerce, finance,
 education, editorial, portfolios, productivity, and developer tools. Tag patterns independently
 (checkout, tables, onboarding, navigation, search, detail-panel) so references can cross verticals.
-Only Linear is seeded today; unresearched categories are not presented as curated references.
+The library includes Linear and the AI SDK Agents discovery hub. The hub guide describes how
+to find task-specific blocks, components, and skills and distinguish public previews from paid
+source access. Unresearched categories are not presented as curated references.
 
 ## Agent use
 
