@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowUp, Folder, Square } from 'lucide-react'
-import { PROVIDERS } from '../../../shared/types.ts'
+import { PROVIDERS, providerLabel } from '../../../shared/types.ts'
 import { chooseFolder, prepare, send, setProvider, stop, useApp } from '../store.ts'
 import { ModelPicker } from './ModelPicker.tsx'
 import { Tabs } from './Tabs.tsx'

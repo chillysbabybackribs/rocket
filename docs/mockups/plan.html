@@ -1,0 +1,286 @@
+<!doctype html>
+<!-- Mockup of the plan a model keeps while it works (Claude Code's TodoWrite, Cursor's todos,
+     Codex's todo list): a checklist that updates in place under the turn's latest words while
+     the turn runs, and what remains of it once the turn is over. Static; the data is invented.
+     Borrows Rocket's palette and card language from src/renderer/src/styles.css. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rocket · Plan (mockup)</title>
+<style>
+:root {
+  color-scheme: dark;
+  --font: 'Inter Variable', Inter, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+  --canvas: #08090a; --panel: #0f1011; --raised: #17181a; --menu: #1b1c1e; --bubble: #1c1d20;
+  --composer: #151617; --composer-line: #2f3031;
+  --line: rgba(255,255,255,.07); --line-strong: rgba(255,255,255,.11); --line-focus: rgba(255,255,255,.2);
+  --text: #f7f8f8; --text-2: #b4b8c0; --text-3: #8a8f98; --text-4: #62666d;
+  --hover: rgba(255,255,255,.045); --selected: rgba(255,255,255,.08);
+  --accent: #7170ff; --button: #e6e6e6; --button-text: #08090a; --danger: #eb5757;
+  --ok: #4cb782; --warn: #f2c94c; --high: #eb5757;
+  --add: #3fb950; --del: #f85149;
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,0) 180px);
+  --menu-shadow: 0 0 0 1px rgba(0,0,0,.5), 0 12px 40px rgba(0,0,0,.6);
+  --gap: 8px; --radius: 12px;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--canvas); color: var(--text); font: 13px/1.5 var(--font); letter-spacing: -.006em; -webkit-font-smoothing: antialiased; overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.mono { font-family: var(--mono); font-size: 12px; }
+
+/* Mockup chrome: tabs for the two pages and the variant switch. Not part of the app. */
+.mock-bar { position: fixed; top: 0; left: 0; right: 0; height: 28px; display: flex; align-items: center; gap: 4px; padding: 0 12px 0 76px; z-index: 20; font-size: 11.5px; color: var(--text-4); }
+.mock-bar b { font-weight: 500; color: var(--text-3); margin-right: 6px; }
+.mock-tab { height: 20px; padding: 0 8px; border-radius: 5px; color: var(--text-3); }
+.mock-tab:hover { background: var(--hover); color: var(--text); }
+.mock-tab.on { background: var(--selected); color: var(--text); }
+.mock-bar .spacer { flex: 1; }
+.page { display: none; height: 100%; }
+.page.on { display: block; }
+
+.app { height: 100%; display: grid; gap: var(--gap); grid-template-columns: 68px 1fr; padding: 28px var(--gap) var(--gap) 0; }
+.card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheen), var(--panel); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+
+/* Rail */
+.rail { display: flex; flex-direction: column; align-items: center; margin-top: -28px; gap: 14px; }
+.traffic { display: flex; gap: 7px; padding: 8px 0 6px; }
+.traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.ring { position: relative; width: 38px; height: 38px; display: grid; place-items: center; margin-bottom: 12px; }
+.ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.ring small { position: absolute; bottom: -14px; font-size: 9.5px; color: var(--text-4); }
+.rail-btn { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; color: var(--text-3); }
+.rail-btn:hover { background: var(--hover); color: var(--text); }
+.rail .bottom { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
+
+/* Transcript */
+.transcript { flex: 1; overflow-y: auto; padding: 24px 28px 14px; }
+.inner { max-width: 680px; margin: 0 auto; }
+.user-bubble { width: fit-content; max-width: 85%; margin: 0 0 16px auto; padding: 9px 13px; background: var(--bubble); border-radius: 10px; font-size: 14px; line-height: 1.55; }
+.turn-head { display: flex; justify-content: flex-end; font-size: 12px; color: var(--text-4); padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.prose { font-size: 14px; line-height: 1.65; color: #d7d9de; }
+.prose p { margin: 0 0 11px; }
+.prose strong { font-weight: 590; color: var(--text); }
+.prose ul { margin: 0 0 11px; padding-left: 22px; } .prose li + li { margin-top: 3px; }
+.prose code { font-family: var(--mono); font-size: .86em; padding: 1.5px 5px; border-radius: 5px; background: rgba(255,255,255,.06); border: 1px solid var(--line); }
+.summary { display: inline-flex; align-items: center; gap: 6px; line-height: 22px; font-size: 12.5px; color: var(--text-4); }
+.summary:hover { color: var(--text-2); }
+.chev { width: 12px; height: 12px; }
+
+/* The new line: what the turn changed. Variant A is one line; variant B lists the files. */
+.changes { margin-top: 2px; }
+.changes-line { display: inline-flex; align-items: center; gap: 8px; line-height: 22px; font-size: 12.5px; color: var(--text-3); border-radius: 5px; }
+.changes-line:hover { color: var(--text); }
+.changes-line.is-open { color: var(--text-2); }
+.counts { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0; }
+.counts .a { color: var(--add); } .counts .d { color: var(--del); }
+.files { display: flex; flex-direction: column; margin: 4px 0 8px; padding-left: 12px; border-left: 1px solid var(--line-strong); }
+.file-row { display: flex; align-items: center; gap: 10px; height: 24px; font-size: 12.5px; color: var(--text-3); border-radius: 5px; padding: 0 6px 0 2px; }
+.file-row:hover { background: var(--hover); color: var(--text); }
+.file-row.is-open { color: var(--text); }
+.file-row .path { font-family: var(--mono); font-size: 12px; }
+.file-row .path b { font-weight: 500; color: var(--text-2); }
+.file-row.is-open .path b { color: var(--text); }
+.file-row .kind { font-size: 10.5px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-strong); color: var(--text-4); line-height: 16px; }
+.file-row .counts { margin-left: auto; }
+.bar { display: inline-flex; gap: 1px; height: 8px; }
+.bar i { width: 8px; display: block; background: var(--line-strong); border-radius: 1px; }
+.bar i.a { background: var(--add); } .bar i.d { background: var(--del); }
+.variant { display: none; } .variant.on { display: block; }
+
+/* Composer */
+.dock { padding: 4px 28px 18px; }
+.group { max-width: 680px; margin: 0 auto; }
+.tabs { display: flex; align-items: flex-end; gap: 2px; padding-left: 14px; }
+.tab { height: 30px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-3); border: 1px solid var(--composer-line); border-bottom: 0; border-radius: 9px 9px 0 0; background: var(--composer); }
+.tab.on { color: var(--text); }
+.tab .x { color: var(--text-4); }
+.plus { width: 26px; height: 28px; display: grid; place-items: center; color: var(--text-4); }
+.composer { border: 1px solid var(--composer-line); border-radius: 12px; background: var(--composer); padding: 12px 12px 10px; margin-top: -1px; }
+.composer .ph { color: var(--text-4); font-size: 14px; padding: 2px 4px 14px; }
+.cbar { display: flex; align-items: center; justify-content: space-between; }
+.folder { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line-strong); font-size: 12px; color: var(--text-3); }
+.right { display: flex; align-items: center; gap: 8px; }
+.picker { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line-strong); font-size: 12.5px; color: var(--text-2); }
+.send { width: 26px; height: 26px; border-radius: 7px; background: var(--raised); display: grid; place-items: center; color: var(--text-4); }
+
+
+/* The plan: a checklist in the turn's work area. Live, it sits above the current tool line and
+   updates in place; done items dim, the one under way carries the accent. */
+.plan { margin: 10px 0 6px; max-width: 560px; }
+.plan-head { display: inline-flex; align-items: center; gap: 8px; line-height: 22px; font-size: 12.5px; color: var(--text-3); }
+.plan-head:hover { color: var(--text); }
+.plan-head .n { font-family: var(--mono); font-size: 11.5px; color: var(--text-4); }
+.plan-list { margin: 2px 0 0; padding: 0 0 0 2px; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.plan-item { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.plan-item .box { width: 14px; height: 14px; margin-top: 2px; border-radius: 4px; border: 1px solid var(--line-focus); flex: none; display: grid; place-items: center; font-size: 9.5px; }
+.plan-item.is-done { color: var(--text-4); }
+.plan-item.is-done .box { background: rgba(255,255,255,.06); border-color: transparent; color: var(--text-3); }
+.plan-item.is-now { color: var(--text); }
+.plan-item.is-now .box { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(113,112,255,.16); }
+.plan-item.is-now .box::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+.plan-item .doing { color: var(--text-3); font-size: 12px; }
+/* Live work under the plan: the current tool line and the thought window, as the app has them. */
+.tool-line { display: flex; align-items: center; gap: 7px; height: 22px; font-size: 12.5px; color: var(--text-3); }
+.tool-line .ic { width: 13px; height: 13px; color: var(--text-4); }
+.tool-line code { font-family: var(--mono); font-size: 12px; }
+.thought { margin-top: 6px; max-height: 7.5em; overflow: hidden; font-size: 13px; line-height: 1.55; color: var(--text-4); -webkit-mask-image: linear-gradient(180deg, transparent, #000 1.4em); }
+.shimmer { background: linear-gradient(90deg, var(--text-4), var(--text), var(--text-4)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 1.8s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.turn-head-live { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-4); padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+/* Finished: variant A folds the plan into one line beside the steps summary; B keeps the list. */
+.plan.is-folded .plan-list { display: none; }
+.summary-row { display: flex; align-items: center; gap: 18px; }
+.variant { display: none; } .variant.on { display: block; }
+.cov { max-width: 680px; margin: 0 auto; padding: 14px 0 0; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--text-3); }
+.cov table { border-collapse: collapse; width: 100%; margin-top: 6px; }
+.cov td { padding: 4px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.cov td:first-child { width: 110px; color: var(--text-2); }
+.cov td:last-child { width: 120px; text-align: right; color: var(--text-4); }
+.ok { color: var(--ok); } .warn { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="mock-bar">
+  <b>Mockup</b>
+  <button class="mock-tab on" data-page="live">Plan · while the turn runs</button>
+  <button class="mock-tab" data-page="done">Plan · when it is over</button>
+  <span class="spacer"></span>
+  <span id="variants" style="visibility:hidden">
+    Finished plan:
+    <button class="mock-tab on" data-variant="a">A · folded into a line</button>
+    <button class="mock-tab" data-variant="b">B · list stays</button>
+  </span>
+</div>
+
+<!-- ─── Page 1: live ─────────────────────────────────────────────────── -->
+<div class="page on" id="page-live">
+<div class="app">
+  <div class="rail">
+    <div class="traffic"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div style="height:170px"></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">✳</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">◎</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">➤</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">A</span><small>25%</small></div>
+    <div class="bottom"><button class="rail-btn">◎</button><button class="rail-btn">↺</button><button class="rail-btn">◍</button></div>
+  </div>
+
+  <div class="card">
+    <div class="transcript"><div class="inner">
+      <div class="user-bubble">Add login so each person only sees their own notes. Build it.</div>
+      <div class="turn-head-live"><span class="shimmer">Thinking</span><span>Working for 48s</span></div>
+      <div class="prose"><p>Plain Node with no dependencies and in-memory storage. I'll keep that: scrypt-hashed passwords, bearer-token sessions, and notes scoped to the logged-in user, plus a test proving isolation.</p></div>
+      <button class="summary"><span>Worked · 4 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
+
+      <div class="plan">
+        <div class="plan-head"><span>Plan</span><span class="n">2 of 5</span></div>
+        <ul class="plan-list">
+          <li class="plan-item is-done"><span class="box">✓</span><span>Read the existing API and its storage</span></li>
+          <li class="plan-item is-done"><span class="box">✓</span><span>Add register and login with scrypt-hashed passwords</span></li>
+          <li class="plan-item is-now"><span class="box"></span><span>Scope the notes routes to the logged-in user <span class="doing">· editing server.js</span></span></li>
+          <li class="plan-item"><span class="box"></span><span>Write an isolation test: two users, each sees only their own</span></li>
+          <li class="plan-item"><span class="box"></span><span>Document the endpoints in the README</span></li>
+        </ul>
+      </div>
+
+      <div class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>server.js</code></div>
+      <div class="thought">The GET and POST notes handlers both need the user id from the session. Rather than repeat the lookup, one authOf(req) at the top of the request handler, returning 401 before the route switch when there is no valid token, keeps the routes themselves unchanged except for the filter and the userId on the created note. The listing filter is a plain Array.filter; with in-memory storage that is fine and the comment in the file already says persistence is a later question.</div>
+    </div></div>
+
+    <div class="dock"><div class="group">
+      <div class="tabs"><span class="tab on">Add login so each person on… <span class="x">×</span></span><span class="plus">+</span></div>
+      <div class="composer"><div class="ph">Reply…</div><div class="cbar"><span class="folder">▭ ~/side/notes-api</span><span class="right"><span class="picker">✳ Claude ▾</span><span class="send" style="background:var(--raised)">■</span></span></div></div>
+    </div></div>
+  </div>
+</div>
+</div>
+
+<!-- ─── Page 2: finished ─────────────────────────────────────────────── -->
+<div class="page" id="page-done">
+<div class="app">
+  <div class="rail">
+    <div class="traffic"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div style="height:170px"></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">✳</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">◎</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">➤</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">A</span><small>25%</small></div>
+    <div class="bottom"><button class="rail-btn">◎</button><button class="rail-btn">↺</button><button class="rail-btn">◍</button></div>
+  </div>
+
+  <div class="card">
+    <div class="transcript"><div class="inner">
+      <div class="user-bubble">Add login so each person only sees their own notes. Build it.</div>
+      <div class="turn-head">Worked for 1m 20s</div>
+      <div class="prose">
+        <p><strong>Done.</strong> Login is built, tested, and documented. Each user now sees only their own notes.</p>
+        <ul>
+          <li><code>server.js</code> now has <code>POST /register</code>, <code>POST /login</code> and <code>POST /logout</code>. Every notes route requires a bearer token.</li>
+          <li><code>test/auth.test.js</code> covers the isolation guarantee directly.</li>
+        </ul>
+        <p>All 6 tests pass.</p>
+      </div>
+
+      <!-- A: one line beside the steps summary, opening the list -->
+      <div class="variant on" data-variant="a">
+        <div class="summary-row">
+          <button class="summary"><span>Worked · 9 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
+          <button class="summary"><span>Plan · 5 of 5</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
+        </div>
+        <button class="changes-line"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Changed 3 files</span><span class="counts"><span class="a">+184</span> <span class="d">−12</span></span><span class="bar"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></span></button>
+      </div>
+
+      <!-- B: the list stays, dimmed, above the summary -->
+      <div class="variant" data-variant="b">
+        <div class="plan">
+          <div class="plan-head"><span>Plan</span><span class="n">5 of 5</span></div>
+          <ul class="plan-list">
+            <li class="plan-item is-done"><span class="box">✓</span><span>Read the existing API and its storage</span></li>
+            <li class="plan-item is-done"><span class="box">✓</span><span>Add register and login with scrypt-hashed passwords</span></li>
+            <li class="plan-item is-done"><span class="box">✓</span><span>Scope the notes routes to the logged-in user</span></li>
+            <li class="plan-item is-done"><span class="box">✓</span><span>Write an isolation test: two users, each sees only their own</span></li>
+            <li class="plan-item is-done"><span class="box">✓</span><span>Document the endpoints in the README</span></li>
+          </ul>
+        </div>
+        <button class="summary"><span>Worked · 9 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button><br>
+        <button class="changes-line"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Changed 3 files</span><span class="counts"><span class="a">+184</span> <span class="d">−12</span></span><span class="bar"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></span></button>
+      </div>
+
+      <div class="cov" style="margin-top:40px">
+        Where the plan comes from, per provider. One shape for all; a provider with no plan shows nothing.
+        <table>
+          <tr><td>Claude Code</td><td>TodoWrite tool calls, the whole list each time (content, status pending / in progress / completed). Today shown as a generic tool row.</td><td class="ok">verified</td></tr>
+          <tr><td>Cursor</td><td>cursor/update_todos and cursor/create_plan requests; the adapter accepts them and drops the content today.</td><td class="ok">verified</td></tr>
+          <tr><td>Codex</td><td>A todo-list item type exists in the app-server protocol; not yet seen in our translator.</td><td class="warn">to verify live</td></tr>
+          <tr><td>Antigravity</td><td>Nothing known.</td><td>none</td></tr>
+        </table>
+      </div>
+    </div></div>
+
+    <div class="dock"><div class="group">
+      <div class="tabs"><span class="tab on">Add login so each person on… <span class="x">×</span></span><span class="plus">+</span></div>
+      <div class="composer"><div class="ph">Reply…</div><div class="cbar"><span class="folder">▭ ~/side/notes-api</span><span class="right"><span class="picker">✳ Claude ▾</span><span class="send">↑</span></span></div></div>
+    </div></div>
+  </div>
+</div>
+</div>
+
+<script>
+  const pages = document.querySelectorAll('[data-page]')
+  pages.forEach((tab) => tab.addEventListener('click', () => {
+    pages.forEach((t) => t.classList.toggle('on', t === tab))
+    document.querySelectorAll('.page').forEach((page) => page.classList.toggle('on', page.id === `page-${tab.dataset.page}`))
+    document.getElementById('variants').style.visibility = tab.dataset.page === 'done' ? 'visible' : 'hidden'
+  }))
+  const variants = document.querySelectorAll('[data-variant].mock-tab')
+  variants.forEach((tab) => tab.addEventListener('click', () => {
+    variants.forEach((t) => t.classList.toggle('on', t === tab))
+    document.querySelectorAll('.variant').forEach((v) => v.classList.toggle('on', v.dataset.variant === tab.dataset.variant))
+  }))
+</script>
+</body>
+</html>

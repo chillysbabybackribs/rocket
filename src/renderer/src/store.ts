@@ -23,6 +23,10 @@ export type AppState = {
   turnItems: Record<string, string[]>
   /** Chats with a turn in flight, including ones not on screen. */
   running: ReadonlySet<string>
+  /** The open chat's messages waiting for its turn in flight to end. */
+  queued: QueuedMessage[]
+  /** Text handed back to the composer (a waiting message taken back); `at` tells one hand-back from the next. */
+  restored: { text: string; at: number } | null
   usage: Partial<Record<ProviderId, UsageSnapshot>>
   /** The provider chosen in the open chat, or on the empty screen for the next new one. */
   provider: ProviderId
@@ -118,6 +122,8 @@ let state: AppState = {
   turns: [],
   turnItems: {},
   running: new Set(),
+  queued: [],
+  restored: null,
   usage: {},
   provider: PROVIDERS.some((provider) => provider.id === prefs.provider) ? prefs.provider! : 'claude',
   models: {},
@@ -232,11 +238,14 @@ function applyEvents(events: HostEvent[]): void {
       case 'goal':
         putGoal(event.goal)
         break
+      case 'queue':
+        if (event.chatId === state.activeChatId) setState({ queued: event.queued })
+        break
     }
   }
 }
 
-function showChat(chatId: string | null, turns: Turn[] = [], loaded: Item[] = []): void {
+function showChat(chatId: string | null, turns: Turn[] = [], loaded: Item[] = [], queued: QueuedMessage[] = []): void {
   linkRequest++
   setState({ artifact: null })
   items.clear()
@@ -248,7 +257,7 @@ function showChat(chatId: string | null, turns: Turn[] = [], loaded: Item[] = []
   const running = new Set(state.running)
   for (const turn of turns) if (turn.status === 'running') running.add(turn.chatId)
   const tabs = chatId && !state.tabs.includes(chatId) ? [...state.tabs, chatId] : state.tabs
-  setState({ activeChatId: chatId, tabs, turns, turnItems, running, ...selectionFor(chatId) })
+  setState({ activeChatId: chatId, tabs, turns, turnItems, running, queued, ...selectionFor(chatId) })
   writePrefs({ activeChatId: chatId, tabs })
 }
 
@@ -272,7 +281,7 @@ export async function openChat(chatId: string | null): Promise<void> {
   }
   try {
     const snapshot = await call('chat.open', { chatId })
-    showChat(chatId, snapshot.turns, snapshot.items)
+    showChat(chatId, snapshot.turns, snapshot.items, snapshot.queued)
   } catch (error) {
     setTabs(state.tabs.filter((id) => id !== chatId))
     showChat(null)
@@ -316,8 +325,27 @@ export function prepare(): void {
   void call('chat.prepare', { chatId, cwd: state.defaultCwd, provider: state.provider, model }).catch(() => {})
 }
 
+/** Stop the open chat's turn. Messages that were waiting on it come back to the composer. */
 export function stop(): void {
-  if (state.activeChatId) void call('chat.stop', { chatId: state.activeChatId }).catch(fail)
+  if (!state.activeChatId) return
+  void call('chat.stop', { chatId: state.activeChatId })
+    .then((withdrawn) => { if (withdrawn) restore(withdrawn) })
+    .catch(fail)
+}
+
+/** Stop the open chat's turn and send what was waiting on it straight away. */
+export function sendNow(): void {
+  if (state.activeChatId) void call('chat.stop', { chatId: state.activeChatId, sendQueued: true }).catch(fail)
+}
+
+/** Take a waiting message back into the composer. */
+export function editQueued(id: string): void {
+  if (!state.activeChatId) return
+  void call('chat.unqueue', { chatId: state.activeChatId, id }).then(restore).catch(fail)
+}
+
+function restore(text: string): void {
+  setState({ restored: { text, at: Date.now() } })
 }
 
 /** Answer a question a model asked in the open chat; the provider picked in the composer takes the reply. */
