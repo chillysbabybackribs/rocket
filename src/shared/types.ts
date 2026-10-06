@@ -290,7 +290,7 @@ export type AgentTab = {
 
 /**
  * Which tab an operation is for. With no `tab`, it is the tab the calling chat's model works in,
- * opened in the background the first time one is needed; `chat` is null when the caller's chat
+ * created the first time one is needed (the strip switches to it when opened); `chat` is null when the caller's chat
  * is unknown, and such callers share one.
  */
 type OnTab = { chat: string | null; tab: string | null }

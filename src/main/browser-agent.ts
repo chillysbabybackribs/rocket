@@ -143,6 +143,7 @@ export class BrowserAgent {
       }
       case 'screenshot': {
         const tab = this.tab(op)
+        this.pane.agentShow(tab.id)
         await this.attach(tab)
         return { ...(await this.capture(tab)), ...this.info(tab) }
       }
@@ -226,6 +227,7 @@ export class BrowserAgent {
 
   /** Go to an address and wait for the page's document. Returns what went wrong, if anything did. */
   private async navigate(tab: TabHandle, input: string): Promise<string | null> {
+    this.pane.agentShow(tab.id)
     const url = toUrl(input)
     if (!url) throw new Error('There is no address to go to.')
     // Attached first, so the requests the page makes while loading are in the log.

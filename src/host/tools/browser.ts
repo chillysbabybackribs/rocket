@@ -27,12 +27,12 @@ const here = import.meta.dirname
 const WORKER = [join(here, 'script-worker.js'), join(here, '..', 'script-worker.js')].find(existsSync) ?? join(here, 'script-worker.ts')
 
 const READ_DESCRIPTION = `Read a web page in Rocket's built-in browser, where the user is signed in to their sites. Returns the page as text with links, its controls with refs (e12) that browser_run can click and fill, and the data requests the page made.
-Pass url to go there first, in your own background tab (never the user's). Pass tab (an id such as t3 from the tab list) to read a tab that is already open. Pass neither to read your tab again.
+Pass url to go there first, in your own tab (never the user's; Rocket switches the view to it). Pass tab (an id such as t3 from the tab list) to read a tab that is already open. Pass neither to read your tab again.
 Use this rather than fetching a URL yourself when a page needs the user's login or JavaScript to show its content.`
 
 const RUN_DESCRIPTION = `Run a script in Rocket's built-in browser. One script should do a whole task: go, act, wait, extract, and return the result. Do as much per call as you can.
 The script is the body of an async function. It has:
-- tab: your background tab, or the one named by the tab argument. tab.goto(url) returns once the page's document is ready, so use waitFor for content that arrives later; tab.read({focus, selector, max}) gives the same text as browser_read; tab.eval(fn, arg) runs fn inside the page and returns its JSON result; tab.click(target); tab.fill(target, value); tab.press('Enter') or 'Control+a'; tab.type(text); tab.waitFor(target or fn, {timeout}); tab.requests(match) lists the tab's network log; tab.body(requestId) gives a response body as text; tab.info(); tab.screenshot() saves a JPEG and gives its path; tab.close().
+- tab: your tab, or the one named by the tab argument. tab.goto(url) returns once the page's document is ready, so use waitFor for content that arrives later; tab.read({focus, selector, max}) gives the same text as browser_read; tab.eval(fn, arg) runs fn inside the page and returns its JSON result; tab.click(target); tab.fill(target, value); tab.press('Enter') or 'Control+a'; tab.type(text); tab.waitFor(target or fn, {timeout}); tab.requests(match) lists the tab's network log; tab.body(requestId) gives a response body as text; tab.info(); tab.screenshot() saves a JPEG and gives its path; tab.close().
 - browser: browser.open(url) gives a new tab; browser.tab(id); browser.tabs(); browser.fetch(url, {method, headers, body}) requests with the browser's cookies and no CORS, giving {status, body} with body as text and a json() method.
 - sleep(ms), console.log.
 A target is a ref from browser_read (e12), text=Visible label, or a CSS selector. Clicks and keys are real input events.
@@ -40,7 +40,7 @@ Prefer data to UI: when a page loads what you need from a JSON endpoint (browser
 A large result is saved to a file and its path returned.`
 
 const SHOT_DESCRIPTION = `See a tab of Rocket's built-in browser as an image. For what text cannot tell you: layout, charts, images, canvas apps, or checking how a page looks. To read a page or find its controls, use browser_read, which is faster and exact.
-Pass tab (an id such as t2 from the tab list) for a tab that is already open; without it, your own background tab is captured.`
+Pass tab (an id such as t2 from the tab list) for a tab that is already open; without it, your own tab is captured (Rocket switches the view to it).`
 
 export function browserTools(link: BrowserLink, resultsDir: string): Tool[] {
   return [

@@ -135,11 +135,21 @@ export class BrowserPane {
     return this.active ? this.agentTab(this.active.ref) : null
   }
 
-  /** A tab for a model to work in. It opens behind the one the user is on and never takes its place. */
+  /** A tab for a model to work in. The strip switches to it so the user can follow along. */
   agentOpen(): TabHandle {
     this.restore()
     const tab = this.createTab({ url: 'about:blank', agent: true })
-    return { id: tab.ref, contents: this.load(tab).webContents }
+    this.activate(tab, false)
+    const view = tab.view ?? this.load(tab)
+    return { id: tab.ref, contents: view.webContents }
+  }
+
+  /** Show an agent tab the model is using without moving keyboard focus into the page. */
+  agentShow(ref: string): void {
+    this.restore()
+    const tab = this.tabs.find((entry) => entry.ref === ref)
+    if (!tab?.agent || tab.id === this.activeId) return
+    this.activate(tab, false)
   }
 
   agentClose(ref: string): void {

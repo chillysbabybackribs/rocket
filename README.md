@@ -106,12 +106,13 @@ returns a tab as a small JPEG, for what text cannot say. `browser_run` runs a
 script the model writes against a small Playwright-shaped API (`tab.goto`, `tab.eval`,
 `tab.click`, `tab.fill`, `tab.waitFor`, `browser.fetch`), so a whole task is one call; the script
 runs in a worker thread of the host and each step is a request to main
-(`src/main/browser-agent.ts`), which drives the tab over the DevTools protocol. A model works in
-background tabs of its own, marked with a dot in the tab strip, and touches the user's tabs only
-by id. The open tabs ride at the head of the user's message when they have changed, so listing
-them costs no call. A page counts as loaded when its document is ready, not when its last ad is.
-While a turn uses a tab, its page runs at full speed out of sight; when the turn ends it goes back
-to being an ordinary background tab, and a deleted chat's own tab is closed.
+(`src/main/browser-agent.ts`), which drives the tab over the DevTools protocol. A model works in tabs of its own, marked with a dot in the tab strip. Opening one or navigating it
+to a URL switches the browser view to that tab so you can follow along; the page does not take
+keyboard focus from the composer. The model touches your tabs only by id. The open tabs ride at the
+head of the user's message when they have changed, so listing them costs no call. A page counts as
+loaded when its document is ready, not when its last ad is. While a turn uses a tab, its page runs
+at full speed even when concealed; when the turn ends it goes back to being an ordinary background
+tab, and a deleted chat's own tab is closed.
 
 Besides the browser tools there is `remember` (see Workspace and memory), `ask_user` (below),
 `goal_report` (see Goals) and, with `ROCKET_SELF_CHECK=1`, the three self-check tools. Every

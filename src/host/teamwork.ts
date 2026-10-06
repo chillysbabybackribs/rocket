@@ -1,8 +1,9 @@
 import { isAbsolute, relative, resolve } from 'node:path'
 import { providerLabel, type Item, type ProviderId, type Turn } from '../shared/types.ts'
-import { changedBetween, commitBlocker, commitPaths, repoRoot, snapshot } from './git.ts'
+import { parsePatch, patchTotals } from '../shared/patch.ts'
+import { changedBetween, commitBlocker, commitPaths, patchBetween, repoRoot, snapshot } from './git.ts'
 import { messageOf, oneLine } from './json.ts'
-import type { Store } from './store.ts'
+import { publicTurn, type Store } from './store.ts'
 
 // Several assistants, one folder. Chats can run at the same time in the same project, and other
 // things change its files too: the user, an editor, an agent outside the app. This is how a
@@ -48,6 +49,8 @@ export class Teamwork {
     private readonly options: {
       /** Whether the app commits a turn's changes. Without it, models are only told about each other. */
       commit: boolean
+      /** Hears a turn once its changes are recorded on it, so the window can show them. */
+      changed?: (turn: Turn) => void
       warn?: (message: string, details: Record<string, unknown>) => void
       now?: () => number
     }
@@ -123,10 +126,25 @@ export class Teamwork {
         const items = this.store.turnItems(turn.chatId, turn.id)
         const here = (label: string): string[] => pathsOf(label, chat.cwd, top)
         changed = start && end ? await changedBetween(top, start, end) : editedIn(items, here)
-        if (!this.options.commit) return
         const theirs = new Set(this.working()
           .filter((other) => other.chatId !== turn.chatId)
           .flatMap((other) => other.edited.flatMap((label) => pathsOf(label, this.store.chat(other.chatId)?.cwd ?? chat.cwd, top))))
+        const own = changed.filter((path) => !theirs.has(path))
+        // What the turn did, kept with it for the window: the patch between its two snapshots.
+        if (start && end && own.length) {
+          try {
+            const patch = await patchBetween(top, start, end, own)
+            const files = parsePatch(patch.patch)
+            if (files.length) {
+              const recorded = this.store.setTurnChanges(turn.id, patchTotals(files), patch)
+              if (recorded) this.options.changed?.(publicTurn(recorded))
+            }
+          } catch (error) {
+            // The record is a courtesy to the window; the commit below must not wait on it.
+            this.options.warn?.(`A turn's changes could not be read: ${messageOf(error)}`, { chatId: turn.chatId })
+          }
+        }
+        if (!this.options.commit) return
         const pending = this.pending.get(turn.chatId) ?? new Set<string>()
         this.pending.set(turn.chatId, pending)
         for (const path of changed) if (!theirs.has(path)) pending.add(path)

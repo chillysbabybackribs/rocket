@@ -62,6 +62,20 @@ export async function changedBetween(top: string, before: string, after: string)
   return nul(await git(top, ['diff', '--name-only', '-z', '--no-renames', before, after]))
 }
 
+/** How much of a turn's patch is kept; past this a turn has rewritten more than anyone reads in a panel. */
+export const PATCH_LIMIT = 2_000_000
+
+/** The unified diff of these files between two snapshots, cut to `PATCH_LIMIT` with `truncated` saying so. */
+export async function patchBetween(top: string, before: string, after: string, paths: string[]): Promise<{ patch: string; truncated: boolean }> {
+  if (before === after || !paths.length) return { patch: '', truncated: false }
+  // `git diff` has no --pathspec-from-file; the paths go on the command line, literal under --literal-pathspecs.
+  const text = await git(top, ['diff', '--no-color', '--no-renames', '--no-ext-diff', before, after, '--', ...paths])
+  if (text.length <= PATCH_LIMIT) return { patch: text, truncated: false }
+  // Cut at a file boundary, so what is shown is whole files.
+  const cut = text.lastIndexOf('\ndiff --git ', PATCH_LIMIT)
+  return { patch: text.slice(0, cut > 0 ? cut : PATCH_LIMIT), truncated: true }
+}
+
 /** Why a commit should not be made right now, or null when one can be. */
 export async function commitBlocker(top: string): Promise<string | null> {
   for (const name of IN_PROGRESS) if (existsSync(await gitPath(top, name))) return `a ${name.replace(/_HEAD|_LOG/, '').toLowerCase()} is in progress`
