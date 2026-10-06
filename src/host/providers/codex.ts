@@ -33,6 +33,8 @@ type ActiveTurn = {
   request: RunRequest
   sink: TurnSink
   codexTurnId: string | null
+  stopRequested: boolean
+  interrupt: Promise<void> | null
   finish: (result: RunResult) => void
 }
 
@@ -101,6 +103,8 @@ export class CodexAdapter implements ProviderAdapter {
         request,
         sink,
         codexTurnId: null,
+        stopRequested: false,
+        interrupt: null,
         finish: (result) => {
           if (this.active.get(threadId) !== turn) return
           this.active.delete(threadId)
@@ -114,6 +118,7 @@ export class CodexAdapter implements ProviderAdapter {
         input: [{ type: 'text', text: request.text }]
       }).then((response) => {
         if (typeof response.turn?.id === 'string') turn.codexTurnId ??= response.turn.id
+        if (turn.stopRequested) void this.interruptTurn(threadId, turn)
       }, (error: unknown) => turn.finish({ status: 'failed', error: messageOf(error) }))
     })
   }
@@ -140,13 +145,17 @@ export class CodexAdapter implements ProviderAdapter {
     const threadId = this.loaded.get(chatId)?.threadId
     const turn = threadId ? this.active.get(threadId) : undefined
     if (!threadId || !turn || !this.client?.connected) return
-    if (!turn.codexTurnId) {
-      turn.finish({ status: 'interrupted' })
-      return
-    }
-    await this.client.request('turn/interrupt', { threadId, turnId: turn.codexTurnId }).catch(() => {
+    turn.stopRequested = true
+    await this.interruptTurn(threadId, turn)
+  }
+
+  private async interruptTurn(threadId: string, turn: ActiveTurn): Promise<void> {
+    // Keep tracking a pending start until its ID arrives, by reply or notification.
+    if (!turn.codexTurnId || this.active.get(threadId) !== turn || !this.client?.connected) return
+    turn.interrupt ??= this.client.request('turn/interrupt', { threadId, turnId: turn.codexTurnId }).then(() => {}, () => {
       turn.finish({ status: 'interrupted' })
     })
+    await turn.interrupt
   }
 
   async steer(chatId: string, text: string): Promise<boolean> {
@@ -273,6 +282,7 @@ export class CodexAdapter implements ProviderAdapter {
     switch (notification.method) {
       case 'turn/started':
         turn.codexTurnId = stringOf(recordOf(params.turn).id) || turn.codexTurnId
+        if (turn.stopRequested) void this.interruptTurn(stringOf(params.threadId), turn)
         break
       case 'item/started':
       case 'item/completed': {

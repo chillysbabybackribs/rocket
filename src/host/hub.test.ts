@@ -283,3 +283,31 @@ test('a turn that cannot take words leaves them waiting, and later words keep th
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(claude.ran.length, 1, 'nothing was left to send')
 })
+
+for (const retry of [false, true]) {
+  test(`Stop during ${retry ? 'lost-session retry' : 'initial'} context prevents provider startup`, async () => {
+    const store = new Store(':memory:')
+    const adapter = new FakeAdapter()
+    let release!: () => void
+    const waiting = new Promise<void>((resolve) => { release = resolve })
+    let contexts = 0
+    const hub = new Hub(store, { claude: adapter, codex: adapter, cursor: adapter, antigravity: adapter }, () => {}, () => {}, async () => {
+      if (++contexts === (retry ? 2 : 1)) await waiting
+      return null
+    })
+    const chat = hub.createChat('/work')
+    hub.send(chat.id, 'claude', null, 'hello')
+    if (retry) {
+      await new Promise((resolve) => setImmediate(resolve))
+      adapter.lose()
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+    await hub.stop(chat.id)
+    release()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(adapter.ran.length, retry ? 1 : 0)
+    assert.equal(hub.isRunning(chat.id), false)
+    assert.equal(store.turns(chat.id)[0]!.status, 'interrupted')
+    store.close()
+  })
+}

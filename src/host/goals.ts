@@ -26,7 +26,7 @@ export type GoalHub = {
   createChat(cwd: string, title: string): Chat
   send(chatId: string, provider: ProviderId, model: string | null, text: string, goalRole: GoalRole): string
   stop(chatId: string): Promise<void>
-  usage(provider: ProviderId): Promise<UsageSnapshot>
+  usage(provider: ProviderId, force?: boolean): Promise<UsageSnapshot>
   turnItems(chatId: string, turnId: string): Item[]
 }
 
@@ -361,18 +361,18 @@ export class GoalRunner {
   }
 
   /** Take the goal's next step: check the usage, then send the turn. */
-  private async advance(goalId: string): Promise<void> {
+  private async advance(goalId: string, refreshUsage = false): Promise<void> {
     let goal = this.require(goalId)
     const role = goal.next
     if (role !== 'draft') {
       const agent = role === 'check' ? goal.checker : goal.worker
       const forced = this.forced.delete(goalId)
-      const over = forced ? null : await this.overUsage(agent.provider, goal.pauseAtPercent)
+      const over = forced ? null : await this.overUsage(agent.provider, goal.pauseAtPercent, refreshUsage)
       goal = this.require(goalId)
       // The user may have paused or stopped it while the usage was being read.
       if (goal.status !== runningStatus(role)) return
       if (over) {
-        const resumeAt = over.resetsAt ? over.resetsAt + RESUME_SLACK_MS : null
+        const resumeAt = over.resetsAt ? Math.max(over.resetsAt + RESUME_SLACK_MS, this.now() + RESUME_SLACK_MS) : null
         const when = resumeAt ? ` It carries on by itself at ${new Date(resumeAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}, or press Resume to go ahead now.` : ' Press Resume to go ahead anyway.'
         this.save({ ...goal, status: 'needs_you', resumeAt, reason: `${providerLabel(agent.provider)}'s ${over.label} usage is at ${over.percent}%.${when}` })
         if (resumeAt) this.timer(goalId, resumeAt)
@@ -409,9 +409,9 @@ export class GoalRunner {
   }
 
   /** The window that has reached the pause level, or null when there is none or usage cannot be read. */
-  private async overUsage(provider: ProviderId, pauseAt: number): Promise<{ label: string; percent: number; resetsAt: number | null } | null> {
+  private async overUsage(provider: ProviderId, pauseAt: number, force = false): Promise<{ label: string; percent: number; resetsAt: number | null } | null> {
     try {
-      const usage = await this.hub.usage(provider)
+      const usage = await this.hub.usage(provider, force)
       const over = usage.windows.filter((window) => window.percent >= pauseAt).sort((a, b) => (b.resetsAt ?? 0) - (a.resetsAt ?? 0))[0]
       return over ? { label: over.label, percent: Math.round(over.percent), resetsAt: over.resetsAt } : null
     } catch {
@@ -451,7 +451,10 @@ export class GoalRunner {
     const timer = setTimeout(() => {
       this.timers.delete(goalId)
       const goal = this.store.goal(goalId)
-      if (goal?.status === 'needs_you' && goal.resumeAt) this.resume(goalId)
+      if (goal?.status === 'needs_you' && goal.resumeAt) {
+        this.save({ ...goal, status: runningStatus(goal.next), reason: null, resumeAt: null })
+        void this.advance(goalId, true)
+      }
     }, Math.max(0, at - this.now()))
     timer.unref?.()
     this.timers.set(goalId, timer)

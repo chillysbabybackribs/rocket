@@ -402,14 +402,17 @@ export class Hub {
         return lines ? `${lines}\n\n${text}` : text
       }
       const first = context ? await told(session.id === null) : text
-      result = await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: session.id, model, text: first, handoff }, sink)
+      result = live.stopRequested ? { status: 'interrupted' }
+        : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: session.id, model, text: first, handoff }, sink)
       if (result.sessionLost && !live.stopRequested) {
         // The provider dropped its session: start a new one and hand over the whole chat.
         this.store.setSession(chatId, provider, { sessionId: null, seenTurnSeq: 0 })
         session.id = null
         const full = this.handoffFor(chatId, 0, turn.seq)
         turn.handoffTurns = full?.turns ?? 0
-        result = await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: null, model, text: await told(true), handoff: full }, sink)
+        const retry = await told(true)
+        result = live.stopRequested ? { status: 'interrupted' }
+          : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: null, model, text: retry, handoff: full }, sink)
       }
     } catch (error) {
       result = { status: 'failed', error: messageOf(error) }

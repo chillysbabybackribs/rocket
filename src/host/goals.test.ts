@@ -344,3 +344,29 @@ test('a brief without a design gets no design line', async () => {
   assert.equal(goal().design, null)
   assert.equal(goal().criteria.length, 2)
 })
+
+for (const percent of [99, 10]) {
+  test(`automatic usage resume reads fresh usage before proceeding (${percent}%)`, async (t) => {
+    const { store, hub, runner, goal, end, brief } = setup()
+    t.after(() => store.close())
+    t.after(() => runner.shutdown())
+    runner.draft({ cwd: '/work', text: 'test', provider: 'claude', model: null })
+    await settle()
+    await end(brief)
+    runner.shutdown()
+    store.putGoal({ ...goal(), status: 'needs_you', next: 'work', resumeAt: Date.now() - 1 })
+    const sentBefore = hub.sent.length
+    const reads: boolean[] = []
+    hub.usage = async (provider: ProviderId, force?: boolean) => {
+      reads.push(force === true)
+      return usage(provider, percent, Date.now() - 120_000)
+    }
+    const restarted = new GoalRunner(store, hub, () => {})
+    t.after(() => restarted.shutdown())
+    await settle()
+    assert.deepEqual(reads, [true])
+    assert.equal(hub.sent.length, sentBefore + (percent < 90 ? 1 : 0))
+    assert.equal(goal().status, percent < 90 ? 'working' : 'needs_you')
+    if (percent >= 90) assert.ok(goal().resumeAt! > Date.now() + 50_000, 'stale reset times must not cause a tight retry loop')
+  })
+}
