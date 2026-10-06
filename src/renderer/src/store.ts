@@ -50,6 +50,54 @@ export type ChatView = {
 
 const EMPTY_VIEW: ChatView = { turns: [], turnItems: {}, queued: [], planTurnId: null }
 
+// The eval dashboard's navigation and run state live here rather than in its components, so the
+// app map (`app-map.ts`) can read and set them by name: a model goes to the playground with a
+// scenario chosen the same way a click does, and the dashboard can tell where it is.
+export type EvalView = 'overview' | 'logs' | 'playgrounds' | 'experiments' | 'experiment' | 'datasets' | 'dataset' | 'scorers' | 'tools'
+export type PlaygroundCell = { status: 'idle' | 'running' | 'done' | 'error'; output?: string; pass?: boolean }
+export type RunSheetState = {
+  open: boolean
+  scenarioId: string
+  provider: ProviderId
+  trial: number
+  phase: 'idle' | 'running' | 'done' | 'error'
+  /** The eval chat the last run opened, for the Focus button. */
+  chatId: string | null
+  error: string | null
+  grades: Array<{ name: string; pass: boolean; reason?: string }> | null
+}
+export type EvalsState = {
+  view: EvalView
+  /** The experiment or dataset open in its detail view. */
+  experimentId: string | null
+  datasetId: string | null
+  /** Bumped by Sync and Refresh ledger; the dashboard and the tools panel reload when it changes. */
+  refresh: number
+  playground: {
+    scenarioId: string
+    datasetId: string
+    compare: string
+    diff: boolean
+    filter: string
+    /** `${rowId}::${taskId}` → that cell's run. */
+    cells: Record<string, PlaygroundCell>
+    busy: boolean
+    error: string | null
+  }
+  runSheet: RunSheetState
+  tools: { section: 'health' | 'scores' }
+}
+
+const INITIAL_EVALS: EvalsState = {
+  view: 'experiments',
+  experimentId: null,
+  datasetId: null,
+  refresh: 0,
+  playground: { scenarioId: '', datasetId: '', compare: 'base', diff: false, filter: '', cells: {}, busy: false, error: null },
+  runSheet: { open: false, scenarioId: '', provider: 'claude', trial: 0, phase: 'idle', chatId: null, error: null, grades: null },
+  tools: { section: 'health' }
+}
+
 export type AppState = {
   ready: boolean
   chats: Chat[]
@@ -68,6 +116,8 @@ export type AppState = {
   browserOpen: boolean
   /** Local eval dashboard (Braintrust-style mock UI) beside the chat. */
   evalsOpen: boolean
+  /** What the eval dashboard shows and what it is running; see `EvalsState`. */
+  evals: EvalsState
   /** Whether the rail stands open at its full width, or is folded to a strip that peeks on hover. */
   railOpen: boolean
   /** Every goal, newest first. A goal's chat is an ordinary chat with the goal beside it. */
@@ -174,6 +224,7 @@ let state: AppState = {
   models: {},
   browserOpen: prefs.browserOpen === true,
   evalsOpen: prefs.evalsOpen === true,
+  evals: INITIAL_EVALS,
   railOpen: prefs.railOpen !== false,
   goals: [],
   goalPaneOpen: prefs.goalPaneOpen !== false,
@@ -687,6 +738,42 @@ export function setBrowserOpen(browserOpen: boolean): void {
 export function setEvalsOpen(evalsOpen: boolean): void {
   setState({ evalsOpen, browserOpen: evalsOpen ? false : state.browserOpen, artifact: null })
   writePrefs({ evalsOpen, browserOpen: evalsOpen ? false : state.browserOpen })
+}
+
+// ── Evals ─────────────────────────────────────────────────────────────
+
+export function patchEvals(patch: Partial<EvalsState>): void {
+  setState({ evals: { ...state.evals, ...patch } })
+}
+
+export function patchPlayground(patch: Partial<EvalsState['playground']>): void {
+  patchEvals({ playground: { ...state.evals.playground, ...patch } })
+}
+
+export function patchRunSheet(patch: Partial<RunSheetState>): void {
+  patchEvals({ runSheet: { ...state.evals.runSheet, ...patch } })
+}
+
+/** Record one playground cell's progress without touching the others. */
+export function markPlaygroundCell(key: string, patch: Partial<PlaygroundCell>): void {
+  const cells = state.evals.playground.cells
+  patchPlayground({ cells: { ...cells, [key]: { ...(cells[key] ?? { status: 'idle' }), ...patch } } })
+}
+
+/** Show an eval view; the list views forget the detail they came from. */
+export function showEvalView(view: EvalView, ids: { experimentId?: string | null; datasetId?: string | null } = {}): void {
+  const detail = view === 'experiment' || view === 'dataset'
+  patchEvals({
+    view,
+    experimentId: detail ? ids.experimentId ?? state.evals.experimentId : null,
+    datasetId: detail ? ids.datasetId ?? state.evals.datasetId : null
+  })
+  if (!state.evalsOpen) setEvalsOpen(true)
+}
+
+/** The current state without subscribing, for the dispatcher. */
+export function peekState(): AppState {
+  return state
 }
 
 /** Choose the folder a pane's chat works in, or the folder new chats start in. */

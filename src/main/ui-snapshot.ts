@@ -30,7 +30,7 @@ const SHELL = `(() => {
   const panels = [...document.querySelectorAll('.pane,.artifact,.browser,.goal-pane,.plan-drawer,[role="dialog"],[role="alertdialog"]')].filter(visible)
   return {
     panels: panels.map(el => ({name: name(el) || el.className, bounds: bounds(el)})),
-    controls: controls.slice(0,100).map(el => ({role: el.getAttribute('role') || ({BUTTON:'button',A:'link',TEXTAREA:'textbox',INPUT:'input',SELECT:'combobox'}[el.tagName] || el.tagName.toLowerCase()),name:name(el),disabled:!!el.disabled || el.getAttribute('aria-disabled') === 'true',bounds:bounds(el)})),
+    controls: controls.slice(0,100).map(el => ({role: el.getAttribute('role') || ({BUTTON:'button',A:'link',TEXTAREA:'textbox',INPUT:'input',SELECT:'combobox'}[el.tagName] || el.tagName.toLowerCase()),name:name(el),disabled:!!el.disabled || el.getAttribute('aria-disabled') === 'true',bounds:bounds(el),...(el.dataset.nav ? {nav: el.dataset.nav} : {})})),
     controlsTruncated: controls.length > 100
   }
 })()`

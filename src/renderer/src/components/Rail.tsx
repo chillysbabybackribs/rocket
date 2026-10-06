@@ -208,6 +208,7 @@ function RailBody({ open }: { open: boolean }) {
           title={evalsOpen ? 'Hide evals' : 'Show evals'}
           aria-label={evalsOpen ? 'Hide evals' : 'Show evals'}
           aria-pressed={evalsOpen}
+          data-nav="evals"
           onClick={() => setEvalsOpen(!evalsOpen)}
         >
           <FlaskConical size={17} />
@@ -218,6 +219,7 @@ function RailBody({ open }: { open: boolean }) {
           title={browserOpen ? 'Hide browser' : 'Show browser'}
           aria-label={browserOpen ? 'Hide browser' : 'Show browser'}
           aria-pressed={browserOpen}
+          data-nav="browser"
           onClick={() => setBrowserOpen(!browserOpen)}
         >
           <Globe size={17} />

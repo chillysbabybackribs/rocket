@@ -62,6 +62,16 @@ function startHost(): UtilityProcess {
           if (!window) throw new Error('Rocket’s window is closed. Open the app and try again.')
           return captureUiSnapshot(window)
         }
+        if (message.op.op === 'uiMap') {
+          // The renderer's dispatcher answers with a result object, never a thrown error, so a
+          // refusal keeps its wording instead of Electron's "script failed to execute".
+          if (!window) throw new Error('Rocket’s window is closed. Open the app and try again.')
+          const { call } = message.op
+          const expression = call === 'where' ? 'window.rocketMap.where()'
+            : call === 'go' ? `window.rocketMap.go(${JSON.stringify(message.op.place)}, ${JSON.stringify(message.op.params)})`
+              : `window.rocketMap.act(${JSON.stringify(message.op.action)}, ${JSON.stringify(message.op.params)})`
+          return window.webContents.executeJavaScript(`(async () => { try { return await ${expression} } catch (error) { return { ok: false, error: String(error && error.message || error), where: window.rocketMap.where() } } })()`)
+        }
         if (!browserAgent) throw new Error('The browser is not open')
         return browserAgent.handle(message.op)
       })

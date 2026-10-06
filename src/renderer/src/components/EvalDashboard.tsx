@@ -14,8 +14,10 @@ import {
 } from 'lucide-react'
 import { EvalToolsPanel } from './EvalToolsPanel.tsx'
 import type { HostApi, ProviderId } from '../../../shared/types.ts'
+import type { PlaceName } from '../../../shared/app-map.ts'
+import { act, go } from '../app-map.ts'
 import { call } from '../host.ts'
-import { setEvalsOpen } from '../store.ts'
+import { useApp, type EvalView } from '../store.ts'
 import { EvalPlayground } from './EvalPlayground.tsx'
 import { EvalRunSheet } from './EvalRunSheet.tsx'
 
@@ -23,34 +25,33 @@ type DashboardData = HostApi['eval.loadDashboard'][1]
 type Experiment = DashboardData['experiments'][number]
 type Dataset = DashboardData['datasets'][number]
 
-type NavView =
-  | 'overview'
-  | 'logs'
-  | 'playgrounds'
-  | 'experiments'
-  | 'experiment-detail'
-  | 'datasets'
-  | 'dataset-detail'
-  | 'scorers'
-  | 'tools'
-
 type LayoutMode = 'list' | 'grid' | 'summary' | 'summary-table'
 
 const pct = (n: number): string => `${Math.round(n * 100)}%`
 const fmtDate = (iso: string): string => (iso ? new Date(iso).toLocaleString() : '—')
 
+// Where the sidebar goes and what it is called: the app map's names, so a model's rocket_ui_go
+// and a click land in the same place and the snapshot's control list carries the place name.
+const NAV: Array<{ view: EvalView; place: PlaceName; label: string; icon: React.ReactNode; also?: EvalView }> = [
+  { view: 'overview', place: 'evals.overview', label: 'Overview', icon: <Home size={16} /> },
+  { view: 'logs', place: 'evals.logs', label: 'Logs', icon: <List size={16} /> },
+  { view: 'playgrounds', place: 'evals.playgrounds', label: 'Playgrounds', icon: <LayoutGrid size={16} /> },
+  { view: 'experiments', place: 'evals.experiments', label: 'Experiments', icon: <FlaskConical size={16} />, also: 'experiment' },
+  { view: 'datasets', place: 'evals.datasets', label: 'Datasets', icon: <Database size={16} />, also: 'dataset' },
+  { view: 'scorers', place: 'evals.scorers', label: 'Scorers', icon: <Star size={16} /> },
+  { view: 'tools', place: 'evals.tools', label: 'Tools', icon: <Wrench size={16} /> }
+]
+
 export function EvalDashboard() {
+  const view = useApp((state) => state.evals.view)
+  const selectedExperimentId = useApp((state) => state.evals.experimentId)
+  const selectedDatasetId = useApp((state) => state.evals.datasetId)
+  const refresh = useApp((state) => state.evals.refresh)
   const [data, setData] = useState<DashboardData | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [view, setView] = useState<NavView>('experiments')
   const [layout, setLayout] = useState<LayoutMode>('list')
   const [expFilter, setExpFilter] = useState('')
-  const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null)
-  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null)
   const [compareIds, setCompareIds] = useState<string[]>([])
-  const [runOpen, setRunOpen] = useState(false)
-  const [runSeed, setRunSeed] = useState<{ scenarioId?: string; provider?: ProviderId; trial?: number }>({})
-  const [toolsRefresh, setToolsRefresh] = useState(0)
 
   const load = useCallback(async (): Promise<void> => {
     setLoadError(null)
@@ -61,7 +62,8 @@ export function EvalDashboard() {
     }
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  // Sync, Refresh ledger and every finished run bump `refresh`; this is where the reload happens.
+  useEffect(() => { void load() }, [load, refresh])
 
   const experiments = data?.experiments ?? []
   const datasets = data?.datasets ?? []
@@ -72,34 +74,14 @@ export function EvalDashboard() {
   const selectedExperiment = experiments.find((e) => e.id === selectedExperimentId) ?? null
   const selectedDataset = datasets.find((d) => d.id === selectedDatasetId) ?? null
 
-  const openRun = (seed: { scenarioId?: string; provider?: ProviderId; trial?: number } = {}): void => {
-    setRunSeed(seed)
-    setRunOpen(true)
-  }
-
-  const nav = (next: NavView): void => {
-    setView(next)
-    if (next === 'experiments' || next === 'datasets') {
-      setSelectedExperimentId(null)
-      setSelectedDatasetId(null)
-    }
+  const openRun = (seed: { scenario?: string; provider?: ProviderId; trial?: number } = {}): void => {
+    void act('evals.runSheet.open', seed)
   }
 
   const pageTitle = ((): string => {
-    if (view === 'experiment-detail') return selectedExperiment?.name ?? 'Experiment'
-    if (view === 'dataset-detail') return selectedDataset?.id ?? 'Dataset'
-    const titles: Record<NavView, string> = {
-      overview: 'Overview',
-      logs: 'Logs',
-      playgrounds: 'Playgrounds',
-      experiments: 'Experiments',
-      'experiment-detail': 'Experiment',
-      datasets: 'Datasets',
-      'dataset-detail': 'Dataset',
-      scorers: 'Scorers',
-      tools: 'Tools'
-    }
-    return titles[view]
+    if (view === 'experiment') return selectedExperiment?.name ?? 'Experiment'
+    if (view === 'dataset') return selectedDataset?.id ?? 'Dataset'
+    return NAV.find((entry) => entry.view === view)?.label ?? 'Evals'
   })()
 
   const toggleCompare = (id: string, checked: boolean): void => {
@@ -152,8 +134,8 @@ export function EvalDashboard() {
               className="eval-bt-card eval-bt-clickable"
               role="button"
               tabIndex={0}
-              onClick={() => { setSelectedExperimentId(e.id); setView('experiment-detail') }}
-              onKeyDown={(ev) => { if (ev.key === 'Enter') { setSelectedExperimentId(e.id); setView('experiment-detail') } }}
+              onClick={() => void go('evals.experiment', { id: e.id })}
+              onKeyDown={(ev) => { if (ev.key === 'Enter') void go('evals.experiment', { id: e.id }) }}
             >
               <h3>{e.name}</h3>
               <span className="eval-bt-badge eval-bt-badge-kind">{e.kind}</span>
@@ -182,7 +164,7 @@ export function EvalDashboard() {
             <tr
               key={e.id}
               className="eval-bt-clickable"
-              onClick={() => { setSelectedExperimentId(e.id); setView('experiment-detail') }}
+              onClick={() => void go('evals.experiment', { id: e.id })}
             >
               <td onClick={(ev) => ev.stopPropagation()}>
                 <input
@@ -232,7 +214,7 @@ export function EvalDashboard() {
   const renderExperimentDetail = (exp: Experiment): React.ReactNode => (
     <>
       <nav className="eval-bt-breadcrumb">
-        <button type="button" onClick={() => nav('experiments')}>Experiments</button>
+        <button type="button" onClick={() => void go('evals.experiments')}>Experiments</button>
         <span>/</span>
         <span>{exp.name}</span>
       </nav>
@@ -264,7 +246,7 @@ export function EvalDashboard() {
                 <button
                   type="button"
                   className="eval-bt-btn eval-bt-btn-ghost"
-                  onClick={() => openRun({ scenarioId: c.scenarioId, provider: c.provider as ProviderId, trial: c.trial })}
+                  onClick={() => openRun({ scenario: c.scenarioId, provider: c.provider as ProviderId, trial: c.trial })}
                 >
                   Re-run
                 </button>
@@ -284,7 +266,7 @@ export function EvalDashboard() {
           <tr
             key={d.id}
             className="eval-bt-clickable"
-            onClick={() => { setSelectedDatasetId(d.id); setView('dataset-detail') }}
+            onClick={() => void go('evals.dataset', { id: d.id })}
           >
             <td>{d.id}</td>
             <td>{d.rows.length}</td>
@@ -298,7 +280,7 @@ export function EvalDashboard() {
   const renderDatasetDetail = (ds: Dataset): React.ReactNode => (
     <>
       <nav className="eval-bt-breadcrumb">
-        <button type="button" onClick={() => nav('datasets')}>Datasets</button>
+        <button type="button" onClick={() => void go('evals.datasets')}>Datasets</button>
         <span>/</span>
         <span>{ds.id}</span>
       </nav>
@@ -312,7 +294,7 @@ export function EvalDashboard() {
               <td className="eval-bt-mono eval-bt-cell-wrap">{r.expected}</td>
               <td>{(r.tags ?? []).map((t) => <span key={t} className="eval-bt-badge eval-bt-badge-kind">{t}</span>)}</td>
               <td>
-                <button type="button" className="eval-bt-btn eval-bt-btn-ghost" onClick={() => openRun({ scenarioId: ds.id })}>Run row</button>
+                <button type="button" className="eval-bt-btn eval-bt-btn-ghost" onClick={() => openRun({ scenario: ds.id })}>Run row</button>
               </td>
             </tr>
           ))}
@@ -331,21 +313,14 @@ export function EvalDashboard() {
   if (!data && !loadError) content = <p className="eval-bt-muted">Loading eval dashboard…</p>
   else if (loadError) content = <p className="eval-error">{loadError}</p>
   else if (view === 'experiments') content = <>{renderExperiments()}{renderCompare()}</>
-  else if (view === 'experiment-detail' && selectedExperiment) content = renderExperimentDetail(selectedExperiment)
+  else if (view === 'experiment' && selectedExperiment) content = renderExperimentDetail(selectedExperiment)
   else if (view === 'datasets') content = renderDatasets()
-  else if (view === 'dataset-detail' && selectedDataset) content = renderDatasetDetail(selectedDataset)
-  else if (view === 'tools') content = <EvalToolsPanel refreshKey={toolsRefresh} />
-  else if (view === 'playgrounds') content = (
-    <EvalPlayground
-      datasets={datasets}
-      onFinished={() => void load()}
-      onRefresh={() => void load()}
-      onClose={() => setEvalsOpen(false)}
-    />
-  )
+  else if (view === 'dataset' && selectedDataset) content = renderDatasetDetail(selectedDataset)
+  else if (view === 'tools') content = <EvalToolsPanel />
+  else if (view === 'playgrounds') content = <EvalPlayground datasets={datasets} />
   else content = renderPlaceholder(pageTitle)
 
-  const showExpToolbar = view === 'experiments' || view === 'experiment-detail'
+  const showExpToolbar = view === 'experiments' || view === 'experiment'
   const showPlaygroundChrome = view === 'playgrounds'
   const showToolsChrome = view === 'tools'
 
@@ -355,18 +330,22 @@ export function EvalDashboard() {
         <div className="eval-bt-org">{data?.org ?? 'rocketv1'}</div>
         <div className="eval-bt-project-select" aria-label="Project">{data?.project ?? 'Rocket Evals'}</div>
 
-        <div className="eval-bt-nav-label">Monitor</div>
-        <button type="button" className={`eval-bt-nav${view === 'overview' ? ' is-active' : ''}`} onClick={() => nav('overview')}><Home size={16} />Overview</button>
-        <button type="button" className={`eval-bt-nav${view === 'logs' ? ' is-active' : ''}`} onClick={() => nav('logs')}><List size={16} />Logs</button>
-
-        <div className="eval-bt-nav-label">Evaluate</div>
-        <button type="button" className={`eval-bt-nav${view === 'playgrounds' ? ' is-active' : ''}`} onClick={() => nav('playgrounds')}><LayoutGrid size={16} />Playgrounds</button>
-        <button type="button" className={`eval-bt-nav${view === 'experiments' || view === 'experiment-detail' ? ' is-active' : ''}`} onClick={() => nav('experiments')}><FlaskConical size={16} />Experiments</button>
-        <button type="button" className={`eval-bt-nav${view === 'datasets' || view === 'dataset-detail' ? ' is-active' : ''}`} onClick={() => nav('datasets')}><Database size={16} />Datasets</button>
-        <button type="button" className={`eval-bt-nav${view === 'scorers' ? ' is-active' : ''}`} onClick={() => nav('scorers')}><Star size={16} />Scorers</button>
-
-        <div className="eval-bt-nav-label">Configure</div>
-        <button type="button" className={`eval-bt-nav${view === 'tools' ? ' is-active' : ''}`} onClick={() => nav('tools')}><Wrench size={16} />Tools</button>
+        {(['Monitor', 'Evaluate', 'Configure'] as const).map((group) => (
+          <div key={group}>
+            <div className="eval-bt-nav-label">{group}</div>
+            {NAV.filter((entry) => (group === 'Monitor' ? ['overview', 'logs'] : group === 'Evaluate' ? ['playgrounds', 'experiments', 'datasets', 'scorers'] : ['tools']).includes(entry.view)).map((entry) => (
+              <button
+                key={entry.view}
+                type="button"
+                data-nav={entry.place}
+                className={`eval-bt-nav${view === entry.view || view === entry.also ? ' is-active' : ''}`}
+                onClick={() => void go(entry.place)}
+              >
+                {entry.icon}{entry.label}
+              </button>
+            ))}
+          </div>
+        ))}
 
         <div className="eval-bt-sidebar-foot">
           <div className="eval-bt-plan-card">
@@ -384,17 +363,17 @@ export function EvalDashboard() {
               <h1 className="eval-bt-page-title">{pageTitle}</h1>
             </div>
             <div className="eval-bt-topbar-actions">
-              <button type="button" className="icon-button" title="Refresh dashboard" aria-label="Refresh dashboard" onClick={() => { void load(); setToolsRefresh((n) => n + 1) }}>
+              <button type="button" className="icon-button" title="Refresh dashboard" aria-label="Refresh dashboard" onClick={() => void act('evals.sync')}>
                 <RefreshCw size={15} />
               </button>
-              <button type="button" className="icon-button" aria-label="Close eval panel" onClick={() => setEvalsOpen(false)}>
+              <button type="button" className="icon-button" aria-label="Close eval panel" onClick={() => void go('chat')}>
                 <X size={15} />
               </button>
               {showToolsChrome
-                ? <button type="button" className="eval-bt-btn eval-bt-btn-primary" onClick={() => setToolsRefresh((n) => n + 1)}>Refresh ledger</button>
+                ? <button type="button" className="eval-bt-btn eval-bt-btn-primary" onClick={() => void act('evals.tools.refresh')}>Refresh ledger</button>
                 : (
                   <>
-                    <button type="button" className="eval-bt-btn" onClick={() => void load()}>Sync</button>
+                    <button type="button" className="eval-bt-btn" onClick={() => void act('evals.sync')}>Sync</button>
                     <button type="button" className="eval-bt-btn eval-bt-btn-primary" onClick={() => openRun()}>
                       <Beaker size={14} aria-hidden />
                       Run cell
@@ -426,7 +405,7 @@ export function EvalDashboard() {
               value={expFilter}
               onChange={(ev) => setExpFilter(ev.target.value)}
             />
-            <button type="button" className="eval-bt-btn" disabled={compareIds.length !== 2} onClick={() => setView('experiments')}>Compare</button>
+            <button type="button" className="eval-bt-btn" disabled={compareIds.length !== 2} onClick={() => void go('evals.experiments')}>Compare</button>
             {compareIds.length > 0 && (
               <button type="button" className="eval-bt-btn eval-bt-btn-ghost" onClick={() => setCompareIds([])}>Clear compare</button>
             )}
@@ -444,14 +423,7 @@ export function EvalDashboard() {
           {content}
         </div>
 
-        <EvalRunSheet
-          open={runOpen}
-          onClose={() => setRunOpen(false)}
-          initialScenarioId={runSeed.scenarioId}
-          initialProvider={runSeed.provider}
-          initialTrial={runSeed.trial}
-          onFinished={() => void load()}
-        />
+        <EvalRunSheet />
       </div>
     </div>
   )

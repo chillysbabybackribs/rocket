@@ -26,6 +26,7 @@ import { ToolRegistry } from './tools/registry.ts'
 import { memoryTools } from './tools/memory.ts'
 import { selfCheckTools } from './tools/self-check.ts'
 import { uiSnapshotTools } from './tools/ui-snapshot.ts'
+import { askWhere, describeWhere, uiMapTools } from './tools/ui-map.ts'
 import { rocketSourceRoot, UiRunManager } from './tools/ui-run.ts'
 import { LiveUiRunner } from './tools/ui-live.ts'
 import { redactText, ToolLedger } from './tool-ledger.ts'
@@ -151,6 +152,7 @@ const turnTiming = new Map<string, TurnTiming>()
 const toolRegistry = new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', redactText(message).slice(0, 500), { provider, chatId }), ledger)
   .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
   .add(...uiSnapshotTools(async () => await askBrowser({ op: 'uiSnapshot' }) as UiSnapshot))
+  .add(...uiMapTools(askBrowser))
   .add(...uiRuns.tools())
   .add(...(ledger ? [...toolHistoryTools(ledger), ...toolReviewTools(ledger)] : []))
   .add(...memoryTools(store))
@@ -220,7 +222,8 @@ const hub: Hub = new Hub(
         workspace(chatId, provider, fresh),
         teamwork.context(chatId, provider, fresh),
         browserTabs(chatId, provider, fresh),
-        Promise.resolve(agentSituationContext())
+        // The window may be closed or still loading; the block then says to ask rocket_ui_where.
+        askWhere(askBrowser, chatId).then((where) => agentSituationContext(describeWhere(where)), () => agentSituationContext())
       ])
     ]
     return parts.filter(Boolean).join('\n\n') || null

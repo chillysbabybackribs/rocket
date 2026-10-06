@@ -574,7 +574,8 @@ export type UiSnapshot = {
   window: { bounds: Bounds; contentBounds: Bounds; focused: boolean; minimized: boolean }
   shell: {
     panels: Array<{ name: string; bounds: Bounds }>
-    controls: Array<{ role: string; name: string; disabled: boolean; bounds: Bounds }>
+    /** `nav` is the app map's name for a control that opens a place; see `src/shared/app-map.ts`. */
+    controls: Array<{ role: string; name: string; disabled: boolean; bounds: Bounds; nav?: string }>
     controlsTruncated: boolean
   }
   views: Array<{ url: string; bounds: Bounds; z: number }>

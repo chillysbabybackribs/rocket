@@ -3,8 +3,12 @@ import '@fontsource-variable/geist-mono'
 import './styles.css'
 import { createRoot } from 'react-dom/client'
 import { App } from './App.tsx'
+import { rocketMap } from './app-map.ts'
 import { call } from './host.ts'
 import { start } from './store.ts'
+
+// Main runs the app map's dispatcher here for the host's rocket_ui_where / go / act tools.
+window.rocketMap = rocketMap
 
 // A page error that nobody sees is lost; the host's journal keeps it for rocket_diagnostics.
 // The same message is sent once, so a render loop cannot flood the journal.
