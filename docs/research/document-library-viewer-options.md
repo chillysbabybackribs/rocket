@@ -205,17 +205,32 @@ Keep raster PDF pages + `<pre>` text + `ChatMarkdown`; add library list in SQLit
 
 ---
 
-## Open decisions for mock review
+## Decisions (locked for mock)
 
-1. **PDF vendor:** Nutrient vs Apryse (trial SDKs in Electron spike).
-2. **Markdown editing:** Source-only (CM6) vs split source/preview (CM6 + Tiptap).
-3. **Annotation persistence:** Embed in PDF vs sidecar `.rocket-annotations.json` next to file.
-4. **Library scope v1:** Downloads + workspace plans only, or include all chat attachments?
-5. **Office:** Explicitly excluded vs “open externally” vs ONLYOFFICE phase.
+These choices follow Rocket’s existing contract: host-owned bytes, agents strong on file tools,
+viewer SDK for what files cannot express cleanly (PDF marks), and no second MCP server inside the
+app.
+
+| # | Decision | Choice | Rationale |
+| --- | --- | --- | --- |
+| 1 | **PDF engine** | **Nutrient Web SDK** | PDF is the hard part (highlights, ink, notes, page goto). Nutrient’s instance API (`create`, `getAnnotations`, export) matches agent tools without Apryse’s Core/PDFNet split. Office is out of v1, so Apryse’s breadth does not pay for itself yet. **Spike:** 2-day Electron trial embed before mock is frozen in HTML. |
+| 2 | **Markdown / plans** | **CodeMirror 6 source-first**, optional **read-only preview tab** (reuse `ChatMarkdown`) | Plans stay plain `.md` on disk; agents already patch files. Tiptap v1 would fight round-trips and duplicate schema. Programmatic highlights use CM6 decorations + stable `{ path, line, from, to }` anchors in a sidecar. WYSIWYG edit (Tiptap) only if user research demands it later. |
+| 3 | **Annotation persistence** | **Host sidecar per library entry**, not silent in-place PDF rewrite | Original download paths and attachment “original retained” semantics stay intact. Store Nutrient **Instant JSON** (or equivalent) under the host attachment/library store keyed by `libraryEntryId`. User action **Save annotated copy** exports an embedded PDF when they want a portable file. |
+| 4 | **Library scope v1** | **Unified index:** chat attachments + browser downloads into workspace + workspace docs user opens from chat (`npm run open`, plan paths) | Attachments already have IDs and SQLite metadata; downloads and plans without a unified shelf was the gap. **Not** a global filesystem crawler — scope is Rocket workspace roots + attachment store. |
+| 5 | **Office** | **Library card + open externally** (Reveal / OS default app); **no** Document Server in v1 | ONLYOFFICE is ops-heavy for a desktop agent shell. v1 honesty: show metadata and hand off to native apps. Revisit read-only in-viewer conversion (Nutrient or Apryse) only after PDF+md library ships. |
+
+### Mock implications
+
+- Shell: **Library** list + **Document** viewer pane (replaces/extends artifact for indexed items).
+- Toolbar: CM6 editor controls; Nutrient annotation tools on PDF; preview tab toggles source ↔ rendered md.
+- Agent tools (names tentative): `library.list`, `library.open`, `document.goto`, `document.highlight`,
+  `document.annotate`, `document.getText` — all via host → renderer dispatcher, same pattern as
+  `rocket_ui_act`.
+- Image markup stays **out of v1 mock** (attachments roadmap phase 4); images view zoom-only in library.
 
 ---
 
-## Sources consulted (this turn)
+## Sources consulted
 
 - Rocket: `src/renderer/src/components/ArtifactPanel.tsx`, `docs/attachments-roadmap.md`
 - [CodeMirror 6 System Guide](https://codemirror.net/docs/guide/) — transactions / `dispatch`
@@ -225,8 +240,8 @@ Keep raster PDF pages + `<pre>` text + `ChatMarkdown`; add library list in SQLit
 - [Apryse — create annotations](https://docs.apryse.com/web/guides/annotation/create-annotations), [AnnotationManager API](https://sdk.apryse.com/api/web/Core.AnnotationManager.html)
 - [ONLYOFFICE — text annotations guide](https://api.onlyoffice.com/docs/ai/guides/text-annotations-guide), [DocEditor](https://api.onlyoffice.com/docs/docs-api/usage-api/doceditor/)
 - [tldraw Editor / license](https://tldraw.dev/sdk-features/editor), [tldraw license](https://tldraw.dev/community/license)
-- [Doc77 README](https://github.com/xyy277/doc77) (MIT; MCP + multi-format)
-- [DocuLight MCP tools](https://github.com/ice3x2/DocuLightViewer) (markdown-focused)
+- [Doc77 README (raw)](https://raw.githubusercontent.com/xyy277/doc77/main/README.md) — describes MCP + multi-format; states MIT license in README footer
+- [DocuLight MCP tools](https://github.com/ice3x2/DocuLightViewer) (markdown-focused; not re-fetched this session)
 
 ---
 
