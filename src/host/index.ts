@@ -7,6 +7,7 @@ import type {
   MainAgentOp, BrowserAgentReply, BrowserDownload, BrowserAgentRequest, UiSnapshot,
   HostApi, HostEvent, HostMethod, HostRequestMessage, HostToRenderer, ProviderId, UsageSnapshot
 } from '../shared/types.ts'
+import { FillRunner } from './fill.ts'
 import { GoalRunner } from './goals.ts'
 import { Library } from './library.ts'
 import { describeTiming, Hub } from './hub.ts'
@@ -46,6 +47,7 @@ import { EvalRuns, evalRunsRoot } from './eval-runs.ts'
 import { listScenarios } from './eval-scenarios.ts'
 import { runEvalCell } from './eval-run-cell.ts'
 import type { TurnTiming } from './hub.ts'
+import type { MainToHostFill } from '../shared/fill.ts'
 
 // The agent host: a utility process forked by Electron's main process. Everything that talks to
 // a provider or to the transcript store lives here, so none of it can stall the window or the
@@ -145,7 +147,7 @@ function onBrowserReply(reply: BrowserAgentReply): void {
 
 // The library's shelf: attachments, downloads, plans and opened files (docs/library-plan.md).
 const library = new Library(store, attachments, join(dataDir, 'library-previews'), {
-  hidden: (chatId) => { const chat = store.chat(chatId); return chat !== null && inEvalFolder(chat.cwd) },
+  hidden: (chatId) => { const chat = store.chat(chatId); return chat !== null && (inEvalFolder(chat.cwd) || fills.owns(chat.cwd)) },
   changed: () => emit({ type: 'library' }),
   downloads: async (chat, since) => await askBrowser({ op: 'downloads', chat, since }) as BrowserDownload[]
 })
@@ -198,7 +200,9 @@ const adapters: Record<ProviderId, ProviderAdapter> = testProfile ? {
 function onEvent(event: HostEvent): void {
   // Eval runs' chats work in folders under the profile's eval root; the panel shows them, the
   // chat list does not. Their turns and items still go out, for the panel's live transcript.
-  if (!(event.type === 'chat' && inEvalFolder(event.chat.cwd))) emit(event)
+  // A fill's chat goes nowhere near the window: its steps go to main for the chip beside the page.
+  const fill = fills.observe(event)
+  if (!fill && !(event.type === 'chat' && inEvalFolder(event.chat.cwd))) emit(event)
   if (event.type === 'turn' && event.turn.status !== 'running') {
     void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
     goals.turnEnded(event.turn)
@@ -253,6 +257,16 @@ const hub: Hub = new Hub(
   ids => attachments.resolve(ids)
 )
 
+// Fill with Rocket: one hidden turn per fill, its chat and folder deleted when it ends (fill.ts).
+const fills: FillRunner = new FillRunner(
+  store, hub, join(dataDir, 'fill'),
+  (message) => parentPort?.postMessage(message),
+  inEvalFolder,
+  (message) => journal.add('host', 'warn', 'fill', message)
+)
+void fills.recover().catch((error) => journal.add('host', 'warn', 'fill', `Fills left by the last exit could not be cleared: ${messageOf(error)}`))
+  .then(() => fills.announce())
+
 // Built after the hub, which it drives; goals cut off by the last exit wait for the user.
 const goals: GoalRunner = new GoalRunner(store, hub, (goal) => { if (!inEvalFolder(goal.cwd)) emit({ type: 'goal', goal }) })
 
@@ -272,7 +286,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'attachment.export': async ({ id, path }) => { await attachments.export(id, path); return null },
   'attachment.locate': ({ id }) => attachments.resolve([id])[0].path,
   'attachment.collect': async ({ keepIds }) => { await attachments.collect(keepIds); return null },
-  'chats.list': () => hub.listChats().filter((chat) => !inEvalFolder(chat.cwd)),
+  'chats.list': () => hub.listChats().filter((chat) => !inEvalFolder(chat.cwd) && !fills.owns(chat.cwd)),
   'chat.create': ({ cwd }) => hub.createChat(cwd),
   'chat.open': ({ chatId }) => {
     // What is queued goes out ahead of the snapshot, which already holds it; sent after, it would be applied twice.
@@ -287,6 +301,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
     const attached = attachments.resolve(attachmentIds).map(({ path: _path, textPath: _text, ...attachment }) => attachment)
     validateAttachments(attached)
     await hub.post(chatId, provider, model, text, attached)
+    fills.noteSent(provider, model)
     if (attached.length) emit({ type: 'library' })
     return null
   },
@@ -400,6 +415,7 @@ async function shutdown(): Promise<void> {
   if (exiting) return
   exiting = true
   goals.shutdown()
+  await fills.shutdown()
   await uiRuns.shutdown()
   await liveUi.shutdown()
   await Promise.race([hub.shutdown(), new Promise((resolve) => setTimeout(resolve, 1_500))])
@@ -413,6 +429,9 @@ async function shutdown(): Promise<void> {
 parentPort?.on('message', (event) => {
   const message = event.data as { type?: string }
   if (message?.type === 'browserReply') onBrowserReply(message as BrowserAgentReply)
+  else if (message?.type === 'fillStart' || message?.type === 'fillStop') {
+    void fills.handle(message as MainToHostFill).catch((error) => journal.add('host', 'warn', 'fill', messageOf(error)))
+  }
   else if (message?.type === 'connect' && event.ports[0]) attachRenderer(event.ports[0])
   else if (message?.type === 'shutdown') void shutdown()
 })

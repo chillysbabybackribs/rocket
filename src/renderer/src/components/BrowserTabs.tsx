@@ -84,8 +84,8 @@ export function BrowserTabs({ tabs: current, activeId }: { tabs: BrowserTab[]; a
               role="tab"
               aria-selected={active}
               tabIndex={active ? 0 : -1}
-              className={`btab${active ? ' is-active' : ''}${tab.pinned ? ' is-pinned' : ''}${tab.agent ? ' is-agent' : ''}`}
-              title={tab.agent ? `${tab.title} (opened by the agent)` : tab.title}
+              className={`btab${active ? ' is-active' : ''}${tab.pinned ? ' is-pinned' : ''}${tab.agent ? ' is-agent' : ''}${tab.filling ? ' is-filling' : ''}`}
+              title={tab.agent ? `${tab.title} (opened by the agent)` : tab.filling ? `${tab.title} (Rocket is filling a field)` : tab.title}
               style={shift(index)}
               onPointerDown={(event) => down(event, tab, index)}
               onPointerMove={move}

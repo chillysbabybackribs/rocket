@@ -6,10 +6,12 @@ import {
 import { randomUUID } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import type { MainToHostFill } from '../shared/fill.ts'
 import type { AgentTab, Bounds, BrowserCommand, BrowserState, BrowserTab } from '../shared/types.ts'
 import { CHROME_OBJECT_SCRIPT } from './chrome-object.ts'
 import { detectCookieSources, importCookies, type CookieSource } from './cookie-import.ts'
 import { Suggestions } from './browser-suggest.ts'
+import { PageFill } from './page-fill.ts'
 import { ReadingScroll } from './reading-scroll.ts'
 import { nudgeSpeed } from '../shared/reading.ts'
 import {
@@ -54,6 +56,8 @@ export type TabHandle = { id: string; contents: WebContents }
 
 export class BrowserPane {
   private readonly suggestions: Suggestions
+  /** Fill with Rocket: the right-click fill of a field or form, and its chip (page-fill.ts). */
+  readonly fill: PageFill
   /** Hands-free reading, per tab, at one shared speed (reading-scroll.ts). */
   private readonly reading: ReadingScroll
   private readonly sessionFile = join(app.getPath('userData'), 'browser-tabs.json')
@@ -75,12 +79,19 @@ export class BrowserPane {
   private disposed = false
   private refSeq = 0
 
-  constructor(private readonly window: BrowserWindow) {
+  constructor(private readonly window: BrowserWindow, toHost: (message: MainToHostFill) => void = () => {}) {
     // Set before any tab exists: a session's user agent only reaches pages made after it.
     const pages = session.fromPartition(PARTITION)
     pages.setUserAgent(plainUserAgent(pages.getUserAgent(), app.name), ACCEPT_LANGUAGES)
     this.sendClientHints(pages)
     this.suggestions = new Suggestions(window)
+    this.fill = new PageFill(window, {
+      send: toHost,
+      pageBounds: (contents) => (this.bounds && this.active?.view?.webContents === contents ? this.bounds : null),
+      tabRef: (contents) => this.tabs.find((tab) => tab.view?.webContents === contents)?.ref ?? null,
+      openTab: (url) => this.newTab(url, this.tabs.findIndex((tab) => tab.id === this.activeId) + 1),
+      changed: () => this.publish(false)
+    })
     this.reading = new ReadingScroll(() => this.publish(false), () => (this.bounds ? this.active?.view?.webContents ?? null : null))
     window.on('resize', () => {
       for (const tab of this.tabs) {
@@ -91,6 +102,7 @@ export class BrowserPane {
       this.save()
       this.disposed = true
       this.suggestions.dispose()
+      this.fill.dispose()
       this.reading.dispose()
       for (const tab of this.tabs) tab.view?.webContents.close()
     })
@@ -101,6 +113,10 @@ export class BrowserPane {
   }
 
   handle(sender: WebContents, command: BrowserCommand): void {
+    if (this.fill.owns(sender)) {
+      if (command.type === 'fill') this.fill.command(command.action)
+      return
+    }
     if (this.suggestions.owns(sender)) {
       if (command.type === 'suggestPick') this.navigate(String(command.value))
       return
@@ -160,11 +176,14 @@ export class BrowserPane {
     return this.active ? this.agentTab(this.active.ref) : null
   }
 
-  /** A tab for a model to work in. The strip switches to it so the user can follow along. */
-  agentOpen(): TabHandle {
+  /**
+   * A tab for a model to work in. The strip switches to it so the user can follow along, unless
+   * `show` is false: a fill works out of sight, so the page being filled stays on screen.
+   */
+  agentOpen(show = true): TabHandle {
     this.restore()
     const tab = this.createTab({ url: 'about:blank', agent: true })
-    this.activate(tab, false)
+    if (show) this.activate(tab, false)
     const view = tab.view ?? this.load(tab)
     return { id: tab.ref, contents: view.webContents }
   }
@@ -325,6 +344,8 @@ export class BrowserPane {
     if (!view) return
     if (this.bounds) reveal(view, this.bounds)
     else conceal(this.window, view)
+    // The fill chip goes with its page: beside its field, or out of sight with it.
+    this.fill.place()
   }
 
   // The constructor gives the session Chrome's plain user agent, which reaches the User-Agent
@@ -429,6 +450,7 @@ export class BrowserPane {
     // The dropdown's view stays the top one. (Inserting the tab beneath it by index instead
     // leaves the tab's page unpainted.)
     this.suggestions.raise()
+    this.fill.raise()
     view.setBounds({ x: 0, y: 0, ...this.size })
     conceal(this.window, view)
 
@@ -446,8 +468,9 @@ export class BrowserPane {
     contents.on('did-stop-loading', changed)
     contents.on('audio-state-changed', changed)
     contents.on('did-navigate', (_event, url) => {
-      // Reading belongs to the page it started on.
+      // Reading belongs to the page it started on, and a fill to the fields it was filling.
       this.reading.forget(contents)
+      this.fill.forget(contents)
       // A new site starts without an icon; within a site the old one stays until replaced.
       if (origin(url) !== origin(tab.url)) tab.favicon = tab.faviconUrl = null
       changed()
@@ -472,15 +495,21 @@ export class BrowserPane {
     contents.on('render-process-gone', () => this.reading.forget(contents))
     contents.on('before-input-event', (event, input) => {
       // Esc stops reading and still reaches the page, which may have its own use for it.
+      // Esc stops a fill in flight in this page; the page does not see that one.
+      if (input.type === 'keyDown' && input.key === 'Escape' && !input.alt && !input.control && !input.meta && this.fill.escape(contents)) {
+        event.preventDefault()
+        return
+      }
       if (input.type === 'keyDown' && input.key === 'Escape' && !input.alt && !input.control && !input.meta && this.reading.of(contents)) {
         void this.reading.stop(contents)
       }
       this.onKey(event, input)
     })
-    contents.on('context-menu', (_event, params) => this.pageMenu(tab, params))
+    contents.on('context-menu', (_event, params) => void this.pageMenu(tab, params))
     // A page that closes itself (window.close()) closes its tab.
     contents.on('destroyed', () => {
       this.reading.forget(contents)
+      this.fill.forget(contents)
       tab.view = null
       if (this.tabs.includes(tab) && !this.disposed) this.closeTab(tab)
     })
@@ -633,11 +662,15 @@ export class BrowserPane {
     ]).popup({ window: this.window })
   }
 
-  private pageMenu(tab: Tab, params: ContextMenuParams): void {
+  private async pageMenu(tab: Tab, params: ContextMenuParams): Promise<void> {
     const contents = tab.view?.webContents
     if (!contents) return
+    // Fill with Rocket comes first when the pointer is on a field or in a form; finding out asks
+    // the page, which takes a moment before the menu opens.
+    const fillItems = await this.fill.menuItems(contents, params)
+    if (contents.isDestroyed()) return
     const beside = this.tabs.indexOf(tab) + 1
-    const items: MenuItemConstructorOptions[] = []
+    const items: MenuItemConstructorOptions[] = [...fillItems]
     const selection = params.selectionText.trim()
     if (params.linkURL) {
       items.push(
@@ -670,7 +703,7 @@ export class BrowserPane {
         { type: 'separator' }
       )
     }
-    if (!items.length) {
+    if (items.length === fillItems.length) {
       items.push(
         { label: 'Back', enabled: contents.navigationHistory.canGoBack(), click: () => contents.navigationHistory.goBack() },
         { label: 'Forward', enabled: contents.navigationHistory.canGoForward(), click: () => contents.navigationHistory.goForward() },
@@ -740,7 +773,8 @@ export class BrowserPane {
       audible: contents?.isCurrentlyAudible() ?? false,
       muted: contents?.isAudioMuted() ?? false,
       agent: tab.agent,
-      reading: this.reading.of(contents)
+      reading: this.reading.of(contents),
+      filling: this.fill.filling(contents)
     }
   }
 

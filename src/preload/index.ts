@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { homedir } from 'node:os'
+import type { FillChipState } from '../shared/fill.ts'
 import type { BrowserState, RocketBridge, SuggestionList } from '../shared/types.ts'
 import { HOST_PORT_MESSAGE } from '../shared/types.ts'
 
@@ -25,6 +26,10 @@ const bridge: RocketBridge = {
     close: () => ipcRenderer.send('rocket:window', 'close')
   },
   pickFolder: (current) => ipcRenderer.invoke('rocket:pick-folder', current),
+  capture: {
+    sources: () => ipcRenderer.invoke('rocket:capture-sources'),
+    take: (request) => ipcRenderer.invoke('rocket:capture', request)
+  },
   saveAttachmentAs: (name) => ipcRenderer.invoke('rocket:save-attachment-as', name),
   revealAttachment: (path) => ipcRenderer.invoke('rocket:reveal-attachment', path),
   openChatLink: (href, cwd) => ipcRenderer.invoke('rocket:chat-link', href, cwd),
@@ -34,6 +39,7 @@ const bridge: RocketBridge = {
     send: (command) => ipcRenderer.send('rocket:browser', command),
     onState: (listener) => listen<BrowserState>('rocket:browser-state', listener),
     onSuggestions: (listener) => listen<SuggestionList>('rocket:browser-suggestions', listener),
+    onFill: (listener) => listen<FillChipState>('rocket:fill-chip', listener),
     onFocusAddress: (listener) => listen<void>('rocket:browser-focus-address', listener)
   },
   evalPanelUrl: () => ipcRenderer.invoke('rocket:eval-panel-url') as Promise<string>,

@@ -1,6 +1,7 @@
 // The vocabulary every process shares: the app-owned transcript, the providers that can answer a
 // turn, and the wire protocol between the renderer and the agent host.
 
+import type { FillChipAction, FillChipState } from './fill.ts'
 import type { LibraryEntry, LibraryFilters, LibraryPreview, LibraryView } from './library.ts'
 
 export type ProviderId = 'codex' | 'claude' | 'cursor' | 'antigravity'
@@ -572,6 +573,8 @@ export type BrowserTab = {
   agent: boolean
   /** Hands-free reading in this tab, or null when it is not reading (src/main/reading-scroll.ts). */
   reading: BrowserReading | null
+  /** Rocket is filling a field in this tab (src/main/page-fill.ts). */
+  filling?: boolean
 }
 
 /** A tab's hands-free reading: how far down the page it is, and how long the rest takes at the current speed. */
@@ -756,6 +759,8 @@ export type BrowserCommand =
   /** Hands-free reading in the active tab: start or stop it, or pause and carry on (`toggle`). */
   | { type: 'reading'; action: 'flip' | 'toggle' | 'stop' }
   | { type: 'readingSpeed'; speed: number }
+  /** From the chip of "Fill with Rocket" (src/main/page-fill.ts). */
+  | { type: 'fill'; action: FillChipAction }
 
 export type ChatLinkTarget =
   | { kind: 'browser'; url: string }
@@ -795,6 +800,8 @@ export type RocketBridge = {
     send: (command: BrowserCommand) => void
     onState: (listener: (state: BrowserState) => void) => () => void
     onSuggestions: (listener: (list: SuggestionList) => void) => () => void
+    /** The chip of "Fill with Rocket", in its own view beside the field being filled. */
+    onFill: (listener: (state: FillChipState) => void) => () => void
     /** Main asks for the address field to take focus (Ctrl+L, a new tab). */
     onFocusAddress: (listener: () => void) => () => void
   }

@@ -1450,6 +1450,17 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   background: var(--accent);
   box-shadow: 0 0 0 1.5px var(--bg, #08090a);
 }
+/* A tab Rocket is filling a field in keeps a turning ring round its icon, so it can be found
+   after switching away (src/main/page-fill.ts). */
+.btab.is-filling .btab-icon::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: var(--accent);
+  animation: spin 900ms linear infinite;
+}
 .btab-spinner {
   width: 13px;
   height: 13px;

@@ -7,9 +7,11 @@ import { createServer, type AddressInfo } from 'node:net'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import type { BrowserAgentReply, BrowserAgentRequest, BrowserCommand } from '../shared/types.ts'
+import type { HostToMainFill } from '../shared/fill.ts'
+import type { BrowserAgentReply, BrowserAgentRequest, BrowserCommand, CaptureRequest } from '../shared/types.ts'
 import { HOST_PORT_MESSAGE } from '../shared/types.ts'
 import { readChatLink } from './chat-links.ts'
+import { ScreenCapture } from './capture.ts'
 import { BrowserAgent } from './browser-agent.ts'
 import { BrowserPane } from './browser-pane.ts'
 import { BROWSER_PARTITION } from './browser-url.ts'
@@ -49,6 +51,7 @@ let window: BrowserWindow | null = null
 let host: UtilityProcess | null = null
 let browser: BrowserPane | null = null
 let browserAgent: BrowserAgent | null = null
+let screenCapture: ScreenCapture | null = null
 let quitting = false
 
 function startHost(): UtilityProcess {
@@ -58,7 +61,14 @@ function startHost(): UtilityProcess {
     stdio: 'inherit'
   })
   // The host's browser tools: one request in, one answer out, the work done here beside the pages.
-  child.on('message', (message: BrowserAgentRequest) => {
+  // A fill's progress comes the same way, for the chip beside the page (page-fill.ts).
+  child.on('message', (message: BrowserAgentRequest | HostToMainFill) => {
+    if (typeof message?.type === 'string' && message.type.startsWith('fill')) {
+      const fill = message as HostToMainFill
+      if (fill.type === 'fillChat') browserAgent?.setQuiet(fill.chatId, true)
+      browser?.fill.onHost(fill)
+      return
+    }
     if (message?.type !== 'browser') return
     const reply = (answer: { ok: true; result: unknown } | { ok: false; error: string }): void => {
       if (host === child) child.postMessage({ type: 'browserReply', id: message.id, ...answer } satisfies BrowserAgentReply)
@@ -99,6 +109,7 @@ function startHost(): UtilityProcess {
     if (host !== child) return
     host = null
     if (quitting) return
+    browser?.fill.hostGone()
     console.error(`[main] agent host exited with code ${code}; restarting`)
     appendJournal(join(app.getPath('userData'), 'journal.jsonl'), {
       at: Date.now(), source: 'main', severity: 'error', kind: 'restart', message: `The agent host exited with code ${code} and was restarted`
@@ -154,14 +165,16 @@ function createWindow(): void {
       sandbox: false
     }
   })
-  browser = new BrowserPane(window)
+  browser = new BrowserPane(window, (message) => host?.postMessage(message))
   browserAgent = new BrowserAgent(browser)
+  screenCapture = new ScreenCapture(window, () => browser)
   window.once('ready-to-show', () => window?.show())
   window.on('closed', () => {
     window = null
     browser = null
     browserAgent?.dispose()
     browserAgent = null
+    screenCapture = null
   })
   // The UI never navigates or opens windows. A link that tries opens inside the app, in a
   // browser tab, the way a chat link does; nothing is handed to a system app.
@@ -231,6 +244,14 @@ ipcMain.handle('rocket:reveal-attachment', (event, path: string) => {
   const target = resolve(String(path))
   if (event.sender !== window?.webContents || dirname(target) !== folder) throw new Error('Rocket can only reveal its own stored attachments.')
   shell.showItemInFolder(target)
+})
+ipcMain.handle('rocket:capture-sources', (event) => {
+  if (event.sender !== window?.webContents || !screenCapture) throw new Error('Capture is only available from Rocket\'s window.')
+  return screenCapture.sources()
+})
+ipcMain.handle('rocket:capture', (event, request: CaptureRequest) => {
+  if (event.sender !== window?.webContents || !screenCapture) throw new Error('Capture is only available from Rocket\'s window.')
+  return screenCapture.take(request)
 })
 ipcMain.handle('rocket:chat-link', (event, href: string, cwd: string) => {
   if (event.sender !== window?.webContents) throw new Error('This link cannot be opened from this window.')

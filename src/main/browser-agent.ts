@@ -85,6 +85,9 @@ export class BrowserAgent {
   private readonly workTabs = new Map<string, string>()
   /** chat → the pages its running turn has used. */
   private readonly touched = new Map<string, Set<WebContents>>()
+  /** Chats that work out of sight (a fill), and the tabs they opened, which never take the view. */
+  private readonly quiet = new Set<string>()
+  private readonly quietTabs = new Set<string>()
 
   private readonly downloads: BrowserDownloads
 
@@ -94,6 +97,23 @@ export class BrowserAgent {
 
   dispose(): void {
     this.downloads.dispose()
+  }
+
+  /** A fill's chat works out of sight: its tabs open behind the page being filled. */
+  setQuiet(chat: string, quiet: boolean): void {
+    if (quiet) this.quiet.add(chat)
+    else this.quiet.delete(chat)
+  }
+
+  private open(key: string): TabHandle {
+    const quiet = this.quiet.has(key)
+    const tab = this.pane.agentOpen(!quiet)
+    if (quiet) this.quietTabs.add(tab.id)
+    return tab
+  }
+
+  private show(id: string): void {
+    if (!this.quietTabs.has(id)) this.pane.agentShow(id)
   }
 
   /** The chat whose turn is working in a page (its own tab, or one it touched), or null for the user's alone. */
@@ -108,7 +128,7 @@ export class BrowserAgent {
       case 'tabs':
         return this.pane.agentTabs()
       case 'open': {
-        const tab = this.pane.agentOpen()
+        const tab = this.open(op.chat ?? '')
         this.workTabs.set(op.chat ?? '', tab.id)
         if (op.url) await this.navigate(tab, op.url)
         return this.info(tab)
@@ -209,7 +229,7 @@ export class BrowserAgent {
       }
       case 'screenshot': {
         const tab = this.tab(op)
-        this.pane.agentShow(tab.id)
+        this.show(tab.id)
         await this.attach(tab)
         let somMarkers: SomMarker[] = []
         let viewportWidth = 0
@@ -247,7 +267,11 @@ export class BrowserAgent {
         this.rest(op.chat)
         const own = this.workTabs.get(op.chat)
         this.workTabs.delete(op.chat)
-        if (own) this.pane.agentClose(own)
+        this.quiet.delete(op.chat)
+        if (own) {
+          this.quietTabs.delete(own)
+          this.pane.agentClose(own)
+        }
         return null
       }
     }
@@ -297,7 +321,7 @@ export class BrowserAgent {
     if (own) return own
     const active = preferActive ? this.pane.agentActive() : null
     if (active) return active
-    const opened = this.pane.agentOpen()
+    const opened = this.open(key)
     this.workTabs.set(key, opened.id)
     return opened
   }
@@ -326,7 +350,7 @@ export class BrowserAgent {
 
   /** Go to an address and wait for the page's document. Returns what went wrong, if anything did. */
   private async navigate(tab: TabHandle, input: string): Promise<string | null> {
-    this.pane.agentShow(tab.id)
+    this.show(tab.id)
     const url = toUrl(input)
     if (!url) throw new Error('There is no address to go to.')
     // Attached first, so the requests the page makes while loading are in the log.

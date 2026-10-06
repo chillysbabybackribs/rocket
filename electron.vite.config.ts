@@ -18,13 +18,15 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: { watch: {}, rollupOptions: { input: { index: resolve('src/preload/index.ts') } } }
   },
-  // Two pages: the app's UI, and the address field's dropdown, which main shows in a view of its
-  // own because nothing in the UI's page can be drawn over the browser.
+  // Three pages: the app's UI, the address field's dropdown and the chip of "Fill with Rocket",
+  // which main shows in views of their own because nothing in the UI's page can be drawn over the
+  // browser.
   renderer: {
     plugins: [react()],
     build: { rollupOptions: { input: {
       index: resolve('src/renderer/index.html'),
-      suggest: resolve('src/renderer/suggest.html')
+      suggest: resolve('src/renderer/suggest.html'),
+      fill: resolve('src/renderer/fill.html')
     } } }
   }
 })
