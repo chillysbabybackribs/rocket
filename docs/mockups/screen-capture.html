@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rocket · Capture into a chat</title><style>
+@font-face{font-family:Inter;src:url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')}
+:root{color-scheme:dark;--canvas:#08090a;--panel:#0f1011;--composer:#151617;--menu:#1b1c1e;--line:#2f3031;--text:#f7f8f8;--muted:#8a8f98;--accent:#7170ff}
+*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--text);font:13px/1.5 Inter,system-ui,sans-serif}
+button,input,textarea{font:inherit;color:inherit}button{cursor:pointer;background:transparent;border:0;padding:0}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{width:16px;height:16px;flex-shrink:0;display:block}
+header{max-width:1280px;margin:auto;padding:28px 28px 18px}.eyebrow{color:var(--muted);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+h1{font-size:25px;letter-spacing:-.7px;font-weight:550;margin:6px 0}header p{color:#b4b8c0;margin:0}
+.nav{display:flex;gap:5px;flex-wrap:wrap;margin-top:20px}.nav button{padding:8px 13px;border-radius:7px;color:#a4a8b0;border:1px solid transparent}
+.nav button:hover{background:#ffffff0b}.nav button[aria-pressed=true]{background:#1c1d20;border-color:var(--line);color:var(--text)}
+main{max-width:1280px;padding:0 28px 24px;margin:auto;overflow-x:auto}
+/* The stage is a small Rocket window: rail, one chat, the browser beside it. Overlays are siblings so captures never include them. */
+.stage{position:relative;width:1220px;height:640px;border-radius:12px;overflow:hidden;border:1px solid #ffffff14}
+.win{position:absolute;inset:0;width:1220px;height:640px;display:flex;background:#050506;padding:8px 8px 8px 0}
+.rail{width:52px;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:120px;color:#5d6169}
+.rail i{width:26px;height:26px;border-radius:50%;border:2px solid #2b6b4c}
+.pane{position:relative;width:440px;display:flex;flex-direction:column;background:var(--panel);border:1px solid #ffffff12;border-radius:11px;overflow:hidden}
+.transcript{flex:1;padding:22px 22px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+.bubble{align-self:flex-end;max-width:85%;background:#1c1d20;border-radius:10px;padding:9px 12px}
+.assistant{color:#d7d9de}.assistant p{margin:5px 0 0}.meta{font-size:11px;color:#71767f}
+.dock{padding:10px 14px 14px}.tab{display:inline-block;background:var(--composer);border:1px solid var(--line);border-bottom:0;padding:5px 12px;border-radius:8px 8px 0 0;font-size:11px;color:#d7d9de;margin-left:10px;transform:translateY(1px)}
+.composer{background:var(--composer);border:1px solid var(--line);border-radius:12px}
+.tray{display:flex;gap:9px;padding:12px 12px 2px}.tray:empty{display:none}
+.att{position:relative;width:118px}.thumb{width:118px;height:72px;border-radius:7px;overflow:hidden;display:grid;place-items:center;background:#0c0d0e}
+.att .name{display:block;font-size:10px;color:#a4a8b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-top:4px}
+.remove{position:absolute;top:-5px;right:-5px;width:21px;height:21px;border-radius:50%;border:1px solid #494a4c;background:#252628;display:grid;place-items:center}.remove svg{width:12px;height:12px}
+.att.is-new .thumb{animation:arrive 1.6s ease-out}@keyframes arrive{0%{box-shadow:0 0 0 2px #7170ffaa}100%{box-shadow:0 0 0 2px #7170ff00}}
+.input{padding:9px 14px 2px;min-height:46px;color:var(--text)}.input.empty{color:#62666d}
+.bar{display:flex;align-items:center;gap:4px;padding:5px 9px 8px;color:#737880;font-size:11px}
+.tool{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;color:#b4b8c0}.tool:hover,.tool[aria-expanded=true]{background:#ffffff0d;color:var(--text)}
+.bar .folder{margin-left:6px;flex:1}.send{width:28px;height:28px;border-radius:50%;background:#e6e6e6;color:#08090a;display:grid;place-items:center}
+.browser{flex:1;margin-left:8px;display:flex;flex-direction:column;background:var(--panel);border:1px solid #ffffff12;border-radius:11px;overflow:hidden}
+.btabs{display:flex;gap:4px;padding:7px 8px 0}.btab{width:200px;padding:7px 10px;border-radius:8px 8px 0 0;font-size:11px;color:#9aa0a8}.btab.on{background:#1a1b1d;color:#e6e7ea}
+.addr{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#1a1b1d;color:#9aa0a8;font-size:11px}.addr span{flex:1;background:#101113;border-radius:7px;padding:5px 10px}
+/* The web page: a stand-in dashboard, drawn here so captures have real pixels to crop. */
+.page{position:relative;flex:1;background:#f6f7fb;color:#1b2333;padding:20px 24px;overflow:hidden;font-size:12px}
+.page h2{margin:0 0 2px;font-size:18px}.page .sub{color:#66718a;margin-bottom:14px}
+.kpis{display:flex;gap:12px;margin-bottom:14px}.kpi{flex:1;background:#fff;border:1px solid #e3e6ef;border-radius:10px;padding:10px 12px}.kpi b{display:block;font-size:20px}.kpi small{color:#66718a}
+.chart{display:flex;align-items:flex-end;gap:7px;height:92px;background:#fff;border:1px solid #e3e6ef;border-radius:10px;padding:12px 14px;margin-bottom:14px}
+.chart i{flex:1;background:#6c7cf5;border-radius:3px 3px 0 0}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e3e6ef;border-radius:10px;overflow:hidden}
+th,td{text-align:left;padding:7px 12px;border-bottom:1px solid #eef0f5}th{color:#66718a;font-weight:500;background:#fafbfd}
+.ok{color:#1d8a5a}.bad{color:#c9302c;font-weight:600}
+/* Overlays: the capture menu, region selection, review and the notice. */
+.layer{position:absolute;inset:0;pointer-events:none;z-index:5}.layer>*{pointer-events:auto}
+.menu{position:absolute;width:262px;background:var(--menu);border:1px solid #38393c;border-radius:10px;padding:5px;box-shadow:0 14px 40px #000a}
+.item{width:100%;display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:6px;text-align:left}
+.item:hover:not(:disabled),.item:focus-visible{background:#ffffff0d;outline:none}.item:disabled{opacity:.4;cursor:default}
+.item svg{color:#9da2ab}.item span{display:flex;flex-direction:column}.item small{color:#7a7f88;font-size:11px}
+.menu-foot{border-top:1px solid #2c2d30;margin:5px -5px -5px;padding:8px 13px;font-size:11px;color:#7d828b}
+.region{position:absolute;inset:0;cursor:crosshair;background:#0000008c;z-index:8}
+.region.has-sel{background:transparent}
+.sel{position:absolute;border:1.5px solid #fff;box-shadow:0 0 0 9999px #0000008c;outline:1px dashed #7170ff;outline-offset:2px}
+.sel .size{position:absolute;left:0;top:-24px;background:#111;border:1px solid #333;border-radius:5px;padding:1px 6px;font-size:11px;white-space:nowrap}
+.sel i{position:absolute;width:8px;height:8px;background:#fff;border-radius:2px}
+.hint{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#151617f2;border:1px solid #38393c;border-radius:20px;padding:6px 14px;font-size:12px;color:#d7d9de;white-space:nowrap;pointer-events:none}
+.hint kbd{font:11px Inter;background:#2a2b2e;border-radius:4px;padding:1px 5px;margin:0 2px;color:#fff}
+.seltools{position:absolute;display:flex;gap:6px;background:#151617;border:1px solid #38393c;border-radius:8px;padding:4px;box-shadow:0 8px 24px #0009}
+.seltools button{padding:5px 10px;border-radius:5px;font-size:12px}.seltools button:hover{background:#ffffff10}.seltools .primary{background:var(--accent);color:#fff}.seltools .primary:hover{background:#8584ff}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:9}.flash.go{animation:flash .35s ease-out}@keyframes flash{0%{opacity:.55}100%{opacity:0}}
+.review{position:absolute;inset:0;background:#000000b8;display:grid;place-items:center;z-index:7}
+.dialog{width:700px;background:#121315;border:1px solid #38393c;border-radius:12px;padding:16px;box-shadow:0 20px 60px #000c}
+.dialog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.dialog-head b{font-weight:500}
+.frame{display:grid;place-items:center;height:330px;background:#0a0a0b;border:1px solid #26272a;border-radius:8px;overflow:hidden}
+.fields{display:grid;grid-template-columns:70px 1fr;gap:8px 12px;align-items:center;margin-top:12px;font-size:12px}
+.fields label{color:#8a8f98}.fields input{background:#0d0e10;border:1px solid #2e2f32;border-radius:7px;padding:6px 9px;outline:none}.fields input:focus{border-color:var(--accent)}
+.fields .val{color:#c3c6cc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.actions{display:flex;justify-content:space-between;align-items:center;margin-top:14px}.actions .to{font-size:11px;color:#8a8f98}
+.actions .btns{display:flex;gap:8px}.btn{padding:7px 13px;border-radius:7px;border:1px solid #38393c}.btn:hover{background:#ffffff0b}.btn.primary{background:#e6e6e6;color:#08090a;border-color:#e6e6e6}.btn.primary:hover{background:#fff}
+.notice{position:absolute;left:70px;bottom:20px;background:var(--menu);border:1px solid #38393c;border-radius:9px;padding:9px 12px 9px 14px;font-size:12px;box-shadow:0 10px 30px #0009;display:flex;gap:14px;align-items:center}
+.notice button{color:#b9b8ff;padding:2px 6px;border-radius:5px}.notice button:hover{background:#ffffff0d}
+.snap{position:relative;overflow:hidden;flex:none}.snap .win{transform-origin:0 0;pointer-events:none}
+.note{display:flex;justify-content:space-between;gap:15px;color:var(--muted);font-size:12px;margin-top:14px;max-width:1220px}.note p{margin:0;max-width:880px}
+.note button{white-space:nowrap;border:1px solid var(--line);padding:6px 10px;border-radius:6px;align-self:start}.note button:hover{background:#ffffff0b}
+#status{font-size:11px;color:#a4a8b0;margin-top:8px}
+</style>
+<header><div class="eyebrow">Rocket / Phase 3</div><h1>Show the agent what you see.</h1><p>A camera beside the paperclip captures the browser page, the whole Rocket window, or a region you drag out, straight into this chat's draft. You review it first, and nothing is sent.</p>
+<nav class="nav" aria-label="Mockup states">
+<button data-state="menu" aria-pressed="true">01 · Capture menu</button>
+<button data-state="region" aria-pressed="false">02 · Select a region</button>
+<button data-state="review" aria-pressed="false">03 · Review the capture</button>
+<button data-state="draft" aria-pressed="false">04 · In the draft</button>
+</nav></header>
+<main><div class="stage" id="stage">
+<div class="win" id="win">
+  <div class="rail"><i></i><i></i><i></i><i></i></div>
+  <section class="pane" aria-label="Invite failures">
+    <div class="transcript">
+      <div class="bubble">Why are some invites failing?</div>
+      <div class="assistant"><div class="meta">Claude</div><p>The send endpoint returns errors for a few workspaces. Show me the failing rows in the invites dashboard and I'll compare them with the ones that went through.</p></div>
+    </div>
+    <div class="dock"><span class="tab">Invite failures</span><div class="composer">
+      <div class="tray" id="tray"></div>
+      <div class="input" id="input">These rows are failing. What's different about them?</div>
+      <div class="bar">
+        <button class="tool" aria-label="Attach files" title="Attach files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m16 6-8.4 8.6a2 2 0 0 0 2.8 2.8l8.4-8.6a4 4 0 1 0-5.6-5.6l-8.4 8.5a6 6 0 1 0 8.5 8.5l8.4-8.5"/></svg></button>
+        <button class="tool" id="camera" aria-label="Capture" title="Capture the screen into this draft" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg></button>
+        <span class="folder">~/Desktop/northstar</span><span>Claude</span>
+        <button class="send" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
+      </div></div></div>
+  </section>
+  <section class="browser" aria-label="Browser">
+    <div class="btabs"><span class="btab on">Northstar · Invites</span><span class="btab">Docs · Invites API</span></div>
+    <div class="addr">‹ › ⟳ <span>app.northstar.io/admin/invites</span></div>
+    <div class="page" id="page">
+      <h2>Invites</h2><div class="sub">Last 7 days · all workspaces</div>
+      <div class="kpis"><div class="kpi"><small>Sent</small><b>3,902</b></div><div class="kpi"><small>Accepted</small><b>2,381</b></div><div class="kpi"><small>Failed</small><b style="color:#c9302c">47</b></div></div>
+      <div class="chart"><i style="height:52%"></i><i style="height:64%"></i><i style="height:48%"></i><i style="height:80%"></i><i style="height:71%"></i><i style="height:90%"></i><i style="height:66%"></i><i style="height:58%"></i><i style="height:75%"></i><i style="height:84%"></i></div>
+      <table id="table"><tr><th>Workspace</th><th>Invitee</th><th>Role</th><th>Status</th></tr>
+        <tr><td>Acme Labs</td><td>dana@acme.io</td><td>Member</td><td class="ok">Accepted</td></tr>
+        <tr class="fail"><td>Brightline</td><td>sam@brightline.co</td><td>Admin</td><td class="bad">Failed · 422</td></tr>
+        <tr><td>Corvid</td><td>lee@corvid.dev</td><td>Member</td><td class="ok">Sent</td></tr>
+        <tr class="fail"><td>Brightline</td><td>ari@brightline.co</td><td>Admin</td><td class="bad">Failed · 422</td></tr>
+        <tr><td>Delta Works</td><td>kim@delta.works</td><td>Member</td><td class="ok">Accepted</td></tr></table>
+    </div>
+  </section>
+</div>
+<div class="layer" id="layer"></div><div class="flash" id="flash"></div>
+</div>
+<div class="note"><p id="note"></p><button id="reset">Reset this state</button></div>
+<div id="status" role="status">Interactive mockup · captures here copy the drawn page · no model calls</div></main>
+<script>
+const $=s=>document.querySelector(s),stage=$('#stage'),win=$('#win'),layer=$('#layer'),tray=$('#tray'),camera=$('#camera'),status=$('#status')
+const I={page:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>',
+win:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="16" rx="2"/><path d="M2 8h20M6 5.5h.01M9 5.5h.01"/></svg>',
+region:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3a2 2 0 0 0-2 2M19 3a2 2 0 0 1 2 2M21 19a2 2 0 0 1-2 2M5 21a2 2 0 0 1-2-2M9 3h1M9 21h1M14 3h1M14 21h1M3 9v1M21 9v1M3 14v1M21 14v1"/></svg>',
+x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'}
+let mode='menu',shot=null,count=0
+function rel(el){const a=el.getBoundingClientRect(),b=win.getBoundingClientRect();return{x:a.left-b.left,y:a.top-b.top,w:a.width,h:a.height}}
+// A capture is a copy of the drawn window, clipped to the rectangle: real pixels, no reconstruction.
+function snap(rect,box){const s=Math.min(box.w/rect.w,box.h/rect.h,1.6),o=document.createElement('div');o.className='snap';o.style.width=rect.w*s+'px';o.style.height=rect.h*s+'px'
+  const c=win.cloneNode(true);c.removeAttribute('id');c.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));c.style.transform=`scale(${s})`;c.style.left=-rect.x*s+'px';c.style.top=-rect.y*s+'px';o.append(c);return o}
+const stamp=()=>'2026-10-06 07.42'
+function closeMenu(){layer.querySelector('.menu')?.remove();camera.setAttribute('aria-expanded','false')}
+function openMenu(){closeMenu();camera.setAttribute('aria-expanded','true');const m=document.createElement('div');m.className='menu';m.setAttribute('role','menu');m.setAttribute('aria-label','Capture')
+  m.innerHTML=`<button class="item" role="menuitem" data-kind="page">${I.page}<span>Browser page<small>What's visible in Northstar · Invites</small></span></button>
+  <button class="item" role="menuitem" data-kind="window">${I.win}<span>Rocket window<small>Chats, browser and panels as they are</small></span></button>
+  <button class="item" role="menuitem" data-kind="region">${I.region}<span>Select a region…<small>Drag over anything in the window</small></span></button>
+  <div class="menu-foot">Adds to this chat's draft. You review it first; nothing is sent.</div>`
+  layer.append(m);const c=rel(camera);m.style.left=c.x+'px';m.style.top=(c.y-m.offsetHeight-8)+'px'
+  m.onclick=e=>{const k=e.target.closest('[data-kind]')?.dataset.kind;if(!k)return;closeMenu();k==='region'?region():capture(k)}
+  m.querySelector('.item').focus({preventScroll:true})}
+function flash(){const f=$('#flash');f.classList.remove('go');void f.offsetWidth;f.classList.add('go')}
+function capture(kind,rect){
+  const r=kind==='page'?rel($('#page')):kind==='window'?{x:0,y:0,w:1220,h:640}:rect
+  flash();shot={kind,rect:r,name:kind==='page'?`app.northstar.io invites ${stamp()}.png`:kind==='window'?`Rocket ${stamp()}.png`:`Region ${stamp()}.png`}
+  setTimeout(review,kind==='region'?0:250)}
+function region(preset){
+  closeMenu();layer.replaceChildren();const o=document.createElement('div');o.className='region';o.tabIndex=-1
+  o.innerHTML='<div class="hint">Drag to select <kbd>Enter</kbd> capture <kbd>Esc</kbd> cancel</div>';layer.append(o);o.focus({preventScroll:true})
+  let start=null,sel=null,box=null
+  const draw=b=>{box=b;if(!sel){sel=document.createElement('div');sel.className='sel';sel.innerHTML='<span class="size"></span><i style="left:-4px;top:-4px"></i><i style="right:-4px;top:-4px"></i><i style="left:-4px;bottom:-4px"></i><i style="right:-4px;bottom:-4px"></i>';o.append(sel);o.classList.add('has-sel')}
+    Object.assign(sel.style,{left:b.x+'px',top:b.y+'px',width:b.w+'px',height:b.h+'px'});sel.querySelector('.size').textContent=`${Math.round(b.w*2)} × ${Math.round(b.h*2)} px`}
+  const tools=()=>{o.querySelector('.seltools')?.remove();const t=document.createElement('div');t.className='seltools';t.innerHTML='<button data-a="cancel">Cancel</button><button data-a="redo">Redraw</button><button class="primary" data-a="ok">Capture ↵</button>';o.append(t)
+    t.style.left=Math.min(box.x+box.w-t.offsetWidth,1220-t.offsetWidth-8)+'px';t.style.top=(box.y+box.h+8>590?box.y-40:box.y+box.h+8)+'px'
+    t.onmousedown=e=>e.stopPropagation();t.onclick=e=>{const a=e.target.dataset.a;if(a==='cancel')cancel();if(a==='redo'){sel.remove();sel=null;box=null;t.remove();o.classList.remove('has-sel')}if(a==='ok')done()}}
+  const done=()=>{if(!box||box.w<8||box.h<8)return;layer.replaceChildren();capture('region',box)}
+  const cancel=()=>{layer.replaceChildren();status.textContent='Capture cancelled. The draft is unchanged.'}
+  o.onmousedown=e=>{const b=win.getBoundingClientRect();start={x:e.clientX-b.left,y:e.clientY-b.top};o.querySelector('.seltools')?.remove()}
+  o.onmousemove=e=>{if(!start)return;const b=win.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;draw({x:Math.min(x,start.x),y:Math.min(y,start.y),w:Math.abs(x-start.x),h:Math.abs(y-start.y)})}
+  o.onmouseup=()=>{start=null;if(box&&box.w>8&&box.h>8)tools()}
+  o.onkeydown=e=>{if(e.key==='Escape')cancel();if(e.key==='Enter')done()}
+  if(preset){const t=rel($('#table'));draw({x:t.x-6,y:t.y-6,w:t.w+12,h:t.h+12});tools()}}
+function review(){
+  layer.replaceChildren();const r=document.createElement('div');r.className='review'
+  const where=shot.kind==='window'?'Rocket window':'https://app.northstar.io/admin/invites'
+  r.innerHTML=`<div class="dialog" role="dialog" aria-label="Review capture"><div class="dialog-head"><b>Review capture</b><button class="tool" data-a="cancel" aria-label="Cancel">${I.x}</button></div>
+  <div class="frame"></div><div class="fields"><label for="cap-name">Name</label><input id="cap-name" value="${shot.name}">
+  <label>Size</label><span class="val">${Math.round(shot.rect.w*2)} × ${Math.round(shot.rect.h*2)} px · PNG · source pixels</span>
+  <label>From</label><span class="val">${where}</span></div>
+  <div class="actions"><span class="to">Adds to: Invite failures (this chat's draft)</span><span class="btns"><button class="btn" data-a="retake">Retake</button><button class="btn" data-a="cancel">Cancel</button><button class="btn primary" data-a="add">Add to draft</button></span></div></div>`
+  layer.append(r);r.querySelector('.frame').append(snap(shot.rect,{w:666,h:326}));r.querySelector('.primary').focus({preventScroll:true})
+  r.onclick=e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(a==='cancel'){layer.replaceChildren();status.textContent='Capture discarded. The draft is unchanged.'}
+    if(a==='retake'){shot.kind==='region'?region():capture(shot.kind)}if(a==='add')add(r.querySelector('input').value)}
+  r.onkeydown=e=>{if(e.key==='Escape'){layer.replaceChildren()}}}
+function add(name){
+  layer.replaceChildren();const a=document.createElement('div');a.className='att is-new';const t=document.createElement('div');t.className='thumb';t.append(snap(shot.rect,{w:118,h:72}))
+  a.append(t);a.insertAdjacentHTML('beforeend',`<span class="name" title="${name}">${name}</span><button class="remove" aria-label="Remove ${name}">${I.x}</button>`);a.querySelector('.remove').onclick=()=>a.remove();tray.append(a)
+  const n=document.createElement('div');n.className='notice';n.setAttribute('role','status');n.innerHTML=`<span>Added ${name} to Invite failures. Nothing was sent.</span><button>Undo</button>`;layer.append(n)
+  n.querySelector('button').onclick=()=>{a.remove();n.remove()};setTimeout(()=>n.remove(),7000)}
+camera.onclick=e=>{e.stopPropagation();camera.getAttribute('aria-expanded')==='true'?closeMenu():openMenu()}
+document.addEventListener('mousedown',e=>{if(!e.target.closest('.menu,#camera'))closeMenu()})
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()})
+function render(){layer.replaceChildren();tray.replaceChildren();closeMenu();status.textContent='Interactive mockup · captures here copy the drawn page · no model calls'
+  if(mode==='menu')openMenu()
+  if(mode==='region')region(true)
+  if(mode==='review'){const t=rel($('#table'));shot={kind:'region',rect:{x:t.x-6,y:t.y-6,w:t.w+12,h:t.h+12},name:`Region ${stamp()}.png`};review()}
+  if(mode==='draft'){const t=rel($('#table'));shot={kind:'region',rect:{x:t.x-6,y:t.y-6,w:t.w+12,h:t.h+12}};add(`Region ${stamp()}.png`)}
+  document.querySelectorAll('[data-state]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.state===mode)))
+  $('#note').textContent={
+    menu:'The camera sits beside the paperclip in every composer. Browser page takes the visible part of the current tab (full-page capture can come later); Rocket window takes everything on screen; Select a region lets you drag over any of it. The menu disappears before anything is captured.',
+    region:'The whole window dims and the pointer becomes a crosshair; drag a box, then Capture or press Enter. Redraw starts over and Esc cancels. Sizes are in real screen pixels (this display is 2×), so the agent gets full resolution.',
+    review:'Nothing reaches the draft until you add it. The name is editable, Retake goes back to the same kind of capture, and the destination is fixed to the chat whose camera you pressed, even if you click another pane meanwhile.',
+    draft:'The capture is an ordinary image attachment: preview, the ⋯ menu, copy to another chat, remove. The prompt stays in its own bubble when sent, and the source address goes to the model with the image.'}[mode]}
+document.querySelectorAll('[data-state]').forEach(b=>b.onclick=()=>{mode=b.dataset.state;render()});$('#reset').onclick=render
+render()
+</script></html>

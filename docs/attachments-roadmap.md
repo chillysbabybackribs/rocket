@@ -10,7 +10,7 @@ keep importing, previewing and sending distinct actions.
 | --- | --- | --- |
 | 1 | PDF, text and code attachments | Built: cards, side-panel preview, provider delivery as text; real model turns not yet run |
 | 2 | Copy to chat, Save as and Reveal stored file | Built to the approved [attachment reuse](mockups/attachment-reuse.html) mockup |
-| 3 | Browser, window and region capture | Planned |
+| 3 | Browser, window and region capture | Mockup for review: [screen capture](mockups/screen-capture.html) |
 | 4 | Crop and annotate images | Planned |
 
 The image upload baseline is implemented: paste, file selection, per-pane drop targets,
