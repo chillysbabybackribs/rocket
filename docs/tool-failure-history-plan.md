@@ -10,19 +10,31 @@ Rocket already records tool errors in `journal.jsonl` and saves UI-run results a
 
 ## Implementation checklist
 
-- [x] **1. Define the record format.** Record every call with a unique ID, timestamps, tool and schema versions, app build, provider/model, chat/turn identity, arguments, duration, outcome, structured error, and artifact references. Keep observed facts separate from later diagnoses. Define record size limits and secret redaction rules.
-- [x] **2. Instrument the shared tool boundary.** Add recording to `ToolRegistry` so all providers use the same path. Write a start record before execution and a finish record afterward. Identify interrupted calls after restart. Recording failures must never break tool execution.
-- [x] **3. Make errors structured.** Introduce stable codes such as `INVALID_ARGUMENT`, `AMBIGUOUS_TARGET`, `TARGET_UNAVAILABLE`, and `SCRIPT_TIMEOUT`. Preserve original error text. For `rocket_ui_run`, distinguish runner errors from exceptions raised by model-authored scripts; do not infer a precise cause from arbitrary exception text.
-- [x] **4. Add bounded queries and deterministic grouping.** Filter by tool, version, error code, date, and outcome. Group using stable fields, with documented text normalization only as a fallback. Return counts, representative call IDs, and artifact links. Record successes to calculate failure rates.
-- [ ] **5. Track review and recovery separately.** Allow an investigator to link a retry, classify the cause, and attach a proposed fix. Keep annotations separate from original records. Track the lifecycle: unreviewed → diagnosed → regression added → fixed → verified.
-- [ ] **6. Turn lessons into regression cases.** Build controlled fixtures from selected failures. Start with the ambiguous pane selector: a conversation contains the same greeting as the empty pane. Verify that improved pane selection identifies the intended target. Replay tests in isolated apps, never automatically against live chats.
-- [ ] **7. Verify retention and context limits.** Test restart recovery, interrupted calls, malformed records, concurrent calls, redaction, grouping, and bounded queries. Define retention for records and captures separately. Keep history out of session prompts and track tool-description size alongside success rate.
+**Progress: 4 of 7 steps complete.**
+
+
+- [x] **✅ COMPLETE — 1. Define the record format.** Record every call with a unique ID, timestamps, tool and schema versions, app build, provider/model, chat/turn identity, arguments, duration, outcome, structured error, and artifact references. Keep observed facts separate from later diagnoses. Define record size limits and secret redaction rules.
+
+- [x] **✅ COMPLETE — 2. Instrument the shared tool boundary.** Add recording to `ToolRegistry` so all providers use the same path. Write a start record before execution and a finish record afterward. Identify interrupted calls after restart. Recording failures must never break tool execution.
+
+- [x] **✅ COMPLETE — 3. Make errors structured.** Introduce stable codes such as `INVALID_ARGUMENT`, `AMBIGUOUS_TARGET`, `TARGET_UNAVAILABLE`, and `SCRIPT_TIMEOUT`. Preserve original error text. For `rocket_ui_run`, distinguish runner errors from exceptions raised by model-authored scripts; do not infer a precise cause from arbitrary exception text.
+
+- [x] **✅ COMPLETE — 4. Add bounded queries and deterministic grouping.** Filter by tool, version, error code, date, and outcome. Group using stable fields, with documented text normalization only as a fallback. Return counts, representative call IDs, and artifact links. Record successes to calculate failure rates.
+
+- [ ] **⬜ PENDING — 5. Track review and recovery separately.** Allow an investigator to link a retry, classify the cause, and attach a proposed fix. Keep annotations separate from original records. Track the lifecycle: unreviewed → diagnosed → regression added → fixed → verified.
+
+- [ ] **⬜ PENDING — 6. Turn lessons into regression cases.** Build controlled fixtures from selected failures. Start with the ambiguous pane selector: a conversation contains the same greeting as the empty pane. Verify that improved pane selection identifies the intended target. Replay tests in isolated apps, never automatically against live chats.
+
+- [ ] **⬜ PENDING — 7. Verify retention and context limits.** Test restart recovery, interrupted calls, malformed records, concurrent calls, redaction, grouping, and bounded queries. Define retention for records and captures separately. Keep history out of session prompts and track tool-description size alongside success rate.
 
 ## Delivery milestones
 
-- [x] **First deliverable:** steps 1–4, including a query showing recent recurring failures.
-- [ ] **Complete the learning loop:** use one real failure to validate review, regression creation, repair, and verification through steps 5–7.
-- [ ] **Consider automation afterward:** automate only workflows demonstrated to be reliable. Do not automatically rewrite tool descriptions from failed calls.
+
+- [x] **✅ COMPLETE — First deliverable:** steps 1–4, including a query showing recent recurring failures.
+
+- [ ] **⬜ PENDING — Complete the learning loop:** use one real failure to validate review, regression creation, repair, and verification through steps 5–7.
+
+- [ ] **⬜ PENDING — Consider automation afterward:** automate only workflows demonstrated to be reliable. Do not automatically rewrite tool descriptions from failed calls.
 
 ## Acceptance criteria
 
