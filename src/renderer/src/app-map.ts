@@ -1,9 +1,9 @@
 import { ACTIONS, PLACES, isAction, isPlace, type ActionName, type PlaceName } from '../../shared/app-map.ts'
-import { PROVIDERS, type ProviderId, type UiMapResult, type UiWhere } from '../../shared/types.ts'
+import { PROVIDERS, type EvalScenarioInfo, type ProviderId, type UiMapResult, type UiWhere } from '../../shared/types.ts'
 import { call } from './host.ts'
-import { playgroundRows, playgroundTasks, runPlayground, runSheetCell, visibleRows, type Dataset, type Scenario } from './eval-run.ts'
+import { finished, runsOf, shownRun, startRun } from './eval-run.ts'
 import {
-  addPane, closeArtifact, closePane, focusPane, openChat, patchEvals, patchPlayground, patchRunSheet, peekState,
+  addPane, closeArtifact, closePane, focusPane, loadEvals, openChat, patchEvals, peekState,
   setBrowserOpen, setEvalsOpen, showEvalView, type AppState, type EvalView
 } from './store.ts'
 
@@ -15,8 +15,7 @@ import {
 type Params = Record<string, unknown>
 
 const EVAL_VIEW_PLACE: Record<EvalView, PlaceName> = {
-  overview: 'evals.overview', logs: 'evals.logs', playgrounds: 'evals.playgrounds', experiments: 'evals.experiments',
-  experiment: 'evals.experiment', datasets: 'evals.datasets', dataset: 'evals.dataset', scorers: 'evals.scorers', tools: 'evals.tools'
+  scenarios: 'evals.scenarios', scenario: 'evals.scenario', run: 'evals.run', tools: 'evals.tools'
 }
 
 function placeOf(state: AppState): PlaceName {
@@ -26,10 +25,29 @@ function placeOf(state: AppState): PlaceName {
   return 'chat'
 }
 
+function evalsWhere(state: AppState): NonNullable<UiWhere['evals']> {
+  const { evals } = state
+  const run = shownRun(state)
+  return {
+    view: evals.view,
+    scenario: evals.view === 'scenarios' || evals.view === 'tools' ? null : evals.scenarioId,
+    run: run ? {
+      id: run.id,
+      status: run.status,
+      edited: run.edited,
+      cells: run.cells.map((cell) => ({
+        provider: cell.provider, trial: cell.trial, status: cell.status, pass: cell.pass,
+        failed: cell.grades.filter((grade) => !grade.pass).map((grade) => grade.name), error: cell.error
+      }))
+    } : null,
+    cell: evals.view === 'run' && evals.cell ? { provider: evals.cell.provider, trial: evals.cell.trial } : null,
+    tools: { section: evals.tools.section === 'scores' ? 'evaluate' : 'health' }
+  }
+}
+
 /** Where the shell is now, in the map's words. */
 export function where(): UiWhere {
   const state = peekState()
-  const { evals } = state
   return {
     place: placeOf(state),
     panes: state.panes.map((pane, index) => {
@@ -48,22 +66,8 @@ export function where(): UiWhere {
     focused: state.focused,
     side: state.artifact ? 'artifact' : state.evalsOpen ? 'evals' : state.browserOpen ? 'browser' : 'chat',
     artifact: state.artifact ? { kind: state.artifact.kind, path: state.artifact.kind === 'artifact' ? state.artifact.path : null } : null,
-    evals: state.evalsOpen ? {
-      view: evals.view,
-      experimentId: evals.experimentId,
-      datasetId: evals.datasetId,
-      playground: {
-        scenario: evals.playground.scenarioId, dataset: evals.playground.datasetId, compare: evals.playground.compare, diff: evals.playground.diff,
-        filter: evals.playground.filter, busy: evals.playground.busy, error: evals.playground.error,
-        cells: Object.entries(evals.playground.cells).map(([key, cell]) => {
-          const [rowId = '', taskId = ''] = key.split('::')
-          return { rowId, provider: taskId.replace(/-\d+$/, '') as ProviderId, status: cell.status, pass: cell.pass ?? null, output: cell.output ?? null }
-        })
-      },
-      runSheet: { open: evals.runSheet.open, scenario: evals.runSheet.scenarioId, provider: evals.runSheet.provider, trial: evals.runSheet.trial, phase: evals.runSheet.phase, chatId: evals.runSheet.chatId, error: evals.runSheet.error, grades: evals.runSheet.grades },
-      tools: { section: evals.tools.section === 'scores' ? 'evaluate' : 'health' }
-    } : null,
-    dialogs: [...(state.newGoal ? ['goal.new'] : []), ...(state.evalsOpen && evals.runSheet.open ? ['evals.runSheet'] : [])],
+    evals: state.evalsOpen ? evalsWhere(state) : null,
+    dialogs: state.newGoal ? ['goal.new'] : [],
     railOpen: state.railOpen
   }
 }
@@ -84,12 +88,6 @@ function integer(params: Params, name: string, min: number): number | undefined 
   return n
 }
 
-function flag(params: Params, name: string): boolean | undefined {
-  const value = params[name]
-  if (value === undefined || value === null || value === '') return undefined
-  return value === true || value === 'true'
-}
-
 function provider(params: Params, name = 'provider'): ProviderId | undefined {
   const value = text(params, name)
   if (value === undefined) return undefined
@@ -108,16 +106,14 @@ function paneIndex(params: Params, name = 'pane', required = false): number {
   return n
 }
 
-async function scenarioNamed(id: string | undefined, fallback: string): Promise<Scenario> {
-  const { scenarios } = await call('eval.listScenarios', {})
-  const wanted = id || fallback || scenarios[0]?.id
-  const found = scenarios.find((entry) => entry.id === wanted)
-  if (!found) throw new Error(`There is no scenario "${wanted ?? ''}". The scenarios are ${scenarios.map((entry) => entry.id).join(', ') || 'none; add one under evals/'}.`)
+/** The scenarios, read from disk the first time the panel or a model needs them. */
+async function scenarioNamed(id: string | undefined): Promise<EvalScenarioInfo> {
+  if (!peekState().evals.loaded) await loadEvals()
+  const { scenarios } = peekState().evals
+  if (!id) throw new Error(`Give the scenario's id. The scenarios are ${scenarios.map((entry) => entry.id).join(', ') || 'none; add one under docs/evals/scenarios'}.`)
+  const found = scenarios.find((entry) => entry.id === id)
+  if (!found) throw new Error(`There is no scenario "${id}". The scenarios are ${scenarios.map((entry) => entry.id).join(', ') || 'none; add one under docs/evals/scenarios'}.`)
   return found
-}
-
-async function datasets(): Promise<Dataset[]> {
-  return (await call('eval.loadDashboard', {})).datasets
 }
 
 /** Two frames, so what the store changed is painted before a capture or a read. */
@@ -134,46 +130,33 @@ const places: Record<PlaceName, (params: Params) => Promise<void>> = {
     if (peekState().browserOpen) setBrowserOpen(false)
   },
   browser: async () => { setBrowserOpen(true) },
-  'evals.overview': async () => showEvalView('overview'),
-  'evals.logs': async () => showEvalView('logs'),
-  'evals.playgrounds': async (params) => {
-    const current = peekState().evals.playground
-    const patch: Partial<AppState['evals']['playground']> = {}
-    const scenario = text(params, 'scenario')
-    if (scenario !== undefined) {
-      await scenarioNamed(scenario, '')
-      if (scenario !== current.scenarioId) Object.assign(patch, { scenarioId: scenario, cells: {} })
+  'evals.scenarios': async () => {
+    if (!peekState().evals.loaded) await loadEvals()
+    showEvalView('scenarios')
+  },
+  'evals.scenario': async (params) => {
+    const scenario = await scenarioNamed(text(params, 'id'))
+    const runId = text(params, 'run')
+    if (runId !== undefined) {
+      const runs = runsOf(peekState().evals.runs, scenario.id)
+      if (!runs.some((run) => run.id === runId)) throw new Error(`Scenario ${scenario.id} has no run "${runId}". ${runs.length ? `Its runs are ${runs.map((run) => run.id).join(', ')}.` : 'It has never run.'}`)
     }
-    const dataset = text(params, 'dataset')
-    if (dataset !== undefined) {
-      const known = await datasets()
-      if (!known.some((entry) => entry.id === dataset)) throw new Error(`There is no dataset "${dataset}". The datasets are ${known.map((entry) => entry.id).join(', ') || 'none'}.`)
-      patch.datasetId = dataset
+    showEvalView('scenario', { scenarioId: scenario.id, runId: runId ?? null })
+  },
+  'evals.run': async (params) => {
+    if (!peekState().evals.loaded) await loadEvals()
+    const runId = text(params, 'run')
+    if (!runId) throw new Error('Give run: the run id. rocket_ui_where shows the shown scenario\'s run.')
+    const run = peekState().evals.runs.find((entry) => entry.id === runId)
+    if (!run) throw new Error(`There is no run "${runId}".`)
+    const chosen = provider(params)
+    if (!chosen) throw new Error(`Give provider: one of ${[...new Set(run.cells.map((cell) => cell.provider))].join(', ')}.`)
+    const trial = integer(params, 'trial', 0) ?? 0
+    if (!run.cells.some((cell) => cell.provider === chosen && cell.trial === trial)) {
+      throw new Error(`Run ${run.id} has no ${chosen} trial ${trial}. Its cells are ${run.cells.map((cell) => `${cell.provider} ${cell.trial}`).join(', ')}.`)
     }
-    const compare = text(params, 'compare')
-    if (compare !== undefined) patch.compare = compare
-    const diff = flag(params, 'diff')
-    if (diff !== undefined) patch.diff = diff
-    patchPlayground(patch)
-    showEvalView('playgrounds')
+    showEvalView('run', { scenarioId: run.scenarioId, cell: { runId: run.id, provider: chosen, trial } })
   },
-  'evals.experiments': async () => showEvalView('experiments'),
-  'evals.experiment': async (params) => {
-    const id = text(params, 'id')
-    if (!id) throw new Error('Give id: the experiment to open. evals.experiments lists them.')
-    const { experiments } = await call('eval.loadDashboard', {})
-    if (!experiments.some((entry) => entry.id === id)) throw new Error(`There is no experiment "${id}". The experiments are ${experiments.map((entry) => entry.id).join(', ') || 'none'}.`)
-    showEvalView('experiment', { experimentId: id })
-  },
-  'evals.datasets': async () => showEvalView('datasets'),
-  'evals.dataset': async (params) => {
-    const id = text(params, 'id')
-    if (!id) throw new Error('Give id: the dataset to open. evals.datasets lists them.')
-    const known = await datasets()
-    if (!known.some((entry) => entry.id === id)) throw new Error(`There is no dataset "${id}". The datasets are ${known.map((entry) => entry.id).join(', ') || 'none'}.`)
-    showEvalView('dataset', { datasetId: id })
-  },
-  'evals.scorers': async () => showEvalView('scorers'),
   'evals.tools': async (params) => {
     const section = text(params, 'section')
     if (section !== undefined) {
@@ -218,36 +201,24 @@ const actions: Record<ActionName, (params: Params) => Promise<unknown>> = {
     await openChat(chatId, paneIndex(params))
   },
   'chat.new': async (params) => { await openChat(null, paneIndex(params)) },
-  'evals.sync': async () => { patchEvals({ refresh: peekState().evals.refresh + 1 }) },
-  'evals.playgrounds.run': async (params) => {
-    const state = peekState().evals.playground
-    const scenario = await scenarioNamed(state.scenarioId, '')
-    const tasks = playgroundTasks(scenario)
-    const rows = visibleRows(playgroundRows(await datasets(), state.datasetId, scenario), state.filter)
-    const row = integer(params, 'row', 1)
-    if (row !== undefined && row > rows.length) throw new Error(`There is no row ${row}. The playground shows ${rows.length} ${rows.length === 1 ? 'row' : 'rows'}.`)
-    const task = provider(params)
-    if (task !== undefined && !tasks.some((entry) => entry.provider === task)) throw new Error(`The scenario has no ${task} task. Its tasks are ${tasks.map((entry) => entry.provider).join(', ')}.`)
-    const run = runPlayground(scenario, row === undefined ? rows : [rows[row - 1]!], task === undefined ? tasks : tasks.filter((entry) => entry.provider === task))
-      .finally(() => patchEvals({ refresh: peekState().evals.refresh + 1 }))
-    return awaitRun(run, params, () => where().evals?.playground.cells)
+  'evals.sync': async () => {
+    if (!peekState().evalsOpen) setEvalsOpen(true)
+    await loadEvals()
+    patchEvals({ refresh: peekState().evals.refresh + 1 })
   },
-  'evals.runSheet.open': async (params) => {
-    const sheet = peekState().evals.runSheet
-    const scenario = await scenarioNamed(text(params, 'scenario'), sheet.scenarioId)
-    const chosen = provider(params)
-    if (chosen !== undefined && !scenario.matrix.some((cell) => cell.provider === chosen)) throw new Error(`Scenario ${scenario.id} has no ${chosen} cell. Its providers are ${scenario.matrix.map((cell) => cell.provider).join(', ')}.`)
-    const trial = integer(params, 'trial', 0)
-    if (trial !== undefined && trial >= Math.max(1, scenario.trials)) throw new Error(`Scenario ${scenario.id} has ${scenario.trials} ${scenario.trials === 1 ? 'trial' : 'trials'}; trial goes from 0 to ${Math.max(0, scenario.trials - 1)}.`)
-    const matrixProvider = scenario.matrix.some((cell) => cell.provider === sheet.provider) ? sheet.provider : scenario.matrix[0]?.provider ?? 'claude'
-    patchRunSheet({ open: true, scenarioId: scenario.id, provider: chosen ?? matrixProvider, trial: trial ?? 0, phase: 'idle', chatId: null, error: null, grades: null })
+  'evals.run.start': async (params) => {
+    const state = peekState().evals
+    const scenario = await scenarioNamed(text(params, 'scenario') ?? state.scenarioId ?? undefined)
+    const message = text(params, 'message') ?? state.drafts[scenario.id]
+    const run = await startRun(scenario.id, message && message !== scenario.message ? message : undefined)
+    return awaitRun(finished(run.id), params, () => where().evals?.run)
   },
-  'evals.runSheet.run': async (params) => {
-    await actions['evals.runSheet.open'](params)
-    const run = runSheetCell().finally(() => patchEvals({ refresh: peekState().evals.refresh + 1 }))
-    return awaitRun(run, params, () => where().evals?.runSheet)
+  'evals.run.stop': async () => {
+    const { scenarioId, runs } = peekState().evals
+    const running = runsOf(runs, scenarioId).find((run) => run.status === 'running')
+    if (!running) throw new Error(`Scenario ${scenarioId} has no run going.`)
+    await call('evalRuns.stop', { runId: running.id })
   },
-  'evals.runSheet.close': async () => { patchRunSheet({ open: false }) },
   'evals.tools.refresh': async () => { patchEvals({ refresh: peekState().evals.refresh + 1 }) }
 }
 
@@ -274,7 +245,11 @@ export async function act(action: string, params: Params = {}): Promise<UiMapRes
   if (!isAction(action)) return { ok: false, error: `There is no action "${action}". The actions are ${Object.keys(ACTIONS).join(', ')}.`, where: where() }
   try {
     const home = (ACTIONS[action] as { place?: PlaceName }).place
-    if (home && !where().place.startsWith(home) && !(home === 'evals.experiments' && where().place === 'evals.experiment')) await places[home]({})
+    if (home === 'evals.scenario') {
+      // A scenario action runs on the scenario named, else the one on screen; it is shown first.
+      const id = text(params, 'scenario') ?? peekState().evals.scenarioId ?? undefined
+      if (where().place !== 'evals.scenario' || id !== peekState().evals.scenarioId) await places['evals.scenario']({ id })
+    } else if (home && where().place !== home) await places[home]({})
     const value = await actions[action](params)
     await painted()
     return { ok: true, value: value ?? null, where: where() }

@@ -1,7 +1,7 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { Chat, ChatSnapshot, Goal, GoalRole, ImageAttachment, Item, ProviderId, QueuedMessage, Turn, TurnChanges, TurnStatus, TurnTokens } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, Goal, GoalRole, Attachment, Item, ProviderId, QueuedMessage, Turn, TurnChanges, TurnStatus, TurnTokens } from '../shared/types.ts'
 
 // The canonical transcript. The app owns the conversation; a provider's own session is a cache
 // of the part of it that provider has already seen. Each (chat, provider) pair records the
@@ -120,17 +120,17 @@ export class Store {
     this.db.close()
   }
 
-  saveAttachment(image: ImageAttachment): void {
-    this.sql('INSERT INTO attachments (id, data, created_at) VALUES (?, ?, ?)').run(image.id, JSON.stringify(image), Date.now())
+  saveAttachment(attachment: Attachment): void {
+    this.sql('INSERT INTO attachments (id, data, created_at) VALUES (?, ?, ?)').run(attachment.id, JSON.stringify(attachment), Date.now())
   }
 
-  attachment(id: string): ImageAttachment | null {
+  attachment(id: string): Attachment | null {
     const row = this.sql('SELECT data FROM attachments WHERE id = ?').get(id)
-    return row ? JSON.parse(String(row.data)) as ImageAttachment : null
+    return row ? JSON.parse(String(row.data)) as Attachment : null
   }
 
-  /** Keep sent and queued images; the renderer supplies references held by unsent drafts. */
-  unusedAttachments(keepIds: string[], before: number): ImageAttachment[] {
+  /** Keep sent and queued attachments; the renderer supplies references held by unsent drafts. */
+  unusedAttachments(keepIds: string[], before: number): Attachment[] {
     const kept = new Set(keepIds)
     for (const row of this.sql('SELECT data FROM items').all()) {
       const item = JSON.parse(String(row.data)) as Item
@@ -138,7 +138,7 @@ export class Store {
     }
     for (const queue of this.queues()) for (const message of queue.messages) for (const image of message.attachments ?? []) kept.add(image.id)
     return this.sql('SELECT id, data FROM attachments WHERE created_at < ?').all(before)
-      .filter(row => !kept.has(String(row.id))).map(row => JSON.parse(String(row.data)) as ImageAttachment)
+      .filter(row => !kept.has(String(row.id))).map(row => JSON.parse(String(row.data)) as Attachment)
   }
 
   deleteAttachment(id: string): void {

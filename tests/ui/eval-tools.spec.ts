@@ -42,12 +42,12 @@ test('eval Tools tab loads ledger and supports mark verified', async ({ rocket }
   expect(failId).toBeTruthy()
 
   await page.getByRole('button', { name: 'Show evals', exact: true }).click()
-  await page.getByRole('button', { name: 'Tools', exact: true }).click()
+  await page.getByRole('tab', { name: 'Tool health', exact: true }).click()
   const ledger = page.getByLabel('MCP tool ledger')
   await expect(ledger).toBeVisible()
   await expect(ledger.getByText('Prompt injection').locator('..').getByText('Off')).toBeVisible()
   await expect(ledger.getByRole('cell', { name: 'rocket_tool_history' }).first()).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Run cell', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Run all', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Refresh ledger', exact: true })).toBeVisible()
 
   const queueBefore = await ledger.getByLabel('Review queue count').textContent()

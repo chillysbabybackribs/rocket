@@ -3,6 +3,8 @@ import { isAbsolute, join, resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { PROVIDERS, planItemId, type ModelInfo, type PlanStep, type ProviderId, type UsageSnapshot } from '../shared/types.ts'
 import type { ProviderAdapter, RunRequest, RunResult, TurnSink } from './providers/provider.ts'
+import { attachmentInput } from './providers/images.ts'
+import { DEMO_TURNS, runDemoTurn } from './ui-demo.ts'
 
 // UI tests replace only the provider boundary. The real host, store, ports and renderer still
 // run. A marked, separate profile is required so test responses cannot enter normal chats.
@@ -16,6 +18,13 @@ export function uiTestProfile(env: NodeJS.ProcessEnv = process.env): string | nu
     throw new Error('UI testing requires a marked, isolated profile. Use npm run check:ui.')
   }
   return profile
+}
+
+/** The controlled reply to a message with attachments, counting images and files apart. */
+function received(attachments: NonNullable<RunRequest['attachments']>): string {
+  const files = attachments.filter(each => each.kind === 'file').length
+  const images = attachments.length - files
+  return `Received ${[images ? `${images} image(s)` : '', files ? `${files} file(s)` : ''].filter(Boolean).join(' and ')}.`
 }
 
 export class UiTestAdapter implements ProviderAdapter {
@@ -34,9 +43,13 @@ export class UiTestAdapter implements ProviderAdapter {
       writeFileSync(join(this.profile, 'ui-request.json'), JSON.stringify({
         turnId: request.turnId, provider: this.id, model: request.model,
         sessionId: request.sessionId, cwd: request.cwd, handoffTurns: request.handoff?.turns ?? 0,
-        attachments: request.attachments?.map(image => ({ id: image.id, name: image.name, path: image.path })) ?? []
+        attachments: request.attachments?.map(each => ({ id: each.id, kind: each.kind ?? 'image', name: each.name, path: each.path })) ?? [],
+        // What a real adapter would put in the message for these attachments.
+        input: attachmentInput(request.text, request.attachments).text
       }))
       if (command === 'UI check: fail') return { status: 'failed', error: 'Controlled UI test failure.' }
+      const demo = DEMO_TURNS[command ?? '']
+      if (demo) return await runDemoTurn(demo, this.id, this.profile, request, sink, controller.signal)
       if (command === 'UI check: work') return this.work(request.turnId, sink, controller.signal)
       if (command === 'UI check: ask') return this.ask(request.turnId, sink)
       if (command === 'UI check: edit') return this.edit(request.turnId, request.cwd, sink)
@@ -46,7 +59,7 @@ export class UiTestAdapter implements ProviderAdapter {
         return { status: 'completed' }
       }
       if (request.attachments?.length && !['UI check: stream', 'UI check: stop', 'UI check: recover'].includes(command ?? '')) {
-        sink.item({ type: 'assistant', id: `${request.turnId}:images`, turnId: request.turnId, text: `Received ${request.attachments.length} image(s).`, streaming: false })
+        sink.item({ type: 'assistant', id: `${request.turnId}:images`, turnId: request.turnId, text: received(request.attachments), streaming: false })
         return { status: 'completed' }
       }
       if (!['UI check: stream', 'UI check: stop', 'UI check: recover'].includes(command ?? '')) {

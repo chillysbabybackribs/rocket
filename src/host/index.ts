@@ -1,4 +1,4 @@
-import { AttachmentStore, validateImages } from './attachments.ts'
+import { AttachmentStore, validateAttachments } from './attachments.ts'
 import { homedir } from 'node:os'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
@@ -40,8 +40,8 @@ import { Teamwork } from './teamwork.ts'
 import { workspaceContext } from './workspace.ts'
 import { UiTestAdapter, uiTestProfile } from './ui-test.ts'
 import { EvalExport } from './eval-export.ts'
-import { loadEvalDashboard } from './eval-dashboard.ts'
-import { finishCellFromScenario, listScenariosForUi, startCellFromScenario } from './eval-live.ts'
+import { EvalRuns, evalRunsRoot } from './eval-runs.ts'
+import { listScenarios } from './eval-scenarios.ts'
 import { runEvalCell } from './eval-run-cell.ts'
 import type { TurnTiming } from './hub.ts'
 
@@ -64,6 +64,9 @@ const EVENT_FLUSH_MS = 16
 const testProfile = uiTestProfile()
 const dataDir = process.env.ROCKET_DATA_DIR || join(homedir(), '.config', 'rocket')
 const store = new Store(join(dataDir, 'rocket.db'))
+// Eval runs work in copies under here; their chats and goals stay out of the chat list and goals.
+const evalRoot = evalRunsRoot(dataDir)
+const inEvalFolder = (cwd: string): boolean => cwd.startsWith(evalRoot + '/')
 const attachments = new AttachmentStore(store, join(dataDir, 'attachments'))
 // The journal records always, since a crash is worth keeping; the tools and nudges that surface it are opt-in.
 const journal = new Journal(join(dataDir, 'journal.jsonl'))
@@ -182,7 +185,9 @@ const adapters: Record<ProviderId, ProviderAdapter> = testProfile ? {
 }
 /** Events go to the renderer; the ones that end a chat's use of the browser go to main as well. */
 function onEvent(event: HostEvent): void {
-  emit(event)
+  // Eval runs' chats work in folders under the profile's eval root; the panel shows them, the
+  // chat list does not. Their turns and items still go out, for the panel's live transcript.
+  if (!(event.type === 'chat' && inEvalFolder(event.chat.cwd))) emit(event)
   if (event.type === 'turn' && event.turn.status !== 'running') {
     void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
     goals.turnEnded(event.turn)
@@ -234,13 +239,23 @@ const hub: Hub = new Hub(
 )
 
 // Built after the hub, which it drives; goals cut off by the last exit wait for the user.
-const goals: GoalRunner = new GoalRunner(store, hub, (goal) => emit({ type: 'goal', goal }))
+const goals: GoalRunner = new GoalRunner(store, hub, (goal) => { if (!inEvalFolder(goal.cwd)) emit({ type: 'goal', goal }) })
+
+const evalRuns: EvalRuns = new EvalRuns({
+  ...evalDeps(),
+  root: evalRoot,
+  scenarios: () => listScenarios(rocketSourceRoot()).scenarios,
+  emit: (run) => emit({ type: 'evalRun', run }),
+  providerBusy: (provider) => hub.working().some((turn) => turn.provider === provider)
+})
 
 const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | Promise<HostApi[M][1]> } = {
   'attachment.import': ({ name, bytes, thumbnail }) => attachments.import(name, bytes, thumbnail),
+  'attachment.importFile': ({ name, bytes }) => attachments.importFile(name, bytes),
   'attachment.read': ({ id, thumbnail }) => attachments.read(id, thumbnail),
+  'attachment.preview': ({ id }) => attachments.preview(id),
   'attachment.collect': async ({ keepIds }) => { await attachments.collect(keepIds); return null },
-  'chats.list': () => hub.listChats(),
+  'chats.list': () => hub.listChats().filter((chat) => !inEvalFolder(chat.cwd)),
   'chat.create': ({ cwd }) => hub.createChat(cwd),
   'chat.open': ({ chatId }) => {
     // What is queued goes out ahead of the snapshot, which already holds it; sent after, it would be applied twice.
@@ -250,9 +265,9 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'chat.setCwd': ({ chatId, cwd }) => hub.setCwd(chatId, cwd),
   'chat.delete': async ({ chatId }) => { await uiRuns.close(chatId); await hub.deleteChat(chatId); return null },
   'chat.send': async ({ chatId, provider, model, text, attachmentIds = [] }) => {
-    const images = attachments.resolve(attachmentIds).map(({ path: _path, ...image }) => image)
-    validateImages(images)
-    await hub.post(chatId, provider, model, text, images)
+    const attached = attachments.resolve(attachmentIds).map(({ path: _path, textPath: _text, ...attachment }) => attachment)
+    validateAttachments(attached)
+    await hub.post(chatId, provider, model, text, attached)
     return null
   },
   'chat.stop': async ({ chatId, sendQueued }) => {
@@ -290,7 +305,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'chat.prepare': ({ chatId, cwd, provider, model }) => { void hub.prepare(chatId, provider, model, cwd); return null },
   'usage.read': ({ provider, force }) => hub.usage(provider, force),
   'models.list': ({ provider }) => hub.models(provider),
-  'goals.list': () => goals.list(),
+  'goals.list': () => goals.list().filter((goal) => !inEvalFolder(goal.cwd)),
   'goal.draft': (input) => goals.draft(input),
   'goal.update': ({ goalId, edit }) => goals.update(goalId, edit),
   'goal.start': ({ goalId }) => goals.start(goalId),
@@ -315,11 +330,10 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
     evalDeps(),
     input
   ),
-  'eval.listScenarios': () => listScenariosForUi(rocketSourceRoot()),
-  'eval.startScenarioCell': (input) => startCellFromScenario(evalDeps(), rocketSourceRoot(), dataDir, input),
-  'eval.finishScenarioCell': ({ chatId, turnId, cellDir, graders, timeoutMs }) =>
-    finishCellFromScenario(evalDeps(), { chatId, turnId, cellDir }, graders, timeoutMs),
-  'eval.loadDashboard': () => loadEvalDashboard(rocketSourceRoot()),
+  'eval.listScenarios': () => listScenarios(rocketSourceRoot()),
+  'evalRuns.list': ({ scenarioId }) => evalRuns.list(scenarioId),
+  'evalRuns.start': (input) => evalRuns.start(input),
+  'evalRuns.stop': async ({ runId }) => { await evalRuns.stop(runId); return null },
   'toolLedger.loadPanel': () => loadToolLedgerPanel(ledger, toolRegistry.list()),
   'toolLedger.callDetail': ({ callId }: { callId: string }) => loadToolLedgerCallDetail(ledger, callId),
   'toolEval.scores': () => loadToolEvalScores(ledger, toolRegistry.list(), rocketSourceRoot(), dataDir),

@@ -1,4 +1,4 @@
-import { providerLabel, type Item, type ImageAttachment, type ProviderId } from '../shared/types.ts'
+import { providerLabel, type Item, type Attachment, type ProviderId } from '../shared/types.ts'
 import { oneLine } from './json.ts'
 
 // What a provider is told about the turns it missed. When the user switches back to a provider,
@@ -41,7 +41,7 @@ type Block = { head: string; user: string; reply: string; files: string[]; steps
  * provider that can append to its own history (Codex `thread/inject_items`).
  */
 export type Handoff = {
-  attachments?: ImageAttachment[]
+  attachments?: Attachment[]
   turns: number
   text: string
   messages: Array<{ role: 'user' | 'assistant'; text: string }>
@@ -95,7 +95,7 @@ function blockOf(turn: MissedTurn, root: string | null): Block {
   const ending = turn.status === 'interrupted'
     ? ', stopped by the user before it finished'
     : turn.status === 'failed' ? ', which failed before finishing' : ''
-  const user = turn.items.filter((item) => item.type === 'user').map((item) => [item.text, ...(item.attachments ?? []).map(image => `[Image: ${image.name}; attachment ${image.id}]`)].filter(Boolean).join('\n')).join('\n\n')
+  const user = turn.items.filter((item) => item.type === 'user').map((item) => [item.text, ...(item.attachments ?? []).map(each => `[${each.kind === 'file' ? 'File' : 'Image'}: ${each.name}; attachment ${each.id}]`)].filter(Boolean).join('\n')).join('\n\n')
   const reply = replyOf(turn.items)
   const tools = turn.items.filter((item) => item.type === 'tool')
   // Files are named once each however often they were touched; a file that was edited was also read.

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
-import { validateImages, type ProviderImage } from './attachments.ts'
-import type { Chat, ChatSnapshot, GoalRole, HostEvent, ImageAttachment, MessageDraft, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnTokens, UsageSnapshot } from '../shared/types.ts'
+import { validateAttachments, type ProviderAttachment } from './attachments.ts'
+import type { Chat, ChatSnapshot, GoalRole, HostEvent, Attachment, MessageDraft, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnTokens, UsageSnapshot } from '../shared/types.ts'
+import { isFileAttachment } from '../shared/types.ts'
 import { buildHandoff, type Handoff, type MissedTurn } from './handoff.ts'
 import { messageOf, oneLine } from './json.ts'
 import { describeTokens } from './journal.ts'
@@ -88,7 +89,7 @@ export class Hub {
      * `fresh` says the provider's session is new and has been told nothing yet.
      */
     private readonly context: ((chatId: string, provider: ProviderId, fresh: boolean) => Promise<string | null>) | null = null,
-    private readonly resolveImages: (ids: string[]) => ProviderImage[] = () => []
+    private readonly resolveAttachments: (ids: string[]) => ProviderAttachment[] = () => []
   ) {
     for (const entry of store.queues()) if (store.chat(entry.chatId)) this.queues.set(entry.chatId, entry.messages)
     for (const [provider, adapter] of Object.entries(adapters) as Array<[ProviderId, ProviderAdapter]>) {
@@ -190,11 +191,11 @@ export class Hub {
    * Start a turn and return its id; its progress and end arrive as events. A goal's turns carry
    * their `goalRole`, and their message is the app's, so it does not name the chat.
    */
-  send(chatId: string, provider: ProviderId, model: string | null, text: string, goalRole: GoalRole | null = null, attachments: ImageAttachment[] = []): string {
+  send(chatId: string, provider: ProviderId, model: string | null, text: string, goalRole: GoalRole | null = null, attachments: Attachment[] = []): string {
     const message = text.trim()
     if (!message && !attachments.length) throw new Error('There is nothing to send')
-    validateImages(attachments)
-    if (attachments.length && provider === 'antigravity') throw new Error('Antigravity cannot receive images yet. Choose Claude, Codex or Cursor.')
+    validateAttachments(attachments)
+    if (attachments.some(each => !isFileAttachment(each)) && provider === 'antigravity') throw new Error('Antigravity cannot receive images yet. Choose Claude, Codex or Cursor.')
     if (this.live.has(chatId)) throw new Error('This chat is still answering the last message')
     const chat = this.requireChat(chatId)
     const adapter = this.adapters[provider]
@@ -222,7 +223,7 @@ export class Hub {
     const named = chat.lastProvider === null && goalRole === null
     const updated: Chat = {
       ...chat,
-      title: named ? oneLine(message || attachments[0]?.name || 'Images', 60) : chat.title,
+      title: named ? oneLine(message || attachments[0]?.name || 'Attachments', 60) : chat.title,
       lastProvider: provider,
       updatedAt: Date.now()
     }
@@ -240,11 +241,11 @@ export class Hub {
    * that turn when the provider answering is the one picked and can take it; otherwise, or when
    * messages are already waiting (they keep their order), it waits for the turn to end.
    */
-  async post(chatId: string, provider: ProviderId, model: string | null, text: string, attachments: ImageAttachment[] = []): Promise<void> {
+  async post(chatId: string, provider: ProviderId, model: string | null, text: string, attachments: Attachment[] = []): Promise<void> {
     const message = text.trim()
     if (!message && !attachments.length) throw new Error('There is nothing to send')
-    validateImages(attachments)
-    if (attachments.length && provider === 'antigravity') throw new Error('Antigravity cannot receive images yet. Choose Claude, Codex or Cursor.')
+    validateAttachments(attachments)
+    if (attachments.some(each => !isFileAttachment(each)) && provider === 'antigravity') throw new Error('Antigravity cannot receive images yet. Choose Claude, Codex or Cursor.')
     const live = this.live.get(chatId)
     if (!live) {
       if (this.queues.get(chatId)?.length) {
@@ -291,12 +292,12 @@ export class Hub {
   }
 
   /** Hold a message until the chat's turn in flight has ended, then send it; sent at once when none is running. */
-  enqueue(chatId: string, provider: ProviderId, model: string | null, text: string, attachments: ImageAttachment[] = []): void {
+  enqueue(chatId: string, provider: ProviderId, model: string | null, text: string, attachments: Attachment[] = []): void {
     this.requireChat(chatId)
     const queue = this.queues.get(chatId) ?? []
     const combined = [...queue.flatMap(entry => entry.attachments ?? []), ...attachments]
-    validateImages(combined)
-    if (combined.length && provider === 'antigravity') throw new Error('Images are waiting in this chat. Choose Claude, Codex or Cursor to send them.')
+    validateAttachments(combined)
+    if (combined.some(each => !isFileAttachment(each)) && provider === 'antigravity') throw new Error('Images are waiting in this chat. Choose Claude, Codex or Cursor to send them.')
     queue.push({ id: randomUUID(), provider, model, text, ...(attachments.length ? { attachments } : {}) })
     this.setQueue(chatId, queue)
     if (!this.live.has(chatId)) this.drain(chatId)
@@ -477,7 +478,7 @@ export class Hub {
     model: string | null,
     sessionId: string | null,
     handoff: Handoff | null,
-    attachments: ImageAttachment[] = []
+    attachments: Attachment[] = []
   ): Promise<void> {
     const { turn, adapter } = live
     const { chatId, provider } = turn
@@ -493,10 +494,10 @@ export class Hub {
         const lines = context ? await context(chatId, provider, fresh).catch(() => null) : null
         return lines ? `${lines}\n\n${text}` : text
       }
-      const images = (history: Handoff | null): ProviderImage[] => this.resolveImages([...new Set([...attachments, ...(history?.attachments ?? []).toReversed()].map(image => image.id))])
+      const resolved = (history: Handoff | null): ProviderAttachment[] => this.resolveAttachments([...new Set([...attachments, ...(history?.attachments ?? []).toReversed()].map(image => image.id))])
       const first = context ? await told(session.id === null) : text
       result = live.stopRequested ? { status: 'interrupted' }
-        : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: session.id, model, text: first, handoff, attachments: images(handoff) }, sink)
+        : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: session.id, model, text: first, handoff, attachments: resolved(handoff) }, sink)
       if (result.sessionLost && !live.stopRequested) {
         // The provider dropped its session: start a new one and hand over the whole chat.
         this.store.setSession(chatId, provider, { sessionId: null, seenTurnSeq: 0 })
@@ -505,7 +506,7 @@ export class Hub {
         turn.handoffTurns = full?.turns ?? 0
         const retry = await told(true)
         result = live.stopRequested ? { status: 'interrupted' }
-          : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: null, model, text: retry, handoff: full, attachments: images(full) }, sink)
+          : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: null, model, text: retry, handoff: full, attachments: resolved(full) }, sink)
       }
     } catch (error) {
       result = { status: 'failed', error: messageOf(error) }

@@ -1,8 +1,8 @@
-import { addDraftImages, draftOf, updateDraft, useDraft } from '../drafts.ts'
+import { addDraftFiles, draftOf, updateDraft, useDraft } from '../drafts.ts'
 import { Attachments } from './Attachments.tsx'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { ArrowUp, Folder, MessageSquarePlus, Paperclip, Square } from 'lucide-react'
-import { PROVIDERS, providerLabel } from '../../../shared/types.ts'
+import { PROVIDERS, isFileAttachment, providerLabel } from '../../../shared/types.ts'
 import { usePane, usePaneChatId, usePaneView } from '../pane.ts'
 import { act } from '../app-map.ts'
 import { MAX_PANES, chooseFolder, cwdOf, paneAt, prepare, send, setProvider, stop, useApp } from '../store.ts'
@@ -79,7 +79,7 @@ export function Composer({ placeholder }: { placeholder: string }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [focused, pane])
 
-  const unsupported = attachments.length > 0 && provider === 'antigravity'
+  const unsupported = attachments.some(each => !isFileAttachment(each)) && provider === 'antigravity'
   const canSend = (text.trim() || attachments.length) && !draft.pending && !draft.sending && !unsupported
   const submit = async (): Promise<void> => {
     if (!canSend || draftOf(draftKey).sending) return
@@ -95,7 +95,7 @@ export function Composer({ placeholder }: { placeholder: string }) {
     <div className="composer-group">
       <Tabs />
       <div className="composer">
-        <Attachments images={attachments} onRemove={id => { if (!draft.sending) updateDraft(draftKey, { attachments: attachments.filter(image => image.id !== id) }) }} />
+        <Attachments attachments={attachments} onRemove={id => { if (!draft.sending) updateDraft(draftKey, { attachments: attachments.filter(each => each.id !== id) }) }} />
         <div className="composer-entry">
         <button
           type="button"
@@ -122,7 +122,7 @@ export function Composer({ placeholder }: { placeholder: string }) {
               const element = event.currentTarget
               setText(text.slice(0, element.selectionStart) + pasted + text.slice(element.selectionEnd))
             }
-            addDraftImages(draftKey, files)
+            addDraftFiles(draftKey, files)
           }}
           placeholder={steers ? 'Add to this turn…' : waitsFor ? `Message to send when ${waitsFor} finishes…` : placeholder}
           aria-label="Message"
@@ -142,12 +142,12 @@ export function Composer({ placeholder }: { placeholder: string }) {
           }}
         />
         </div>
-        <input ref={picker} type="file" className="image-file-input" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden onChange={event => {
-          addDraftImages(draftKey, Array.from(event.target.files ?? []))
+        <input ref={picker} type="file" className="image-file-input" multiple hidden onChange={event => {
+          addDraftFiles(draftKey, Array.from(event.target.files ?? []))
           event.target.value = ''
         }} />
         <div className="composer-bar">
-          <button type="button" className="composer-attach" aria-label="Attach images" title="Attach images" disabled={draft.sending} onClick={() => picker.current?.click()}><Paperclip size={16} /></button>
+          <button type="button" className="composer-attach" aria-label="Attach files" title="Attach images, PDFs or text files" disabled={draft.sending} onClick={() => picker.current?.click()}><Paperclip size={16} /></button>
           <button
             type="button"
             className="composer-folder"

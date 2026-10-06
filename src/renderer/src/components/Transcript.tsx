@@ -259,7 +259,7 @@ function QuestionCard({ item }: { item: QuestionItem }) {
 function UserMessage({ text, attachments }: MessageDraft) {
   const prompt = text.trim() ? <div className="user-bubble"><ChatMarkdown text={text} /></div> : null
   if (!attachments?.length) return prompt
-  return <div className="user-message"><Attachments images={attachments} />{prompt}</div>
+  return <div className="user-message"><Attachments attachments={attachments} />{prompt}</div>
 }
 
 const ItemRow = memo(function ItemRow({ id }: { id: string }) {

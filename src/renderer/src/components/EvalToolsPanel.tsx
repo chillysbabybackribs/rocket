@@ -131,7 +131,7 @@ export function EvalToolsPanel() {
               </table>
               {toolsWithScenarios.length > 0 && (
                 <p className="eval-bt-muted">
-                  Run scenarios via <strong>Experiments → Run cell</strong> or Playground (same chat UI). Example:{' '}
+                  Run these scenarios from the <strong>Scenarios</strong> tab. Example:{' '}
                   <span className="eval-bt-mono">{toolsWithScenarios[0]?.scenarioIds[0]}</span>.
                 </p>
               )}

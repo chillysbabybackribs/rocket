@@ -53,9 +53,9 @@ test('every action with a place names a place that exists, and names are well fo
     assert.match(name, /^[a-z]+(\.[a-zA-Z]+)*$/, `place ${name}`)
     assert.match(spec.file, /^src\/renderer\//, `place ${name} names its component`)
   }
-  assert.ok(isPlace('evals.playgrounds'))
+  assert.ok(isPlace('evals.scenario'))
   assert.ok(!isPlace('evals.nowhere'))
-  assert.ok(isAction('evals.playgrounds.run'))
+  assert.ok(isAction('evals.run.start'))
   assert.ok(!isAction('toString'))
 })
 
@@ -63,6 +63,6 @@ test('the map prints every place and action with its parameters', () => {
   const text = describeMap()
   for (const name of Object.keys(PLACES)) assert.ok(text.includes(`- ${name}`), name)
   for (const name of Object.keys(ACTIONS)) assert.ok(text.includes(`- ${name}`), name)
-  assert.ok(text.includes('scenario: scenario id to show'))
+  assert.ok(text.includes('id: scenario id (required)'))
   assert.ok(text.indexOf('Places (rocket_ui_go)') < text.indexOf('Actions (rocket_ui_act)'))
 })

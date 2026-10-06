@@ -5,6 +5,8 @@ export type ProviderId = 'codex' | 'claude' | 'cursor' | 'antigravity'
 
 /** Image bytes live in Rocket's data directory; messages carry stable references only. */
 export type ImageAttachment = {
+  /** Absent on images saved before documents could be attached. */
+  kind?: 'image'
   id: string
   name: string
   mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
@@ -12,10 +14,32 @@ export type ImageAttachment = {
   width: number
   height: number
 }
-export type MessageDraft = { text: string; attachments?: ImageAttachment[] }
+/** A PDF or a text/code file, stored by the host like an image. `chars` counts the text a model can be given. */
+export type FileAttachment = {
+  kind: 'file'
+  id: string
+  name: string
+  format: 'pdf' | 'text'
+  mimeType: 'application/pdf' | 'text/plain'
+  size: number
+  chars: number
+  lines?: number
+  pages?: number
+}
+export type Attachment = ImageAttachment | FileAttachment
+export const isFileAttachment = (attachment: Attachment): attachment is FileAttachment => attachment.kind === 'file'
+/** What the side panel shows of a file: the start of its text, or PDF pages as images. */
+export type AttachmentPreview =
+  | { type: 'text'; text: string; truncated: boolean }
+  | { type: 'pdf'; pages: string[]; truncated: boolean }
+export type MessageDraft = { text: string; attachments?: Attachment[] }
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 export const MAX_MESSAGE_IMAGE_BYTES = 20 * 1024 * 1024
+export const MAX_FILE_BYTES = 25 * 1024 * 1024
+export const MAX_MESSAGE_FILE_BYTES = 50 * 1024 * 1024
+/** Images and files together. */
 export const MAX_MESSAGE_IMAGES = 10
+export const MAX_MESSAGE_ATTACHMENTS = MAX_MESSAGE_IMAGES
 
 /**
  * `steers`: a message sent while this provider is answering joins the turn in flight. For the
@@ -38,7 +62,7 @@ export type ToolStatus = 'running' | 'done' | 'failed'
 /** One row of the transcript. Ids are unique within a chat and stable across updates. */
 export type Item =
   /** `steer`: sent while the turn was running and taken into it, after the turn's first message. */
-  | { type: 'user'; id: string; turnId: string; text: string; attachments?: ImageAttachment[]; steer?: boolean }
+  | { type: 'user'; id: string; turnId: string; text: string; attachments?: Attachment[]; steer?: boolean }
   | { type: 'assistant'; id: string; turnId: string; text: string; streaming: boolean }
   | { type: 'reasoning'; id: string; turnId: string; text: string; streaming: boolean }
   | {
@@ -230,7 +254,7 @@ export type Chat = {
 
 /** A message waiting for the chat's turn in flight to end, to be sent as the next one. Kept in memory only. */
 /** `taking`: sent into the running turn, and its model has not read it yet. */
-export type QueuedMessage = { id: string; provider: ProviderId; text: string; attachments?: ImageAttachment[]; taking?: boolean }
+export type QueuedMessage = { id: string; provider: ProviderId; text: string; attachments?: Attachment[]; taking?: boolean }
 
 export type ChatSnapshot = { chat: Chat; turns: Turn[]; items: Item[]; queued?: QueuedMessage[] }
 
@@ -315,7 +339,10 @@ export type EvalRun = {
 /** Request name → [params, result]. */
 export type HostApi = {
   'attachment.import': [{ name: string; bytes: Uint8Array; thumbnail: Uint8Array }, ImageAttachment]
+  /** A PDF or text file; the host decides which from the bytes and refuses anything else. */
+  'attachment.importFile': [{ name: string; bytes: Uint8Array }, FileAttachment]
   'attachment.read': [{ id: string; thumbnail?: boolean }, string]
+  'attachment.preview': [{ id: string }, AttachmentPreview]
   'attachment.collect': [{ keepIds: string[] }, null]
   'chats.list': [Record<string, never>, Chat[]]
   'chat.create': [{ cwd: string }, Chat]

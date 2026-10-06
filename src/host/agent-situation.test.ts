@@ -9,8 +9,8 @@ test('agent situation is always returned for every turn, with the map and where 
   assert.ok(block.includes('rocket_ui_snapshot'))
   assert.ok(block.includes('browser_read'))
   assert.ok(block.includes('this chat is pane 0'))
-  assert.ok(block.includes('- evals.playgrounds {scenario'))
-  assert.ok(block.includes('- evals.runSheet.run {scenario'))
+  assert.ok(block.includes('- evals.scenario {id'))
+  assert.ok(block.includes('- evals.run.start {scenario'))
   assert.ok(block.includes('docs/something-plan.md'))
 })
 

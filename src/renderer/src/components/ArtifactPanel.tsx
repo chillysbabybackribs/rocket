@@ -4,9 +4,10 @@ import { closeArtifact, undoTurn, useApp, viewOf } from '../store.ts'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { parsePatch } from '../../../shared/patch.ts'
 import { ChangesView, Counts } from './ChangesView.tsx'
+import { FileMark, fileMeta } from './Attachments.tsx'
 
 // The panel beside the chat: a file a link opened (Markdown rendered, anything else as source
-// with a highlighted line), or what a turn changed, as a diff.
+// with a highlighted line), an attached PDF or text file, or what a turn changed, as a diff.
 
 /**
  * Undo in the panel's header: offered as a quiet button; undone, a word in its place; not
@@ -65,6 +66,30 @@ export function ArtifactPanel() {
         {asking && !undone && <UndoConfirm chatId={artifact.chatId} turnId={artifact.turnId} paths={paths} onDone={() => setAsking(false)} />}
         {undone && <p className="undo-strip">These changes were undone. The diff is kept for the record; the files are as they were before the turn.</p>}
         <ChangesView patch={artifact.patch} />
+      </section>
+    )
+  }
+  if (artifact.kind === 'attachment') {
+    const { attachment: file, preview, error } = artifact
+    const scanned = file.format === 'pdf' && !file.chars
+    return (
+      <section className="artifact" aria-label="File preview">
+        <header className="artifact-head">
+          <span className="attachment-title" title={file.name}><FileMark file={file} small /><span>{file.name}</span></span>
+          <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
+        </header>
+        <div className="artifact-path">{fileMeta(file)} · {error ? 'Preview unavailable' : 'Preview'}</div>
+        <div className="artifact-content attachment-preview">
+          {error ? <div className="attachment-error" role="alert">{error}</div>
+            : !preview ? <p className="attachment-loading">Loading preview…</p>
+            : preview.type === 'text' ? <pre className="artifact-source attachment-text">{preview.text}</pre>
+            : preview.pages.map((page, index) => <img key={index} className="attachment-page" src={page} alt={`Page ${index + 1} of ${file.name}`} />)}
+          {scanned && !error && <p className="attachment-note">No text could be read from this PDF; it may be scanned. Models are given the file to open with their own tools.</p>}
+        </div>
+        <div className="attachment-foot">
+          {preview?.truncated ? (preview.type === 'pdf' ? `Showing the first ${preview.pages.length} of ${file.pages} pages · ` : 'Showing the start of the file · ') : ''}
+          Original file retained · text is never executed
+        </div>
       </section>
     )
   }

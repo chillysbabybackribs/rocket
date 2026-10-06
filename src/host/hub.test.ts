@@ -4,7 +4,7 @@ import type { HostEvent } from '../shared/types.ts'
 import { Hub, type TurnTiming } from './hub.ts'
 import { unavailableUsage, type OpenUnprompted, type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type TurnSink } from './providers/provider.ts'
 import { Store } from './store.ts'
-import type { ImageAttachment } from '../shared/types.ts'
+import type { FileAttachment, ImageAttachment } from '../shared/types.ts'
 
 test('image-only messages, queues, restart restoration and provider handoffs retain image references', async () => {
   const store = new Store(':memory:')
@@ -37,6 +37,12 @@ test('image-only messages, queues, restart restoration and provider handoffs ret
   second.complete()
   await hub.waitForTurn(chat.id)
   await assert.rejects(hub.post(chat.id, 'antigravity', null, '', [image]), /cannot receive images/)
+  // Files travel as text, so a text-only provider takes them.
+  const file: FileAttachment = { kind: 'file', id: 'file-1', name: 'brief.pdf', format: 'pdf', mimeType: 'application/pdf', size: 100, chars: 20, pages: 1 }
+  await hub.post(chat.id, 'antigravity', null, 'Read this', [file])
+  assert.equal(second.ran.at(-1)?.attachments?.[0].id, file.id)
+  second.complete()
+  await hub.waitForTurn(chat.id)
   store.close()
 })
 

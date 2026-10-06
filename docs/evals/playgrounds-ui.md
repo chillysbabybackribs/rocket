@@ -1,3 +1,6 @@
+> Superseded: the eval panel no longer copies Braintrust's playgrounds. See the README's Evals
+> section and `docs/mockups/evals.html`. Kept as research notes.
+
 # Braintrust Playgrounds UI (reference for Rocket)
 
 Source: [Iterate in playgrounds](https://www.braintrust.dev/docs/evaluate/playgrounds), live app (`My Project → Playgrounds → Prompt comparer example`).

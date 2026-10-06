@@ -1,10 +1,12 @@
 import { collectAttachments, restoreDraft, updateDraft } from './drafts.ts'
 import { useSyncExternalStore } from 'react'
-import type { ChatLinkTarget, Chat, EvalRun, EvalScenarioInfo, Goal, GoalEdit, ImageAttachment, MessageDraft, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
+import type { ChatLinkTarget, Chat, EvalRun, EvalScenarioInfo, Goal, GoalEdit, Attachment, AttachmentPreview, FileAttachment, MessageDraft, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
 
 export type ArtifactView =
   | Extract<ChatLinkTarget, { kind: 'artifact' }>
   | { kind: 'changes'; chatId: string; turnId: string; patch: TurnPatch }
+  /** An attached PDF or text file; `preview` is null while it loads. */
+  | { kind: 'attachment'; attachment: FileAttachment; preview: AttachmentPreview | null; error: string | null }
 import { PROVIDERS, planItemId, providerLabel } from '../../shared/types.ts'
 import { call, connectHost } from './host.ts'
 
@@ -528,7 +530,7 @@ export function closePane(pane: number): void {
 // ── Sending ───────────────────────────────────────────────────────────
 
 /** Send in a pane's chat, creating one first when the composer is on the new-chat screen. */
-export async function send(pane: number, text: string, attachments: ImageAttachment[] = []): Promise<boolean> {
+export async function send(pane: number, text: string, attachments: Attachment[] = []): Promise<boolean> {
   try {
     const current = paneAt(state, pane)
     let chatId = current.chatId
@@ -537,7 +539,7 @@ export async function send(pane: number, text: string, attachments: ImageAttachm
       saveSelection(chat.id, { provider: current.provider, modelChoice: current.modelChoice })
       chatId = chat.id
     }
-    await call('chat.send', { chatId, provider: current.provider, model: current.modelChoice[current.provider]?.id ?? null, text, attachmentIds: attachments.map(image => image.id) })
+    await call('chat.send', { chatId, provider: current.provider, model: current.modelChoice[current.provider]?.id ?? null, text, attachmentIds: attachments.map(each => each.id) })
     updateDraft(current.chatId ?? `new:${current.key}`, { text: '', attachments: [], sending: false, error: null })
     const at = state.panes.findIndex(entry => entry.key === current.key && entry.chatId === current.chatId)
     if (!current.chatId && at >= 0) await openChat(chatId, at)
@@ -784,7 +786,7 @@ export async function loadEvalChat(chatId: string): Promise<void> {
     items.set(item.id, item)
     ;(turnItems[item.turnId] ??= []).push(item.id)
   }
-  setState({ views: { ...state.views, [chatId]: { turns: snapshot.turns, turnItems, queued: snapshot.queued, planTurnId: null } } })
+  setState({ views: { ...state.views, [chatId]: { turns: snapshot.turns, turnItems, queued: snapshot.queued ?? [], planTurnId: null } } })
 }
 
 /** The current state without subscribing, for the dispatcher. */
@@ -885,6 +887,18 @@ export async function openTurnChanges(pane: number, turnId: string): Promise<voi
     setState({ artifact: { kind: 'changes', chatId, turnId, patch } })
   } catch (error) {
     if (request === linkRequest) fail(error)
+  }
+}
+
+/** Show an attached file beside the conversation, the way a link opens one. */
+export async function openAttachment(attachment: FileAttachment): Promise<void> {
+  const request = ++linkRequest
+  setState({ artifact: { kind: 'attachment', attachment, preview: null, error: null } })
+  try {
+    const preview = await call('attachment.preview', { id: attachment.id })
+    if (request === linkRequest) setState({ artifact: { kind: 'attachment', attachment, preview, error: null } })
+  } catch (error) {
+    if (request === linkRequest) setState({ artifact: { kind: 'attachment', attachment, preview: null, error: error instanceof Error ? error.message : 'This file could not be previewed. Attach it again.' } })
   }
 }
 

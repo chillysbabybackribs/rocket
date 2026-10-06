@@ -1,21 +1,19 @@
 # Evals in Rocket
 
-## Mock eval UI (Braintrust-style)
+## In the app
 
-Local mirror of Braintrust’s **Experiments / Datasets** chrome for Rocket artifacts (not the Braintrust API):
+Click the **flask** on the rail. **Scenarios** lists every scenario in `scenarios/*.jsonl` with
+its latest run per provider. A scenario's page has its message (editable for the next run), its
+graders, and **Run all**, which runs every provider in its matrix with real turns, side by side,
+each trial in a fresh copy of the scenario's folder. Click a cell for its grades, the files it
+changed and its transcript. **Tool health** is the MCP tool-call ledger (same data as
+`rocket_tool_history`). The README's Evals section has how it works; the design is
+`docs/mockups/evals.html`.
 
-```bash
-npm run eval:mock-ui:sync   # optional: pull .artifacts/evals/*/summary.json
-npm run eval:mock-ui        # http://127.0.0.1:8765/
-```
+UI check: `npm run check:ui -- evals.spec.ts eval-tools.spec.ts`.
 
-**UI checks:** after eval-panel changes, verify with Rocket MCP `rocket_ui_snapshot` (or `rocket_ui_run` + `ui.snapshot()`) — don’t ship layout-only fixes without a window capture.
-
-**In the app:** click the **flask** on the rail. **Experiments / Datasets** mirror Braintrust lists; **Playgrounds** mirrors the task-column + dataset grid layout ([playgrounds-ui.md](./playgrounds-ui.md)). **Configure → Tools** shows the MCP tool-call ledger (same data as `rocket_tool_history` / review actions as `rocket_tool_review`). **Run cell** (or click a grid cell) opens the eval chat in the main column so you watch the turn live, then shows grader results when it finishes.
-
-**Tools tab UI check:** `npm run check:ui -- eval-tools.spec.ts`
-
-Standalone server (optional): `npm run eval:mock-ui` → `http://127.0.0.1:8765/`. Layout chips (**List / Grid / Summary / Summary table**), compare checkboxes, and dataset **Input / Expected** columns match Braintrust.
+The standalone Braintrust-style mock (`npm run eval:mock-ui`, `mock-ui/`) and the Lane A / Lane B
+command lines below are separate from the panel.
 
 ---
 

@@ -113,9 +113,9 @@ usage colour and the goals count, and resting the pointer on it slides the whole
 chat as an overlay (the chat never moves) until the pointer leaves, so usage, history and goals
 stay a hover away. The button at the strip's foot, or at the peek's, opens the rail again.
 
-### Images in chat
+### Images and files in chat
 
-Paste a screenshot into the message field, choose **Attach images**, or drop files anywhere in
+Paste a screenshot into the message field, choose **Attach files**, or drop files anywhere in
 the receiving chat pane. A thumbnail tray keeps images beside the draft; click a thumbnail to
 enlarge it, remove it with its cross, or drag it into another chat to copy it there. Images may
 be sent without text. In the transcript, attachments sit above a separate prompt bubble;
@@ -137,6 +137,24 @@ image formats have unit coverage and documented contracts; real image model turn
 been exercised. Switching providers or recovering a lost session carries image references in
 the handoff, sends current and recent images within the message budget, and supplies stored
 file paths for older images. Image files must remain available to the local provider processes.
+
+PDFs and text or code files use the same paperclip, paste and drop, and sit in the same row as
+images, as cards with a document mark, name, type and size (`docs/mockups/file-attachments.html`).
+Clicking a card opens it in the side panel: text as text, a PDF as its first 12 pages rendered to
+images. The host decides what a file is from its bytes, not its name or MIME label: `%PDF-` makes
+a PDF, UTF-8 without NUL bytes makes text, and anything else is refused with a message saying so.
+Each file may be up to 25 MB, files together up to 50 MB per message, and ten attachments of any
+kind per message. PDFs are read with poppler-utils (`pdfinfo`, `pdftotext`, `pdftoppm`) outside
+the app; a password-protected or damaged PDF is refused at import with what to do, and nothing in
+a file is rendered as a page or executed. The stored copy keeps its extension, a PDF's extracted
+text sits beside it as `<id>.extracted.txt`, and its preview pages in `<id>.pages/`.
+
+Every provider receives files the same way (`src/host/providers/images.ts`): the message names
+each file with its stored path, and the text (a PDF's extracted text) follows inside `<file>`
+blocks, up to 60,000 characters a file and 120,000 a message, current files first. Past the
+budget, or for a PDF with no text (likely scanned), the model is told to read the stored file.
+Because files travel as text, Antigravity takes them, though not images. No provider's native
+document input is relied on yet.
 
 ### Messages sent while a turn runs
 
@@ -288,23 +306,23 @@ Captures, per-call JSON results, `runner.log` and traces remain in the session d
 
 The shell is finite, so a model navigates it by name rather than hunting for buttons in a
 screenshot. `src/shared/app-map.ts` is a hand-written map of every **place** the shell can show
-(`chat`, `browser`, `evals.overview` … `evals.tools`, with the parameters a place takes, such as
-the playground's scenario) and every **action** a model can take (`pane.add`, `chat.open`,
-`evals.playgrounds.run`, `evals.runSheet.run`, `evals.tools.refresh` …), each naming the component
+(`chat`, `browser`, `evals.scenarios`, `evals.scenario`, `evals.run`, `evals.tools`, with the
+parameters a place takes, such as the scenario's id) and every **action** a model can take
+(`pane.add`, `chat.open`, `evals.run.start`, `evals.run.stop`, `evals.tools.refresh` …), each naming the component
 file that renders it. The renderer's dispatcher (`src/renderer/src/app-map.ts`) implements the map:
 `where()` reads the shell's state in the map's words, `go(place, params)` shows a place and
 `act(action, params)` does an action, going to its place first when that is not on screen. The
 dashboard's own buttons call the same `go` and `act`, so what a click does and what a model does is
 one path, and the tables are typed against the map so a missing handler fails the typecheck. The
-eval dashboard's navigation and run state live in the store (`evals` in `store.ts`) for this reason.
+eval panel's navigation and runs live in the store (`evals` in `store.ts`) for this reason.
 Mapped controls carry `data-nav="<place>"`, which `rocket_ui_snapshot` reports as `nav`.
 
 The host serves the map as three tools (`src/host/tools/ui-map.ts`), run in the renderer through
 main's `uiMap` op: `rocket_ui_where` (no image; the panes, which one is the asking chat's, the
 side panel and what it shows, running cells, open dialogs), `rocket_ui_go` and `rocket_ui_act`
 (both return where the shell ended up and an image, `capture=false` to skip it). A wrong place,
-action or parameter is refused with the valid choices (`UI_MAP_REFUSED`) and nothing moves. Run
-actions start real provider turns in eval chats; they return when the run ends or after `wait`
+action or parameter is refused with the valid choices (`UI_MAP_REFUSED`) and nothing moves. `evals.run.start`
+starts real provider turns in eval chats; it returns when the run ends or after `wait`
 seconds (default 100, at most 120) with it still running, and `rocket_ui_where` then follows the
 cells. `tests/ui/app-map.spec.ts` walks every place through the dispatcher and the tools.
 
@@ -445,6 +463,40 @@ window the chat splits like an artifact: the conversation, a divider to drag, an
 checklist and rounds laid out like a Linear issue (`GoalPane.tsx`). A goal's chat is a tab like any
 other, marked with the goal's status; its composer becomes a note for the next round. While the
 new-goal dialog is open the browser's page is hidden, since it would paint over the dialog.
+
+### Evals
+
+The eval panel (the flask on the rail; `EvalPanel.tsx`, design in `docs/mockups/evals.html`)
+answers one question: how does each provider handle this scenario? A scenario is a line of JSON in
+`docs/evals/scenarios/*.jsonl`: an id, a folder (`cwd`), a message, graders, trials and a matrix
+of providers and models; `runsAlone: true` marks one that uses the app window or browser.
+
+**Run all** (`evalRuns.start`, `src/host/eval-runs.ts`) sends the message to every provider in the
+matrix with real turns, which spends subscription usage. As in common eval practice the cells are
+independent and run side by side: one lane per provider, the providers in parallel, each
+provider's trials in turn. One cell per provider at a time is also what the tool channel needs, since
+it gives a tool call to the chat its provider is answering, so a cell waits while the user's own
+chat with that provider has a turn running. A `runsAlone` scenario goes one cell at a time.
+
+Each cell works in a fresh copy of the scenario's folder under the profile
+(`<profile>/eval-live/<run>/cells/<cell>/folder/work`, `eval-workspace.ts`), never in the repo, so
+runs cannot touch each other or the user's work and the app commits nothing for them. An untouched
+copy sits beside it; `git diff --no-index` between the two says what the turn changed, for the
+file graders and the run view's diff. Eval chats and goals live under that folder, so the host
+keeps them out of the chat list and the goals while their turns still stream to the panel.
+
+Graders (`eval-grade.ts`) read the exported turn: `turn_completed`, `tool_called:<tool>`,
+`no_tool_error_codes`, `goal_report_called`, `files_unchanged`, `only_files_changed:<a,b>` (those
+files and no others), `no_question_asked`, and the rest listed there. Every change to a run goes to
+the renderer whole as an `evalRun` event and into `run.json`, so the history survives a restart; a
+run the app closed in the middle of is marked stopped. A cell's `graders.json` feeds the tool
+scores under Tool health. The message can be edited on the scenario page for the next run; the run
+records the message it used.
+
+The scenario page shows the provider × trial grid of the latest run (or one picked from the list
+below it), with pass counts and median time against the run before. A cell opens the run view: its
+grades with reasons, the files it changed, and its turn in the real `Transcript`, mounted outside
+the panes through `ShownChatContext` (`pane.ts`) and read-only there.
 
 ### Design reference library
 

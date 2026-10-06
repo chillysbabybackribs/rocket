@@ -1,4 +1,4 @@
-import { addDraftImages, addExistingImage, IMAGE_DRAG_TYPE, updateDraft } from './drafts.ts'
+import { addDraftFiles, addExistingAttachment, ATTACHMENT_DRAG_TYPE, updateDraft } from './drafts.ts'
 import './images.css'
 import { useEffect, useRef, useState } from 'react'
 import { Images, PanelRightOpen, X } from 'lucide-react'
@@ -161,7 +161,7 @@ function ChatPane() {
   return (
     <section data-pane-index={usePane()} className={`pane${empty ? ' is-empty' : ''}${focused ? ' is-focused' : ''}`} aria-label={chat?.title ?? 'New chat'} onPointerDownCapture={focus} onFocusCapture={focus}
       onDragOver={event => {
-        if (event.dataTransfer.types.includes('Files') || event.dataTransfer.types.includes(IMAGE_DRAG_TYPE)) {
+        if (event.dataTransfer.types.includes('Files') || event.dataTransfer.types.includes(ATTACHMENT_DRAG_TYPE)) {
           event.preventDefault()
           event.dataTransfer.dropEffect = 'copy'
           setDropping(true)
@@ -169,18 +169,18 @@ function ChatPane() {
       }}
       onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropping(false) }}
       onDrop={event => {
-        if (!event.dataTransfer.types.includes('Files') && !event.dataTransfer.types.includes(IMAGE_DRAG_TYPE)) return
+        if (!event.dataTransfer.types.includes('Files') && !event.dataTransfer.types.includes(ATTACHMENT_DRAG_TYPE)) return
         event.preventDefault()
         setDropping(false)
         if (goal && goal.status !== 'done' && goal.status !== 'stopped') return
         focus()
-        const existing = event.dataTransfer.getData(IMAGE_DRAG_TYPE)
+        const existing = event.dataTransfer.getData(ATTACHMENT_DRAG_TYPE)
         if (existing) {
-          try { addExistingImage(draftKey, JSON.parse(existing)) } catch { updateDraft(draftKey, { error: 'This image could not be attached. Choose the file again.' }) }
-        } else addDraftImages(draftKey, Array.from(event.dataTransfer.files))
+          try { addExistingAttachment(draftKey, JSON.parse(existing)) } catch { updateDraft(draftKey, { error: 'This attachment could not be added. Choose the file again.' }) }
+        } else addDraftFiles(draftKey, Array.from(event.dataTransfer.files))
       }}>
       {body}
-      {dropping && <div className="image-drop-target"><Images size={30} /><strong>{goal && goal.status !== 'done' && goal.status !== 'stopped' ? 'Use a regular chat for images' : 'Add images to this chat'}</strong><span>{chat?.title ?? 'New chat'}</span><small>Release to attach · send when you’re ready</small></div>}
+      {dropping && <div className="image-drop-target"><Images size={30} /><strong>{goal && goal.status !== 'done' && goal.status !== 'stopped' ? 'Use a regular chat for attachments' : 'Add files to this chat'}</strong><span>{chat?.title ?? 'New chat'}</span><small>Release to attach · send when you’re ready</small></div>}
     </section>
   )
 }
@@ -207,7 +207,7 @@ export function App() {
   useEffect(() => {
     // Files dropped outside a chat must not navigate the Electron shell away from the app.
     const preventNavigation = (event: DragEvent): void => {
-      if (event.dataTransfer?.types.includes('Files') || event.dataTransfer?.types.includes(IMAGE_DRAG_TYPE)) event.preventDefault()
+      if (event.dataTransfer?.types.includes('Files') || event.dataTransfer?.types.includes(ATTACHMENT_DRAG_TYPE)) event.preventDefault()
     }
     window.addEventListener('dragover', preventNavigation)
     window.addEventListener('drop', preventNavigation)

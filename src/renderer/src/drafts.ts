@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from 'react'
 import { imageSize } from 'image-size'
-import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MAX_MESSAGE_IMAGE_BYTES, type ImageAttachment, type MessageDraft } from '../../shared/types.ts'
+import { MAX_FILE_BYTES, MAX_IMAGE_BYTES, MAX_MESSAGE_ATTACHMENTS, MAX_MESSAGE_FILE_BYTES, MAX_MESSAGE_IMAGE_BYTES, isFileAttachment, type Attachment, type MessageDraft } from '../../shared/types.ts'
 import { call } from './host.ts'
 
-type Draft = MessageDraft & { attachments: ImageAttachment[]; pending: number; sending: boolean; error: string | null }
+type Draft = MessageDraft & { attachments: Attachment[]; pending: number; sending: boolean; error: string | null }
 const empty: Draft = { text: '', attachments: [], pending: 0, sending: false, error: null }
 const drafts = new Map<string, Draft>()
 const listeners = new Set<() => void>()
@@ -16,7 +16,7 @@ try {
 export function draftOf(key: string): Draft { return drafts.get(key) ?? empty }
 
 export function collectAttachments(): void {
-  void call('attachment.collect', { keepIds: [...drafts.values()].flatMap(draft => draft.attachments.map(image => image.id)) }).catch(() => {})
+  void call('attachment.collect', { keepIds: [...drafts.values()].flatMap(draft => draft.attachments.map(each => each.id)) }).catch(() => {})
 }
 
 export function updateDraft(key: string, patch: Partial<Draft>): void {
@@ -37,53 +37,81 @@ export function restoreDraft(key: string, message: string | MessageDraft): void 
   updateDraft(key, { text: [restored.text, current.text].filter(Boolean).join('\n\n'), attachments: [...restored.attachments ?? [], ...current.attachments] })
 }
 
-export const IMAGE_DRAG_TYPE = 'application/x-rocket-image'
-export function addExistingImage(key: string, image: ImageAttachment): void {
-  if (!image || typeof image.id !== 'string' || typeof image.name !== 'string' || !Number.isFinite(image.size) || image.size <= 0) {
-    updateDraft(key, { error: 'This image could not be attached. Choose the file again.' })
+export const ATTACHMENT_DRAG_TYPE = 'application/x-rocket-attachment'
+const LIMIT_ERROR = `Send at most ${MAX_MESSAGE_ATTACHMENTS} attachments in one message.`
+
+/** The same per-message limits the host enforces, checked before any bytes are sent to it. */
+function overLimit(attachments: Attachment[], adding: { size: number; file: boolean }): string | null {
+  if (attachments.length >= MAX_MESSAGE_ATTACHMENTS) return LIMIT_ERROR
+  const total = attachments.filter(each => isFileAttachment(each) === adding.file).reduce((sum, each) => sum + each.size, adding.size)
+  if (!adding.file && total > MAX_MESSAGE_IMAGE_BYTES) return 'Send images totaling at most 20 MB in one message.'
+  if (adding.file && total > MAX_MESSAGE_FILE_BYTES) return 'Send files totaling at most 50 MB in one message.'
+  return null
+}
+
+export function addExistingAttachment(key: string, attachment: Attachment): void {
+  if (!attachment || typeof attachment.id !== 'string' || typeof attachment.name !== 'string' || !Number.isFinite(attachment.size) || attachment.size <= 0) {
+    updateDraft(key, { error: 'This attachment could not be added. Choose the file again.' })
     return
   }
   const current = draftOf(key)
   if (current.sending) return
-  if (current.attachments.some(each => each.id === image.id)) return
-  if (current.attachments.length >= MAX_MESSAGE_IMAGES || current.attachments.reduce((sum, each) => sum + each.size, image.size) > MAX_MESSAGE_IMAGE_BYTES) {
-    updateDraft(key, { error: 'Send at most 10 images totaling 20 MB in one message.' })
+  if (current.attachments.some(each => each.id === attachment.id)) return
+  const limit = overLimit(current.attachments, { size: attachment.size, file: isFileAttachment(attachment) })
+  if (limit) {
+    updateDraft(key, { error: limit })
     return
   }
-  updateDraft(key, { attachments: [...current.attachments, image], error: null })
+  updateDraft(key, { attachments: [...current.attachments, attachment], error: null })
+}
+
+const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+
+async function importImage(file: File, bytes: Uint8Array): Promise<Attachment> {
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('Choose images smaller than 5 MB.')
+  let dimensions: ReturnType<typeof imageSize>
+  try { dimensions = imageSize(bytes) } catch { throw new Error('Choose a PNG, JPEG, WebP or GIF image.') }
+  if (!['png', 'jpg', 'webp', 'gif'].includes(dimensions.type ?? '')) throw new Error('Choose a PNG, JPEG, WebP or GIF image.')
+  if (!dimensions.width || !dimensions.height || dimensions.width > 8000 || dimensions.height > 8000 || dimensions.width * dimensions.height > 32_000_000) throw new Error('Choose an image up to 8000 pixels per side and 32 megapixels.')
+  const bitmap = await createImageBitmap(file).catch(() => { throw new Error('This image could not be decoded. Choose another file.') })
+  const canvas = document.createElement('canvas')
+  const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height))
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#202124'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Could not create an image preview.')), 'image/jpeg', 0.8))
+  return call('attachment.import', { name: file.name || 'Pasted image.png', bytes, thumbnail: new Uint8Array(await blob.arrayBuffer()) })
+}
+
+/** An image by its label or its bytes becomes a thumbnail; anything else goes to the host, which accepts PDFs and text. */
+function looksLikeImage(file: File, bytes: Uint8Array): boolean {
+  if (IMAGE_MIMES.includes(file.type)) return true
+  try { return ['png', 'jpg', 'webp', 'gif'].includes(imageSize(bytes).type ?? '') } catch { return false }
 }
 
 /** Uploads are serialized per draft so a tab switch cannot redirect an in-flight import. */
 const uploads = new Map<string, Promise<void>>()
-export function addDraftImages(key: string, files: File[]): void {
+export function addDraftFiles(key: string, files: File[]): void {
   if (draftOf(key).sending) return
   updateDraft(key, { pending: draftOf(key).pending + files.length, error: null })
   const work = (uploads.get(key) ?? Promise.resolve()).then(async () => {
     for (const file of files) {
       try {
         const current = draftOf(key)
-        if (current.attachments.length >= MAX_MESSAGE_IMAGES || current.attachments.reduce((sum, image) => sum + image.size, file.size) > MAX_MESSAGE_IMAGE_BYTES) throw new Error('Send at most 10 images totaling 20 MB in one message.')
-        if (!file.size || file.size > MAX_IMAGE_BYTES) throw new Error('Choose images smaller than 5 MB.')
+        if (current.attachments.length >= MAX_MESSAGE_ATTACHMENTS) throw new Error(LIMIT_ERROR)
+        if (!file.size) throw new Error(`${file.name || 'This file'} is empty. Choose a file with something in it.`)
+        if (file.size > MAX_FILE_BYTES) throw new Error(`${file.name || 'This file'} is larger than 25 MB. Attach a smaller file or the part you need.`)
         const bytes = new Uint8Array(await file.arrayBuffer())
-        let dimensions: ReturnType<typeof imageSize>
-        try { dimensions = imageSize(bytes) } catch { throw new Error('Choose a PNG, JPEG, WebP or GIF image.') }
-        if (!['png', 'jpg', 'webp', 'gif'].includes(dimensions.type ?? '')) throw new Error('Choose a PNG, JPEG, WebP or GIF image.')
-        if (!dimensions.width || !dimensions.height || dimensions.width > 8000 || dimensions.height > 8000 || dimensions.width * dimensions.height > 32_000_000) throw new Error('Choose an image up to 8000 pixels per side and 32 megapixels.')
-        const bitmap = await createImageBitmap(file).catch(() => { throw new Error('This image could not be decoded. Choose another file.') })
-        const canvas = document.createElement('canvas')
-        const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height))
-        canvas.width = Math.max(1, Math.round(bitmap.width * scale))
-        canvas.height = Math.max(1, Math.round(bitmap.height * scale))
-        const ctx = canvas.getContext('2d')!
-        ctx.fillStyle = '#202124'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-        bitmap.close()
-        const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Could not create an image preview.')), 'image/jpeg', 0.8))
-        const image = await call('attachment.import', { name: file.name || 'Pasted image.png', bytes, thumbnail: new Uint8Array(await blob.arrayBuffer()) })
-        addExistingImage(key, image)
+        const image = looksLikeImage(file, bytes)
+        const limit = overLimit(current.attachments, { size: file.size, file: !image })
+        if (limit) throw new Error(limit)
+        addExistingAttachment(key, image ? await importImage(file, bytes) : await call('attachment.importFile', { name: file.name || 'Pasted text.txt', bytes }))
       } catch (error) {
-        updateDraft(key, { error: error instanceof Error ? error.message : 'Could not attach this image. Try again.' })
+        updateDraft(key, { error: error instanceof Error ? error.message : 'Could not attach this file. Try again.' })
       } finally {
         updateDraft(key, { pending: Math.max(0, draftOf(key).pending - 1) })
       }

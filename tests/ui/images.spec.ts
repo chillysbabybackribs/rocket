@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { test, expect } from './app'
 import { jpegBase64 } from '../fixtures/image'
+import { pdfBytes } from '../fixtures/pdf'
 
 const small = { name: 'clipboard.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(jpegBase64, 'base64') }
 
@@ -9,7 +10,7 @@ test('image uploads, queue editing, Stop and restart preserve the whole message'
   let page = rocket.page
   await page.locator('.composer-folder').click()
   const choice = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: 'Attach images', exact: true }).click()
+  await page.getByRole('button', { name: 'Attach files', exact: true }).click()
   await (await choice).setFiles(resolve('docs/mockups/image-attachments-assets/rocket.png'))
   await expect(page.locator('.is-draft .image-thumbnail img')).toHaveCount(1)
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Compare this screen')
@@ -116,4 +117,44 @@ test('queued images survive shutdown and can be sent after reopening', async ({ 
   await page.locator('.steer.is-waiting').getByRole('button', { name: 'Send now' }).click()
   await expect(page.locator('.steer.is-waiting')).toHaveCount(0)
   await expect(page.locator('.prose').last()).toHaveText('Received 1 image(s).')
+})
+
+test('PDF and code files attach beside images, preview in the side panel, and reach the provider as text after restart', async ({ rocket }) => {
+  let page = rocket.page
+  await page.locator('.composer-folder').click()
+  const code = { name: 'invite.ts', mimeType: 'video/mp2t', buffer: Buffer.from('export async function inviteMember(email: string) {\n  return fetch(`/api/invites/${email}`)\n}\n') }
+  await page.locator('.image-file-input').setInputFiles([{ name: 'onboarding-brief.pdf', mimeType: 'application/pdf', buffer: pdfBytes('Invite your first teammate') }, code, small])
+  await expect(page.locator('.is-draft .file-attachment')).toHaveCount(2)
+  await expect(page.locator('.is-draft .image-thumbnail img')).toHaveCount(1)
+  await expect(page.locator('.is-draft .file-copy small').first()).toHaveText(/^PDF · 1 page · \d/)
+  await page.getByRole('button', { name: 'Preview onboarding-brief.pdf' }).click()
+  await expect(page.getByRole('region', { name: 'File preview' }).locator('.attachment-page')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Preview invite.ts' }).click()
+  await expect(page.locator('.attachment-text')).toContainText('inviteMember')
+  await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Does this implementation cover the brief?')
+  await rocket.capture('files-draft-preview')
+  await page.locator('.image-file-input').setInputFiles({ name: 'archive.zip', mimeType: 'application/zip', buffer: Buffer.from([0x50, 0x4b, 0x03, 0x04, 0xff, 0xfe]) })
+  await expect(page.getByRole('alert')).toContainText('archive.zip is not an image, PDF or text file')
+  await expect(page.locator('.is-draft .file-attachment')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Close artifact' }).click()
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.locator('.prose').last()).toHaveText('Received 1 image(s) and 2 file(s).')
+  await expect(page.locator('.user-message > .image-attachments .file-attachment')).toHaveCount(2)
+  await expect(page.locator('.user-message > .user-bubble')).toHaveText('Does this implementation cover the brief?')
+  const request = JSON.parse(await readFile(join(rocket.profile, 'ui-request.json'), 'utf8'))
+  expect(request.attachments.map((each: { kind: string }) => each.kind)).toEqual(['file', 'file', 'image'])
+  expect(request.input).toContain('Invite your first teammate')
+  expect(request.input).toContain('export async function inviteMember')
+  await rocket.restart()
+  page = rocket.page
+  await expect(page.locator('.user-message > .image-attachments .file-attachment')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Preview onboarding-brief.pdf' }).click()
+  await expect(page.locator('.attachment-page')).toHaveCount(1)
+  await rocket.capture('files-sent-after-restart')
+  // Antigravity takes files as text, so a file-only draft can be sent to it.
+  await page.getByRole('button', { name: 'Close artifact' }).click()
+  await page.locator('.image-file-input').setInputFiles(code)
+  await page.getByRole('textbox', { name: 'Message', exact: true }).press('Control+4')
+  await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
+  await expect(page.getByRole('alert')).toHaveCount(0)
 })
