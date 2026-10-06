@@ -197,6 +197,9 @@ with the browser (indexed when the turn ends, from main's record of the chat's d
 files a turn wrote (from the turn's changed files), and files opened from a chat (a link or
 `npm run open`). Attachments are read live from the store; the others are rows in `library_files`,
 keyed by path, so a file keeps the source it first arrived with. Eval chats' files stay off it.
+On the first start with a library, the Markdown files earlier turns wrote are added once from the
+turn patches the store kept, each dated by the last turn that wrote it; files since deleted are
+skipped.
 
 The panel is a filter rail (source, kind, chat, added; each option shows how many files choosing
 it would leave) and a search over names, folders, paths and chat titles, then a grid or a list.
