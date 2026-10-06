@@ -1,6 +1,6 @@
 import { collectAttachments, restoreDraft, updateDraft } from './drafts.ts'
 import { useSyncExternalStore } from 'react'
-import type { ChatLinkTarget, Chat, Goal, GoalEdit, ImageAttachment, MessageDraft, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
+import type { ChatLinkTarget, Chat, EvalRun, EvalScenarioInfo, Goal, GoalEdit, ImageAttachment, MessageDraft, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
 
 export type ArtifactView =
   | Extract<ChatLinkTarget, { kind: 'artifact' }>
@@ -51,51 +51,40 @@ export type ChatView = {
 
 const EMPTY_VIEW: ChatView = { turns: [], turnItems: {}, queued: [], planTurnId: null }
 
-// The eval dashboard's navigation and run state live here rather than in its components, so the
-// app map (`app-map.ts`) can read and set them by name: a model goes to the playground with a
-// scenario chosen the same way a click does, and the dashboard can tell where it is.
-export type EvalView = 'overview' | 'logs' | 'playgrounds' | 'experiments' | 'experiment' | 'datasets' | 'dataset' | 'scorers' | 'tools'
-export type PlaygroundCell = { status: 'idle' | 'running' | 'done' | 'error'; output?: string; pass?: boolean }
-export type RunSheetState = {
-  open: boolean
-  scenarioId: string
-  provider: ProviderId
-  trial: number
-  phase: 'idle' | 'running' | 'done' | 'error'
-  /** The eval chat the last run opened, for the Focus button. */
-  chatId: string | null
-  error: string | null
-  grades: Array<{ name: string; pass: boolean; reason?: string }> | null
-}
+// The eval panel's navigation and its runs live here rather than in its components, so the app
+// map (`app-map.ts`) can read and set them by name: a model opens a scenario and runs it the same
+// way a click does. Runs arrive whole from the host's `evalRun` events.
+export type EvalView = 'scenarios' | 'scenario' | 'run' | 'tools'
 export type EvalsState = {
   view: EvalView
-  /** The experiment or dataset open in its detail view. */
-  experimentId: string | null
-  datasetId: string | null
-  /** Bumped by Sync and Refresh ledger; the dashboard and the tools panel reload when it changes. */
+  scenarioId: string | null
+  /** The run the scenario page shows; null shows the latest. */
+  runId: string | null
+  /** The cell the run view shows. */
+  cell: { runId: string; provider: ProviderId; trial: number } | null
+  scenarios: EvalScenarioInfo[]
+  /** Every saved run, newest first. */
+  runs: EvalRun[]
+  /** Messages edited on a scenario page and not yet run, by scenario. */
+  drafts: Record<string, string>
+  loaded: boolean
+  error: string | null
+  /** Bumped by Refresh; the tools panel reloads when it changes. */
   refresh: number
-  playground: {
-    scenarioId: string
-    datasetId: string
-    compare: string
-    diff: boolean
-    filter: string
-    /** `${rowId}::${taskId}` → that cell's run. */
-    cells: Record<string, PlaygroundCell>
-    busy: boolean
-    error: string | null
-  }
-  runSheet: RunSheetState
   tools: { section: 'health' | 'scores' }
 }
 
 const INITIAL_EVALS: EvalsState = {
-  view: 'experiments',
-  experimentId: null,
-  datasetId: null,
+  view: 'scenarios',
+  scenarioId: null,
+  runId: null,
+  cell: null,
+  scenarios: [],
+  runs: [],
+  drafts: {},
+  loaded: false,
+  error: null,
   refresh: 0,
-  playground: { scenarioId: '', datasetId: '', compare: 'base', diff: false, filter: '', cells: {}, busy: false, error: null },
-  runSheet: { open: false, scenarioId: '', provider: 'claude', trial: 0, phase: 'idle', chatId: null, error: null, grades: null },
   tools: { section: 'health' }
 }
 
@@ -390,6 +379,11 @@ function applyEvents(events: HostEvent[]): void {
       case 'queue':
         if (state.views[event.chatId]) patchView(event.chatId, { queued: event.queued })
         break
+      case 'evalRun': {
+        const rest = state.evals.runs.filter((run) => run.id !== event.run.id)
+        patchEvals({ runs: [event.run, ...rest].sort((a, b) => b.startedAt - a.startedAt) })
+        break
+      }
     }
   }
 }
@@ -398,7 +392,7 @@ function applyEvents(events: HostEvent[]): void {
 
 /** Drop the views no pane shows any more, and the items that were theirs. */
 function pruneViews(panes: Pane[]): Record<string, ChatView> {
-  const shown = new Set(panes.map((pane) => pane.chatId))
+  const shown = new Set([...panes.map((pane) => pane.chatId), evalChatId(state)])
   const views: Record<string, ChatView> = {}
   for (const [chatId, view] of Object.entries(state.views)) {
     if (shown.has(chatId)) views[chatId] = view
@@ -753,29 +747,44 @@ export function patchEvals(patch: Partial<EvalsState>): void {
   setState({ evals: { ...state.evals, ...patch } })
 }
 
-export function patchPlayground(patch: Partial<EvalsState['playground']>): void {
-  patchEvals({ playground: { ...state.evals.playground, ...patch } })
+/** Read the scenario files and saved runs; the panel calls this when it opens and on Refresh. */
+export async function loadEvals(): Promise<void> {
+  try {
+    const [{ scenarios }, runs] = await Promise.all([call('eval.listScenarios', {}), call('evalRuns.list', {})])
+    patchEvals({ scenarios, runs, loaded: true, error: null })
+  } catch (error) {
+    patchEvals({ loaded: true, error: error instanceof Error ? error.message : String(error) })
+  }
 }
 
-export function patchRunSheet(patch: Partial<RunSheetState>): void {
-  patchEvals({ runSheet: { ...state.evals.runSheet, ...patch } })
-}
-
-/** Record one playground cell's progress without touching the others. */
-export function markPlaygroundCell(key: string, patch: Partial<PlaygroundCell>): void {
-  const cells = state.evals.playground.cells
-  patchPlayground({ cells: { ...cells, [key]: { ...(cells[key] ?? { status: 'idle' }), ...patch } } })
-}
-
-/** Show an eval view; the list views forget the detail they came from. */
-export function showEvalView(view: EvalView, ids: { experimentId?: string | null; datasetId?: string | null } = {}): void {
-  const detail = view === 'experiment' || view === 'dataset'
+/** Show an eval view. Opening a scenario or a cell names it; the list forgets what was open. */
+export function showEvalView(view: EvalView, ids: Partial<Pick<EvalsState, 'scenarioId' | 'runId' | 'cell'>> = {}): void {
   patchEvals({
     view,
-    experimentId: detail ? ids.experimentId ?? state.evals.experimentId : null,
-    datasetId: detail ? ids.datasetId ?? state.evals.datasetId : null
+    scenarioId: view === 'scenarios' || view === 'tools' ? state.evals.scenarioId : ids.scenarioId ?? state.evals.scenarioId,
+    runId: view === 'scenario' ? ids.runId ?? null : state.evals.runId,
+    cell: view === 'run' ? ids.cell ?? state.evals.cell : null
   })
   if (!state.evalsOpen) setEvalsOpen(true)
+}
+
+/** The chat of the cell the run view shows, kept loaded while it is on screen. */
+export function evalChatId(current: AppState): string | null {
+  const { cell, runs } = current.evals
+  if (!current.evalsOpen || current.evals.view !== 'run' || !cell) return null
+  return runs.find((run) => run.id === cell.runId)?.cells.find((entry) => entry.provider === cell.provider && entry.trial === cell.trial)?.chatId ?? null
+}
+
+/** Load an eval chat for the run view's transcript, outside every pane. Live events then keep it current. */
+export async function loadEvalChat(chatId: string): Promise<void> {
+  if (state.views[chatId]) return
+  const snapshot = await call('chat.open', { chatId })
+  const turnItems: Record<string, string[]> = {}
+  for (const item of snapshot.items) {
+    items.set(item.id, item)
+    ;(turnItems[item.turnId] ??= []).push(item.id)
+  }
+  setState({ views: { ...state.views, [chatId]: { turns: snapshot.turns, turnItems, queued: snapshot.queued, planTurnId: null } } })
 }
 
 /** The current state without subscribing, for the dispatcher. */

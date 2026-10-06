@@ -7,6 +7,12 @@ import { chatIdOf, useApp, viewOf, type ChatView } from './store.ts'
 
 export const PaneContext = createContext(0)
 
+/**
+ * A chat shown outside every pane, read-only: the eval panel's run view puts the real transcript
+ * around an eval chat with this, so it is the same transcript the chat column draws.
+ */
+export const ShownChatContext = createContext<string | null | undefined>(undefined)
+
 export function usePane(): number {
   return useContext(PaneContext)
 }
@@ -14,11 +20,13 @@ export function usePane(): number {
 /** The chat this pane shows, or null on the new-chat screen. */
 export function usePaneChatId(): string | null {
   const pane = usePane()
-  return useApp((state) => chatIdOf(state, pane))
+  const shown = useContext(ShownChatContext)
+  return useApp((state) => (shown !== undefined ? shown : chatIdOf(state, pane)))
 }
 
 /** Something of this pane's chat view; an empty view on the new-chat screen. */
 export function usePaneView<T>(select: (view: ChatView) => T): T {
   const pane = usePane()
-  return useApp((state) => select(viewOf(state, chatIdOf(state, pane))))
+  const shown = useContext(ShownChatContext)
+  return useApp((state) => select(viewOf(state, shown !== undefined ? shown : chatIdOf(state, pane))))
 }

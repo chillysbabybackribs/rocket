@@ -1,10 +1,10 @@
 import { Attachments } from './Attachments.tsx'
-import { Fragment, memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, memo, useContext, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
 import { planItemId, providerLabel, type Goal, type Item, type MessageDraft, type ToolKind, type Turn } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
-import { usePane, usePaneChatId, usePaneView } from '../pane.ts'
+import { ShownChatContext, usePane, usePaneChatId, usePaneView } from '../pane.ts'
 import { answerQuestion, editQueued, openTurnChanges, peekItem, sendNow, togglePlan, useApp, useItem } from '../store.ts'
 import { Bar, Counts } from './ChangesView.tsx'
 
@@ -193,6 +193,8 @@ type QuestionItem = Extract<Item, { type: 'question' }>
  */
 function QuestionCard({ item }: { item: QuestionItem }) {
   const pane = usePane()
+  // A transcript shown outside the panes (an eval run) is read-only: an answer would go to a pane's chat.
+  const readOnly = useContext(ShownChatContext) !== undefined
   const [other, setOther] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const input = useRef<HTMLInputElement>(null)
@@ -205,11 +207,11 @@ function QuestionCard({ item }: { item: QuestionItem }) {
     await answerQuestion(pane, item.id, text.trim())
     setSending(false)
   }
-  if (item.answer !== null) {
+  if (item.answer !== null || readOnly) {
     return (
       <div className="question is-answered">
         <div className="question-text">{item.text}</div>
-        <div className="question-answer"><Check size={13} /><span>{item.answer}</span></div>
+        <div className="question-answer">{item.answer !== null ? <><Check size={13} /><span>{item.answer}</span></> : <span>Not answered</span>}</div>
       </div>
     )
   }
