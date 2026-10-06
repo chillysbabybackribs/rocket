@@ -1,6 +1,7 @@
 import {
-  app, BrowserWindow, dialog, ipcMain, MessageChannelMain, shell, utilityProcess, type UtilityProcess
+  app, BrowserWindow, dialog, ipcMain, MessageChannelMain, session, shell, utilityProcess, type UtilityProcess
 } from 'electron'
+import { existsSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -10,6 +11,8 @@ import { HOST_PORT_MESSAGE } from '../shared/types.ts'
 import { readChatLink } from './chat-links.ts'
 import { BrowserAgent } from './browser-agent.ts'
 import { BrowserPane } from './browser-pane.ts'
+import { BROWSER_PARTITION } from './browser-url.ts'
+import { defaultCookieSource, detectCookieSources, importCookies } from './cookie-import.ts'
 import { appendJournal } from '../host/journal.ts'
 import { uiTestProfile } from '../host/ui-test.ts'
 import { isolateUiTestNetwork } from './ui-test-network.ts'
@@ -96,6 +99,26 @@ function connectRenderer(): void {
   const { port1, port2 } = new MessageChannelMain()
   host.postMessage({ type: 'connect' }, [port1])
   window.webContents.postMessage(HOST_PORT_MESSAGE, null, [port2])
+}
+
+// On the very first launch, seed the embedded browser with the user's logged-in sessions from
+// their default OS browser, so a site signed in out there is signed in here. The `persist:browser`
+// session keeps the cookies on disk, so this runs once; a marker records that it has. Re-importing
+// later, or picking a different browser, is the right-click menu's job (`browser-pane.ts`).
+async function firstRunCookieImport(): Promise<void> {
+  const marker = join(app.getPath('userData'), 'cookies-imported')
+  if (existsSync(marker)) return
+  try {
+    const source = defaultCookieSource(detectCookieSources())
+    if (source) await importCookies(session.fromPartition(BROWSER_PARTITION), source)
+    // Write the marker even when nothing was found, so we try exactly once; the menu covers the rest.
+    await writeFile(marker, new Date().toISOString())
+  } catch (error) {
+    appendJournal(join(app.getPath('userData'), 'journal.jsonl'), {
+      at: Date.now(), source: 'main', severity: 'warn', kind: 'observation',
+      message: `First-run cookie import failed: ${error instanceof Error ? error.message : String(error)}`
+    })
+  }
 }
 
 function createWindow(): void {
@@ -232,6 +255,7 @@ if (!app.requestSingleInstanceLock()) {
     if (testProfile) isolateUiTestNetwork(process.env.ROCKET_UI_TEST_ORIGIN)
     host = startHost()
     createWindow()
+    if (!testProfile) void firstRunCookieImport()
     const first = openTargetOf(process.argv, process.cwd())
     if (first) window?.webContents.once('did-finish-load', () => openInWindow(first))
   })

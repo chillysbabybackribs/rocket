@@ -1,5 +1,5 @@
 import {
-  app, clipboard, Menu, session, WebContentsView,
+  app, clipboard, dialog, Menu, session, WebContentsView,
   type BrowserWindow, type ContextMenuParams, type Event, type Input, type MenuItemConstructorOptions,
   type Rectangle, type WebContents
 } from 'electron'
@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AgentTab, Bounds, BrowserCommand, BrowserState, BrowserTab } from '../shared/types.ts'
+import { detectCookieSources, importCookies, type CookieSource } from './cookie-import.ts'
 import { Suggestions } from './browser-suggest.ts'
 import { BROWSER_PARTITION, conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, PAGE_BACKGROUND, reveal, toUrl } from './browser-url.ts'
 
@@ -548,8 +549,49 @@ export class BrowserPane {
         { type: 'separator' }
       )
     }
+    const importItem = this.cookieImportItem(tab)
+    if (importItem) items.push(importItem, { type: 'separator' })
     items.push({ label: 'Inspect', click: () => contents.inspectElement(params.x, params.y) })
     Menu.buildFromTemplate(items).popup({ window: this.window })
+  }
+
+  // Let the user pull their logged-in sessions from an OS browser into this one. Built here, in
+  // the native menu, so the manual import needs no round-trip through the renderer.
+  private cookieImportItem(tab: Tab): MenuItemConstructorOptions | null {
+    const sources = detectCookieSources()
+    if (!sources.length) return null
+    const host = hostOf(tab.url)
+    const submenu: MenuItemConstructorOptions[] = sources.map((source) => {
+      const perBrowser: MenuItemConstructorOptions[] = []
+      if (host) perBrowser.push({ label: `This site (${host})`, click: () => void this.runImport(source, host) })
+      perBrowser.push({ label: 'All sites', click: () => void this.runImport(source) })
+      return { label: source.label, submenu: perBrowser }
+    })
+    return { label: 'Import login cookies', submenu }
+  }
+
+  private async runImport(source: CookieSource, host?: string): Promise<void> {
+    try {
+      const result = await importCookies(session.fromPartition(PARTITION), source, host)
+      const where = host ? `for ${host}` : 'for all sites'
+      const extra = result.skipped ? ` ${result.skipped} were skipped.` : ''
+      void dialog.showMessageBox(this.window, {
+        type: 'info',
+        message: `Imported ${result.imported} cookies from ${source.label} ${where}.${extra}`,
+        detail: 'Reload the page to use the imported session.',
+        buttons: ['Reload', 'Close'],
+        defaultId: 0,
+        cancelId: 1
+      }).then(({ response }) => {
+        if (response === 0) this.active?.view?.webContents.reload()
+      })
+    } catch (error) {
+      void dialog.showMessageBox(this.window, {
+        type: 'error',
+        message: `Could not import cookies from ${source.label}.`,
+        detail: error instanceof Error ? error.message : 'The browser profile could not be read.'
+      })
+    }
   }
 
   // ── State ───────────────────────────────────────────────────────────
@@ -607,5 +649,16 @@ function origin(url: string): string {
     return new URL(url).origin
   } catch {
     return ''
+  }
+}
+
+/** The hostname of a real page, or null for a blank/home/non-web tab. */
+function hostOf(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
+    return parsed.hostname || null
+  } catch {
+    return null
   }
 }

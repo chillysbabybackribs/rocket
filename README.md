@@ -215,6 +215,16 @@ Background tabs are hidden with `setVisible(false)`, so Chromium stops drawing t
 `ROCKET_BROWSER_HIDE=park npm run dev` moves them off screen instead, the older way, in case a
 tab ever comes back blank; see the note in `src/main/browser-url.ts`.
 
+The embedded browser can share the user's logged-in sessions from their own OS browser
+(`src/main/cookie-import.ts`). On first launch, cookies from the default OS browser are copied into
+the `persist:browser` session, which keeps them on disk, so the import survives restarts and runs
+once (a `cookies-imported` marker in the profile records that it has). Later, the page's right-click
+menu has **Import login cookies**, listing each detected browser with "This site" and "All sites".
+Chrome, Chromium, Brave, Edge and Vivaldi are read from their profile's Cookies database and
+decrypted with the key kept in the login keyring ("<Browser> Safe Storage", via `secret-tool`);
+Firefox's `cookies.sqlite` is read as-is. Only the user's profile is read, never written, and the
+database is copied before reading so a running browser cannot block it.
+
 Chat links open beside the conversation: HTTP(S) URLs and local HTML, images, PDFs, and media
 open in a new browser tab. Text and source files open in a closable artifact preview; Markdown
 renders as a document. Relative file links use the chat's working folder (or the containing

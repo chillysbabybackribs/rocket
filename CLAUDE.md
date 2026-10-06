@@ -51,7 +51,8 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
 - `src/host/goals.ts`: goals, the loop of work and check turns until a brief's checklist is met
   (`docs/goals-phase1.md`); `tools/goal.ts` is how models report to it.
 - `src/main/`: the window, the browser tabs (`browser-pane.ts`) and the browser tools' hands
-  (`browser-agent.ts`, `browser-page-lib.ts`).
+  (`browser-agent.ts`, `browser-page-lib.ts`). `cookie-import.ts` brings the user's logged-in
+  sessions in from their OS browser (first-run and the page's right-click menu).
 - `src/renderer/`: React UI. `store.ts` is the client state.
 
 ## Rules

@@ -116,6 +116,12 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
       await expect(newest.locator('.tool-output').first()).toContainText('store.')
       await newest.locator('.activity-summary').click()
     }
+    const switchBack = async (): Promise<Phase> => {
+      await page.getByRole('tab').filter({ hasText: 'Short chat' }).click()
+      await expect(page.locator('.pane').first().locator('.turn')).toHaveCount(small.turns)
+      return await measure({ click: '[role="tab"]', text: title }, { newest: chat.turns })
+    }
+    const back = await switchBack()
     const page2 = opened < chat.turns ? await measure('top', { more: opened }) : null
     const all = await measure('top', 'first')
     await expect(page.locator('.pane').first().locator('.turn')).toHaveCount(chat.turns)
@@ -123,9 +129,7 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
       nodes: document.querySelectorAll('*').length,
       heapMB: Math.round(((performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? 0) / 1e6)
     }))
-    await page.getByRole('tab').filter({ hasText: 'Short chat' }).click()
-    await expect(page.locator('.pane').first().locator('.turn')).toHaveCount(small.turns)
-    const back = await measure({ click: '[role="tab"]', text: title }, { newest: chat.turns })
+    const backAfterAll = await switchBack()
     rows.push({
       turns: chat.turns,
       items: chat.items,
@@ -134,6 +138,8 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
       'open longest task ms': open.longestTaskMs,
       'switch back ms': back.ms,
       'switch longest task ms': back.longestTaskMs,
+      'switch back after reading all ms': backAfterAll.ms,
+      'its longest task ms': backAfterAll.longestTaskMs,
       'next page ms': page2?.ms ?? 0,
       'next page longest task ms': page2?.longestTaskMs ?? 0,
       'next page shift px': page2?.shiftPx ?? 0,
@@ -151,6 +157,9 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
     // The tab's chat is kept, so switching back asks the host for nothing and parses nothing new.
     expect(back.longestTaskMs, `switching back to ${at} freezes the window no longer than 120 ms`).toBeLessThan(120)
     expect(back.ms, `switching back to ${at} shows the newest reply within 300 ms`).toBeLessThan(300)
+    // Having read every turn, the chat goes back to its newest page; letting go of the rest is the
+    // cost here, so the guard is looser, but far under the seconds a whole chat once took.
+    expect(backAfterAll.longestTaskMs, `switching back to ${at} after reading all of it freezes no longer than 400 ms`).toBeLessThan(400)
     if (page2) {
       expect(page2.longestTaskMs, `the page above ${at} goes in without a freeze over 250 ms`).toBeLessThan(250)
       expect(page2.shiftPx, 'turns put in above leave the reader where they were').toBeLessThanOrEqual(2)
