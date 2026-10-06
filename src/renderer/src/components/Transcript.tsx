@@ -1,11 +1,11 @@
 import { Attachments } from './Attachments.tsx'
-import { Fragment, memo, useContext, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, memo, useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
 import { planItemId, providerLabel, type Goal, type Item, type MessageDraft, type ToolKind, type Turn } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
 import { ShownChatContext, usePane, usePaneChatId, usePaneView } from '../pane.ts'
-import { answerQuestion, editQueued, openTurnChanges, peekItem, sendNow, togglePlan, useApp, useItem } from '../store.ts'
+import { answerQuestion, editQueued, loadOlder, openTurnChanges, peekItem, sendNow, togglePlan, useApp, useItem } from '../store.ts'
 import { Bar, Counts } from './ChangesView.tsx'
 
 /** Markdown is the expensive part of a row; text that has not changed parses once and never again. */
@@ -458,10 +458,22 @@ const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { tu
 
 const NO_ITEMS: string[] = []
 
-/** A goal turn's round; for a draft, how many drafts came before it. A turn that has been retried belongs to the round it retried. */
-function roundOf(goal: Goal | null, turns: Turn[], turn: Turn): number {
-  if (!goal || !turn.goalRole) return 0
-  if (turn.goalRole === 'draft') return turns.filter((entry) => entry.goalRole === 'draft' && entry.startedAt < turn.startedAt).length
+/**
+ * Each goal turn's round; for a draft, how many drafts came before it. A turn that has been
+ * retried belongs to the round it retried. Worked out once for the list, not once per turn.
+ */
+function roundsOf(goal: Goal | null, turns: Turn[]): Map<string, number> {
+  const rounds = new Map<string, number>()
+  if (!goal) return rounds
+  const drafts = turns.filter((turn) => turn.goalRole === 'draft').map((turn) => turn.startedAt).sort((a, b) => a - b)
+  for (const turn of turns) {
+    if (turn.goalRole === 'draft') rounds.set(turn.id, drafts.findIndex((at) => at >= turn.startedAt))
+    else if (turn.goalRole) rounds.set(turn.id, roundOf(goal, turn))
+  }
+  return rounds
+}
+
+function roundOf(goal: Goal, turn: Turn): number {
   const known = goal.rounds.find((round) => round.workTurnId === turn.id || round.checkTurnId === turn.id)
   if (known) return known.n
   // A failed work turn was replaced by the next one for the same round; a check asked again checks the round before it.
@@ -503,18 +515,35 @@ function Waiting() {
 /** Per chat, the turn last sent while the app has been open: the one laid out to fill the view. */
 const sentTurns = new Map<string, string>()
 
+/** How near the top, in screens, the reader gets before the turns above are fetched. */
+const OLDER_MARGIN = 1.5
+
 export function Transcript() {
   const turns = usePaneView((view) => view.turns)
   const turnItems = usePaneView((view) => view.turnItems)
+  const hasOlder = usePaneView((view) => view.hasOlder)
   const chatId = usePaneChatId()
   const goal = useApp((state) => state.goals.find((entry) => entry.chatId === chatId) ?? null)
+  const rounds = useMemo(() => roundsOf(goal, turns), [goal, turns])
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
+  // How far the reader is from the bottom, so turns put in above them leave them where they were.
+  const fromBottom = useRef(0)
   // The turn just sent in this chat. It is made as tall as the view, so that scrolled to the
   // bottom its message sits at the top with the whole view beneath it free for the response.
   const [sentId, setSentId] = useState<string | null>(null)
-  const seen = useRef({ chatId, count: turns.length })
+  const firstId = turns[0]?.id ?? null
+  const lastId = turns.at(-1)?.id ?? null
+  const seen = useRef({ chatId, firstId, lastId })
+  // A long chat opens with its newest turns; the ones above come as the reader nears the top.
+  const older = useRef({ chatId, hasOlder })
+  older.current = { chatId, hasOlder }
+  const nearTop = (): void => {
+    const element = scroller.current
+    const { chatId, hasOlder } = older.current
+    if (element && chatId && hasOlder && element.scrollTop < element.clientHeight * OLDER_MARGIN) void loadOlder(chatId)
+  }
 
   // Stay at the bottom while the user is there; leave them alone once they scroll up.
   useEffect(() => {
@@ -528,6 +557,8 @@ export function Transcript() {
     measure()
     const onScroll = (): void => {
       pinned.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80
+      fromBottom.current = element.scrollHeight - element.scrollTop
+      nearTop()
     }
     element.addEventListener('scroll', onScroll, { passive: true })
     const observer = new ResizeObserver(() => {
@@ -544,25 +575,37 @@ export function Transcript() {
 
   useLayoutEffect(() => {
     const before = seen.current
-    seen.current = { chatId, count: turns.length }
-    // A turn added to the chat on screen was just sent, and one still running was sent not long
-    // ago. The chat remembers it, so the layout is the same on coming back from another tab.
+    seen.current = { chatId, firstId, lastId }
+    const element = scroller.current
+    // Earlier turns put in above: the reader stays on what they were reading.
+    if (element && before.chatId === chatId && before.lastId === lastId && before.firstId !== firstId) {
+      element.scrollTop = element.scrollHeight - fromBottom.current
+      nearTop()
+      return
+    }
+    // A turn added to the end of the chat on screen was just sent, and one still running was sent
+    // not long ago. The chat remembers it, so the layout is the same on coming back from another tab.
     const last = turns.at(-1)
-    const sent = before.chatId === chatId && turns.length > before.count
+    const sent = before.chatId === chatId && before.lastId !== lastId
     if (chatId && last && (sent || last.status === 'running')) sentTurns.set(chatId, last.id)
     setSentId((chatId && sentTurns.get(chatId)) || null)
-  }, [chatId, turns.length])
+  }, [chatId, firstId, lastId])
 
   useLayoutEffect(() => {
     pinned.current = true
-    if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight
-  }, [chatId, turns.length, sentId])
+    const element = scroller.current
+    if (!element) return
+    element.scrollTop = element.scrollHeight
+    fromBottom.current = element.clientHeight
+    // A first page shorter than the view gives no scroll to start the next one.
+    nearTop()
+  }, [chatId, lastId, sentId])
 
   return (
     <div className="transcript" ref={scroller}>
       <div className="transcript-inner" ref={content}>
         {turns.map((turn) => (
-          <TurnBlock key={turn.id} turn={turn} ids={turnItems[turn.id] ?? NO_ITEMS} fill={turn.id === sentId} goal={goal} round={roundOf(goal, turns, turn)} />
+          <TurnBlock key={turn.id} turn={turn} ids={turnItems[turn.id] ?? NO_ITEMS} fill={turn.id === sentId} goal={goal} round={rounds.get(turn.id) ?? 0} />
         ))}
         <Waiting />
       </div>
