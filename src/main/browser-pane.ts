@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AgentTab, Bounds, BrowserCommand, BrowserState, BrowserTab } from '../shared/types.ts'
 import { Suggestions } from './browser-suggest.ts'
-import { BROWSER_PARTITION, conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, reveal, toUrl } from './browser-url.ts'
+import { BROWSER_PARTITION, conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, PAGE_BACKGROUND, reveal, toUrl } from './browser-url.ts'
 
 // The embedded browser: a strip of tabs, each a WebContentsView laid over the region of the
 // window the UI reserves for the page. A view is a native surface, so it paints above every DOM
@@ -215,6 +215,7 @@ export class BrowserPane {
     const previous = this.active
     this.activeId = tab.id
     const view = tab.view ?? this.load(tab)
+    this.paintPageBackdrop(view)
     // The new page goes up before the old one comes down, so the stage is never empty.
     this.place()
     if (previous && previous !== tab && previous.view) conceal(this.window, previous.view)
@@ -306,11 +307,16 @@ export class BrowserPane {
     return view
   }
 
+  /** The colour Chromium shows while a page is loading or between paints. */
+  private paintPageBackdrop(view: WebContentsView): void {
+    view.setBackgroundColor(PAGE_BACKGROUND)
+  }
+
   /** Make a view this tab's page: put it in the window, out of sight, and follow what it does. */
   private adopt(tab: Tab, view: WebContentsView): void {
     tab.view = view
     view.setBorderRadius(8)
-    view.setBackgroundColor('#ffffff')
+    this.paintPageBackdrop(view)
     this.window.contentView.addChildView(view)
     // The dropdown's view stays the top one. (Inserting the tab beneath it by index instead
     // leaves the tab's page unpainted.)

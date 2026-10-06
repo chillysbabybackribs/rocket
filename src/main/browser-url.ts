@@ -5,6 +5,8 @@ import type { BrowserWindow, Rectangle, WebContentsView } from 'electron'
 /** Default home page for new tabs and when the last tab is closed. */
 export const NEW_TAB_URL = 'https://www.google.com/'
 export const BROWSER_PARTITION = 'persist:browser'
+/** Behind pages before they paint; matches `.browser-stage` in the renderer. */
+export const PAGE_BACKGROUND = '#141518'
 
 /** A tab with no real page yet (empty address field, title "New Tab"). */
 export function isBlankTabUrl(url: string): boolean {

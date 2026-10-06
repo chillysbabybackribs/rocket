@@ -1444,7 +1444,7 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 }
 @keyframes address-load { from { width: 4%; } to { width: 90%; } }
 
-.browser-stage { flex: 1; min-height: 0; margin: 0 6px 6px; border-radius: 8px; background: rgba(0, 0, 0, 0.3); }
+.browser-stage { flex: 1; min-height: 0; margin: 0 6px 6px; border-radius: 8px; background: #141518; }
 
 /* ── Toast ─────────────────────────────────────────────────────────── */
 
