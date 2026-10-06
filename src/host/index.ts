@@ -34,6 +34,7 @@ import { Teamwork } from './teamwork.ts'
 import { workspaceContext } from './workspace.ts'
 import { UiTestAdapter, uiTestProfile } from './ui-test.ts'
 import { EvalExport } from './eval-export.ts'
+import { loadEvalDashboard } from './eval-dashboard.ts'
 import { finishCellFromScenario, listScenariosForUi, startCellFromScenario } from './eval-live.ts'
 import { runEvalCell } from './eval-run-cell.ts'
 import type { TurnTiming } from './hub.ts'
@@ -293,7 +294,8 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'eval.listScenarios': () => listScenariosForUi(rocketSourceRoot()),
   'eval.startScenarioCell': (input) => startCellFromScenario(evalDeps(), rocketSourceRoot(), dataDir, input),
   'eval.finishScenarioCell': ({ chatId, turnId, cellDir, graders, timeoutMs }) =>
-    finishCellFromScenario(evalDeps(), { chatId, turnId, cellDir }, graders, timeoutMs)
+    finishCellFromScenario(evalDeps(), { chatId, turnId, cellDir }, graders, timeoutMs),
+  'eval.loadDashboard': () => loadEvalDashboard(rocketSourceRoot())
 }
 
 function evalDeps() {

@@ -352,6 +352,39 @@ export type HostApi = {
     graders: string[]
     timeoutMs?: number
   }, { turnPath: string; graders: { allPass: boolean; graders: Record<string, { pass: boolean; score: number; metadata?: Record<string, unknown> }> } }]
+  /** Braintrust-style dashboard payload (sample + `.artifacts/evals` + live scenarios). */
+  'eval.loadDashboard': [Record<string, never>, {
+    project: string
+    org: string
+    syncedAt: string
+    datasets: Array<{
+      id: string
+      description: string
+      rows: Array<{ id: string; input: string; expected: string; tags: string[] }>
+    }>
+    experiments: Array<{
+      id: string
+      name: string
+      createdAt: string
+      datasetId: string
+      kind: 'matrix' | 'harness'
+      passRate: number
+      cellCount: number
+      passCount: number
+      durationMs: number | null
+      scores: Record<string, number>
+      sourcePath?: string
+      cells: Array<{
+        scenarioId: string
+        provider: string
+        model: string | null
+        trial: number
+        pass: boolean
+        graders: Record<string, boolean>
+        turnPath?: string
+      }>
+    }>
+  }]
 }
 
 export type HostMethod = keyof HostApi
