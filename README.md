@@ -280,6 +280,13 @@ actions start real provider turns in eval chats; they return when the run ends o
 seconds (default 100, at most 120) with it still running, and `rocket_ui_where` then follows the
 cells. `tests/ui/app-map.spec.ts` walks every place through the dispatcher and the tools.
 
+Three checks keep the map and the UI the same thing. The typecheck fails on a map entry the
+dispatcher does not implement. `src/shared/app-map.test.ts` reads the renderer source and fails
+on a `go('…')`, `act('…')` or `data-nav` naming something the map lacks, on a map entry no control
+uses, and on a place whose `file` is gone. The UI spec fails on a place the running app cannot
+reach. Adding UI a model may need is therefore: a map entry, a handler (the typecheck says where),
+state in the store, and a control that calls `go` or `act`; the tools and the turn context follow.
+
 Every turn's `<agent-environment>` block (`src/host/agent-situation.ts`) says where the model runs,
 carries one live "Where you are" line read through `rocket_ui_where` as the turn starts, and prints
 the map, so a prompt such as "run a tool eval" is three named calls rather than a search.
