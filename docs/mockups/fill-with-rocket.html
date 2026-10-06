@@ -170,7 +170,7 @@ aside dd { margin: 0; color: var(--text-3); }
     <button data-state="working">Working</button>
     <button data-state="filled">Filled</button>
     <button data-state="again">Another go</button>
-    <button data-state="humanize">Humanize</button>
+    <button data-state="voice">Sound like you</button>
     <button data-state="form">A whole form</button>
     <button data-state="error">Can't fill</button>
     <span class="hint"><kbd>Esc</kbd> stops it · <kbd>Ctrl</kbd> <kbd>Z</kbd> after it fills</span>
@@ -293,7 +293,7 @@ aside dd { margin: 0; color: var(--text-3); }
       <p>It keeps <b>one width</b> from start to finish. While it works, it shows <b>the step it's on</b>, taken from the model's own tool calls (reading the thread, opening a source, running a command), cut short if it's long. The full step shows on hover. Switch tabs and the tab icon keeps a small spinner.</p>
       <p><b>Sources</b> shows how many pages it has opened, and only opens if you click it. While it works, the list fills in live.</p>
       <p>Once it has filled the field, it offers <b>Undo</b>, <b>Another go</b> and the same Sources list.</p>
-      <p><b>Humanize</b>, under Another go, rewrites the fill to sound like you. It reads your own messages in Rocket's chats and copies your wording, casing and punctuation. It keeps the facts and sources it already found and doesn't look anything up again. Your messages to a model are shorter and blunter than a forum reply, so it takes your voice from them, not your length. It only quotes the post it's replying to, never your old messages.</p>
+      <p><b>Sound like you</b>, under Another go, rewrites the fill in your voice. It reads your own messages in Rocket's chats and copies your wording, casing and punctuation. It keeps the facts and sources it already found and doesn't look anything up again. Your messages to a model are shorter and blunter than a forum reply, so it takes your voice from them, not your length. It only quotes the post it's replying to, never your old messages.</p>
       <p> It fades once you type in the field or click away. Nothing is saved, though failures go in the journal.</p>
     </section>
     <section>
@@ -330,7 +330,7 @@ const SOURCES = [
   ['H', '#7a5af8', 'Window Rules – Hyprland Wiki', 'wiki.hypr.land'],
 ]
 // Each step, and how many sources had been opened by then.
-// Humanize keeps the facts and the sources of the fill it rewrites; only the voice changes. The
+// Sound like you keeps the facts and the sources of the fill it rewrites; only the voice changes. The
 // voice comes from the user's own messages in Rocket's chats, which are terse and lower-case
 // here, so the rewrite borrows their wording and punctuation, not the length of a chat message.
 const HUMAN = `yeah thats expected -- float is a static rule, so hyprland only checks it once when the window opens, against the initial title and class. if the app renames itself after that its already too late
@@ -407,7 +407,7 @@ function render() {
   menu.classList.remove('is-open'); chip.classList.remove('is-open'); drop.classList.remove('is-open')
   clearTargets()
   showPage(state === 'form' ? 'form' : 'thread')
-  for (const b of document.querySelectorAll('.states button')) b.setAttribute('aria-pressed', String(voice ? b.dataset.state === 'humanize' : b.dataset.state === state))
+  for (const b of document.querySelectorAll('.states button')) b.setAttribute('aria-pressed', String(voice ? b.dataset.state === 'voice' : b.dataset.state === state))
   const page = $('page-thread')
   if (state !== 'form') page.scrollTop = page.scrollHeight
   const words = { menu: 'Right-click a field', ask: 'With instructions', working: 'Working', filled: 'Filled', again: 'Another go', form: 'A whole form', error: "Can't fill" }
@@ -463,7 +463,7 @@ function render() {
     reply.value = voice ? HUMAN : ANSWER
     reply.classList.add('is-target', 'is-done')
     opened = SOURCES.length
-    chip.innerHTML = `<span class="mark ok">${icon.check}</span><span class="what"><b>${voice ? 'Humanized' : 'Filled'}</b></span><span class="sep"></span>
+    chip.innerHTML = `<span class="mark ok">${icon.check}</span><span class="what"><b>${voice ? 'In your voice' : 'Filled'}</b></span><span class="sep"></span>
       <button class="act" id="src">Sources <span class="count">${SOURCES.length}</span> ${icon.down}</button>
       <button class="act" id="again">${icon.again} Another go ${icon.down}</button>
       <button class="act" id="undo">${icon.undo} Undo</button>
@@ -533,21 +533,21 @@ function openSources(form) {
 }
 function openAgain() {
   const rule = 'border-top:1px solid var(--line-strong);margin-top:4px;padding-top:6px'
-  drop.innerHTML = `<div class="item" data-go="humanize">Humanize<span class="host">sound like you</span></div>`
+  drop.innerHTML = `<div class="item" data-go="voice">Sound like you</div>`
     + ['Shorter', 'More detail', 'Friendlier', 'A different take'].map((t, i) => `<div class="item" data-go="working" style="${i ? '' : rule}">${t}</div>`).join('')
     + `<div class="item" data-go="ask" style="${rule}">With instructions…</div>`
   placeDrop($('again'))
   drop.onclick = (e) => {
     const go = e.target.closest('.item')?.dataset.go
     if (!go) return
-    voice = go === 'humanize'
-    set(go === 'humanize' ? 'working' : go)
+    voice = go === 'voice'
+    set(voice ? 'working' : go)
   }
 }
 
 function set(next) { state = next; render() }
 for (const b of document.querySelectorAll('.states button')) b.onclick = () => {
-  voice = b.dataset.state === 'humanize'
+  voice = b.dataset.state === 'voice'
   set(voice ? 'working' : b.dataset.state)
 }
 $('m-fill').onclick = () => { voice = false; set('working') }
