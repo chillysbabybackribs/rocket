@@ -266,6 +266,7 @@ export type HostEvent =
 export type HostApi = {
   'attachment.import': [{ name: string; bytes: Uint8Array; thumbnail: Uint8Array }, ImageAttachment]
   'attachment.read': [{ id: string; thumbnail?: boolean }, string]
+  'attachment.collect': [{ keepIds: string[] }, null]
   'chats.list': [Record<string, never>, Chat[]]
   'chat.create': [{ cwd: string }, Chat]
   'chat.open': [{ chatId: string }, ChatSnapshot]

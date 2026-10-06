@@ -1,9 +1,11 @@
-import { useRef } from 'react'
-import { PanelRightOpen, X } from 'lucide-react'
+import { addDraftImages, addExistingImage, IMAGE_DRAG_TYPE, updateDraft } from './drafts.ts'
+import './images.css'
+import { useRef, useState } from 'react'
+import { Images, PanelRightOpen, X } from 'lucide-react'
 import type { Goal } from '../../shared/types.ts'
 import { PaneContext, usePane, usePaneChatId, usePaneView } from './pane.ts'
 import { act } from './app-map.ts'
-import { dismissError, focusedChatId, setGoalPaneOpen, setGoalWidth, useApp } from './store.ts'
+import { dismissError, focusedChatId, paneAt, setGoalPaneOpen, setGoalWidth, useApp } from './store.ts'
 import { ArtifactPanel } from './components/ArtifactPanel.tsx'
 import { BrowserPanel } from './components/BrowserPanel.tsx'
 import { EvalPanel } from './components/EvalPanel.tsx'
@@ -112,6 +114,9 @@ function GoalChat({ goal }: { goal: Goal }) {
 function ChatPane() {
   const pane = usePane()
   const chatId = usePaneChatId()
+  const paneKey = useApp(state => paneAt(state, pane).key)
+  const draftKey = chatId ?? `new:${paneKey}`
+  const [dropping, setDropping] = useState(false)
   const chat = useApp((state) => state.chats.find((entry) => entry.id === chatId) ?? null)
   const hasTurns = usePaneView((view) => view.turns.length > 0)
   const goal = useApp((state) => state.goals.find((entry) => entry.chatId === chatId) ?? null)
@@ -154,8 +159,27 @@ function ChatPane() {
       )
   }
   return (
-    <section data-pane-index={usePane()} className={`pane${empty ? ' is-empty' : ''}${focused ? ' is-focused' : ''}`} aria-label={chat?.title ?? 'New chat'} onPointerDownCapture={focus} onFocusCapture={focus}>
+    <section data-pane-index={usePane()} className={`pane${empty ? ' is-empty' : ''}${focused ? ' is-focused' : ''}`} aria-label={chat?.title ?? 'New chat'} onPointerDownCapture={focus} onFocusCapture={focus}
+      onDragOver={event => {
+        if (event.dataTransfer.types.includes('Files') || event.dataTransfer.types.includes(IMAGE_DRAG_TYPE)) {
+          event.preventDefault()
+          event.dataTransfer.dropEffect = 'copy'
+          setDropping(true)
+        }
+      }}
+      onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropping(false) }}
+      onDrop={event => {
+        event.preventDefault()
+        setDropping(false)
+        if (goal && goal.status !== 'done' && goal.status !== 'stopped') return
+        focus()
+        const existing = event.dataTransfer.getData(IMAGE_DRAG_TYPE)
+        if (existing) {
+          try { addExistingImage(draftKey, JSON.parse(existing)) } catch { updateDraft(draftKey, { error: 'This image could not be attached. Choose the file again.' }) }
+        } else addDraftImages(draftKey, Array.from(event.dataTransfer.files))
+      }}>
       {body}
+      {dropping && <div className="image-drop-target"><Images size={30} /><strong>{goal && goal.status !== 'done' && goal.status !== 'stopped' ? 'Use a regular chat for images' : 'Add images to this chat'}</strong><span>{chat?.title ?? 'New chat'}</span><small>Release to attach · send when you’re ready</small></div>}
     </section>
   )
 }

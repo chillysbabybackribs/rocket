@@ -239,6 +239,7 @@ const goals: GoalRunner = new GoalRunner(store, hub, (goal) => emit({ type: 'goa
 const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | Promise<HostApi[M][1]> } = {
   'attachment.import': ({ name, bytes, thumbnail }) => attachments.import(name, bytes, thumbnail),
   'attachment.read': ({ id, thumbnail }) => attachments.read(id, thumbnail),
+  'attachment.collect': async ({ keepIds }) => { await attachments.collect(keepIds); return null },
   'chats.list': () => hub.listChats(),
   'chat.create': ({ cwd }) => hub.createChat(cwd),
   'chat.open': ({ chatId }) => {

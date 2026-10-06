@@ -15,6 +15,10 @@ try {
 
 export function draftOf(key: string): Draft { return drafts.get(key) ?? empty }
 
+export function collectAttachments(): void {
+  void call('attachment.collect', { keepIds: [...drafts.values()].flatMap(draft => draft.attachments.map(image => image.id)) }).catch(() => {})
+}
+
 export function updateDraft(key: string, patch: Partial<Draft>): void {
   drafts.set(key, { ...draftOf(key), ...patch })
   try {

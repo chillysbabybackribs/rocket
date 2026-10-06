@@ -1,4 +1,4 @@
-import { restoreDraft, updateDraft } from './drafts.ts'
+import { collectAttachments, restoreDraft, updateDraft } from './drafts.ts'
 import { useSyncExternalStore } from 'react'
 import type { ChatLinkTarget, Chat, Goal, GoalEdit, ImageAttachment, MessageDraft, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
 
@@ -373,6 +373,7 @@ function applyEvents(events: HostEvent[]): void {
         break
       }
       case 'chatDeleted':
+        updateDraft(event.chatId, { text: '', attachments: [] })
         setState({ chats: state.chats.filter((chat) => chat.id !== event.chatId), goals: state.goals.filter((goal) => goal.chatId !== event.chatId) })
         forgetSelection(event.chatId)
         // Closing a pane shifts the ones after it, so the panes are walked from the end.
@@ -822,6 +823,7 @@ async function load(): Promise<void> {
     items.clear()
     setState({ panes, focused, views: {} })
     savePanes()
+    collectAttachments()
     await Promise.all(panes.map((pane, index) => (pane.chatId ? openChat(pane.chatId, index) : Promise.resolve())))
   } catch (error) {
     setState({ ready: true })

@@ -71,6 +71,14 @@ export class AttachmentStore {
     }
   }
 
+  async collect(keepIds: string[]): Promise<void> {
+    // A grace period covers interrupted imports and drafts still being restored after reconnect.
+    for (const image of this.store.unusedAttachments(keepIds, Date.now() - 24 * 60 * 60 * 1000)) {
+      await Promise.all([rm(this.path(image), { force: true }), rm(this.path(image, true), { force: true })])
+      this.store.deleteAttachment(image.id)
+    }
+  }
+
   private path(image: ImageAttachment, thumbnail = false): string {
     return join(this.directory, `${image.id}${thumbnail ? '.thumb.jpg' : `.${image.mimeType.split('/')[1]}`}`)
   }

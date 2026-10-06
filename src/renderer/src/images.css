@@ -1,0 +1,30 @@
+/* Image controls share Rocket's composer tokens; only the receiving pane is a drop target. */
+.pane { position: relative; }
+.composer-entry { position: relative; }
+.composer-attach { flex: none; width: 28px; height: 28px; border-radius: 6px; color: var(--text-3); display: grid; place-items: center; }
+.composer-attach:hover { color: var(--text); background: var(--hover); }
+.composer-bar .composer-folder { min-width: 0; margin-right: auto; }
+.composer-bar { gap: 5px; }
+.image-attachments { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.image-attachments.is-draft { flex-wrap: nowrap; overflow-x: auto; padding: 13px 12px 4px; margin: 0; }
+.image-attachment { position: relative; min-width: 0; width: 120px; flex: 0 0 120px; }
+.is-draft .image-attachment { width: 104px; flex-basis: 104px; }
+.image-thumbnail { display: grid; place-items: center; width: 100%; height: 82px; padding: 0; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--raised); color: var(--text-3); font-size: 11px; }
+.is-draft .image-thumbnail { height: 68px; }
+.image-thumbnail img { width: 100%; height: 100%; object-fit: contain; }
+.image-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-3); font-size: 10px; margin-top: 3px; }
+.image-remove { position: absolute; top: -5px; right: -5px; width: 21px; height: 21px; display: grid; place-items: center; border: 1px solid var(--line-focus); background: var(--menu); color: var(--text-2); border-radius: 50%; }
+.image-remove:hover { color: var(--text); background: var(--raised); }
+.image-error { color: var(--danger); }
+.image-drop-target { position: absolute; inset: 7px; z-index: 15; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; gap: 9px; padding: 20px; text-align: center; border: 1px dashed var(--accent); border-radius: 9px; background: #12121bf5; }
+.image-drop-target svg { color: var(--accent); margin-bottom: 6px; }
+.image-drop-target strong { font-size: 16px; font-weight: 500; }
+.image-drop-target span { color: var(--text-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.image-drop-target small { color: var(--text-3); margin-top: 14px; }
+.image-preview { max-width: 90vw; max-height: 90vh; padding: 16px; border: 1px solid var(--line-focus); border-radius: 12px; background: var(--panel); color: var(--text); }
+.image-preview::backdrop { background: #000c; }
+.image-preview-bar { display: flex; gap: 24px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.image-preview-bar span { overflow-wrap: anywhere; }
+.image-preview-bar button { display: grid; place-items: center; padding: 5px; color: var(--text-2); }
+.image-preview > img { display: block; max-width: 82vw; max-height: 76vh; object-fit: contain; }
+.image-thumbnail:focus-visible, .image-remove:focus-visible, .composer-attach:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

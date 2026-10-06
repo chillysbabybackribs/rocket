@@ -129,6 +129,22 @@ export class Store {
     return row ? JSON.parse(String(row.data)) as ImageAttachment : null
   }
 
+  /** Keep sent and queued images; the renderer supplies references held by unsent drafts. */
+  unusedAttachments(keepIds: string[], before: number): ImageAttachment[] {
+    const kept = new Set(keepIds)
+    for (const row of this.sql('SELECT data FROM items').all()) {
+      const item = JSON.parse(String(row.data)) as Item
+      if (item.type === 'user') for (const image of item.attachments ?? []) kept.add(image.id)
+    }
+    for (const queue of this.queues()) for (const message of queue.messages) for (const image of message.attachments ?? []) kept.add(image.id)
+    return this.sql('SELECT id, data FROM attachments WHERE created_at < ?').all(before)
+      .filter(row => !kept.has(String(row.id))).map(row => JSON.parse(String(row.data)) as ImageAttachment)
+  }
+
+  deleteAttachment(id: string): void {
+    this.sql('DELETE FROM attachments WHERE id = ?').run(id)
+  }
+
   saveQueue(chatId: string, queue: Array<QueuedMessage & { model: string | null }>): void {
     if (!queue.length) this.sql('DELETE FROM message_queues WHERE chat_id = ?').run(chatId)
     else this.sql('INSERT OR REPLACE INTO message_queues (chat_id, data) VALUES (?, ?)').run(chatId, JSON.stringify(queue))

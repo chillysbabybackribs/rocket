@@ -169,6 +169,36 @@ h2 .sp { flex: 1; }
 .steps { font-size: 12.5px; color: var(--text-4); padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
 .judge { margin-top: 8px; padding: 8px 10px; border-left: 2px solid var(--bad); background: rgba(235,87,87,.05); border-radius: 0 6px 6px 0; font-size: 12px; color: var(--text-2); }
 
+
+/* Prior turns */
+.prior-empty { font-size: 12.5px; color: var(--text-3); padding: 9px 12px; border: 1px dashed var(--line-strong); border-radius: 10px; }
+.seg { display: inline-flex; padding: 2px; border-radius: 7px; background: var(--raised); border: 1px solid var(--line); }
+.seg button { height: 22px; padding: 0 10px; border-radius: 5px; font-size: 12px; color: var(--text-3); }
+.seg button.on { background: var(--selected); color: var(--text); }
+.prior { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.prior-turn { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line); }
+.prior-turn:first-child { border-top: 0; }
+.prior-turn .n { width: 20px; height: 20px; border-radius: 50%; background: var(--raised); border: 1px solid var(--line-strong); font-size: 11px; display: grid; place-items: center; color: var(--text-3); }
+.prior-turn .who { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+.prior-turn .who i { width: 6px; height: 6px; border-radius: 50%; }
+.prior-turn .u { font-size: 13px; color: var(--text); margin-top: 2px; }
+.prior-turn .r { font-size: 12.5px; color: var(--text-2); margin-top: 4px; padding-left: 10px; border-left: 2px solid var(--line-strong); }
+.prior-turn .files { font-size: 11.5px; color: var(--text-4); margin-top: 4px; }
+.prior-turn .acts { display: flex; gap: 4px; align-self: start; }
+.prior-add { display: flex; gap: 14px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12px; }
+.explain { font-size: 12px; color: var(--text-3); margin-top: 8px; line-height: 1.55; }
+.explain b { color: var(--text-2); font-weight: 550; }
+.joined { font-size: 12px; color: var(--text-2); padding: 10px 12px; white-space: nowrap; }
+.joined .sub { color: var(--text-4); font-size: 11.5px; }
+[data-mode="recorded"] .m-live, [data-mode="live"] .m-rec { display: none; }
+.seeded { opacity: .62; }
+.seeded .who { font-size: 11.5px; color: var(--text-4); margin: 0 0 6px; display: flex; align-items: center; gap: 6px; }
+.seeded .who i { width: 6px; height: 6px; border-radius: 50%; }
+.seeded .prose { font-size: 13px; margin-bottom: 14px; }
+.handoff-line { display: flex; align-items: center; gap: 10px; margin: 6px 0 16px; font-size: 11.5px; color: var(--text-3); }
+.handoff-line::before, .handoff-line::after { content: ''; flex: 1; height: 1px; background: var(--line-strong); }
+.handoff-pre { margin-top: 8px; border-radius: 6px; background: rgba(0,0,0,.25); border: 1px solid var(--line); font-family: var(--mono); font-size: 10.5px; line-height: 1.55; padding: 7px 9px; color: var(--text-3); white-space: pre-wrap; max-height: 170px; overflow: hidden; }
+
 /* Notes */
 .notes { max-width: 760px; }
 .notes h2 { font-size: 13px; color: var(--text); margin-top: 20px; }
@@ -197,6 +227,8 @@ h2 .sp { flex: 1; }
   <button class="mock-tab on" data-page="list">1 · Scenarios</button>
   <button class="mock-tab" data-page="scenario">2 · Scenario</button>
   <button class="mock-tab" data-page="detail">3 · One run</button>
+  <button class="mock-tab" data-page="handoff">4 · Prior turns</button>
+  <button class="mock-tab" data-page="handoff-run">5 · Handed-over run</button>
   <button class="mock-tab" data-page="notes">Notes</button>
 </div>
 
@@ -237,7 +269,7 @@ h2 .sp { flex: 1; }
       <div class="ev-body">
         <div class="title-row">
           <h1>Scenarios</h1>
-          <span class="muted" style="font-size:12px">5 in <span class="mono">docs/evals/scenarios</span></span>
+          <span class="muted" style="font-size:12px">6 in <span class="mono">docs/evals/scenarios</span></span>
           <span class="sp"></span>
           <button class="btn"><svg width="13" height="13"><use href="#i-plus"/></svg>New scenario</button>
         </div>
@@ -253,6 +285,17 @@ h2 .sp { flex: 1; }
               <span class="pchip"><i style="background:var(--text-4)"></i>Antigravity <span class="mono">…</span></span>
             </div>
             <div class="when">running</div>
+            <svg width="14" height="14" class="faint"><use href="#i-chev"/></svg>
+          </div>
+          <div class="list-row" data-go="handoff">
+            <div><div class="name">handoff-continue-fix <span class="tag">2 prior turns</span></div><div class="msg">Now add the same note to CONTRIBUTING.md.</div></div>
+            <div class="prov-chips">
+              <span class="pchip"><i style="background:var(--ok)"></i>Claude <span class="mono">1/1</span></span>
+              <span class="pchip"><i style="background:var(--ok)"></i>Codex <span class="mono">1/1</span></span>
+              <span class="pchip"><i style="background:var(--ok)"></i>Cursor <span class="mono">1/1</span></span>
+              <span class="pchip"><i style="background:var(--bad)"></i>Antigravity <span class="mono">0/1</span></span>
+            </div>
+            <div class="when">10 min ago</div>
             <svg width="14" height="14" class="faint"><use href="#i-chev"/></svg>
           </div>
           <div class="list-row">
@@ -307,6 +350,9 @@ h2 .sp { flex: 1; }
           <span>2 trials</span>
           <span>Starts as a goal draft</span>
         </div>
+
+        <h2>Before the message</h2>
+        <div class="prior-empty">No prior turns: each run starts a new chat. <button class="link" data-go="handoff">Add prior turns</button> <span class="faint">to test a provider joining a conversation partway through.</span></div>
 
         <h2>Message</h2>
         <div class="message">
@@ -434,6 +480,170 @@ h2 .sp { flex: 1; }
       </div>
     </div>
 
+    <!-- 4 · A scenario with prior turns -->
+    <div class="page" id="handoff" data-mode="recorded">
+      <div class="ev-body">
+        <div class="crumb"><button data-go="list" style="color:var(--text-3)">Scenarios</button><svg width="12" height="12"><use href="#i-chev"/></svg><b>handoff-continue-fix</b></div>
+        <div class="title-row">
+          <h1>handoff-continue-fix</h1>
+          <span class="sp"></span>
+          <span class="faint" style="font-size:11.5px"><span class="m-rec">4 turns</span><span class="m-live">4 turns + 8 setup turns</span> · spends subscription usage</span>
+          <button class="btn primary"><svg width="12" height="12"><use href="#i-play"/></svg>Run all</button>
+        </div>
+        <div class="meta">
+          <span><svg width="13" height="13"><use href="#i-folder"/></svg>Fresh copy of <span class="mono">evals/fixtures/minimal-repo</span> per run</span>
+          <span>1 trial</span>
+        </div>
+
+        <h2>Before the message <span class="sp"></span>
+          <span class="seg" role="group" aria-label="How prior turns are made">
+            <button class="on" data-mode-set="recorded">Recorded</button>
+            <button data-mode-set="live">Live</button>
+          </span>
+        </h2>
+        <div class="prior">
+          <div class="prior-turn">
+            <span class="n">1</span>
+            <div>
+              <div class="who"><i style="background:#d97757"></i>Claude · opus-5.5</div>
+              <div class="u">The README's install step is wrong for pnpm users. Find where it goes wrong.</div>
+              <div class="r m-rec">Line 12 says <span class="mono">npm i</span>, but the repo has a <span class="mono">pnpm-lock.yaml</span>. Nothing else in the README assumes npm.</div>
+              <div class="r m-live faint">Claude answers this live at the start of every run.</div>
+              <div class="files m-rec">read README.md, package.json</div>
+            </div>
+            <div class="acts"><button class="icon-btn" aria-label="Remove turn"><svg width="12" height="12"><use href="#i-x"/></svg></button></div>
+          </div>
+          <div class="prior-turn">
+            <span class="n">2</span>
+            <div>
+              <div class="who"><i style="background:#e6e6e6"></i>Codex · GPT-6-Astra</div>
+              <div class="u">Fix it, but keep npm as an alternative.</div>
+              <div class="r m-rec">Line 12 now says <span class="mono">pnpm install</span>, with a note under it: "Using npm? <span class="mono">npm install</span> works too, but the lockfile is pnpm's."</div>
+              <div class="r m-live faint">Codex answers this live, after Claude.</div>
+              <div class="files m-rec">edited README.md (+2 −1)</div>
+            </div>
+            <div class="acts"><button class="icon-btn" aria-label="Remove turn"><svg width="12" height="12"><use href="#i-x"/></svg></button></div>
+          </div>
+          <div class="prior-add">
+            <button class="link"><svg width="11" height="11" style="vertical-align:-1px"><use href="#i-plus"/></svg> Add turn</button>
+            <button class="link">Copy turns from a chat…</button>
+          </div>
+        </div>
+        <p class="explain m-rec"><b>Recorded:</b> these turns and their file changes are written into each run's chat and folder as they stand, and no provider holds a session for them. Every provider in the grid is handed them the way <span class="mono">handoff.ts</span> would hand over missed turns. The same each run, and costs no setup turns.</p>
+        <p class="explain m-live"><b>Live:</b> each run first sends these messages to the providers named, for real. Then the scenario's message goes to the provider being tested. Codex answered last, so Codex resumes its own session; Claude resumes its session and is handed turn 2; Cursor and Antigravity are handed both. Closer to real use, but the turns differ from run to run and cost usage.</p>
+
+        <h2>Message</h2>
+        <div class="message">
+          <textarea>Now add the same note to CONTRIBUTING.md.</textarea>
+          <div class="foot"><span class="sp"></span><button class="link">Save to scenario file</button></div>
+        </div>
+
+        <h2>Graders</h2>
+        <div class="graders">
+          <span class="gchip"><span class="k">check</span>turn_completed</span>
+          <span class="gchip"><span class="k">check</span>only_files_changed: CONTRIBUTING.md</span>
+          <span class="gchip"><span class="k">check</span>no_question_asked</span>
+          <span class="gchip"><span class="k">judge</span>Uses turn 2's wording without asking what the note was <span class="faint">· by Claude</span></span>
+          <button class="gchip add"><svg width="11" height="11"><use href="#i-plus"/></svg>Add grader</button>
+        </div>
+
+        <h2>This run <span class="faint" style="font-weight:400">· 10 min ago · 4 of 4 done</span></h2>
+        <table class="matrix">
+          <tr><th>Provider</th><th>Joined the chat by</th><th style="width:26%">Trial 1</th><th>Time</th><th>Usage</th></tr>
+          <tr>
+            <td class="prov"><div class="prov-name"><i style="background:#d97757"></i>Claude</div><div class="prov-model">opus-5.5</div></td>
+            <td class="joined"><span class="m-rec">Handed 2 turns<div class="sub">1,840 chars</div></span><span class="m-live">Resumed, handed 1<div class="sub">910 chars</div></span></td>
+            <td><div class="cell"><div class="cell-top"><svg width="13" height="13" class="ok"><use href="#i-check"/></svg>Pass<span class="sp"></span><span class="t">31s</span></div><div class="dots"><i></i><i></i><i></i><i></i></div></div></td>
+            <td class="stat">31s</td><td class="stat">1%</td>
+          </tr>
+          <tr>
+            <td class="prov"><div class="prov-name"><i style="background:#e6e6e6"></i>Codex</div><div class="prov-model">GPT-6-Astra</div></td>
+            <td class="joined"><span class="m-rec">Handed 2 turns<div class="sub">1,840 chars</div></span><span class="m-live">Resumed<div class="sub">nothing missed</div></span></td>
+            <td><div class="cell"><div class="cell-top"><svg width="13" height="13" class="ok"><use href="#i-check"/></svg>Pass<span class="sp"></span><span class="t">44s</span></div><div class="dots"><i></i><i></i><i></i><i></i></div></div></td>
+            <td class="stat">44s</td><td class="stat">1%</td>
+          </tr>
+          <tr>
+            <td class="prov"><div class="prov-name"><i style="background:#8a8f98"></i>Cursor</div><div class="prov-model">composer-2.5</div></td>
+            <td class="joined">Handed 2 turns<div class="sub">1,840 chars</div></td>
+            <td><div class="cell"><div class="cell-top"><svg width="13" height="13" class="ok"><use href="#i-check"/></svg>Pass<span class="sp"></span><span class="t">27s</span></div><div class="dots"><i></i><i></i><i></i><i></i></div></div></td>
+            <td class="stat">27s</td><td class="stat">2%</td>
+          </tr>
+          <tr>
+            <td class="prov"><div class="prov-name"><i style="background:#60a5fa"></i>Antigravity</div><div class="prov-model">default</div></td>
+            <td class="joined">Handed 2 turns<div class="sub">1,840 chars</div></td>
+            <td><div class="cell sel" data-go="handoff-run"><div class="cell-top"><svg width="13" height="13" class="bad"><use href="#i-cross"/></svg>Fail<span class="sp"></span><span class="t">19s</span></div><div class="dots"><i></i><i></i><i class="f"></i><i class="f"></i></div></div></td>
+            <td class="stat">19s</td><td class="stat">1%</td>
+          </tr>
+        </table>
+        <div class="faint" style="font-size:11.5px;margin-top:6px">"Joined the chat by" is how each provider learned about the earlier turns. Switch Recorded / Live above to see how it changes.</div>
+      </div>
+    </div>
+
+    <!-- 5 · A run that joined partway -->
+    <div class="page" id="handoff-run">
+      <div class="ev-body">
+        <div class="crumb"><button data-go="handoff" style="display:inline-flex;align-items:center;gap:4px;color:var(--text-3)"><svg width="12" height="12"><use href="#i-back"/></svg>handoff-continue-fix</button><svg width="12" height="12"><use href="#i-chev"/></svg><b>Antigravity · trial 1</b></div>
+        <div class="title-row">
+          <h1 style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" class="bad"><use href="#i-cross"/></svg>Antigravity · default · trial 1</h1>
+          <span class="sp"></span>
+          <button class="btn">Open as chat</button>
+          <button class="btn"><svg width="12" height="12"><use href="#i-play"/></svg>Run again</button>
+        </div>
+        <div class="detail">
+          <div class="side">
+            <div class="box">
+              <h3>Graders</h3>
+              <div class="grade"><svg width="14" height="14" class="ok"><use href="#i-check"/></svg><div>turn_completed</div></div>
+              <div class="grade"><svg width="14" height="14" class="ok"><use href="#i-check"/></svg><div>only_files_changed<div class="why">No files changed.</div></div></div>
+              <div class="grade"><svg width="14" height="14" class="bad"><use href="#i-cross"/></svg><div>no_question_asked<div class="why">The reply ends with a question.</div></div></div>
+              <div class="grade"><svg width="14" height="14" class="bad"><use href="#i-cross"/></svg><div>judge · by Claude<div class="judge">Asked which note was meant. Turn 2's note was in what it was handed, word for word.</div></div></div>
+            </div>
+            <div class="box">
+              <h3>What it was handed</h3>
+              <dl class="kv">
+                <dt>Earlier turns</dt><dd>2, from Claude and Codex</dd>
+                <dt>Size</dt><dd>1,840 chars</dd>
+                <dt>Session</dt><dd>new</dd>
+              </dl>
+              <div class="handoff-pre">&lt;conversation_handoff&gt;
+Turn 1 · Claude (opus-5.5)
+User: The README's install step is wrong for pnpm users…
+Concluded: Line 12 says `npm i`, but the repo has a pnpm-lock.yaml…
+Read: README.md, package.json
+
+Turn 2 · Codex (GPT-6-Astra)
+User: Fix it, but keep npm as an alternative.
+Concluded: Line 12 now says `pnpm install`, with a note…
+Edited: README.md
+&lt;/conversation_handoff&gt;</div>
+            </div>
+            <div class="box">
+              <h3>Turn</h3>
+              <dl class="kv"><dt>Time</dt><dd>19s</dd><dt>Steps</dt><dd>2</dd><dt>Usage</dt><dd>1% of daily</dd></dl>
+            </div>
+          </div>
+
+          <div class="tx">
+            <div class="seeded">
+              <div class="user-bubble" style="font-size:13px">The README's install step is wrong for pnpm users. Find where it goes wrong.</div>
+              <div class="who"><i style="background:#d97757"></i>Claude · recorded</div>
+              <div class="prose"><p>Line 12 says <code>npm i</code>, but the repo has a <code>pnpm-lock.yaml</code>. Nothing else in the README assumes npm.</p></div>
+              <div class="user-bubble" style="font-size:13px">Fix it, but keep npm as an alternative.</div>
+              <div class="who"><i style="background:#e6e6e6"></i>Codex · recorded</div>
+              <div class="prose"><p>Line 12 now says <code>pnpm install</code>, with a note under it: "Using npm? <code>npm install</code> works too, but the lockfile is pnpm's."</p></div>
+            </div>
+            <div class="handoff-line">Handed to Antigravity</div>
+            <div class="user-bubble" style="font-size:13.5px">Now add the same note to CONTRIBUTING.md.</div>
+            <div class="steps">Worked · 2 steps <svg width="12" height="12"><use href="#i-chev"/></svg></div>
+            <div class="prose">
+              <p>I opened <code>CONTRIBUTING.md</code>. It has a Setup section that would fit a note.</p>
+              <p>Which note do you mean? If you tell me the wording, I'll add it under Setup.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Notes -->
     <div class="page" id="notes">
       <div class="ev-body notes">
@@ -462,6 +672,15 @@ h2 .sp { flex: 1; }
           <li>New graders: <code>files_unchanged</code>, reply matches a pattern, time and usage limits, and a <b>judge</b>: a different provider reads the turn against a sentence you write.</li>
           <li>Runs go through the same hub path as today (<code>startEvalCell</code> / <code>finishEvalCell</code>), and the app map keeps the actions models can drive.</li>
         </ul>
+        <h2>Prior turns</h2>
+        <ul>
+          <li>Optional, per scenario: turns that come before the message, each with the provider that answered it. With none, a run starts a new chat as today.</li>
+          <li><b>Recorded</b> (default) writes the turns and their file changes into the run's chat and folder. No provider holds a session for them, so every provider gets them through the real handoff path. Deterministic, and no setup turns.</li>
+          <li><b>Live</b> sends them to the named providers first, so the providers that answered them resume their sessions and the others are handed what they missed. More realistic, but costs usage and varies.</li>
+          <li>"Copy turns from a chat" turns a real conversation into a scenario's setup, such as one where a handoff went wrong.</li>
+          <li>The run view shows exactly what the provider was handed, so a failure can be traced to the handoff or to the model.</li>
+          <li>New checks: <code>only_files_changed</code>, <code>no_question_asked</code>.</li>
+        </ul>
         <h2>Open questions</h2>
         <ul>
           <li>Run cells one at a time (as now), or one per provider in parallel? Parallel is faster, but uses several subscriptions at once.</li>
@@ -480,6 +699,10 @@ const show = (id) => {
 }
 document.querySelectorAll('.mock-tab').forEach((t) => t.addEventListener('click', () => show(t.dataset.page)))
 document.querySelectorAll('[data-go]').forEach((el) => el.addEventListener('click', () => show(el.dataset.go)))
+document.querySelectorAll('[data-mode-set]').forEach((b) => b.addEventListener('click', () => {
+  document.getElementById('handoff').dataset.mode = b.dataset.modeSet
+  document.querySelectorAll('[data-mode-set]').forEach((x) => x.classList.toggle('on', x === b))
+}))
 if (location.hash) show(location.hash.slice(1))
 </script>
 </body>

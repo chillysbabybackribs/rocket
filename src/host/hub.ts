@@ -246,6 +246,10 @@ export class Hub {
     if (attachments.length && provider === 'antigravity') throw new Error('Antigravity cannot receive images yet. Choose Claude, Codex or Cursor.')
     const live = this.live.get(chatId)
     if (!live) {
+      if (this.queues.get(chatId)?.length) {
+        this.enqueue(chatId, provider, model, message, attachments)
+        return
+      }
       this.send(chatId, provider, model, message, null, attachments)
       return
     }
@@ -289,6 +293,9 @@ export class Hub {
   enqueue(chatId: string, provider: ProviderId, model: string | null, text: string, attachments: ImageAttachment[] = []): void {
     this.requireChat(chatId)
     const queue = this.queues.get(chatId) ?? []
+    const combined = [...queue.flatMap(entry => entry.attachments ?? []), ...attachments]
+    validateImages(combined)
+    if (combined.length && provider === 'antigravity') throw new Error('Images are waiting in this chat. Choose Claude, Codex or Cursor to send them.')
     queue.push({ id: randomUUID(), provider, model, text, ...(attachments.length ? { attachments } : {}) })
     this.setQueue(chatId, queue)
     if (!this.live.has(chatId)) this.drain(chatId)
@@ -415,7 +422,7 @@ export class Hub {
 
   async stop(chatId: string): Promise<void> {
     const live = this.live.get(chatId)
-    if (!live) return
+    if (!live) { this.drain(chatId); return }
     live.stopRequested = true
     await live.adapter.stop(chatId).catch(() => {})
   }
