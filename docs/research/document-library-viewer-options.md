@@ -221,12 +221,30 @@ app.
 
 ### Mock implications
 
-- Shell: **Library** list + **Document** viewer pane (replaces/extends artifact for indexed items).
-- Toolbar: CM6 editor controls; Nutrient annotation tools on PDF; preview tab toggles source ↔ rendered md.
+- Shell: **Library** opens as a side panel (rail icon): **filter rail + thumbnail grid** first (DAM-style,
+  per [document-library.html](../mockups/document-library.html)); **card → viewer** with back to grid.
+- Viewer: CM6 source + read-only md preview; Nutrient chrome on PDF; Office → external app.
 - Agent tools (names tentative): `library.list`, `library.open`, `document.goto`, `document.highlight`,
   `document.annotate`, `document.getText` — all via host → renderer dispatcher, same pattern as
   `rocket_ui_act`.
-- Image markup stays **out of v1 mock** (attachments roadmap phase 4); images view zoom-only in library.
+- Image markup stays **out of v1** (attachments roadmap phase 4); images **zoom-only** in library.
+
+### Implementation quality bar (mock ≠ ship)
+
+The HTML mock validates **layout and flow only**. Production must not inherit its placeholder visuals.
+
+| Area | Mock today | Ship bar |
+| --- | --- | --- |
+| **Thumbnails** | CSS gradients and fake “pages” | Host-generated previews on import/index (reuse attachment preview pipeline): PDF page 1, image resize, md/code first screen, type fallback glyph; **preserve aspect ratio** (portrait stays portrait). |
+| **Grid** | Fixed 5 columns, 15 static cards | Virtualised grid or paginated fetch from SQLite index; stable sort; skeleton while preview generates. |
+| **Filters** | Non-functional `<select>` | Query indexed fields (`source`, `mime`, `chatId`, `modifiedAt`); debounced search; clear resets; filter state in URL or panel state for agent `library.list` parity. |
+| **Typography & density** | Approximate Ranch spacing | Match Rocket `styles.css` / artifact panel rhythm; keyboard focus, narrow pane, hi-DPI thumbs. |
+| **Open / back** | Instant swap | Preserve scroll position in grid; viewer loads from host path; `fs.watch` refresh; loading and error surfaces like attachments. |
+| **Viewer** | Fake CM6 / PDF | Real CM6 + Nutrient trial embed; sidecar load/save; same actions exposed to `rocket_ui_act`. |
+| **Performance** | All assets in one HTML file | Thumbnail cache on disk; cap concurrent generation; never block UI thread on large PDFs. |
+| **Tests** | None | `app-map` place + act smoke; UI eval: grid → open md → back (fixture files). |
+
+**Mock status (Oct 2026):** direction approved (grid + filters + drill-in); **visual and data fidelity explicitly out of scope** until implementation slice 1 (index + real thumbnails).
 
 ---
 
@@ -247,6 +265,7 @@ app.
 
 ## Next step
 
-- **Mock (in review):** [document-library.html](../mockups/document-library.html) — six states:
-  index, plan source/preview, PDF + sidecar, Office external, agent highlight.
-- **Then:** align `app-map` place names (`library`, `library.document { id }`) and implement.
+- **Mock (direction OK, quality TBD in code):** [document-library.html](../mockups/document-library.html) —
+  grid + filters, open plan/PDF/office, agent highlight.
+- **Then:** implementation plan slice (index + thumbnails + grid UI) → `app-map` (`library`,
+  `library.document { id }`) → Nutrient spike → viewer tools.
