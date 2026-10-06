@@ -113,26 +113,29 @@ main { max-width: 1240px; margin: auto; padding: 0 28px 40px; display: grid; gri
 @keyframes pop { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 
 /* ── Rocket's chip: a view of its own laid over the page ─────────────── */
-.chip { position: absolute; z-index: 15; display: none; align-items: center; gap: 8px; min-height: 34px; padding: 4px 4px 4px 10px; border-radius: 10px; background: #18191c; color: var(--text); box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 10px 30px rgba(0,0,0,.35); font-size: 12.5px; white-space: nowrap; }
+.chip { position: absolute; z-index: 15; display: none; align-items: center; gap: 8px; width: 500px; min-height: 34px; padding: 4px 4px 4px 10px; border-radius: 10px; background: #18191c; color: var(--text); box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 10px 30px rgba(0,0,0,.35); font-size: 12.5px; white-space: nowrap; }
 .chip.is-open { display: flex; animation: pop 140ms ease-out; }
 .chip .mark { width: 16px; height: 16px; display: grid; place-items: center; }
 .spinner { width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgba(255,255,255,.14); border-top-color: var(--accent); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.chip .what { color: var(--text-2); max-width: 330px; overflow: hidden; text-overflow: ellipsis; }
+/* The chip keeps one width from start to finish, so it never jumps as the steps change. The step
+   text takes whatever room is left and is cut short with an ellipsis. */
+.chip .what { flex: 1; min-width: 0; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
 .chip .what b { color: var(--text); font-weight: 500; }
-.chip .model { color: var(--text-4); font-size: 11.5px; }
+.chip .model { color: var(--text-4); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.chip .count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: rgba(255,255,255,.09); color: var(--text-2); font-size: 10.5px; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
 .chip .sep { width: 1px; height: 16px; background: var(--line-strong); }
 .chip .act { height: 26px; padding: 0 9px; border-radius: 7px; color: var(--text-2); display: flex; align-items: center; gap: 5px; position: relative; }
 .chip .act:hover { background: rgba(255,255,255,.08); color: var(--text); }
 .chip .x { width: 26px; padding: 0; justify-content: center; }
-.chip input { width: 330px; height: 26px; background: transparent; border: 0; outline: none; color: var(--text); font: inherit; }
+.chip input { flex: 1; min-width: 0; height: 26px; background: transparent; border: 0; outline: none; color: var(--text); font: inherit; }
 .chip input::placeholder { color: var(--text-4); }
 .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
 
 /* The chip's dropdowns (sources, another go) open under it, also over the page. */
 .drop { position: absolute; z-index: 16; display: none; min-width: 250px; background: var(--menu); border-radius: 8px; box-shadow: var(--menu-shadow); padding: 5px; font-size: 12.5px; }
 .drop.is-open { display: block; animation: pop 120ms ease-out; }
-.drop .item { display: flex; align-items: center; gap: 9px; min-height: 28px; padding: 3px 9px; border-radius: 5px; color: var(--text-2); }
+.drop .item { display: flex; align-items: center; gap: 9px; white-space: nowrap; min-height: 28px; padding: 3px 9px; border-radius: 5px; color: var(--text-2); }
 .drop .item:hover { background: #2a2b30; color: var(--text); }
 .drop .item .host { color: var(--text-4); margin-left: auto; font-size: 11.5px; }
 .drop .head { color: var(--text-4); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 4px 9px 2px; }
@@ -286,8 +289,9 @@ aside dd { margin: 0; color: var(--text-3); }
     <section>
       <h4>The chip</h4>
       <p>It sits just above the field's top right corner, over the page in a view of its own. That way it covers the field's label, not the page's buttons under the field. For a form it sits above the first field it filled. It follows the field as you scroll.</p>
-      <p>While it works, it shows <b>the step it's on</b>, taken from the model's own tool calls: reading the thread, opening a source, running a command. Switch tabs and the tab icon keeps a small spinner.</p>
-      <p>Once it has filled the field, it offers <b>Undo</b>, <b>Another go</b> and <b>the sources it opened</b>. It fades once you type in the field or click away. Nothing is saved, though failures go in the journal.</p>
+      <p>It keeps <b>one width</b> from start to finish. While it works, it shows <b>the step it's on</b>, taken from the model's own tool calls (reading the thread, opening a source, running a command), cut short if it's long. The full step shows on hover. Switch tabs and the tab icon keeps a small spinner.</p>
+      <p><b>Sources</b> shows how many pages it has opened, and only opens if you click it. While it works, the list fills in live.</p>
+      <p>Once it has filled the field, it offers <b>Undo</b>, <b>Another go</b> and the same Sources list. It fades once you type in the field or click away. Nothing is saved, though failures go in the journal.</p>
     </section>
     <section>
       <h4>Keys</h4>
@@ -318,15 +322,16 @@ end)
 
 (From the Window Rules page on wiki.hypr.land.)`
 
-const STEPS = [
-  ['Reading', 'the thread'],
-  ['Opening', 'wiki.hypr.land · Window Rules'],
-  ['Checking', 'how static rules match'],
-  ['Writing', 'the reply'],
-]
 const SOURCES = [
-  ['H', '#7a5af8', 'Window Rules – Hyprland Wiki', 'wiki.hypr.land'],
   ['D', '#2f7d6d', 'This thread', 'forum.example'],
+  ['H', '#7a5af8', 'Window Rules – Hyprland Wiki', 'wiki.hypr.land'],
+]
+// Each step, and how many sources had been opened by then.
+const STEPS = [
+  ['Reading', 'the thread', 1],
+  ['Opening', 'wiki.hypr.land · Window Rules', 2],
+  ['Checking', 'how static rules match on title and class', 2],
+  ['Writing', 'the reply', 2],
 ]
 
 const icon = {
@@ -340,7 +345,7 @@ const icon = {
   warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>',
 }
 
-let state = 'menu', timer = 0, step = 0
+let state = 'menu', timer = 0, step = 0, opened = SOURCES.length
 
 // Where things sit, relative to the stage, so the chip follows its field.
 function box(el) {
@@ -355,9 +360,11 @@ function placeChip(el) {
   chip.style.left = `${Math.max(8, b.x + b.w - chip.offsetWidth)}px`
   chip.style.top = `${Math.max(8, b.y - chip.offsetHeight - 6)}px`
 }
+// Dropdowns line up with the chip's right edge, so they stay inside the page like the chip does.
 function placeDrop(anchor) {
-  const s = stage.getBoundingClientRect(), r = anchor.getBoundingClientRect()
-  drop.style.left = `${r.left - s.left}px`
+  const s = stage.getBoundingClientRect(), r = anchor.getBoundingClientRect(), c = chip.getBoundingClientRect()
+  drop.classList.add('is-open')
+  drop.style.left = `${c.right - s.left - drop.offsetWidth}px`
   drop.style.top = `${r.bottom - s.top + 6}px`
 }
 
@@ -408,22 +415,34 @@ function render() {
     reply.classList.add('is-target')
     $('fav-thread').classList.add('is-busy')
     step = 0
+    // The chip is built once; each step only changes its text and the source count.
+    chip.innerHTML = `<span class="mark"><span class="spinner"></span></span><span class="what" id="what"></span><span class="model" id="clock"></span><span class="sep"></span>
+      <button class="act" id="src">Sources <span class="count" id="count">0</span> ${icon.down}</button>
+      <button class="act" id="stop">${icon.stop} Stop</button>`
     const draw = () => {
-      const [verb, what] = STEPS[step]
-      chip.innerHTML = `<span class="mark"><span class="spinner"></span></span><span class="what">${verb} <b>${what}</b>…</span><span class="model">Opus 5.5 · ${step * 4 + 3}s</span><span class="sep"></span><button class="act" id="stop">${icon.stop} Stop <kbd>Esc</kbd></button>`
-      placeChip(reply); chip.classList.add('is-open')
+      const [verb, what, n] = STEPS[step]
+      $('what').innerHTML = `${verb} <b>${what}</b>…`
+      $('what').title = `${verb} ${what}`
+      $('clock').textContent = `${String(step * 4 + 3).padStart(2, '\u2007')}s`
+      $('count').textContent = String(n)
+      opened = n
+      if (drop.classList.contains('is-open')) openSources()
       if (step === STEPS.length - 1) typeOut()
-      else timer = setTimeout(() => { step++; draw() }, 1300)
+      else timer = setTimeout(() => { step++; draw() }, 1500)
     }
-    requestAnimationFrame(draw)
-    chip.onclick = (e) => { if (e.target.closest('#stop')) set('menu') }
+    requestAnimationFrame(() => { placeChip(reply); draw() })
+    chip.onclick = (e) => {
+      if (e.target.closest('#src')) drop.classList.contains('is-open') ? drop.classList.remove('is-open') : openSources()
+      if (e.target.closest('#stop')) set('menu')
+    }
   }
 
   if (state === 'filled' || state === 'again') {
     reply.value = ANSWER
     reply.classList.add('is-target', 'is-done')
-    chip.innerHTML = `<span class="mark ok">${icon.check}</span><span class="what"><b>Filled</b> · checked 1 source</span><span class="sep"></span>
-      <button class="act" id="src">Sources ${icon.down}</button>
+    opened = SOURCES.length
+    chip.innerHTML = `<span class="mark ok">${icon.check}</span><span class="what"><b>Filled</b></span><span class="sep"></span>
+      <button class="act" id="src">Sources <span class="count">${SOURCES.length}</span> ${icon.down}</button>
       <button class="act" id="again">${icon.again} Another go ${icon.down}</button>
       <button class="act" id="undo">${icon.undo} Undo</button>
       <button class="act x" id="close" aria-label="Dismiss">${icon.x}</button>`
@@ -444,10 +463,10 @@ function render() {
     for (const f of fields) { f.value = f.dataset.fill; f.classList.add('is-target', 'is-done') }
     $('email').value = ''
     $('email').classList.add('is-left')
-    chip.innerHTML = `<span class="mark ok">${icon.check}</span><span class="what"><b>Filled 4 of 5</b> · <span class="warn">Contact email left for you</span></span><span class="sep"></span>
-      <button class="act" id="src">Sources ${icon.down}</button>
+    chip.innerHTML = `<span class="mark ok">${icon.check}</span><span class="what" title="Filled 4 of 5 · Contact email left for you"><b>4 of 5</b> · <span class="warn">email left for you</span></span><span class="sep"></span>
+      <button class="act" id="src">Sources <span class="count">3</span> ${icon.down}</button>
       <button class="act">${icon.again} Another go ${icon.down}</button>
-      <button class="act" id="undo">${icon.undo} Undo all</button>
+      <button class="act" id="undo">${icon.undo} Undo</button>
       <button class="act x" aria-label="Dismiss">${icon.x}</button>`
     requestAnimationFrame(() => {
       placeChip(issue.querySelector('.input'))
@@ -461,7 +480,7 @@ function render() {
   if (state === 'error') {
     reply.value = ''
     reply.classList.add('is-target')
-    chip.innerHTML = `<span class="mark bad">${icon.warn}</span><span class="what" style="max-width:420px;white-space:normal">Opus 5.5 is out of usage until 3:40 pm. The field is unchanged. Try again then, or fill it with Codex.</span><span class="sep"></span>
+    chip.innerHTML = `<span class="mark bad">${icon.warn}</span><span class="what" style="white-space:normal">Opus 5.5 is out of usage until 3:40 pm. The field is unchanged.</span><span class="sep"></span>
       <button class="act">Fill with Codex</button><button class="act">Try again</button><button class="act x" id="close" aria-label="Dismiss">${icon.x}</button>`
     requestAnimationFrame(() => { placeChip(reply); chip.classList.add('is-open') })
     chip.onclick = (e) => { if (e.target.closest('#close')) { chip.classList.remove('is-open'); clearTargets() } }
@@ -481,11 +500,13 @@ function typeOut() {
   tick()
 }
 
+// The same list while it works (what it has opened so far) and after (everything it opened).
 function openSources(form) {
   const list = form
     ? [...SOURCES, ['$', '#3b3d44', 'Ran the compositor version command', 'shell']]
-    : SOURCES
-  drop.innerHTML = '<div class="head">Opened while filling</div>' + list.map(([l, c, t, h]) => `<div class="item"><span class="fav" style="background:${c}">${l}</span>${t}<span class="host">${h}</span></div>`).join('')
+    : SOURCES.slice(0, opened)
+  const head = state === 'working' ? 'Opened so far' : 'Opened while filling'
+  drop.innerHTML = `<div class="head">${head}</div>` + list.map(([l, c, t, h]) => `<div class="item"><span class="fav" style="background:${c}">${l}</span>${t}<span class="host">${h}</span></div>`).join('')
   placeDrop($('src')); drop.classList.add('is-open')
 }
 function openAgain() {
