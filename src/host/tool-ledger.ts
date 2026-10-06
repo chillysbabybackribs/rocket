@@ -215,11 +215,11 @@ export class ToolLedger implements ToolObserver {
   }
 
   summary(query: LedgerQuery = {}) {
-    const rows = this.rows(query), scopes = new Map<string, { attempts: number; successes: number; failures: number; interrupted: number; running: number }>()
+    const rows = this.rows(query), scopes = new Map<string, { attempts: number; successes: number; failures: number; interrupted: number; running: number; descriptionBytes: number }>()
     const groups = new Map<string, Record<string, unknown> & { count: number; examples: string[] }>()
     for (const row of rows) {
       const scope = JSON.stringify([row.tool, row.toolVersion, row.operation])
-      const totals = scopes.get(scope) ?? { attempts: 0, successes: 0, failures: 0, interrupted: 0, running: 0 }
+      const totals = scopes.get(scope) ?? { attempts: 0, successes: 0, failures: 0, interrupted: 0, running: 0, descriptionBytes: row.descriptionBytes }
       totals.attempts++
       if (row.outcome === 'success') totals.successes++
       else if (row.outcome === 'failure') totals.failures++
@@ -240,8 +240,12 @@ export class ToolLedger implements ToolObserver {
       return { ...group, ...totals, failureRate: totals.failures / Math.max(1, totals.successes + totals.failures) }
     })
     const limit = Math.max(1, Math.min(50, Math.floor(query.limit ?? 20)))
-    return { path: this.path, retainedCalls: rows.length, scopes: [...scopes].slice(0, limit).map(([key, totals]) => ({ scope: JSON.parse(key), ...totals })), groups: ordered.slice(0, limit), truncated: ordered.length > limit || scopes.size > limit,
-      denominator: 'All completed calls in the same tool version and operation; error-code filters do not remove successes.' }
+    return { path: this.path, retainedCalls: rows.length, contextPolicy: { historyInPrompts: false, maxQueryResponseBytes: 12_000, maxRetainedCalls: MAX_CALLS, retentionDays: RETENTION_MS / 86_400_000 },
+      scopes: [...scopes].slice(0, limit).map(([key, totals]) => {
+        const completed = totals.successes + totals.failures
+        return { scope: JSON.parse(key), ...totals, successRate: completed ? totals.successes / completed : null, failureRate: completed ? totals.failures / completed : null }
+      }), groups: ordered.slice(0, limit), truncated: ordered.length > limit || scopes.size > limit,
+      denominator: 'All completed calls in the same tool version and operation; error-code filters do not remove successes. descriptionBytes tracks tool-description size beside rates.' }
   }
 
   prune(): void {

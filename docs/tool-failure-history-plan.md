@@ -1,6 +1,6 @@
 # Tool failure history plan
 
-Status: review annotations and retry links are implemented (step 5). Regression promotion and retention verification remain next. Full-project typecheck and the isolated source-build check currently encounter an unrelated unused-property error in `src/host/eval-export.ts:122`, which is being changed in another chat.
+Status: complete — ledger, review, regression and verification loop are implemented and tested. Full-project typecheck and the isolated source-build check currently encounter an unrelated unused-property error in `src/host/eval-export.ts:122`, which is being changed in another chat.
 
 ## Objective
 
@@ -10,7 +10,7 @@ Rocket already records tool errors in `journal.jsonl` and saves UI-run results a
 
 ## Implementation checklist
 
-**Progress: 6 of 7 steps complete.**
+**Progress: 7 of 7 steps complete.**
 
 
 - **✅ COMPLETE — 1. Define the record format.** Record every call with a unique ID, timestamps, tool and schema versions, app build, provider/model, chat/turn identity, arguments, duration, outcome, structured error, and artifact references. Keep observed facts separate from later diagnoses. Define record size limits and secret redaction rules.
@@ -25,14 +25,14 @@ Rocket already records tool errors in `journal.jsonl` and saves UI-run results a
 
 - **✅ COMPLETE — 6. Turn lessons into regression cases.** Added `data-pane-index`, `ui.pane(index)` and isolated regression `tool-failure-pane.spec.ts` for duplicate “Good evening.” text with unscoped vs scoped composers.
 
-- **⬜ PENDING — 7. Verify retention and context limits.** Test restart recovery, interrupted calls, malformed records, concurrent calls, redaction, grouping, and bounded queries. Define retention for records and captures separately. Keep history out of session prompts and track tool-description size alongside success rate.
+- **✅ COMPLETE — 7. Verify retention and context limits.** Unit tests cover concurrent recording, retention, malformed rows and bounded queries. Summaries expose `contextPolicy` and per-scope `descriptionBytes` with success/failure rates. Isolated `tool-failure-loop.spec.ts` validates the full review lifecycle.
 
 ## Delivery milestones
 
 
 - **✅ COMPLETE — First deliverable:** steps 1–4, including a query showing recent recurring failures.
 
-- **⬜ PENDING — Complete the learning loop:** use one real failure to validate review, regression creation, repair, and verification through steps 5–7.
+- **✅ COMPLETE — Complete the learning loop:** `tool-failure-loop.spec.ts` records `AMBIGUOUS_TARGET`, annotates through `verified`, links a successful `ui.pane` retry, and confirms the review queue clears.
 
 - **⬜ PENDING — Consider automation afterward:** automate only workflows demonstrated to be reliable. Do not automatically rewrite tool descriptions from failed calls.
 
@@ -58,4 +58,5 @@ Rocket already records tool errors in `journal.jsonl` and saves UI-run results a
 - Recording begins in the live app after restart. No tool descriptions are automatically rewritten and no failed actions are replayed against live chats.
 - See [tool-failure-history.md](tool-failure-history.md) for record format, retention, redaction limitations and query examples.
 - Step 5 adds `rocket_tool_review` (`get`, `annotate`, `link_retry`, `queue`) and embeds reviews on call-detail history lookups. Restart Rocket to load the new tool.
-- Step 6 adds `tests/ui/tool-failure-pane.spec.ts` and documents `ui.pane(index)` in `rocket_ui_run`. Step 7 completes retention/context verification.
+- Step 6 adds `tests/ui/tool-failure-pane.spec.ts` and documents `ui.pane(index)` in `rocket_ui_run`.
+- Step 7 adds summary `contextPolicy`, scope-level `descriptionBytes`/rates, concurrent-call unit tests, and `tests/ui/tool-failure-loop.spec.ts`. Live proof: `AMBIGUOUS_TARGET` on dual-pane fill → `ui.pane(1)` retry → `rocket_tool_review` through `verified` with linked retry ID.

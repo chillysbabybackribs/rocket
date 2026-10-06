@@ -110,6 +110,35 @@ test('query tool validates filters and bounds JSON responses without returning a
   } finally { f.ledger.close(); f.cleanup() }
 })
 
+test('concurrent tool calls record distinct finishes without cross-talk', async () => {
+  const f = fixture()
+  try {
+    const registry = new ToolRegistry(undefined, f.ledger)
+    registry.add({ ...tool, run: args => args.delay ? new Promise(resolve => setTimeout(() => resolve({ content: [{ type: 'text', text: 'slow' }] }), 5)) : { content: [{ type: 'text', text: String(args.tag) }] } })
+    await Promise.all([
+      registry.call('probe', { tag: 'a' }, context),
+      registry.call('probe', { tag: 'b', delay: true }, context),
+      registry.call('probe', { tag: 'c' }, context)
+    ])
+    const calls = (f.ledger.query({ since: 0, limit: 10 }) as any).calls.filter((row: any) => row.outcome === 'success')
+    assert.equal(calls.length, 3)
+    assert.equal(new Set(calls.map((row: any) => row.id)).size, 3)
+  } finally { f.ledger.close(); f.cleanup() }
+})
+
+test('summary exposes context limits and description bytes beside success rates', () => {
+  const f = fixture()
+  try {
+    const id = f.ledger.start('probe', { ...tool, description: 'x'.repeat(500) }, {}, context)
+    f.ledger.finish(id, { content: [{ type: 'text', text: 'ok' }] })
+    const summary = f.ledger.summary() as any
+    assert.equal(summary.contextPolicy.historyInPrompts, false)
+    assert.equal(summary.contextPolicy.maxQueryResponseBytes, 12_000)
+    assert.equal(summary.scopes[0].descriptionBytes, 500)
+    assert.equal(summary.scopes[0].successRate, 1)
+  } finally { f.ledger.close(); f.cleanup() }
+})
+
 test('review annotations stay separate, support retry links and a bounded queue', async () => {
   const f = fixture()
   try {

@@ -69,6 +69,11 @@ Call detail lookups through `rocket_tool_history` include an embedded `review` w
 
 When two panes show the same greeting text, unscoped `Message` textboxes fail with `AMBIGUOUS_TARGET`. Scope with `ui.pane(index)` (matching `data-pane-index` on each `.pane` in the shell). Isolated replay: `tests/ui/tool-failure-pane.spec.ts` (`UI check: good evening` fixture). Mark reviewed failures with `rocket_tool_review` lifecycle `regression_added` when promoting a lesson.
 
-## Remaining work
+## Context limits
 
-Retention/context verification (step 7) is next. The first integration regression already checks that an ambiguous selector produces a structured failure, preserves existing drafts, and can be retrieved through the history tool with successful calls included in its denominator.
+`rocket_tool_history` summaries include `contextPolicy` (`historyInPrompts: false`, response and retention caps). Each scope reports `descriptionBytes` beside `successRate` and `failureRate` so growing tool descriptions can be tracked against reliability. Captures and traces keep their own retention; the ledger stores references only.
+
+## Verification
+
+- Unit: `src/host/tool-ledger.test.ts` (recording, concurrent calls, reviews, retention, bounded queries).
+- UI: `tests/ui/tool-failure-pane.spec.ts` (fix) and `tests/ui/tool-failure-loop.spec.ts` (failure → review → verified, isolated only). The first integration regression already checks that an ambiguous selector produces a structured failure, preserves existing drafts, and can be retrieved through the history tool with successful calls included in its denominator.
