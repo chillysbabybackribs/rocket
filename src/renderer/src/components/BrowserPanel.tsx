@@ -2,9 +2,9 @@ import { useImagePreviewOpen } from './Attachments.tsx'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Lock, RotateCw, Search, X } from 'lucide-react'
 import type { BrowserState, BrowserTab, Suggestion } from '../../../shared/types.ts'
-import { useApp } from '../store.ts'
+import { setReadingSpeed, useApp } from '../store.ts'
 import { BrowserTabs } from './BrowserTabs.tsx'
-import { ReadingControl } from './ReadingControl.tsx'
+import { ReadingControl, type ReadingActions } from './ReadingControl.tsx'
 
 // The UI's half of the embedded browser: the tab strip, a toolbar, and an empty box whose
 // position is reported to main, which lays the active tab's page (a native view) exactly over
@@ -13,6 +13,12 @@ import { ReadingControl } from './ReadingControl.tsx'
 
 const send = window.rocket.browser.send
 const EMPTY: BrowserState = { tabs: [], activeId: null, readingSpeed: 1 }
+const READING: ReadingActions = {
+  flip: () => send({ type: 'reading', action: 'flip' }),
+  toggle: () => send({ type: 'reading', action: 'toggle' }),
+  stop: () => send({ type: 'reading', action: 'stop' }),
+  setSpeed: (speed) => setReadingSpeed(speed)
+}
 
 /** How Safari shows an address at rest: the site's name alone, with a lock when it is secure. */
 function atRest(url: string): { kind: 'secure' | 'insecure' | 'other'; label: string } {
@@ -135,9 +141,15 @@ export function BrowserPanel() {
   const [state, setState] = useState(EMPTY)
   const stage = useRef<HTMLDivElement>(null)
   const active = state.tabs.find((tab) => tab.id === state.activeId) ?? null
+  const readingSpeed = useApp((app) => app.readingSpeed)
 
   useEffect(() => {
-    const off = window.rocket.browser.onState(setState)
+    // The app's preference is the speed; main's saved one may be older, from before a file was read.
+    send({ type: 'readingSpeed', speed: useApp.getState?.().readingSpeed ?? 1 })
+    const off = window.rocket.browser.onState((next) => {
+      setState(next)
+      setReadingSpeed(next.readingSpeed, true)
+    })
     send({ type: 'sync' })
     return off
   }, [])
@@ -195,7 +207,7 @@ export function BrowserPanel() {
           </div>
           <AddressField tab={active} />
           <div className="browser-tools">
-            <ReadingControl tab={active} speed={state.readingSpeed} />
+            <ReadingControl reading={active?.reading ?? null} speed={readingSpeed} disabled={!active?.url} actions={READING} />
           </div>
         </div>
         <div className="browser-stage" ref={stage} />
