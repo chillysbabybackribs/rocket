@@ -15,6 +15,11 @@ export type RunEvalCellInput = {
   openGoal?: boolean
   scenarioId?: string
   timeoutMs?: number
+  /**
+   * Tag the chat for turn export (the CLI matrix). The eval panel's runs export each turn
+   * themselves into the cell's folder, so they leave it off.
+   */
+  tag?: boolean
 }
 
 export type RunEvalCellResult = {
@@ -56,7 +61,10 @@ export type StartedEvalCell = {
 export function startEvalCell(deps: EvalCellDeps, input: RunEvalCellInput): StartedEvalCell {
   const cwd = isAbsolute(input.cwd) ? input.cwd : resolve(input.cwd)
   mkdirSync(input.outDir, { recursive: true })
-  deps.evalExport.setCellDir(input.outDir)
+  // The turn is exported to `outDir` by name when it ends (finishEvalCell). Setting the export's
+  // shared cell folder here instead would send every later turn, from any chat or a run beside
+  // this one, into this cell.
+  const tag = input.tag !== false
 
   if (input.openGoal) {
     const goal = deps.goals.draft({
@@ -65,14 +73,14 @@ export function startEvalCell(deps: EvalCellDeps, input: RunEvalCellInput): Star
       provider: input.provider,
       model: input.model
     })
-    deps.evalExport.tagChat(goal.chatId)
+    if (tag) deps.evalExport.tagChat(goal.chatId)
     const running = deps.store.turns(goal.chatId).find((turn) => turn.status === 'running')
     if (!running) throw new Error('Goal draft did not start a turn')
     return { chatId: goal.chatId, turnId: running.id, cellDir: input.outDir }
   }
 
   const chat = deps.hub.createChat(cwd, input.scenarioId ? `[eval] ${input.scenarioId}` : '[eval]')
-  deps.evalExport.tagChat(chat.id)
+  if (tag) deps.evalExport.tagChat(chat.id)
   const turnId = deps.hub.send(chat.id, input.provider, input.model, input.message)
   return { chatId: chat.id, turnId, cellDir: input.outDir }
 }

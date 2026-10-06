@@ -54,7 +54,7 @@ export const ACTIONS = {
   'pane.close': { description: 'Close a chat pane; the only pane cannot close.', params: { pane: 'pane index' } },
   'chat.open': { description: 'Show a chat in a pane.', params: { chatId: 'chat id (required)', pane: 'pane index, default the focused one' } },
   'chat.new': { description: 'Show the new-chat screen in a pane.', params: { pane: 'pane index, default the focused one' } },
-  'evals.sync': { description: 'Reload the scenario files and saved runs from disk.', place: 'evals.scenarios' },
+  'evals.sync': { description: 'Reload the scenario files and saved runs from disk; opens the eval panel when it is closed.' },
   'evals.run.start': {
     description: 'Run the scenario shown on every provider in its matrix with real provider turns (spends subscription usage): providers side by side, each provider\'s trials in turn, each in a fresh copy of the scenario\'s folder. Returns the graded run when it ends, or after `wait` seconds with it still running; rocket_ui_where then shows its cells.',
     params: { scenario: 'scenario id, default the one shown', message: 'message for this run instead of the scenario\'s', wait: 'seconds to wait, default 100, at most 120' },

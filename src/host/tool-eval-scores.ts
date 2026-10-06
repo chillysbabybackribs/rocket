@@ -2,7 +2,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Tool } from './tools/registry.ts'
 import type { ToolLedger } from './tool-ledger.ts'
-import { evalLiveRoot, listScenariosForUi } from './eval-live.ts'
+import { evalRunsRoot } from './eval-runs.ts'
+import { listScenarios } from './eval-scenarios.ts'
 
 export type ToolEvalWeights = { wR: number; wP: number; description?: string }
 
@@ -56,7 +57,7 @@ function ledgerReliability(ledger: ToolLedger, tool: string): { r: number | null
 }
 
 function scenarioIdsForTool(repoRoot: string, tool: string): string[] {
-  const { scenarios } = listScenariosForUi(repoRoot)
+  const { scenarios } = listScenarios(repoRoot)
   return scenarios.filter(row => row.targetTool === tool).map(row => row.id)
 }
 
@@ -100,7 +101,7 @@ export function loadToolEvalScores(
   dataDir: string
 ): ToolEvalScoresData {
   const weights = loadToolEvalWeights(repoRoot)
-  const outcomes = collectEvalLiveOutcomes(evalLiveRoot(dataDir))
+  const outcomes = collectEvalLiveOutcomes(evalRunsRoot(dataDir))
   const names = registered.map(t => t.name).sort()
   const tools: ToolEvalScoreRow[] = names.map(tool => {
     const scenarioIds = scenarioIdsForTool(repoRoot, tool)
@@ -113,6 +114,6 @@ export function loadToolEvalScores(
     weights,
     syncedAt: new Date().toISOString(),
     tools,
-    note: 'P uses graders.json from profile eval-live runs for scenarios with targetTool. Run cells via Eval → Run cell or Playground; pass requires real chat turn export.'
+    note: 'P uses graders.json from profile eval-live runs for scenarios with targetTool. Run a scenario from the eval panel; a pass needs a real provider turn.'
   }
 }
