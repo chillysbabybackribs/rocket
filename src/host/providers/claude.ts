@@ -6,7 +6,7 @@ import { clipOutput, jsonPreview, messageOf, oneLine, recordOf, stringOf } from 
 import { claudeRateLimitWindow, claudeUsage, mergeWindow, planName } from '../usage-parsers.ts'
 import { randomUUID } from 'node:crypto'
 import {
-  itemId, TOOL_SERVER, unavailableUsage,
+  itemId, planItem, TOOL_SERVER, unavailableUsage,
   type OpenUnprompted, type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type ToolEndpoint, type TurnSink
 } from './provider.ts'
 
@@ -36,8 +36,12 @@ import {
 //   while the model wrote a tool call. A plain interrupt then left it in `still_queued`, and
 //   retiring the process for it killed a background subagent and shell. `interrupt({cancelQueued:
 //   true})` (in the SDK runtime, not its types; capability `interrupt_cancel_queued_v1`; read, not
-//   yet seen live) cancels it in place. Assistant frames list the user messages the turn has
-//   consumed in `user_message_uuids` (types, read 2026-10-05).
+//   yet seen live) cancels it in place.
+// - (CLI 2.1.289 binary, read 2026-10-05; not yet seen live) Assistant frames list consumed user
+//   messages in `user_message_uuids`, but a typed prompt's turn is not stamped again after a fold,
+//   so that cannot say when words sent mid-turn were read. With `--replay-user-messages` a queued
+//   message is echoed (`isReplay`, its uuid) as it drains into a turn, and `command_lifecycle
+//   {command_uuid, state}` goes queued → started → completed | cancelled. Either marks it read.
 // The SDK has no supported way to import another model's turns into a session, so missed turns
 // ride at the head of the user's message as a tagged block.
 //
@@ -79,6 +83,8 @@ function queryOptions(
     // Tool search off: the app's few tools are in the prompt from the start, not one lookup away.
     env: { ...process.env, CLAUDE_AGENT_SDK_CLIENT_APP: 'rocket/0.1.0', ENABLE_TOOL_SEARCH: 'false' },
     includePartialMessages: true,
+    // Echoes each user message as Claude Code takes it, which is when words sent mid-turn are read.
+    extraArgs: { 'replay-user-messages': null },
     permissionMode: 'bypassPermissions',
     allowDangerouslySkipPermissions: true,
     // The workspace's CLAUDE.md and the user's skills apply; the user's own MCP connectors do not.
@@ -105,8 +111,8 @@ type RunningTurn = {
   deferred?: RunResult | null
   /** Ends a deferred turn if no follow-up starts after the background has emptied. */
   settleTimer?: NodeJS.Timeout | null
-  /** The uuids of the user's words sent into this turn while it ran. */
-  steers?: Set<string>
+  /** The user's words sent into this turn that Claude Code has not taken yet, by uuid. */
+  steers?: Map<string, () => void>
 }
 
 /** One live Claude Code process for one chat. */
@@ -319,14 +325,14 @@ export class ClaudeAdapter implements ProviderAdapter {
     if (survivors.some((uuid) => waiting.steers?.has(uuid))) this.retire(runtime)
   }
 
-  async steer(chatId: string, text: string): Promise<boolean> {
+  async steer(chatId: string, text: string, taken: () => void): Promise<boolean> {
     const runtime = this.runtimes.get(chatId)
     const turn = runtime?.turn
     if (!runtime?.alive || !turn) return false
     // 'next' folds the words in between tool rounds without cutting off the step under way. A
     // turn only waiting on background tasks is idle, so they start its follow-up at once.
     const uuid = randomUUID()
-    ;(turn.steers ??= new Set()).add(uuid)
+    ;(turn.steers ??= new Map()).set(uuid, taken)
     runtime.push(text, { uuid, priority: 'next' })
     return true
   }
@@ -447,6 +453,16 @@ export class ClaudeAdapter implements ProviderAdapter {
     const message = recordOf(raw)
     if (message.type === 'rate_limit_event') this.noteRateLimit(recordOf(message.rate_limit_info))
     if (message.type === 'system') this.noteBackground(runtime, message)
+    // Echoes and lifecycle of the user's own messages; one of steered words means the model has them.
+    const echoed = message.type === 'user' && message.isReplay === true ? stringOf(message.uuid)
+      : message.type === 'command_lifecycle' && message.state === 'started' ? stringOf(message.command_uuid) : null
+    if (echoed !== null) {
+      const taken = runtime.turn?.steers?.get(echoed)
+      runtime.turn?.steers?.delete(echoed)
+      taken?.()
+      return
+    }
+    if (message.type === 'command_lifecycle') return
     const turn = runtime.turn ?? this.unprompted(runtime, message)
     if (!turn) return
     if (turn.deferred && (message.type === 'stream_event' || message.type === 'assistant')) {
@@ -623,6 +639,9 @@ export class TurnTranslator {
    * come, counted per text: a turn can say the same thing twice, and each saying is its own row.
    */
   private readonly awaited = new Map<string, number>()
+  /** TodoWrite calls, which become the turn's plan rather than tool rows. */
+  private readonly planCalls = new Set<string>()
+  private lastPlan = ''
   private messageCount = 0
   private pendingError: string | null = null
 
@@ -774,14 +793,29 @@ export class TurnTranslator {
   }
 
   private startTool(id: string, name: string, input: Record<string, unknown>): Op[] {
+    if (name === 'TodoWrite') {
+      this.planCalls.add(id)
+      return this.plan(input)
+    }
     if (this.tools.has(id)) return []
     const item: ToolItem = { type: 'tool', id: itemId(this.turnId, id), turnId: this.turnId, status: 'running', output: '', ...describeTool(name, input) }
     this.tools.set(id, { item, name })
     return [{ type: 'item', item }]
   }
 
+  /** The whole list arrives with each TodoWrite; the plan item is replaced when it has changed. */
+  private plan(input: Record<string, unknown>): Op[] {
+    const item = planItem(this.turnId, input.todos, (todo) => stringOf(todo.content))
+    if (!item) return []
+    const key = JSON.stringify(item)
+    if (key === this.lastPlan) return []
+    this.lastPlan = key
+    return [{ type: 'item', item }]
+  }
+
   /** Arguments stream after the call is announced; re-describe it once they are known. */
   private relabelTool(id: string, input: Record<string, unknown>): Op[] {
+    if (this.planCalls.has(id)) return this.plan(input)
     const tool = this.tools.get(id)
     if (!tool || tool.item.status !== 'running' || Object.keys(input).length === 0) return []
     const described = describeTool(tool.name, input)

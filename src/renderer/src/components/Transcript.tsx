@@ -433,7 +433,8 @@ function roundOf(goal: Goal | null, turns: Turn[], turn: Turn): number {
 
 /**
  * Messages waiting for the turn in flight to end, under it: dashed until they are sent, with a
- * way to send them now (stopping the turn) or take them back into the composer.
+ * way to send them now (stopping the turn) or take them back into the composer. Words sent into
+ * the turn wait here too, until its model reads them and they join the turn at that point.
  */
 function Waiting() {
   const queued = useApp((state) => state.queued)
@@ -444,12 +445,16 @@ function Waiting() {
       {queued.map((entry) => (
         <div key={entry.id} className="steer is-waiting">
           <div className="user-bubble"><ChatMarkdown text={entry.text} /></div>
-          <div className="steer-status">
-            <span>Sends when {answering ? providerLabel(answering) : 'the turn'} finishes</span>
-            <span aria-hidden>·</span>
-            <button type="button" onClick={sendNow}>Send now</button>
-            <button type="button" onClick={() => editQueued(entry.id)}>Edit</button>
-          </div>
+          {entry.taking ? (
+            <div className="steer-status"><span>{providerLabel(entry.provider)} reads this at its next step</span></div>
+          ) : (
+            <div className="steer-status">
+              <span>Sends when {answering ? providerLabel(answering) : 'the turn'} finishes</span>
+              <span aria-hidden>·</span>
+              <button type="button" onClick={sendNow}>Send now</button>
+              <button type="button" onClick={() => editQueued(entry.id)}>Edit</button>
+            </div>
+          )}
         </div>
       ))}
     </>

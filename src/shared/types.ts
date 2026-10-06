@@ -53,9 +53,23 @@ export type Item =
       /** The option picked or the words typed; null while unanswered. */
       answer: string | null
     }
+  /**
+   * The plan a model keeps while it works (Claude Code's TodoWrite, Codex's plan, Cursor's
+   * todos). One per turn, id `<turnId>:plan`, replaced whole each time the model updates it; it
+   * is shown beside the chat, not in the transcript's flow.
+   */
+  | { type: 'plan'; id: string; turnId: string; steps: PlanStep[] }
 
 /** One clickable answer: a short label and what picking it means. */
 export type QuestionOption = { label: string; detail: string }
+
+/** One line of a model's plan. `doing` is the step under way; a provider marks at most one, usually. */
+export type PlanStep = { text: string; status: 'todo' | 'doing' | 'done' }
+
+/** The id of a turn's plan item; the one place a turn and its plan are joined. */
+export function planItemId(turnId: string): string {
+  return `${turnId}:plan`
+}
 
 export type TurnStatus = 'running' | 'completed' | 'failed' | 'interrupted'
 
@@ -186,7 +200,8 @@ export type Chat = {
 }
 
 /** A message waiting for the chat's turn in flight to end, to be sent as the next one. Kept in memory only. */
-export type QueuedMessage = { id: string; provider: ProviderId; text: string }
+/** `taking`: sent into the running turn, and its model has not read it yet. */
+export type QueuedMessage = { id: string; provider: ProviderId; text: string; taking?: boolean }
 
 export type ChatSnapshot = { chat: Chat; turns: Turn[]; items: Item[]; queued?: QueuedMessage[] }
 

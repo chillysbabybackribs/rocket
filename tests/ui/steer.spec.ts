@@ -15,8 +15,12 @@ test('a message sent mid-turn joins the turn, or waits for it when another provi
   await expect(page.locator('.composer-hint')).toContainText('adds to this turn')
   await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible()
   await message.press('Enter')
-  const added = page.locator('.turn .steer').filter({ hasText: 'Keep the footer as it is' })
-  await expect(added).toContainText('Added during the turn')
+  // On its way until the model reads it; then it joins the turn where it was read.
+  const onItsWay = page.locator('.steer.is-waiting').filter({ hasText: 'Keep the footer as it is' })
+  await expect(onItsWay).toContainText('Claude reads this at its next step')
+  await expect(onItsWay.getByRole('button')).toHaveCount(0)
+  const added = page.locator('.turn .steer:not(.is-waiting)').filter({ hasText: 'Keep the footer as it is' })
+  await expect(added).toHaveCount(0)
   await expect(page.locator('.turn')).toHaveCount(1)
   await expect(message).toHaveValue('')
 
@@ -25,8 +29,7 @@ test('a message sent mid-turn joins the turn, or waits for it when another provi
   await expect(message).toHaveAttribute('placeholder', 'Message to send when Claude finishes…')
   await message.fill('UI check: ask')
   await message.press('Enter')
-  const waiting = page.locator('.steer.is-waiting')
-  await expect(waiting).toContainText('UI check: ask')
+  const waiting = page.locator('.steer.is-waiting').filter({ hasText: 'UI check: ask' })
   await expect(waiting).toContainText('Sends when Claude finishes')
   await rocket.capture('steer-waiting')
 
@@ -39,7 +42,8 @@ test('a message sent mid-turn joins the turn, or waits for it when another provi
 
   await rocket.release()
   await expect(page.locator('.turn')).toHaveCount(2)
-  await expect(waiting).toHaveCount(0)
+  await expect(page.locator('.steer.is-waiting')).toHaveCount(0)
+  await expect(added).toContainText('Added during the turn')
   await expect(page.locator('.turn').first()).toContainText('Carried on with the words added mid-turn.')
   await expect(page.getByRole('group', { name: 'Question from the model' })).toBeVisible()
   await rocket.capture('steer-sent')

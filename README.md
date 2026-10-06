@@ -66,8 +66,14 @@ The composer stays open while a turn runs; Esc or the Stop button beside Send st
 to the provider that is answering joins its turn (`Hub.post`, `ProviderAdapter.steer`): Claude
 Code gets it as a streamed user message with priority `next`, Codex through `turn/steer`. The
 message is wrapped in an instruction to carry on without acknowledging it, so no "Got it" reply.
-It is stored as a user item marked `steer` inside the same turn, and the transcript splits the
-turn there, folding the earlier steps into their own summary. Cursor and Antigravity cannot take
+The model reads it only at its next step, which can be many seconds away, so until then it shows
+dashed under the turn ("Claude reads this at its next step"). The adapter calls `steer`'s `taken`
+callback when the model reads it: Claude Code echoes it (`--replay-user-messages`) and reports
+`command_lifecycle` `started`; Codex reports a `userMessage` item. Only then is it stored as a
+user item marked `steer` inside the same turn, at the point it was read, and the transcript splits
+the turn there, folding the earlier steps into their own summary. Words a turn never said it read
+are recorded in it when it ends, not sent again; a stopped turn dropped them, so Send now sends
+them first and Stop returns them to the composer. Cursor and Antigravity cannot take
 words mid-turn, and a message to a different provider must wait for the turn anyway: those queue
 in the hub, show under the turn with Send now (stop, then send) and Edit (back to the composer),
 and go out together as one message to the last picked provider when the turn ends. Stop returns

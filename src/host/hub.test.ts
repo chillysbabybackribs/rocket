@@ -21,6 +21,7 @@ class FakeAdapter implements ProviderAdapter {
     return new Promise((resolve) => { this.finish = resolve })
   }
   complete(): void { this.finish?.({ status: 'completed' }) }
+  protected finishWith(result: RunResult): void { this.finish?.(result) }
   fail(): void { this.finish?.({ status: 'failed', error: 'boom' }) }
   lose(): void { this.finish?.({ status: 'failed', sessionLost: true }) }
   async prepare(request: PrepareRequest): Promise<void> { this.prepared.push(request) }
@@ -197,13 +198,14 @@ test('a turn the provider starts by itself is recorded, replied in, and settled'
 
 /** A fake whose turns take the user's words while they run, until told not to. */
 class SteeringAdapter extends FakeAdapter {
-  steered: Array<{ chatId: string; text: string }> = []
+  steered: Array<{ chatId: string; text: string; taken: () => void }> = []
   takes = true
-  async steer(chatId: string, text: string): Promise<boolean> {
+  async steer(chatId: string, text: string, taken: () => void): Promise<boolean> {
     if (!this.takes) return false
-    this.steered.push({ chatId, text })
+    this.steered.push({ chatId, text, taken })
     return true
   }
+  interrupted(): void { this.finishWith({ status: 'interrupted' }) }
 }
 
 function steerSetup() {
@@ -232,13 +234,54 @@ test('words sent to the provider answering join its turn, told not to acknowledg
   assert.equal(claude.ran.length, 1, 'no second turn')
   assert.match(claude.steered[0]!.text, /do not stop to acknowledge/)
   assert.match(claude.steered[0]!.text, /Leave the account section$/)
-  const users = hub.openChat(chat.id).items.filter((item) => item.type === 'user')
-  assert.deepEqual(users.map((item) => [item.turnId, item.text, item.type === 'user' && item.steer === true]), [
-    [turnId, 'Restyle settings', false],
-    [turnId, 'Leave the account section', true]
-  ])
+  const users = (): Array<[string, string, boolean]> => hub.openChat(chat.id).items
+    .flatMap((item) => (item.type === 'user' ? [[item.turnId, item.text, item.steer === true] as [string, string, boolean]] : []))
+  assert.deepEqual(users(), [[turnId, 'Restyle settings', false]], 'not in the turn until the model reads it')
+  assert.deepEqual(hub.queued(chat.id).map((entry) => [entry.text, entry.taking]), [['Leave the account section', true]])
+
+  claude.steered[0]!.taken()
+  assert.deepEqual(users(), [[turnId, 'Restyle settings', false], [turnId, 'Leave the account section', true]])
+  assert.deepEqual(hub.queued(chat.id), [])
   claude.complete()
   await ended(1)
+})
+
+test('words a turn never said it read are kept when it completes, and sent next when it is stopped', async () => {
+  const { claude, hub, ended } = steerSetup()
+  const chat = hub.createChat('/work')
+  const first = hub.send(chat.id, 'claude', null, 'One')
+  await hub.post(chat.id, 'claude', null, 'unannounced')
+  claude.complete()
+  await ended(1)
+  assert.deepEqual(hub.openChat(chat.id).items.filter((item) => item.type === 'user').map((item) => [item.turnId, item.text]), [
+    [first, 'One'], [first, 'unannounced']
+  ], 'recorded, not sent twice')
+
+  hub.send(chat.id, 'claude', null, 'Two')
+  await hub.post(chat.id, 'claude', null, 'cut off')
+  await hub.stop(chat.id)
+  claude.interrupted()
+  await ended(2)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(claude.ran.length, 3, 'the stop dropped them, so they are the next message')
+  assert.match(claude.ran[2]!.text, /cut off$/)
+  claude.complete()
+  await ended(3)
+})
+
+test('Stop gives back words on their way into the turn with those waiting for it', async () => {
+  const { claude, hub, ended } = steerSetup()
+  const chat = hub.createChat('/work')
+  hub.send(chat.id, 'claude', null, 'Start')
+  await hub.post(chat.id, 'claude', null, 'on its way')
+  await hub.post(chat.id, 'cursor', null, 'waiting')
+  assert.equal(hub.withdraw(chat.id), 'on its way\n\nwaiting')
+  await hub.stop(chat.id)
+  claude.interrupted()
+  await ended(1)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(claude.ran.length, 1, 'nothing is sent after the stop')
+  assert.deepEqual(hub.openChat(chat.id).items.filter((item) => item.type === 'user').length, 1)
 })
 
 test('words for a provider that cannot take them wait, and go out together when the turn ends', async () => {

@@ -20,7 +20,7 @@ export function uiTestProfile(env: NodeJS.ProcessEnv = process.env): string | nu
 
 export class UiTestAdapter implements ProviderAdapter {
   private readonly active = new Map<string, AbortController>()
-  private readonly steered = new Map<string, string[]>()
+  private readonly steered = new Map<string, Array<{ text: string; taken: () => void }>>()
 
   constructor(readonly id: ProviderId, private readonly profile: string) {}
 
@@ -58,7 +58,10 @@ export class UiTestAdapter implements ProviderAdapter {
       }
       if (controller.signal.aborted) return { status: 'interrupted' }
       sink.delta(id, '\n\n**Complete.** The controlled response finished.')
-      if (this.steered.get(request.chatId)?.length) {
+      const steered = this.steered.get(request.chatId) ?? []
+      if (steered.length) {
+        // The release is the fixture's next step, where a real model would read the words.
+        for (const steer of steered) steer.taken()
         sink.item({ type: 'tool', id: `${turnId}:after`, turnId, kind: 'edit', label: 'UI fixture, as asked', output: '', status: 'done' })
         sink.item({ type: 'assistant', id: `${turnId}:reply-after`, turnId, text: 'Carried on with the words added mid-turn.', streaming: false })
       }
@@ -73,9 +76,9 @@ export class UiTestAdapter implements ProviderAdapter {
   }
 
   /** Providers that steer for real take words into a running turn here too; the others make them wait. */
-  async steer(chatId: string, text: string): Promise<boolean> {
+  async steer(chatId: string, text: string, taken: () => void): Promise<boolean> {
     if (!this.active.has(chatId) || !PROVIDERS.some((entry) => entry.id === this.id && entry.steers)) return false
-    this.steered.set(chatId, [...this.steered.get(chatId) ?? [], text])
+    this.steered.set(chatId, [...this.steered.get(chatId) ?? [], { text, taken }])
     return true
   }
 

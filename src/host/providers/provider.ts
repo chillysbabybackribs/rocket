@@ -1,5 +1,5 @@
 import type { Handoff } from '../handoff.ts'
-import type { Item, ModelInfo, ProviderId, TurnStatus, UsageSnapshot } from '../../shared/types.ts'
+import { planItemId, type Item, type ModelInfo, type PlanStep, type ProviderId, type TurnStatus, type UsageSnapshot } from '../../shared/types.ts'
 
 // The one interface the hub talks to. An adapter owns its provider's process and session
 // mechanics and translates the provider's stream into transcript items; it knows nothing about
@@ -90,9 +90,10 @@ export interface ProviderAdapter {
   /**
    * Add the user's words to the turn running in a chat, for the model to take in from its next
    * step; the turn keeps going and ends as usual. Resolves false when there is no turn that can
-   * take them, and the hub then sends them once the turn has ended.
+   * take them, and the hub then sends them once the turn has ended. Calls `taken` when the model
+   * reads them, which may be well after this resolves.
    */
-  steer?(chatId: string, text: string): Promise<boolean>
+  steer?(chatId: string, text: string, taken: () => void): Promise<boolean>
   /** Drop whatever is held for a chat that was deleted. */
   forget(chatId: string): void
   usage(): Promise<UsageSnapshot>
@@ -110,4 +111,22 @@ export function unavailableUsage(provider: ProviderId, reason: string): UsageSna
 /** Item ids are scoped by turn so two providers' ids can never collide inside one chat. */
 export function itemId(turnId: string, providerItemId: string): string {
   return `${turnId}:${providerItemId}`
+}
+
+/**
+ * A turn's plan from a provider's own list of steps, each with its text and the provider's word
+ * for its state. Every provider says done and in-progress the same way up to spelling; anything
+ * else is still to do. Null when the list is empty, so an empty update clears nothing.
+ */
+export function planItem(turnId: string, entries: unknown, text: (entry: Record<string, unknown>) => string): Item | null {
+  if (!Array.isArray(entries)) return null
+  const steps: PlanStep[] = []
+  for (const value of entries) {
+    const entry = typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
+    const line = text(entry).trim()
+    if (!line) continue
+    const status = String(entry.status ?? '').toLowerCase().replace(/[_-]/g, '')
+    steps.push({ text: line, status: status === 'completed' || status === 'done' ? 'done' : status === 'inprogress' || status === 'doing' ? 'doing' : 'todo' })
+  }
+  return steps.length ? { type: 'plan', id: planItemId(turnId), turnId, steps } : null
 }
