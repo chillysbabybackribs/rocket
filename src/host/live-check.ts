@@ -3,7 +3,9 @@
 // The first provider is told a codeword; each later one is asked for it, which only works if the
 // turns it missed were handed over. Uses a little of each subscription. PREPARE=1 warms each
 // provider up before its message, as the app does while one is being typed; compare the
-// "first text" times with and without it.
+// "first text" times with and without it. ASK=<message> sends that instead of the codeword
+// exchange; FULL=1 prints replies whole; ANSWER=1 clicks the suggested option of a question the
+// model asked and sends it as the next turn.
 import { tmpdir } from 'node:os'
 import type { HostEvent, Item, ProviderId, UsageSnapshot } from '../shared/types.ts'
 import { describeTiming, Hub } from './hub.ts'
@@ -33,7 +35,7 @@ const emit = (event: HostEvent): void => {
   if (event.type === 'delta') { deltas += 1; return }
   if (event.type === 'item') {
     const item = event.item
-    if (item.type === 'assistant' && !item.streaming) console.log(`   assistant: ${item.text.replace(/\s+/g, ' ').slice(0, 200)}`)
+    if (item.type === 'assistant' && !item.streaming) console.log(`   assistant: ${process.env.FULL === '1' ? item.text : item.text.replace(/\s+/g, ' ').slice(0, 200)}`)
     if (item.type === 'tool' && item.status !== 'running') console.log(`   tool[${item.kind}/${item.status}]: ${item.label.slice(0, 80)} → ${item.output.replace(/\s+/g, ' ').slice(0, 60)}`)
     if (item.type === 'notice') console.log(`   notice: ${item.text}`)
     if (item.type === 'question' && item.answer === null) {
