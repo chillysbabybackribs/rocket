@@ -1,9 +1,10 @@
 import { memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
-import { Check, ChevronRight, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
+import { Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
 import { providerLabel, type Goal, type Item, type ToolKind, type Turn } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
-import { answerQuestion, peekItem, useApp, useItem } from '../store.ts'
+import { answerQuestion, openTurnChanges, peekItem, useApp, useItem } from '../store.ts'
+import { Bar, Counts } from './ChangesView.tsx'
 
 /** Markdown is the expensive part of a row; text that has not changed parses once and never again. */
 const Block = memo(function Block({ text }: { text: string }) {
@@ -339,6 +340,24 @@ function GoalLead({ turn, goal, round }: { turn: Turn; goal: Goal | null; round:
   return <div className={`goal-lead is-${turn.goalRole}`}>{label}</div>
 }
 
+/**
+ * What the turn changed in the folder, in one line like the summary of its steps: the count, the
+ * added and removed lines, and a bar of their balance. It opens the diff beside the chat.
+ */
+function ChangesLine({ turn }: { turn: Turn }) {
+  const open = useApp((state) => state.artifact?.kind === 'changes' && state.artifact.turnId === turn.id)
+  const { changes } = turn
+  if (!changes || changes.files === 0) return null
+  return (
+    <button type="button" className={`changes-line${open ? ' is-open' : ''}`} aria-pressed={open} onClick={() => void openTurnChanges(turn.id)}>
+      <FileDiff size={12} className="changes-icon" />
+      <span>Changed {changes.files} {changes.files === 1 ? 'file' : 'files'}</span>
+      <Counts added={changes.added} removed={changes.removed} />
+      <Bar added={changes.added} removed={changes.removed} />
+    </button>
+  )
+}
+
 const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { turn: Turn; ids: string[]; fill: boolean; goal: Goal | null; round: number }) {
   const [userId, ...rest] = ids
   const running = turn.status === 'running'
@@ -354,6 +373,7 @@ const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { tu
         {steps.length > 0 && <Activity ids={steps} live={false} thoughtsOpen={thoughtsOpen} />}
         {reply && <ItemRow key={reply} id={reply} />}
         {live.length > 0 && <Activity key={live[0]} ids={live} live thoughtsOpen={false} />}
+        {!running && <ChangesLine turn={turn} />}
         {notices.map((id) => <ItemRow key={id} id={id} />)}
         {turn.status === 'interrupted' && <p className="notice is-info">Stopped</p>}
         {turn.status === 'failed' && <p className="notice is-error">{turn.error ?? 'This turn failed.'}</p>}

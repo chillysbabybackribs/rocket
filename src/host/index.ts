@@ -176,6 +176,8 @@ function onEvent(event: HostEvent): void {
 // ROCKET_AUTO_COMMIT=0 leaves committing to the user; models are still told about each other.
 const teamwork: Teamwork = new Teamwork(store, () => hub.working(), {
   commit: !testProfile && process.env.ROCKET_AUTO_COMMIT !== '0',
+  // Straight to the window: through onEvent, an ended turn would end again.
+  changed: (turn) => emit({ type: 'turn', turn }),
   warn: (message, details) => journal.add('host', 'warn', 'commit', message, details)
 })
 const browserTabs = browserContext({ request: askBrowser })
@@ -210,6 +212,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'chat.delete': async ({ chatId }) => { await hub.deleteChat(chatId); return null },
   'chat.send': ({ chatId, provider, model, text }) => { hub.send(chatId, provider, model, text); return null },
   'chat.stop': async ({ chatId }) => { await hub.stop(chatId); return null },
+  'turn.changes': ({ chatId, turnId }) => (store.turn(turnId)?.chatId === chatId ? store.turnPatch(turnId) ?? null : null),
   'question.answer': ({ chatId, itemId, answer, provider, model }) => {
     const text = answer.trim()
     if (!text) throw new Error('Pick an option or type an answer first')

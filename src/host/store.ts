@@ -1,7 +1,7 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { Chat, ChatSnapshot, Goal, GoalRole, Item, ProviderId, Turn, TurnStatus } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, Goal, GoalRole, Item, ProviderId, Turn, TurnChanges, TurnPatch, TurnStatus } from '../shared/types.ts'
 
 // The canonical transcript. The app owns the conversation; a provider's own session is a cache
 // of the part of it that provider has already seen. Each (chat, provider) pair records the
@@ -13,6 +13,12 @@ import type { Chat, ChatSnapshot, Goal, GoalRole, Item, ProviderId, Turn, TurnSt
 
 export type ProviderSession = { sessionId: string | null; seenTurnSeq: number }
 export type StoredTurn = Turn & { seq: number }
+
+/** A turn as the window sees it: without the store's own ordering number. */
+export function publicTurn(turn: StoredTurn): Turn {
+  const { seq: _seq, ...rest } = turn
+  return rest
+}
 /** One thing a model wrote down about a folder, for every later session there. Models cite it as m<seq>. */
 export type Note = { seq: number; cwd: string; text: string; provider: ProviderId; chatId: string | null; createdAt: number }
 
@@ -69,11 +75,17 @@ const SCHEMA = `
     data TEXT NOT NULL,
     created_at INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS turn_patches (
+    turn_id TEXT PRIMARY KEY REFERENCES turns(id) ON DELETE CASCADE,
+    patch TEXT NOT NULL,
+    truncated INTEGER NOT NULL
+  );
 `
 
 // Columns added after the first release, for stores created before them.
 const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
-  { table: 'turns', column: 'goal_role', definition: 'TEXT' }
+  { table: 'turns', column: 'goal_role', definition: 'TEXT' },
+  { table: 'turns', column: 'changes', definition: 'TEXT' }
 ]
 
 type Row = Record<string, unknown>
@@ -152,6 +164,24 @@ export class Store {
   updateTurn(turn: Turn): void {
     this.sql('UPDATE turns SET model = ?, status = ?, error = ?, handoff_turns = ?, ended_at = ? WHERE id = ?')
       .run(turn.model, turn.status, turn.error, turn.handoffTurns, turn.endedAt, turn.id)
+  }
+
+  turn(turnId: string): StoredTurn | undefined {
+    const row = this.sql('SELECT * FROM turns WHERE id = ?').get(turnId)
+    return row ? turnOf(row) : undefined
+  }
+
+  /** Record what a turn changed: the totals on the turn, the patch beside it. Returns the turn as it now stands. */
+  setTurnChanges(turnId: string, changes: TurnChanges, patch: TurnPatch): StoredTurn | undefined {
+    this.sql('UPDATE turns SET changes = ? WHERE id = ?').run(JSON.stringify(changes), turnId)
+    this.sql('INSERT INTO turn_patches (turn_id, patch, truncated) VALUES (?, ?, ?) ON CONFLICT (turn_id) DO UPDATE SET patch = excluded.patch, truncated = excluded.truncated')
+      .run(turnId, patch.patch, patch.truncated ? 1 : 0)
+    return this.turn(turnId)
+  }
+
+  turnPatch(turnId: string): TurnPatch | undefined {
+    const row = this.sql('SELECT patch, truncated FROM turn_patches WHERE turn_id = ?').get(turnId)
+    return row ? { patch: String(row.patch), truncated: Number(row.truncated) === 1 } : undefined
   }
 
   /** Insert or update by id; an item keeps the position it first appeared at. */
@@ -271,6 +301,7 @@ function turnOf(row: Row): StoredTurn {
     error: typeof row.error === 'string' ? row.error : null,
     handoffTurns: Number(row.handoff_turns),
     goalRole: typeof row.goal_role === 'string' ? row.goal_role as GoalRole : null,
+    changes: typeof row.changes === 'string' ? JSON.parse(row.changes) as TurnChanges : null,
     startedAt: Number(row.started_at),
     endedAt: row.ended_at === null ? null : Number(row.ended_at)
   }

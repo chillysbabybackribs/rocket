@@ -165,6 +165,16 @@ no commit is made mid-merge or off a branch. Models are told not to commit or br
 `ROCKET_AUTO_COMMIT=0` turns the committing off. A folder that is not a git repository is left
 as it is.
 
+The same two snapshots give the user what the turn did. Each finished turn that changed files
+carries one line under its reply, `Changed 3 files +184 −12` with a bar of the balance, and the
+line opens the turn's unified diff beside the chat in the artifact panel (`ChangesView.tsx`): a
+strip of its files to jump between, each under a heading that stays while its hunks scroll. The
+patch is `git diff` between the snapshots of the turn's own files (`patchBetween`), read into
+files and lines by `src/shared/patch.ts`, kept with the turn in the store (`turn_patches`, cut at
+2 MB on a file boundary) and served by `turn.changes`; the totals sit on the turn itself. This
+needs no commit, so it works with committing off too. The panel is read-only for now; putting
+the folder back as it was is a decision left for later (`docs/mockups/turn-changes.html`).
+
 Claude Code sessions working on this repository outside the app are covered by a Stop hook
 (`.claude/settings.json`, `scripts/auto-commit.sh`) that commits what a turn left changed.
 

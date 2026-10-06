@@ -4,7 +4,7 @@ import { buildHandoff, type Handoff, type MissedTurn } from './handoff.ts'
 import { messageOf, oneLine } from './json.ts'
 import type { ProviderAdapter, RunResult, TurnSink, UnpromptedTurn } from './providers/provider.ts'
 import { unavailableUsage } from './providers/provider.ts'
-import type { Store, StoredTurn } from './store.ts'
+import { publicTurn, type Store, type StoredTurn } from './store.ts'
 import type { Working } from './teamwork.ts'
 
 // The chat itself. The hub owns every conversation in the store and lends each turn to whichever
@@ -154,6 +154,7 @@ export class Hub {
       error: null,
       handoffTurns: handoff?.turns ?? 0,
       goalRole,
+      changes: null,
       startedAt: Date.now(),
       endedAt: null
     })
@@ -334,7 +335,7 @@ export class Hub {
     const adapter = this.adapters[provider]
     const turn = this.store.createTurn({
       id: randomUUID(), chatId, provider, model: null, status: 'running', error: null,
-      handoffTurns: 0, goalRole: null, startedAt: Date.now(), endedAt: null
+      handoffTurns: 0, goalRole: null, changes: null, startedAt: Date.now(), endedAt: null
     })
     const live: LiveTurn = { turn, adapter, clock: { sent: performance.now(), firstEvent: null, firstText: null }, items: new Map(), stopRequested: false }
     this.live.set(chatId, live)
@@ -466,9 +467,4 @@ export class Hub {
     if (!chat) throw new Error('That chat no longer exists')
     return chat
   }
-}
-
-function publicTurn(turn: StoredTurn): Turn {
-  const { seq: _seq, ...rest } = turn
-  return rest
 }

@@ -1,5 +1,9 @@
 import { useSyncExternalStore } from 'react'
-import type { ChatLinkTarget, Chat, Goal, GoalEdit, HostEvent, Item, ModelInfo, ProviderId, Turn, UsageSnapshot } from '../../shared/types.ts'
+import type { ChatLinkTarget, Chat, Goal, GoalEdit, HostEvent, Item, ModelInfo, ProviderId, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
+
+export type ArtifactView =
+  | Extract<ChatLinkTarget, { kind: 'artifact' }>
+  | { kind: 'changes'; chatId: string; turnId: string; patch: TurnPatch }
 import { PROVIDERS, providerLabel } from '../../shared/types.ts'
 import { call, connectHost } from './host.ts'
 
@@ -26,7 +30,8 @@ export type AppState = {
   models: Partial<Record<ProviderId, ModelInfo[]>>
   /** The model chosen per provider, in the same place; a provider absent here runs its own default. */
   modelChoice: ModelChoices
-  artifact: Extract<ChatLinkTarget, { kind: 'artifact' }> | null
+  /** What the panel beside the chat shows: a file a link opened, or what a turn changed. */
+  artifact: ArtifactView | null
   browserOpen: boolean
   /** Every goal, newest first. A goal's chat is an ordinary chat with the goal beside it. */
   goals: Goal[]
@@ -519,6 +524,21 @@ let linkRequest = 0
 export function closeArtifact(): void {
   linkRequest++
   setState({ artifact: null })
+}
+
+/** Show what a turn of the open chat changed, beside the conversation. */
+export async function openTurnChanges(turnId: string): Promise<void> {
+  const chatId = state.activeChatId
+  if (!chatId) return
+  const request = ++linkRequest
+  try {
+    const patch = await call('turn.changes', { chatId, turnId })
+    if (request !== linkRequest) return
+    if (!patch) throw new Error('The changes of this turn are no longer available.')
+    setState({ artifact: { kind: 'changes', chatId, turnId, patch } })
+  } catch (error) {
+    if (request === linkRequest) fail(error)
+  }
 }
 
 export async function openChatLink(href: string, cwd?: string): Promise<void> {

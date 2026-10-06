@@ -6,7 +6,7 @@ import { Store } from './store.ts'
 const chat: Chat = { id: 'c1', title: 'Chat', cwd: '/tmp', lastProvider: null, createdAt: 1, updatedAt: 1 }
 
 function turn(id: string, provider: Turn['provider']): Turn {
-  return { id, chatId: 'c1', provider, model: null, status: 'completed', error: null, handoffTurns: 0, goalRole: null, startedAt: 1, endedAt: 2 }
+  return { id, chatId: 'c1', provider, model: null, status: 'completed', error: null, handoffTurns: 0, goalRole: null, changes: null, startedAt: 1, endedAt: 2 }
 }
 
 test('an item updated in place keeps its first position', () => {

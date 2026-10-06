@@ -2,12 +2,32 @@ import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { closeArtifact, useApp } from '../store.ts'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
+import { ChangesView, Counts } from './ChangesView.tsx'
+
+// The panel beside the chat: a file a link opened (Markdown rendered, anything else as source
+// with a highlighted line), or what a turn changed, as a diff.
 
 export function ArtifactPanel() {
   const artifact = useApp((state) => state.artifact)
+  const turn = useApp((state) => (artifact?.kind === 'changes' ? state.turns.find((entry) => entry.id === artifact.turnId) ?? null : null))
   const selected = useRef<HTMLSpanElement>(null)
   useEffect(() => { selected.current?.scrollIntoView({ block: 'center' }) }, [artifact])
   if (!artifact) return null
+  if (artifact.kind === 'changes') {
+    const changes = turn?.changes
+    return (
+      <section className="artifact" aria-label="Turn changes">
+        <header className="artifact-head">
+          <span>
+            Changes
+            {changes && <span className="artifact-sub">this turn · {changes.files} {changes.files === 1 ? 'file' : 'files'} · <Counts added={changes.added} removed={changes.removed} /></span>}
+          </span>
+          <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
+        </header>
+        <ChangesView patch={artifact.patch} />
+      </section>
+    )
+  }
   const cwd = artifact.path.slice(0, artifact.path.lastIndexOf('/')) || '/'
   return (
     <section className="artifact" aria-label="Artifact preview">

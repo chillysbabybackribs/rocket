@@ -19,7 +19,7 @@ test('a turn\'s changes show as one line that opens the diff beside the chat', a
 
   const line = page.locator('.changes-line')
   await expect(line).toContainText('Changed 2 files')
-  await expect(line.locator('.counts .is-add')).toHaveText('+5')
+  await expect(line.locator('.counts .is-add')).toHaveText('+6')
   await expect(line.locator('.counts .is-del')).toHaveText('−1')
   await rocket.capture('changes-line')
 

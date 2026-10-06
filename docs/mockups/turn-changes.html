@@ -152,6 +152,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 <div class="mock-bar">
   <b>Mockup</b>
   <button class="mock-tab on" data-page="changes">Turn changes · proposed</button>
+  <button class="mock-tab" data-page="built">Turn changes · built</button>
   <button class="mock-tab" data-page="shipped">Ask user · shipped</button>
   <span class="spacer"></span>
   <span id="variants">
@@ -252,7 +253,19 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 </div>
 </div>
 
-<!-- ─── Page 2: ask_user, as shipped ────────────────────────────────────── -->
+<!-- ─── Page 2: turn changes, as built (captures from tests/ui/changes.spec.ts) ───── -->
+<div class="page" id="page-built">
+  <div class="shipped"><div class="inner">
+    <h2>Turn changes · built</h2>
+    <p>Captured by the isolated UI check (<code>tests/ui/changes.spec.ts</code>) after the decisions: variant A, no Undo yet, unified diff. A controlled turn really edited two files in a git folder; the app diffed its start and end snapshots.</p>
+    <div class="shots">
+      <div class="shot"><img src="turn-changes/line.png" alt="The line under a finished turn: Changed 2 files, +6 −1, a bar"><div class="cap">The line under the reply, in the manner of the steps summary.</div></div>
+      <div class="shot"><img src="turn-changes/panel.png" alt="The diff beside the chat with a file strip, a new file and an edited file"><div class="cap">Clicked: the diff beside the chat, files to jump between, sticky file headings.</div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── Page 3: ask_user, as shipped ────────────────────────────────────── -->
 <div class="page" id="page-shipped">
   <div class="shipped"><div class="inner">
     <h2>Ask user · shipped</h2>

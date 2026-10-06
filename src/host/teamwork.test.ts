@@ -28,7 +28,8 @@ function setup(dir: string) {
   const working: Working[] = []
   const warnings: string[] = []
   let clock = 1_000
-  const teamwork = new Teamwork(store, () => working, { commit: true, warn: (message) => warnings.push(message), now: () => clock })
+  const changed: Turn[] = []
+  const teamwork = new Teamwork(store, () => working, { commit: true, changed: (turn) => changed.push(turn), warn: (message) => warnings.push(message), now: () => clock })
   const chat = (id: string): Chat => {
     const made: Chat = { id, title: `chat ${id}`, cwd: dir, lastProvider: null, createdAt: 1, updatedAt: 1 }
     store.createChat(made)
@@ -38,7 +39,7 @@ function setup(dir: string) {
   const turn = (chatId: string, provider: Turn['provider'], request: string, status: Turn['status'], edits: string[] = []): Turn => {
     clock += 10
     const id = `${chatId}-${clock}`
-    const stored = store.createTurn({ id, chatId, provider, model: null, status, error: null, handoffTurns: 0, goalRole: null, startedAt: clock, endedAt: clock })
+    const stored = store.createTurn({ id, chatId, provider, model: null, status, error: null, handoffTurns: 0, goalRole: null, changes: null, startedAt: clock, endedAt: clock })
     const items: Item[] = [
       { type: 'user', id: `${id}:user`, turnId: id, text: request },
       ...edits.map((label, index): Item => ({ type: 'tool', id: `${id}:${index}`, turnId: id, kind: 'edit', label, status: 'done', output: '' }))
@@ -47,8 +48,35 @@ function setup(dir: string) {
     clock += 10
     return stored
   }
-  return { store, working, warnings, teamwork, chat, turn }
+  return { store, working, warnings, changed, teamwork, chat, turn }
 }
+
+test('what a turn changed is kept with it as a patch, with totals on the turn, leaving out another running turn\'s file', async () => {
+  const { dir, write } = repo()
+  try {
+    const { store, teamwork, working, changed, chat, turn } = setup(dir)
+    chat('one')
+    chat('two')
+    await teamwork.context('one', 'claude', true)
+    write('a.ts', 'line one\nline two\n')
+    write('new.ts', 'fresh\n')
+    write('b.ts', 'someone else is on this')
+    working.push({ chatId: 'two', provider: 'codex', model: null, request: 'other work', edited: ['b.ts'] })
+    const ended = turn('one', 'claude', 'Change a', 'completed')
+    await teamwork.turnEnded(ended)
+    assert.equal(changed.length, 1)
+    assert.deepEqual(changed[0]!.changes, { files: 2, added: 3, removed: 1 })
+    assert.equal(store.turn(ended.id)?.changes?.files, 2)
+    const kept = store.turnPatch(ended.id)!
+    assert.equal(kept.truncated, false)
+    assert.match(kept.patch, /^diff --git a\/a\.ts b\/a\.ts/m)
+    assert.match(kept.patch, /new file mode[\s\S]*\+fresh/)
+    assert.doesNotMatch(kept.patch, /b\.ts/)
+    assert.equal(store.turnPatch('no-such-turn'), undefined)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 
 test('a turn\'s changes are committed alone, under the request, and a stopped turn waits for the one that finishes it', async () => {
   const { dir, git, write } = repo()
