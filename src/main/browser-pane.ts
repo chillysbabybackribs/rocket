@@ -10,6 +10,8 @@ import type { AgentTab, Bounds, BrowserCommand, BrowserState, BrowserTab } from 
 import { CHROME_OBJECT_SCRIPT } from './chrome-object.ts'
 import { detectCookieSources, importCookies, type CookieSource } from './cookie-import.ts'
 import { Suggestions } from './browser-suggest.ts'
+import { ReadingScroll } from './reading-scroll.ts'
+import { nudgeSpeed } from '../shared/reading.ts'
 import {
   ACCEPT_LANGUAGES, BROWSER_PARTITION, clientHintHeaders, conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, PAGE_BACKGROUND, parseAcceptCh,
   plainUserAgent, reveal, toUrl, userAgentMetadata
@@ -52,6 +54,8 @@ export type TabHandle = { id: string; contents: WebContents }
 
 export class BrowserPane {
   private readonly suggestions: Suggestions
+  /** Hands-free reading, per tab, at one shared speed (reading-scroll.ts). */
+  private readonly reading: ReadingScroll
   private readonly sessionFile = join(app.getPath('userData'), 'browser-tabs.json')
   private tabs: Tab[] = []
   private activeId: string | null = null
@@ -63,6 +67,8 @@ export class BrowserPane {
   /** Whether keyboard focus is in the browser's toolbar, in the UI's page. */
   private chromeFocused = false
   private publishQueued = false
+  /** Whether what changed belongs in the saved session (reading progress, a few times a second, does not). */
+  private saveWanted = false
   /** Per page, the promise that it has been made to present as Chrome (presentAsChrome). */
   private readonly presenting = new WeakMap<WebContents, Promise<void>>()
   private saveTimer: NodeJS.Timeout | null = null
@@ -75,6 +81,7 @@ export class BrowserPane {
     pages.setUserAgent(plainUserAgent(pages.getUserAgent(), app.name), ACCEPT_LANGUAGES)
     this.sendClientHints(pages)
     this.suggestions = new Suggestions(window)
+    this.reading = new ReadingScroll(() => this.publish(false), () => (this.bounds ? this.active?.view?.webContents ?? null : null))
     window.on('resize', () => {
       for (const tab of this.tabs) {
         if (tab.view && !(this.bounds && tab.id === this.activeId)) conceal(window, tab.view)
@@ -84,6 +91,7 @@ export class BrowserPane {
       this.save()
       this.disposed = true
       this.suggestions.dispose()
+      this.reading.dispose()
       for (const tab of this.tabs) tab.view?.webContents.close()
     })
     // Tab shortcuts typed while focus is in the toolbar rather than in a page.
@@ -116,6 +124,8 @@ export class BrowserPane {
       case 'suggest': this.suggestions.query(String(command.text ?? ''), command.anchor); break
       case 'suggestSelect': this.suggestions.select(Number(command.index)); break
       case 'suggestHide': this.suggestions.hide(); break
+      case 'reading': void this.readingAction(command.action); break
+      case 'readingSpeed': console.log('RDEBUG main', command.speed); this.reading.setSpeed(Number(command.speed)); console.log('RDEBUG now', this.reading.speed); this.saveSoon(); break
     }
   }
 
@@ -189,12 +199,13 @@ export class BrowserPane {
   private restore(): void {
     if (this.restored) return
     this.restored = true
-    let saved: { active?: number; tabs?: SavedTab[] } = {}
+    let saved: { active?: number; tabs?: SavedTab[]; readingSpeed?: unknown } = {}
     try {
       saved = JSON.parse(readFileSync(this.sessionFile, 'utf8')) as typeof saved
     } catch {
       // No session yet.
     }
+    this.reading.restoreSpeed(saved.readingSpeed)
     const tabs = (Array.isArray(saved.tabs) ? saved.tabs : []).filter((tab) => typeof tab?.url === 'string')
     for (const tab of tabs) this.createTab(tab)
     this.activate(this.tabs[saved.active ?? 0] ?? this.tabs[0] ?? this.createTab({}), false)
@@ -234,6 +245,8 @@ export class BrowserPane {
     // The new page goes up before the old one comes down, so the stage is never empty.
     this.place()
     if (previous && previous !== tab && previous.view) conceal(this.window, previous.view)
+    // A tab out of sight stops scrolling and waits, in its place, for the reader to come back.
+    if (previous && previous !== tab) void this.reading.pause(previous.view?.webContents)
     this.suggestions.hide()
     if (focusPage) view.webContents.focus()
     this.publish()
@@ -295,6 +308,7 @@ export class BrowserPane {
 
   private setBounds(bounds: Bounds | null): void {
     if (!bounds || !(bounds.width >= 2) || !(bounds.height >= 2)) {
+      void this.reading.pause(this.active?.view?.webContents)
       this.bounds = null
       this.suggestions.hide()
     } else {
@@ -432,6 +446,8 @@ export class BrowserPane {
     contents.on('did-stop-loading', changed)
     contents.on('audio-state-changed', changed)
     contents.on('did-navigate', (_event, url) => {
+      // Reading belongs to the page it started on.
+      this.reading.forget(contents)
       // A new site starts without an icon; within a site the old one stays until replaced.
       if (origin(url) !== origin(tab.url)) tab.favicon = tab.faviconUrl = null
       changed()
@@ -453,10 +469,18 @@ export class BrowserPane {
     contents.on('page-favicon-updated', (_event, urls) => {
       if (urls[0]) void this.loadFavicon(tab, urls[0])
     })
-    contents.on('before-input-event', (event, input) => this.onKey(event, input))
+    contents.on('render-process-gone', () => this.reading.forget(contents))
+    contents.on('before-input-event', (event, input) => {
+      // Esc stops reading and still reaches the page, which may have its own use for it.
+      if (input.type === 'keyDown' && input.key === 'Escape' && !input.alt && !input.control && !input.meta && this.reading.of(contents)) {
+        void this.reading.stop(contents)
+      }
+      this.onKey(event, input)
+    })
     contents.on('context-menu', (_event, params) => this.pageMenu(tab, params))
     // A page that closes itself (window.close()) closes its tab.
     contents.on('destroyed', () => {
+      this.reading.forget(contents)
       tab.view = null
       if (this.tabs.includes(tab) && !this.disposed) this.closeTab(tab)
     })
@@ -561,6 +585,10 @@ export class BrowserPane {
       if (key === 'arrowleft') return () => contents?.navigationHistory.goBack()
       if (key === 'arrowright') return () => contents?.navigationHistory.goForward()
       if (key === 'd') return () => this.focusAddress()
+      if (key === 's' && contents) return () => void this.reading.flip(contents)
+      if ((key === 'arrowup' || key === 'arrowdown') && this.reading.of(contents)) {
+        return () => { this.reading.setSpeed(nudgeSpeed(this.reading.speed, key === 'arrowup' ? -1 : 1)); this.saveSoon() }
+      }
       return null
     }
     if (!input.alt && !input.control && !input.meta) {
@@ -711,12 +739,14 @@ export class BrowserPane {
       pinned: tab.pinned,
       audible: contents?.isCurrentlyAudible() ?? false,
       muted: contents?.isAudioMuted() ?? false,
-      agent: tab.agent
+      agent: tab.agent,
+      reading: this.reading.of(contents)
     }
   }
 
   /** Tell the UI what changed. Coalesced, because one navigation raises several events at once. */
-  private publish(): void {
+  private publish(save = true): void {
+    if (save) this.saveWanted = true
     if (this.publishQueued) return
     this.publishQueued = true
     setImmediate(() => this.flush())
@@ -725,9 +755,22 @@ export class BrowserPane {
   private flush(): void {
     this.publishQueued = false
     if (this.disposed || this.window.isDestroyed() || !this.restored) return
-    const state: BrowserState = { tabs: this.tabs.map((tab) => this.snapshot(tab)), activeId: this.activeId }
+    const state: BrowserState = { tabs: this.tabs.map((tab) => this.snapshot(tab)), activeId: this.activeId, readingSpeed: this.reading.speed }
     this.window.webContents.send('rocket:browser-state', state)
+    if (this.saveWanted) this.saveSoon()
+    this.saveWanted = false
+  }
+
+  private saveSoon(): void {
     this.saveTimer ??= setTimeout(() => this.save(), 1_000)
+  }
+
+  private async readingAction(action: 'flip' | 'toggle' | 'stop'): Promise<void> {
+    const contents = this.active?.view?.webContents
+    if (!contents) return
+    if (action === 'flip') await this.reading.flip(contents)
+    else if (action === 'toggle') await this.reading.toggle(contents)
+    else await this.reading.stop(contents)
   }
 
   private save(): void {
@@ -738,7 +781,8 @@ export class BrowserPane {
     const kept = this.tabs.filter((tab) => !tab.agent)
     const tabs: SavedTab[] = kept.map(({ url, title, favicon, pinned }) => ({ url, title, favicon, pinned }))
     try {
-      writeFileSync(this.sessionFile, JSON.stringify({ active: Math.max(0, kept.findIndex((tab) => tab.id === this.activeId)), tabs }))
+      const active = Math.max(0, kept.findIndex((tab) => tab.id === this.activeId))
+      writeFileSync(this.sessionFile, JSON.stringify({ active, tabs, readingSpeed: this.reading.speed }))
     } catch {
       // The session is a convenience; the browser works without it.
     }
