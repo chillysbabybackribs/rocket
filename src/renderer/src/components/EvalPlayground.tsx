@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FlaskConical, Play, Plus } from 'lucide-react'
+import { FlaskConical, Play, Plus, RefreshCw, X } from 'lucide-react'
 import { providerLabel, type ProviderId } from '../../../shared/types.ts'
 import { call } from '../host.ts'
 import { runScenarioCell } from '../eval-run.ts'
@@ -31,16 +31,13 @@ type CellState = {
 type Props = {
   datasets: Array<{ id: string; rows: DatasetRow[] }>
   onFinished?: () => void
+  onRefresh?: () => void
+  onClose?: () => void
 }
 
 const TASK_DOTS = ['#fafafa', '#a78bfa', '#60a5fa', '#34d399']
 
-function applyInput(template: string, input: string): string {
-  if (template.includes('{{input}}')) return template.replace(/\{\{input\}\}/g, input)
-  return `${template}\n\nInput: ${input}`
-}
-
-export function EvalPlayground({ datasets, onFinished }: Props) {
+export function EvalPlayground({ datasets, onFinished, onRefresh, onClose }: Props) {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [scenarioId, setScenarioId] = useState('')
   const [datasetId, setDatasetId] = useState('')
@@ -162,27 +159,14 @@ export function EvalPlayground({ datasets, onFinished }: Props) {
           <h2 className="eval-pg-title">{scenario?.id ?? 'Playground'}</h2>
         </div>
         <div className="eval-pg-head-actions">
-          <label className="eval-pg-select-wrap">
-            <span className="eval-pg-select-label">Scenario</span>
-            <select
-              className="eval-pg-select"
-              value={scenarioId}
-              disabled={busy}
-              onChange={(ev) => { setScenarioId(ev.target.value); setCells({}) }}
-            >
-              {scenarios.map((s) => <option key={s.id} value={s.id}>{s.id}</option>)}
-            </select>
-          </label>
-          <select className="eval-pg-select" value={compareMode} disabled={busy} onChange={(ev) => setCompareMode(ev.target.value)} aria-label="Comparison baseline">
-            <option value="base">Comparison → Base</option>
-            {tasks.filter((t) => t.role === 'comparison').map((t) => (
-              <option key={t.id} value={t.id}>Comparison → {providerLabel(t.provider)}</option>
-            ))}
-          </select>
-          <label className="eval-pg-diff">
-            <input type="checkbox" checked={diffOn} disabled={busy} onChange={(ev) => setDiffOn(ev.target.checked)} />
-            Diff
-          </label>
+          <span className="eval-pg-panel-actions">
+            <button type="button" className="icon-button" title="Sync dashboard" aria-label="Sync dashboard" disabled={busy} onClick={() => onRefresh?.()}>
+              <RefreshCw size={15} />
+            </button>
+            <button type="button" className="icon-button" aria-label="Close eval panel" onClick={() => onClose?.()}>
+              <X size={15} />
+            </button>
+          </span>
           <button type="button" className="eval-bt-btn eval-bt-btn-primary eval-pg-run-main" disabled={!canRun} onClick={() => void runAll()}>
             <Play size={14} aria-hidden fill="currentColor" />
             {busy ? 'Running…' : 'Run'}
@@ -191,11 +175,33 @@ export function EvalPlayground({ datasets, onFinished }: Props) {
             <FlaskConical size={14} aria-hidden />
             Experiments
           </button>
-          <button type="button" className="eval-bt-btn eval-bt-btn-ghost" disabled title="Providers come from scenario matrix">
-            Add Provider
-          </button>
         </div>
       </header>
+
+      <div className="eval-pg-subhead">
+        <label className="eval-pg-select-wrap">
+          <span className="eval-pg-select-label">Scenario</span>
+          <select
+            className="eval-pg-select"
+            aria-label="Scenario"
+            value={scenarioId}
+            disabled={busy}
+            onChange={(ev) => { setScenarioId(ev.target.value); setCells({}) }}
+          >
+            {scenarios.map((s) => <option key={s.id} value={s.id}>{s.id}</option>)}
+          </select>
+        </label>
+        <select className="eval-pg-select" value={compareMode} disabled={busy} onChange={(ev) => setCompareMode(ev.target.value)} aria-label="Comparison baseline">
+          <option value="base">Comparison → Base</option>
+          {tasks.filter((t) => t.role === 'comparison').map((t) => (
+            <option key={t.id} value={t.id}>Comparison → {providerLabel(t.provider)}</option>
+          ))}
+        </select>
+        <label className="eval-pg-diff">
+          <input type="checkbox" checked={diffOn} disabled={busy} onChange={(ev) => setDiffOn(ev.target.checked)} />
+          Diff
+        </label>
+      </div>
 
       {runError && <p className="eval-pg-run-error" role="alert">{runError}</p>}
 
@@ -299,7 +305,8 @@ export function EvalPlayground({ datasets, onFinished }: Props) {
                       className={`eval-pg-cell${state?.status === 'running' ? ' is-running' : ''}${state?.status === 'done' ? (state.pass ? ' is-pass' : ' is-fail') : ''}${state?.status === 'error' ? ' is-fail' : ''}${diffOn && task.role === 'comparison' ? ' is-diff' : ''}`}
                       role="button"
                       tabIndex={busy ? -1 : 0}
-                      title={applyInput(promptTemplate, row.input).slice(0, 200)}
+                      title="Click to run this cell"
+                      aria-label={`Run ${providerLabel(task.provider)} for row ${index + 1}`}
                       onClick={() => runOne(row, task)}
                       onKeyDown={(ev) => { if (ev.key === 'Enter' && !busy) runOne(row, task) }}
                     >

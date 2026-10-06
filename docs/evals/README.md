@@ -9,6 +9,8 @@ npm run eval:mock-ui:sync   # optional: pull .artifacts/evals/*/summary.json
 npm run eval:mock-ui        # http://127.0.0.1:8765/
 ```
 
+**UI checks:** after eval-panel changes, verify with Rocket MCP `rocket_ui_snapshot` (or `rocket_ui_run` + `ui.snapshot()`) — don’t ship layout-only fixes without a window capture.
+
 **In the app:** click the **flask** on the rail. **Experiments / Datasets** mirror Braintrust lists; **Playgrounds** mirrors the task-column + dataset grid layout ([playgrounds-ui.md](./playgrounds-ui.md)). **Run cell** (or click a grid cell) opens the eval chat in the main column so you watch the turn live, then shows grader results when it finishes.
 
 Standalone server (optional): `npm run eval:mock-ui` → `http://127.0.0.1:8765/`. Layout chips (**List / Grid / Summary / Summary table**), compare checkboxes, and dataset **Input / Expected** columns match Braintrust.

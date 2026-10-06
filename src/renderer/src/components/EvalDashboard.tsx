@@ -330,7 +330,12 @@ export function EvalDashboard() {
   else if (view === 'datasets') content = renderDatasets()
   else if (view === 'dataset-detail' && selectedDataset) content = renderDatasetDetail(selectedDataset)
   else if (view === 'playgrounds') content = (
-    <EvalPlayground datasets={datasets} onFinished={() => void load()} />
+    <EvalPlayground
+      datasets={datasets}
+      onFinished={() => void load()}
+      onRefresh={() => void load()}
+      onClose={() => setEvalsOpen(false)}
+    />
   )
   else content = renderPlaceholder(pageTitle)
 
@@ -363,24 +368,26 @@ export function EvalDashboard() {
       </aside>
 
       <div className="eval-bt-main">
-        <header className={`eval-bt-topbar${showPlaygroundChrome ? ' is-compact' : ''}`}>
-          <div>
-            {!showPlaygroundChrome && <h1 className="eval-bt-page-title">{pageTitle}</h1>}
-          </div>
-          <div className="eval-bt-topbar-actions">
-            <button type="button" className="icon-button" title="Refresh dashboard" aria-label="Refresh dashboard" onClick={() => void load()}>
-              <RefreshCw size={15} />
-            </button>
-            <button type="button" className="icon-button" aria-label="Close eval panel" onClick={() => setEvalsOpen(false)}>
-              <X size={15} />
-            </button>
-            <button type="button" className="eval-bt-btn" onClick={() => void load()}>Sync</button>
-            <button type="button" className="eval-bt-btn eval-bt-btn-primary" onClick={() => openRun()}>
-              <Beaker size={14} aria-hidden />
-              Run cell
-            </button>
-          </div>
-        </header>
+        {!showPlaygroundChrome && (
+          <header className="eval-bt-topbar">
+            <div>
+              <h1 className="eval-bt-page-title">{pageTitle}</h1>
+            </div>
+            <div className="eval-bt-topbar-actions">
+              <button type="button" className="icon-button" title="Refresh dashboard" aria-label="Refresh dashboard" onClick={() => void load()}>
+                <RefreshCw size={15} />
+              </button>
+              <button type="button" className="icon-button" aria-label="Close eval panel" onClick={() => setEvalsOpen(false)}>
+                <X size={15} />
+              </button>
+              <button type="button" className="eval-bt-btn" onClick={() => void load()}>Sync</button>
+              <button type="button" className="eval-bt-btn eval-bt-btn-primary" onClick={() => openRun()}>
+                <Beaker size={14} aria-hidden />
+                Run cell
+              </button>
+            </div>
+          </header>
+        )}
 
         {showExpToolbar && (
           <div className="eval-bt-toolbar">
