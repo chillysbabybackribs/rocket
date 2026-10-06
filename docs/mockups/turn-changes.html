@@ -133,6 +133,25 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .hunk .del { background: rgba(248,81,73,.13); } .hunk .del .s { color: var(--del); }
 .hunk .add .n, .hunk .del .n { color: var(--text-3); }
 
+/* Undo states */
+.only-offered, .only-confirming, .only-undone, .only-stale { display: none; }
+[data-undo-state="offered"] .only-offered, [data-undo-state="confirming"] .only-confirming,
+[data-undo-state="undone"] .only-undone, [data-undo-state="stale"] .only-stale { display: inline-flex; }
+[data-undo-state="confirming"] .confirm, [data-undo-state="undone"] .undone-strip { display: flex; }
+.stale-note { font-size: 12px; color: var(--text-4); white-space: nowrap; }
+.undone-note { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.undone-tag { font-size: 10.5px; line-height: 16px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-strong); color: var(--text-4); }
+[data-undo-state="undone"] .changes-line .counts, [data-undo-state="undone"] .changes-line .bar { opacity: .45; }
+[data-undo-state="undone"] .diff-body { opacity: .6; }
+.confirm {
+  align-items: center; justify-content: space-between; gap: 14px; padding: 10px 16px;
+  border-bottom: 1px solid var(--line); background: rgba(235,87,87,.06); font-size: 12.5px; color: var(--text-2);
+}
+.confirm b { font-family: var(--mono); font-weight: 500; color: var(--text); font-size: 12px; }
+.confirm-actions { display: inline-flex; gap: 6px; flex: none; }
+.btn.danger-fill { background: var(--danger); border-color: transparent; color: #fff; font-weight: 500; }
+.undone-strip { padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--text-4); }
+
 /* Shipped page: the ask_user captures */
 .shipped { height: 100%; overflow: auto; padding: 44px 32px 32px; }
 .shipped .inner { max-width: 1120px; }
@@ -159,6 +178,12 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     Transcript line:
     <button class="mock-tab on" data-variant="a">A · one line</button>
     <button class="mock-tab" data-variant="b">B · files listed</button>
+    <span style="width:16px"></span>
+    Undo:
+    <button class="mock-tab on" data-undo="offered">offered</button>
+    <button class="mock-tab" data-undo="confirming">confirming</button>
+    <button class="mock-tab" data-undo="undone">undone</button>
+    <button class="mock-tab" data-undo="stale">not offered</button>
   </span>
 </div>
 
@@ -201,6 +226,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
           <span>Changed 3 files</span>
           <span class="counts"><span class="a">+184</span> <span class="d">−12</span></span>
           <span class="bar"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></span>
+          <span class="undone-tag only-undone">undone</span>
         </button>
       </div>
 
@@ -235,8 +261,17 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   <div class="card">
     <div class="a-head">
       <span class="t">Changes<span class="sub">this turn · 3 files · <span class="counts"><span class="a">+184</span> <span class="d">−12</span></span></span></span>
-      <button class="btn quiet" title="Put the folder back as it was before this turn. Only offered while nothing later has touched these files.">Undo this turn</button>
+      <button class="btn quiet only-offered" title="Put these 3 files back as they were before this turn.">Undo this turn</button>
+      <span class="stale-note only-stale" title="server.js was changed again after this turn, by a later turn or by you.">Undo not offered: server.js changed since</span>
+      <span class="undone-note only-undone">Undone</span>
       <button class="icon-button" title="Close">✕</button>
+    </div>
+    <div class="confirm only-confirming">
+      <span>Put <b>server.js</b>, <b>test/auth.test.js</b> and <b>README.md</b> back as they were before this turn? The turn's reply and steps stay in the chat.</span>
+      <span class="confirm-actions"><button class="btn">Keep</button><button class="btn danger-fill">Undo</button></span>
+    </div>
+    <div class="undone-strip only-undone">
+      <span>These changes were undone. The diff is kept for the record; the files are as they were before the turn.</span>
     </div>
     <div class="a-files">
       <button class="a-file on">server.js <span class="counts"><span class="a">+96</span> <span class="d">−12</span></span></button>
@@ -292,6 +327,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     pages.forEach((t) => t.classList.toggle('on', t === tab))
     document.querySelectorAll('.page').forEach((page) => page.classList.toggle('on', page.id === `page-${tab.dataset.page}`))
     document.getElementById('variants').style.visibility = tab.dataset.page === 'changes' ? 'visible' : 'hidden'
+  }))
+  const app = document.querySelector('#page-changes .app')
+  app.dataset.undoState = 'offered'
+  const undos = document.querySelectorAll('[data-undo].mock-tab')
+  undos.forEach((tab) => tab.addEventListener('click', () => {
+    undos.forEach((t) => t.classList.toggle('on', t === tab))
+    app.dataset.undoState = tab.dataset.undo
   }))
   const variants = document.querySelectorAll('[data-variant].mock-tab')
   variants.forEach((tab) => tab.addEventListener('click', () => {
