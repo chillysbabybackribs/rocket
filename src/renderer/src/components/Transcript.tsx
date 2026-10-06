@@ -564,6 +564,9 @@ export function Transcript() {
     const observer = new ResizeObserver(() => {
       measure()
       if (pinned.current) element.scrollTop = element.scrollHeight
+      // Turns drawn for the first time take their real height without a scroll event, which
+      // would leave the distance kept for anchoring stale.
+      fromBottom.current = element.scrollHeight - element.scrollTop
     })
     observer.observe(element)
     if (content.current) observer.observe(content.current)

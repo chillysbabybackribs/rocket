@@ -1,7 +1,7 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { Chat, ChatSnapshot, Goal, GoalRole, Attachment, Item, ProviderId, QueuedMessage, Turn, TurnChanges, TurnStatus, TurnTokens } from '../shared/types.ts'
+import { TURN_PAGE, type Chat, type ChatSnapshot, type Goal, type GoalRole, type Attachment, type Item, type OlderTurns, type ProviderId, type QueuedMessage, type Turn, type TurnChanges, type TurnStatus, type TurnTokens } from '../shared/types.ts'
 
 // The canonical transcript. The app owns the conversation; a provider's own session is a cache
 // of the part of it that provider has already seen. Each (chat, provider) pair records the
@@ -55,6 +55,7 @@ const SCHEMA = `
     UNIQUE (chat_id, id)
   );
   CREATE INDEX IF NOT EXISTS items_by_chat ON items(chat_id, seq);
+  CREATE INDEX IF NOT EXISTS items_by_turn ON items(chat_id, turn_id, seq);
   CREATE TABLE IF NOT EXISTS provider_sessions (
     chat_id TEXT NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     provider TEXT NOT NULL,
@@ -132,7 +133,9 @@ export class Store {
   /** Keep sent and queued attachments; the renderer supplies references held by unsent drafts. */
   unusedAttachments(keepIds: string[], before: number): Attachment[] {
     const kept = new Set(keepIds)
-    for (const row of this.sql('SELECT data FROM items').all()) {
+    // Only user rows carry attachments. The text match lets SQLite skip almost every row before
+    // parsing any JSON, so the sweep no longer grows with all the history ever written.
+    for (const row of this.sql(`SELECT data FROM items WHERE data LIKE '%"attachments":%' AND json_extract(data, '$.type') = 'user'`).all()) {
       const item = JSON.parse(String(row.data)) as Item
       if (item.type === 'user') for (const image of item.attachments ?? []) kept.add(image.id)
     }
@@ -178,18 +181,47 @@ export class Store {
     this.sql('DELETE FROM chats WHERE id = ?').run(chatId)
   }
 
-  snapshot(chatId: string): ChatSnapshot | null {
+  /** A chat as it opens: its newest `limit` turns with their items. A long chat's history never crosses to the window whole. */
+  snapshot(chatId: string, limit = TURN_PAGE): ChatSnapshot | null {
     const chat = this.chat(chatId)
     if (!chat) return null
+    return { chat, ...this.page(chatId, Number.MAX_SAFE_INTEGER, limit) }
+  }
+
+  /** The `limit` turns before the turn `before`, for a reader scrolling up; nothing when that turn is not in the chat. */
+  olderTurns(chatId: string, before: string, limit = TURN_PAGE): OlderTurns {
+    const turn = this.turn(before)
+    return turn?.chatId === chatId ? this.page(chatId, turn.seq, limit) : { turns: [], items: [], hasOlder: false }
+  }
+
+  /** Up to `limit` turns before `beforeSeq`, oldest first, their items in order, and whether earlier turns remain. */
+  private page(chatId: string, beforeSeq: number, limit: number): OlderTurns {
+    const seqs = this.sql('SELECT seq FROM turns WHERE chat_id = ? AND seq < ? ORDER BY seq DESC LIMIT ?').all(chatId, beforeSeq, limit)
+    const first = seqs.length ? Number(seqs.at(-1)!.seq) : beforeSeq
+    const page = this.turnsWithItems(chatId, first - 1, beforeSeq)
     return {
-      chat,
-      turns: this.turns(chatId),
-      items: this.sql('SELECT data FROM items WHERE chat_id = ? ORDER BY seq').all(chatId).map(itemOf)
+      turns: page.map(({ turn }) => turn),
+      items: page.flatMap(({ items }) => items),
+      hasOlder: Boolean(this.sql('SELECT 1 FROM turns WHERE chat_id = ? AND seq < ? LIMIT 1').get(chatId, first))
     }
   }
 
   turns(chatId: string): StoredTurn[] {
     return this.sql('SELECT * FROM turns WHERE chat_id = ? ORDER BY seq').all(chatId).map(turnOf)
+  }
+
+  /** The chat's running turn, newest first if there were ever two; for a provider, only its own. */
+  runningTurn(chatId: string, provider?: ProviderId): StoredTurn | undefined {
+    const row = provider
+      ? this.sql(`SELECT * FROM turns WHERE chat_id = ? AND status = 'running' AND provider = ? ORDER BY seq DESC LIMIT 1`).get(chatId, provider)
+      : this.sql(`SELECT * FROM turns WHERE chat_id = ? AND status = 'running' ORDER BY seq DESC LIMIT 1`).get(chatId)
+    return row ? turnOf(row) : undefined
+  }
+
+  /** The chat's latest turn that is no longer running. */
+  lastSettledTurn(chatId: string): StoredTurn | undefined {
+    const row = this.sql(`SELECT * FROM turns WHERE chat_id = ? AND status != 'running' ORDER BY seq DESC LIMIT 1`).get(chatId)
+    return row ? turnOf(row) : undefined
   }
 
   /** Turns after `seq`, oldest first: what a provider whose session ends at `seq` has not seen. */
@@ -257,6 +289,18 @@ export class Store {
 
   turnItems(chatId: string, turnId: string): Item[] {
     return this.sql('SELECT data FROM items WHERE chat_id = ? AND turn_id = ? ORDER BY seq').all(chatId, turnId).map(itemOf)
+  }
+
+  /** The turns with `after < seq < before`, oldest first, each with its items: one read for a whole handoff. */
+  turnsWithItems(chatId: string, after: number, before = Number.MAX_SAFE_INTEGER): Array<{ turn: StoredTurn; items: Item[] }> {
+    const turns = this.sql('SELECT * FROM turns WHERE chat_id = ? AND seq > ? AND seq < ? ORDER BY seq').all(chatId, after, before).map(turnOf)
+    if (!turns.length) return []
+    const byTurn = new Map(turns.map((turn) => [turn.id, [] as Item[]]))
+    const rows = this.sql(
+      'SELECT items.turn_id, items.data FROM items JOIN turns ON turns.id = items.turn_id WHERE items.chat_id = ? AND turns.seq > ? AND turns.seq < ? ORDER BY items.seq'
+    ).all(chatId, after, before)
+    for (const row of rows) byTurn.get(String(row.turn_id))?.push(itemOf(row))
+    return turns.map((turn) => ({ turn, items: byTurn.get(turn.id)! }))
   }
 
   session(chatId: string, provider: ProviderId): ProviderSession {

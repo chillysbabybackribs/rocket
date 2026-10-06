@@ -56,13 +56,14 @@ export function buildHandoff(turns: MissedTurn[], budget = HANDOFF_BUDGET_CHARS,
     block.user = elide(block.user, OLDER_USER_CHARS)
     block.reply = elide(block.reply, OLDER_REPLY_CHARS)
   }
-  fit(blocks, budget)
+  const dropped = fit(blocks, budget)
   const text = [
     `<${TAG}>`,
     'This conversation is shared between several assistants, and the user chooses one for each message.',
     'Since your last turn here, other assistants answered the turns below (oldest first).',
     'Treat them as earlier history of this same conversation. Any file changes they made are already on disk.',
     'The files they read and edited are named, so go straight to those rather than searching for them again.',
+    ...(dropped ? [`The ${dropped} turns before these are left out to keep this short; ask the user if you need them.`] : []),
     '',
     blocks.map(render).join('\n\n'),
     `</${TAG}>`
@@ -140,29 +141,47 @@ function render(block: Block): string {
   return parts.join('\n\n')
 }
 
-function size(blocks: Block[]): number {
-  return blocks.reduce((total, block) => total + render(block).length + 2, 0)
-}
-
 /**
  * Shrink to the budget, giving up the least useful text first: action lines of older turns, then
- * the middle of the longest replies. The most recent turn is touched last.
+ * the middle of the longest replies, then, for a history too long to fit even cut down, the
+ * oldest turns whole. The most recent turn is touched last. Each block's size is kept and only a
+ * changed block is measured again, so a thousand-turn replay costs no more than reading it.
+ * Returns how many of the oldest turns were left out.
  */
-function fit(blocks: Block[], budget: number): void {
-  for (let i = 0; i < blocks.length - 1 && size(blocks) > budget; i++) Object.assign(blocks[i]!, { files: [], steps: [], asked: [] })
-  for (let guard = 0; guard < 200 && size(blocks) > budget; guard++) {
-    const over = size(blocks) - budget
+function fit(blocks: Block[], budget: number): number {
+  const sizes = blocks.map((block) => render(block).length + 2)
+  let total = sizes.reduce((sum, value) => sum + value, 0)
+  const measure = (index: number): void => {
+    const next = render(blocks[index]!).length + 2
+    total += next - sizes[index]!
+    sizes[index] = next
+  }
+  for (let i = 0; i < blocks.length - 1 && total > budget; i++) {
+    Object.assign(blocks[i]!, { files: [], steps: [], asked: [] })
+    measure(i)
+  }
+  for (let guard = 0; guard < 200 && total > budget; guard++) {
+    const over = total - budget
     const older = blocks.slice(0, -1)
     const pool = older.some((block) => block.reply.length > 400) ? older : blocks
     const longest = pool.reduce((a, b) => (b.reply.length > a.reply.length ? b : a))
     if (longest.reply.length <= 400) {
       const text = blocks.reduce((a, b) => (b.user.length > a.user.length ? b : a))
-      if (text.user.length <= 400) return
+      if (text.user.length <= 400) break
       text.user = elide(text.user, Math.max(400, text.user.length - over - 40))
+      measure(blocks.indexOf(text))
       continue
     }
     longest.reply = elide(longest.reply, Math.max(400, longest.reply.length - over - 40))
+    measure(blocks.indexOf(longest))
   }
+  let dropped = 0
+  while (total > budget && blocks.length > 1) {
+    total -= sizes.shift()!
+    blocks.shift()
+    dropped++
+  }
+  return dropped
 }
 
 /** Keep the start and the end; the conclusion of a reply is usually at the end. */

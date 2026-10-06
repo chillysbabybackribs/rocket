@@ -118,3 +118,14 @@ test('older turns keep their files and a shortened request and reply; the newest
   }
   assert.equal((text.match(/characters omitted/g) ?? []).length, 4, 'the two older turns lost the middle of their request and reply')
 })
+
+test('a history too long to fit even cut down keeps the newest turns and says how many were left out', () => {
+  const turns = Array.from({ length: 1_000 }, (_, index) => turn('codex', `question ${index} ${'q'.repeat(2_000)}`, `answer ${index} ${'a'.repeat(3_000)}`))
+  const started = performance.now()
+  const handoff = buildHandoff(turns)!
+  assert.ok(performance.now() - started < 1_000, 'a thousand turns are handed over in well under a second')
+  assert.ok(handoff.text.length < 31_000, `handoff was ${handoff.text.length} characters`)
+  assert.match(handoff.text, /answer 999 /)
+  assert.match(handoff.text, /The \d+ turns before these are left out/)
+  assert.equal(handoff.turns, handoff.messages.filter((message) => message.role === 'user').length)
+})

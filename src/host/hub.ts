@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { validateAttachments, type ProviderAttachment } from './attachments.ts'
-import type { Chat, ChatSnapshot, GoalRole, HostEvent, Attachment, MessageDraft, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnTokens, UsageSnapshot } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, OlderTurns, GoalRole, HostEvent, Attachment, MessageDraft, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnTokens, UsageSnapshot } from '../shared/types.ts'
 import { isFileAttachment } from '../shared/types.ts'
 import { buildHandoff, type Handoff, type MissedTurn } from './handoff.ts'
 import { messageOf, oneLine } from './json.ts'
@@ -127,7 +127,7 @@ export class Hub {
     const wanted = options?.turnId
     const done = wanted
       ? this.store.turn(wanted)
-      : this.store.turns(chatId).findLast((turn) => turn.status !== 'running')
+      : this.store.lastSettledTurn(chatId)
     if (done && done.chatId === chatId && done.status !== 'running' && (!wanted || done.id === wanted)) {
       return Promise.resolve(publicTurn(done))
     }
@@ -152,6 +152,12 @@ export class Hub {
     this.store.createChat(chat)
     this.emit({ type: 'chat', chat })
     return chat
+  }
+
+  /** The turns before `before`, for a reader scrolling up. A running turn is always the newest, so none of these is live. */
+  olderTurns(chatId: string, before: string): OlderTurns {
+    this.requireChat(chatId)
+    return this.store.olderTurns(chatId, before)
   }
 
   openChat(chatId: string): ChatSnapshot {
@@ -644,14 +650,8 @@ export class Hub {
 
   /** The turns after `seenSeq` (and before `beforeSeq`), as a handoff for a provider that missed them. */
   private handoffFor(chatId: string, seenSeq: number, beforeSeq = Number.MAX_SAFE_INTEGER): Handoff | null {
-    const missed: MissedTurn[] = this.store.turnsAfter(chatId, seenSeq)
-      .filter((turn) => turn.seq < beforeSeq)
-      .map((turn) => ({
-        provider: turn.provider,
-        model: turn.model,
-        status: turn.status,
-        items: this.store.turnItems(chatId, turn.id)
-      }))
+    const missed: MissedTurn[] = this.store.turnsWithItems(chatId, seenSeq, beforeSeq)
+      .map(({ turn, items }) => ({ provider: turn.provider, model: turn.model, status: turn.status, items }))
     return buildHandoff(missed, undefined, this.store.chat(chatId)?.cwd ?? null)
   }
 

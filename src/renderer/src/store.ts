@@ -351,7 +351,9 @@ function applyEvents(events: HostEvent[]): void {
         else running.delete(turn.chatId)
         setState({ running })
         const view = state.views[turn.chatId]
-        if (view) {
+        // A turn above the loaded ones changed; it is read as it stands when the reader gets there.
+        const above = view && view.hasOlder && !view.turns.some((entry) => entry.id === turn.id) && turn.startedAt < (view.turns[0]?.startedAt ?? 0)
+        if (view && !above) {
           patchView(turn.chatId, {
             turns: view.turns.some((entry) => entry.id === turn.id)
               ? view.turns.map((entry) => (entry.id === turn.id ? turn : entry))
@@ -793,9 +795,10 @@ export async function loadOlder(chatId: string): Promise<void> {
       items.set(item.id, item)
       ;(turnItems[item.turnId] ??= []).push(item.id)
     }
-    patchView(chatId, { turns: [...page.turns, ...current.turns], turnItems: { ...turnItems, ...current.turnItems }, hasOlder: page.hasOlder })
+    // The page's lists are whole; anything held for those turns was only what live events brought.
+    patchView(chatId, { turns: [...page.turns, ...current.turns], turnItems: { ...current.turnItems, ...turnItems }, hasOlder: page.hasOlder })
   } catch (error) {
-    setState({ error: messageOf(error) })
+    fail(error)
   } finally {
     loadingOlder.delete(chatId)
   }

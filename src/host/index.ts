@@ -148,7 +148,7 @@ let ledger: ToolLedger | undefined
 try {
   const build = createHash('sha256').update(readFileSync(import.meta.filename)).digest('hex')
   ledger = new ToolLedger(join(dataDir, 'tool-calls.db'), build, context => {
-    const turn = context.chatId ? store.turns(context.chatId).findLast(turn => turn.status === 'running' && turn.provider === context.provider) : undefined
+    const turn = context.chatId ? store.runningTurn(context.chatId, context.provider) : undefined
     return { model: turn?.model ?? null, turnId: turn?.id ?? null }
   })
 } catch (error) { journal.add('host', 'warn', 'ledger-unavailable', messageOf(error)) }
@@ -262,6 +262,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
     flush()
     return hub.openChat(chatId)
   },
+  'chat.older': ({ chatId, before }) => hub.olderTurns(chatId, before),
   'chat.setCwd': ({ chatId, cwd }) => hub.setCwd(chatId, cwd),
   'chat.delete': async ({ chatId }) => { await uiRuns.close(chatId); await hub.deleteChat(chatId); return null },
   'chat.send': async ({ chatId, provider, model, text, attachmentIds = [] }) => {

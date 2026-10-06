@@ -256,7 +256,15 @@ export type Chat = {
 /** `taking`: sent into the running turn, and its model has not read it yet. */
 export type QueuedMessage = { id: string; provider: ProviderId; text: string; attachments?: Attachment[]; taking?: boolean }
 
-export type ChatSnapshot = { chat: Chat; turns: Turn[]; items: Item[]; queued?: QueuedMessage[] }
+/**
+ * A chat as it opens: its newest turns and their items. A long chat's earlier turns are not
+ * sent until the reader scrolls up to them (`chat.older`); `hasOlder` says there are some.
+ */
+export type ChatSnapshot = { chat: Chat; turns: Turn[]; items: Item[]; queued?: QueuedMessage[]; hasOlder: boolean }
+/** The page of turns before one already shown, oldest first, with their items. */
+export type OlderTurns = { turns: Turn[]; items: Item[]; hasOlder: boolean }
+/** How many turns a chat opens with, and how many more each scroll to the top brings. */
+export const TURN_PAGE = 20
 
 export type UsageWindow = { label: string; percent: number; resetsAt: number | null }
 
@@ -347,6 +355,8 @@ export type HostApi = {
   'chats.list': [Record<string, never>, Chat[]]
   'chat.create': [{ cwd: string }, Chat]
   'chat.open': [{ chatId: string }, ChatSnapshot]
+  /** The turns before `before`, a turn id the window already shows. */
+  'chat.older': [{ chatId: string; before: string }, OlderTurns]
   'chat.setCwd': [{ chatId: string; cwd: string }, Chat]
   'chat.delete': [{ chatId: string }, null]
   /** `model` is one of the provider's `models.list` ids, or null for the provider's default. */

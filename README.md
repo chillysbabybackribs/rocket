@@ -70,7 +70,9 @@ carries what each turn concluded and not how it got there (`handoff.ts`): the us
 reply after the turn's last tool call (the narration between calls is left out), and the files it
 touched. The newest three turns go whole with a line per other tool call; older ones keep their
 files and the head and tail of their request and reply. The whole block is held to 30,000
-characters, cutting the middle of the longest older replies first.
+characters, cutting the middle of the longest older replies first and, for a history too long to
+fit even cut down, leaving out the oldest turns with a line saying how many. The missed turns and
+their items are read in one query (`turnsWithItems`), so a full replay of a long chat stays fast.
 
 What a session is told once (the git rules, the workspace map) goes to it when it starts, not
 again when a session is resumed after the app restarts. The browser research guidance is in
@@ -500,12 +502,20 @@ the panes through `ShownChatContext` (`pane.ts`) and read-only there.
 
 ### Long chats
 
+A chat opens with its newest 20 turns (`TURN_PAGE`, `store.snapshot`), not its whole history.
+`ChatView.hasOlder` says there are earlier ones, and as the reader scrolls within a screen and a
+half of the top, `loadOlder` fetches the 20 before the first loaded (`chat.older`) and puts them
+in above. `Transcript` keeps the reader where they were, by the distance from the bottom it keeps
+up to date on every scroll and resize, and tells a page put in above from a turn just sent by the
+last turn's id. A `turn` event for a turn above the loaded ones is left for when it is fetched.
+
 Two benchmarks measure how the transcript copes with a long history, using seeded synthetic
 chats shaped like real ones (`tests/fixtures/long-chat.ts`). `npm run bench:transcript` times
 the host: reading a chat to open it, the payload, the attachment sweep and a full handoff.
-`npm run check:ui -- long-chat` times the isolated app opening a chat, switching back to its tab
-and scrolling it, with `LONG_CHAT_PROFILE=1` for a CPU profile. Both write to
-`.artifacts/bench/`. The audit, the baseline and the plan are in `docs/long-chat-plan.md`.
+`npm run check:ui -- long-chat` times the isolated app opening a chat, bringing in the page above
+(and checks the reader does not move), reading up to the first turn and switching back to its tab,
+with `LONG_CHAT_PROFILE=1` for a CPU profile. Its budgets fail the check when a chat's length shows
+up in its open time again. Both write to `.artifacts/bench/`. The audit, the baseline and the plan are in `docs/long-chat-plan.md`.
 
 ### Design reference library
 

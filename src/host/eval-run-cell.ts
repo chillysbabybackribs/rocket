@@ -74,7 +74,7 @@ export function startEvalCell(deps: EvalCellDeps, input: RunEvalCellInput): Star
       model: input.model
     })
     if (tag) deps.evalExport.tagChat(goal.chatId)
-    const running = deps.store.turns(goal.chatId).find((turn) => turn.status === 'running')
+    const running = deps.store.runningTurn(goal.chatId)
     if (!running) throw new Error('Goal draft did not start a turn')
     return { chatId: goal.chatId, turnId: running.id, cellDir: input.outDir }
   }

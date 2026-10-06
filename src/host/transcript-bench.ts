@@ -46,11 +46,12 @@ for (const turns of SIZES) {
       'open: store read ms': time(() => store.snapshot(seeded.chatId)),
       'open: sent MB': Math.round(payload.length / 1e5) / 10,
       'open: clone ms': time(() => structuredClone(snapshot)),
-      'turns() ms': time(() => store.turns(seeded.chatId)),
+      'running turn ms': time(() => store.runningTurn(seeded.chatId)),
       'attachment sweep ms': time(() => store.unusedAttachments([], 0)),
       'full handoff ms': time(() => {
-        const missed: MissedTurn[] = store.turns(seeded.chatId).map((turn) => ({
-          provider: turn.provider, model: turn.model, status: turn.status, items: store.turnItems(seeded.chatId, turn.id)
+        // As the hub reads a handoff (`handoffFor`): one read for every turn the provider missed.
+        const missed: MissedTurn[] = store.turnsWithItems(seeded.chatId, 0).map(({ turn, items }) => ({
+          provider: turn.provider, model: turn.model, status: turn.status, items
         }))
         buildHandoff(missed, undefined, folder)
       })

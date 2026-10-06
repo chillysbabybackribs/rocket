@@ -49,6 +49,32 @@ A CPU profile of the 1,000-turn open (`LONG_CHAT_PROFILE=1`) shows the app's tim
 markdown parser (micromark's `consume`, `check`, `splice` and `subtokenize`), then DOM creation,
 then link detection (`isFilePath`).
 
+## After steps 1 and 2 (6 October 2026)
+
+Steps 1 and 2 below are done: the turn index, the single-query handoff read and an incremental
+handoff `fit` that holds to its budget, the small scans, and a paged transcript.
+
+Host, 1,000 turns: a full handoff went from 27,032 ms to **293 ms**, the attachment sweep from
+240 ms to 40 ms, and finding the running turn from 9 ms to 0.3 ms. At 250 turns the full handoff
+went from 2,333 ms to 59 ms.
+
+Window:
+
+| turns | open (before → after) | longest task on open | switch back | page above | shift | reading to the first turn |
+|---|---|---|---|---|---|---|
+| 45 | 249 → 174 ms | 207 → 138 ms | 338 → 133 ms | 125 ms | 0 px | 86 ms, longest task 0 |
+| 250 | 994 → 126 ms | 827 → 88 ms | 916 → 149 ms | 170 ms | 0 px | 1.3 s over 12 pages, longest task 101 ms |
+| 1,000 | 3,023 → 180 ms | 2,563 → 85 ms | 2,948 → 197 ms | 176 ms | 0 px | 7.4 s over 49 pages, longest task 118 ms |
+
+Opening no longer depends on the chat's length. Reading a long chat right back to its start costs
+about 150 ms a page, and never freezes the window for more than about 120 ms. The spec now
+fails if a chat opens with more than one page, if opening, switching back or any page freezes the
+window for 250 ms or more, or if a page put in above moves the reader by more than 2 px. The
+paging itself is in the README's Long chats section.
+
+Still to do: step 4 (tool output on demand) and step 5 (keeping open tabs' chats, which would take
+switching back from about 150 ms to near zero).
+
 ## Findings, worst first
 
 1. **Full handoffs are quadratic, and they block the host.** `turnItems` (`store.ts:258`) filters

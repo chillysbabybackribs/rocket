@@ -9,7 +9,7 @@ keep importing, previewing and sending distinct actions.
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | 1 | PDF, text and code attachments | Built: cards, side-panel preview, provider delivery as text; real model turns not yet run |
-| 2 | Copy to chat, Save as and Reveal stored file | Planned |
+| 2 | Copy to chat, Save as and Reveal stored file | Mockup for review: [attachment reuse](mockups/attachment-reuse.html) |
 | 3 | Browser, window and region capture | Planned |
 | 4 | Crop and annotate images | Planned |
 
