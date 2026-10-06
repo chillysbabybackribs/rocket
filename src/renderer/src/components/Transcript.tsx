@@ -289,7 +289,8 @@ function TurnHead({ turn, thoughts, open, onToggle }: { turn: Turn; thoughts: bo
     const timer = setInterval(() => setNow(Date.now()), 1_000)
     return () => clearInterval(timer)
   }, [running])
-  const label = running ? <span className="shimmer">Thinking</span> : thoughts && <span>Thought</span>
+  // A turn can be waiting rather than thinking, on background tasks it started; its head says so.
+  const label = running ? <span className="shimmer">{turn.activity ?? 'Thinking'}</span> : thoughts && <span>Thought</span>
   return (
     <div className="turn-head" role={running ? 'status' : undefined}>
       {thoughts
@@ -309,7 +310,7 @@ function TurnHead({ turn, thoughts, open, onToggle }: { turn: Turn; thoughts: bo
 
 /**
  * A turn's response keeps one shape however long it works, each part replacing the last in its
- * place rather than piling up: the model's latest words, a summary of the steps before them, and,
+ * place rather than piling up: a summary of the steps so far, then the model's latest words, and,
  * while it runs, the thinking and tool call under way. Notices and questions keep to the end.
  */
 function stageOf(ids: string[], running: boolean): { reply: string | null; steps: string[]; live: string[]; notices: string[] } {
@@ -350,8 +351,8 @@ const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { tu
       {turn.goalRole ? <GoalLead turn={turn} goal={goal} round={round} /> : userId && <ItemRow id={userId} />}
       <div className="answer">
         <TurnHead turn={turn} thoughts={thoughts} open={thoughtsOpen} onToggle={() => setThoughtsOpen(!thoughtsOpen)} />
-        {reply && <ItemRow key={reply} id={reply} />}
         {steps.length > 0 && <Activity ids={steps} live={false} thoughtsOpen={thoughtsOpen} />}
+        {reply && <ItemRow key={reply} id={reply} />}
         {live.length > 0 && <Activity key={live[0]} ids={live} live thoughtsOpen={false} />}
         {notices.map((id) => <ItemRow key={id} id={id} />)}
         {turn.status === 'interrupted' && <p className="notice is-info">Stopped</p>}

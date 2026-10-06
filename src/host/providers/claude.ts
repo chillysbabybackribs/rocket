@@ -448,15 +448,12 @@ export class ClaudeAdapter implements ProviderAdapter {
     this.showWaiting(runtime, turn, 'waiting')
   }
 
-  /** The line in a waiting turn that says what it waits on. One item, updated in place. */
+  /** What a waiting turn says it waits on, in its head; nothing is added to the reply. */
   private showWaiting(runtime: Runtime, turn: RunningTurn, state: 'waiting' | 'resumed'): void {
     const count = runtime.background.size
-    const text = state === 'resumed'
-      ? 'Background work finished; Claude is following up.'
-      : count
-        ? `Waiting for ${count} background ${count === 1 ? 'task' : 'tasks'} to finish…`
-        : 'Background work finished; waiting for Claude to follow up…'
-    turn.sink.item({ type: 'notice', id: `${turn.request.turnId}:background`, turnId: turn.request.turnId, text, tone: 'info' })
+    turn.sink.activity(state === 'resumed'
+      ? null
+      : count ? `Waiting for ${count} background ${count === 1 ? 'task' : 'tasks'}` : 'Background work finished, following up')
   }
 
   private noteBackground(runtime: Runtime, message: Record<string, unknown>): void {

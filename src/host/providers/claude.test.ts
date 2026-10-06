@@ -35,6 +35,7 @@ test('a reply that ends while background tasks run keeps its turn open for the f
   const adapter = new ClaudeAdapter(() => {})
   const items: Item[] = []
   const results: unknown[] = []
+  const activity: Array<string | null> = []
   // The adapter's runtime, reduced to what message routing touches; no Claude Code process runs.
   const runtime = {
     alive: true, background: new Set<string>(), woke: [] as string[], cwd: '/w', sessionId: 's', model: null,
@@ -42,7 +43,7 @@ test('a reply that ends while background tasks run keeps its turn open for the f
   }
   runtime.turn = {
     request: { chatId: 'c', turnId: 't', cwd: '/w', sessionId: 's', model: null, text: '', handoff: null },
-    sink: { item: (item: Item) => items.push(item), delta() {}, session() {}, model() {}, usage() {} },
+    sink: { item: (item: Item) => items.push(item), delta() {}, session() {}, model() {}, usage() {}, activity: (text: string | null) => activity.push(text) },
     translator: new TurnTranslator('t'),
     finish: (result: unknown) => { results.push(result); runtime.turn = null }
   }
@@ -58,12 +59,13 @@ test('a reply that ends while background tasks run keeps its turn open for the f
   route({ type: 'system', subtype: 'background_tasks_changed', tasks: [{ task_id: 'a1', task_type: 'local_agent', description: 'research' }] })
   reply('Started the research.')
   assert.equal(results.length, 0, 'the turn stays open while the task runs')
-  const notice = items.findLast((item) => item.type === 'notice')
-  assert.match(notice?.type === 'notice' ? notice.text : '', /Waiting for 1 background task/)
+  assert.equal(activity.at(-1), 'Waiting for 1 background task')
+  assert.ok(!items.some((item) => item.type === 'notice'), 'the wait is not written into the reply')
 
   route({ type: 'system', subtype: 'task_notification', task_id: 'a1', status: 'completed', summary: 'research done', output_file: '' })
   route({ type: 'system', subtype: 'background_tasks_changed', tasks: [] })
   reply('Here is what it found.')
   assert.deepEqual(results, [{ status: 'completed' }], 'the follow-up lands in the same turn and ends it')
+  assert.equal(activity.at(-1), null, 'the follow-up goes back to thinking')
   assert.ok(items.some((item) => item.type === 'assistant' && item.text === 'Here is what it found.'))
 })

@@ -387,7 +387,12 @@ export class Hub {
         this.store.updateTurn(turn)
         this.emit({ type: 'turn', turn: publicTurn(turn) })
       },
-      usage: (snapshot) => this.noteUsage(snapshot)
+      usage: (snapshot) => this.noteUsage(snapshot),
+      activity: (text) => {
+        if ((turn.activity ?? null) === text) return
+        turn.activity = text
+        this.emit({ type: 'turn', turn: publicTurn(turn) })
+      }
     }
   }
 
@@ -405,6 +410,7 @@ export class Hub {
     turn.status = live.stopRequested && result.status !== 'completed' ? 'interrupted' : result.status
     turn.error = turn.status === 'failed' ? result.error ?? 'The turn failed' : null
     turn.endedAt = Date.now()
+    turn.activity = null
     this.store.updateTurn(turn)
     // The session now contains this turn, unless it failed before the provider took the message.
     // A failed turn that got as far as a reply or a tool call was taken: handing it over again

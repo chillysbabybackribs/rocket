@@ -55,6 +55,8 @@ export type TurnSink = {
   session: (sessionId: string) => void
   model: (model: string) => void
   usage: (snapshot: UsageSnapshot) => void
+  /** What the turn is doing, shown in its head instead of "Thinking"; null to go back to thinking. */
+  activity: (text: string | null) => void
 }
 
 export type RunResult = {

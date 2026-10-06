@@ -65,6 +65,8 @@ export type Turn = {
   error: string | null
   /** How many turns by other providers were handed to this provider along with the message. */
   handoffTurns: number
+  /** What a running turn is doing, when it is something other than thinking: "Waiting for 2 background tasks". Not kept once the turn ends. */
+  activity?: string | null
   /** What the turn was in a goal's loop; null for a turn the user sent. Its message is then the app's, not the user's. */
   goalRole: GoalRole | null
   startedAt: number
