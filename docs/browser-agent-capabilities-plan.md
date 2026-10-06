@@ -188,11 +188,16 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 
 ### Phase 1 — Fast wins (low risk)
 
-- Read header (hash, title) — WS1.3  
-- Stale ref retry — WS2.4  
-- Scroll-only-if-needed — WS4.1  
-- Tool copy refresh — WS6.1  
-- Opt-in `goto` settle (request + title) — WS2.1  
+**Status (6 Oct 2026): landed in main + harness.**
+
+- [x] Read header (hash, title, route hint) — WS1.3 (`browser-agent.ts` `readHeader`)
+- [x] Stale ref retry — WS2.4 (re-digest + one retry; Playwright-style error)
+- [x] Scroll-only-if-needed — WS4.1 (`browser-page-lib.ts` `scrollIfNeeded`)
+- [x] Tool copy refresh — WS6.1 (`browser.ts` decision tree + `tab.goto` until)
+- [x] Opt-in `goto` settle (`hash` | `title` | `request`) — WS2.1 (`GotoUntil`, `script-worker.ts`)
+- [x] Harness: Phase 1 cases in `tests/ui/browser-capabilities.spec.ts`
+
+**Note:** Restart Rocket (or re-run UI tests) after main-process changes; `npm run dev` hot-reloads renderer only.
 
 ### Phase 2 — Observation parity
 

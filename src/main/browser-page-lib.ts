@@ -43,6 +43,13 @@ export function pageLib(): void {
     const box = el.getBoundingClientRect()
     return box.width >= 1 && box.height >= 1 && (!el.checkVisibility || el.checkVisibility({ visibilityProperty: true }))
   }
+  const scrollIfNeeded = (el: Element): void => {
+    const box = el.getBoundingClientRect()
+    const margin = 2
+    const inView = box.bottom > margin && box.top < window.innerHeight - margin
+      && box.right > margin && box.left < window.innerWidth - margin
+    if (!inView) el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
+  }
   const nameOf = (el: Element): string => {
     const field = el as HTMLInputElement
     const labelled = el.getAttribute('aria-labelledby')?.split(/\s+/).map((id) => document.getElementById(id)?.textContent ?? '').join(' ')
@@ -202,7 +209,7 @@ export function pageLib(): void {
     /** Bring the element into view and say where its middle is, in viewport pixels. */
     locate(target: string): { x: number; y: number } {
       const el = find(target)
-      el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
+      scrollIfNeeded(el)
       const box = el.getBoundingClientRect()
       if (box.width < 1 || box.height < 1) throw new Error(`${target} is on the page but not visible.`)
       return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
@@ -217,7 +224,7 @@ export function pageLib(): void {
     /** Get a field ready for typing over what it holds. A select is set outright, and says so. */
     focus(target: string, value: string): 'typed' | 'set' {
       const el = find(target) as HTMLElement
-      el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
+      scrollIfNeeded(el)
       if (el instanceof HTMLSelectElement) {
         const want = value.trim().toLowerCase()
         const option = [...el.options].find((entry) => entry.value === value || entry.label.trim().toLowerCase() === want)

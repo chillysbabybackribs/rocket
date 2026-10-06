@@ -1,5 +1,5 @@
 import { nativeImage, session, type WebContents } from 'electron'
-import type { AgentTab, BrowserAgentOp } from '../shared/types.ts'
+import type { AgentTab, BrowserAgentOp, GotoUntil } from '../shared/types.ts'
 import { BrowserDownloads } from './browser-downloads.ts'
 import { PAGE_LIB, type DigestOptions } from './browser-page-lib.ts'
 import type { BrowserPane, TabHandle } from './browser-pane.ts'
@@ -22,6 +22,7 @@ const PARTITION = 'persist:browser'
 // page's own scripts to draw, cut short the moment the page finishes loading.
 const READY_TIMEOUT_MS = 20_000
 const GRACE_MS = 700
+const SETTLE_CAP_MS = 5_000
 const SHOT_WIDTH = 1280
 const SHOT_QUALITY = 72
 const REQUEST_LOG = 300
@@ -109,6 +110,7 @@ export class BrowserAgent {
       case 'goto': {
         const tab = this.tab(op)
         const problem = await this.navigate(tab, op.url)
+        if (op.until && op.until !== 'none') await this.settleAfterGoto(tab, op.url, op.until, op.untilValue ?? null, op.settleTimeout ?? null)
         return { ...this.info(tab), ...(problem ? { problem } : {}) }
       }
       case 'read': {
@@ -145,7 +147,7 @@ export class BrowserAgent {
         return this.downloads.since(op.chat ?? '', op.since)
       case 'fill': {
         const tab = this.tab(op)
-        const how = await this.evaluate(tab, `__rocket.focus(${JSON.stringify(op.target)}, ${JSON.stringify(op.value)})`, true)
+        const how = await this.focusTarget(tab, op.target, op.value)
         // The field's old text is selected: typing replaces it, and an empty value deletes it.
         if (how === 'typed') await (op.value ? this.send(tab, 'Input.insertText', { text: op.value }) : this.press(tab, 'Backspace'))
         return null
@@ -417,11 +419,29 @@ export class BrowserAgent {
 
   // ── Operations ──────────────────────────────────────────────────────
 
+  private readHeader(url: string, title: string, id: string, problem: string | null, dialogs: string): string {
+    let hash = '(no hash)'
+    let route = ''
+    if (url) {
+      try {
+        const parsed = new URL(url)
+        hash = parsed.hash || '(no hash)'
+        if (/#\/record\//i.test(parsed.hash)) route = 'route: detail (hash record)'
+        else if (parsed.pathname.includes('/spa') && !parsed.hash) route = 'route: list (SPA home)'
+      } catch {
+        hash = '(url not parseable)'
+      }
+    }
+    const lines = [`# ${title || '(untitled)'}`, `hash: ${hash}`, ...(route ? [route] : []), `${url || '(blank tab)'}  ·  tab ${id}`]
+    if (problem) lines.push(`(${problem})`)
+    return lines.join('\n') + dialogs
+  }
+
   private async read(tab: TabHandle, op: Extract<BrowserAgentOp, { op: 'read' }>, problem: string | null): Promise<string> {
     const { id, url, title } = this.info(tab)
     const state = await this.attach(tab)
     const dialogs = state.dialogs.splice(0).map((dialog) => `\n(The page raised a dialog, which was accepted. ${dialog})`).join('')
-    const parts = [`# ${title || '(untitled)'}\n${url || '(blank tab)'}  ·  tab ${id}${problem ? `\n(${problem})` : ''}${dialogs}`]
+    const parts = [this.readHeader(url, title, id, problem, dialogs)]
     if (op.focus !== 'network' && url) {
       const options: DigestOptions = { focus: op.focus, selector: op.selector, max: op.max }
       parts.push(String(await this.evaluate(tab, `__rocket.digest(${JSON.stringify(options)})`, true)))
@@ -440,9 +460,83 @@ export class BrowserAgent {
     return parts.join('\n\n')
   }
 
+  /** Bounded wait after goto for hash routes, title, or a matching XHR (opt-in). */
+  private async settleAfterGoto(
+    tab: TabHandle, url: string, until: GotoUntil, untilValue: string | null, settleTimeout: number | null
+  ): Promise<void> {
+    const deadline = Date.now() + Math.min(Math.max(settleTimeout ?? SETTLE_CAP_MS, 100), 15_000)
+    const state = await this.attach(tab)
+    if (until === 'hash') {
+      let want: string
+      try { want = new URL(url).hash } catch { return }
+      if (!want) return
+      for (;;) {
+        const hash = String(await this.evaluate(tab, 'location.hash', false) ?? '')
+        if (hash === want) return
+        if (Date.now() >= deadline) throw new Error(`After goto, hash stayed ${hash || '(empty)'} instead of ${want} within ${settleTimeout ?? SETTLE_CAP_MS}ms.`)
+        await sleep(50)
+      }
+    }
+    if (until === 'title') {
+      const want = untilValue?.trim() ?? ''
+      for (;;) {
+        const title = tab.contents.getTitle()
+        if (title && (!want || title.includes(want))) return
+        if (Date.now() >= deadline) throw new Error(`After goto, title "${title}" never matched${want ? ` "${want}"` : ''} within ${settleTimeout ?? SETTLE_CAP_MS}ms.`)
+        await sleep(50)
+      }
+    }
+    if (until === 'request') {
+      const match = untilValue?.trim() ?? ''
+      if (!match) throw new Error('tab.goto(..., { until: "request", untilValue: "url fragment" }) needs untilValue.')
+      for (;;) {
+        const hit = state.requests.find((request) =>
+          request.url.includes(match) && request.status === 200 && Number(request.id.slice(1)) > state.pageStart
+        )
+        if (hit) return
+        if (Date.now() >= deadline) throw new Error(`After goto, no GET ${match} with status 200 appeared within ${settleTimeout ?? SETTLE_CAP_MS}ms.`)
+        await sleep(50)
+      }
+    }
+  }
+
+  private async locate(tab: TabHandle, target: string, retry = true): Promise<{ x: number; y: number }> {
+    try {
+      return await this.evaluate(tab, `__rocket.locate(${JSON.stringify(target)})`, true) as { x: number; y: number }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      const stale = /no longer on the page|Nothing on the page says/.test(msg)
+      if (!stale || !retry) {
+        if (/no longer on the page/.test(msg)) {
+          throw new Error(`${target} is stale. Read the page again (capture a new snapshot) for current refs.`)
+        }
+        throw error
+      }
+      await this.evaluate(tab, `__rocket.digest(${JSON.stringify({ focus: 'elements', selector: null, max: 150 } satisfies DigestOptions)})`, true)
+      return this.locate(tab, target, false)
+    }
+  }
+
+  private async focusTarget(tab: TabHandle, target: string, value: string, retry = true): Promise<'typed' | 'set'> {
+    try {
+      return await this.evaluate(tab, `__rocket.focus(${JSON.stringify(target)}, ${JSON.stringify(value)})`, true) as 'typed' | 'set'
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      const stale = /no longer on the page|Nothing on the page says/.test(msg)
+      if (!stale || !retry) {
+        if (/no longer on the page/.test(msg)) {
+          throw new Error(`${target} is stale. Read the page again (capture a new snapshot) for current refs.`)
+        }
+        throw error
+      }
+      await this.evaluate(tab, `__rocket.digest(${JSON.stringify({ focus: 'elements', selector: null, max: 150 } satisfies DigestOptions)})`, true)
+      return this.focusTarget(tab, target, value, false)
+    }
+  }
+
   /** A real click at the target's centre; if it starts a navigation, the new page is waited for. */
   private async click(tab: TabHandle, target: string): Promise<void> {
-    const { x, y } = await this.evaluate(tab, `__rocket.locate(${JSON.stringify(target)})`, true) as { x: number; y: number }
+    const { x, y } = await this.locate(tab, target)
     const point = { x, y, button: 'left', clickCount: 1 }
     await this.send(tab, 'Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
     await this.send(tab, 'Input.dispatchMouseEvent', { type: 'mousePressed', ...point })

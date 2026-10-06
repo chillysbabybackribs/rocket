@@ -90,6 +90,33 @@ test.describe('Browser Phase 0 baseline (harness)', () => {
     expect(out.text).toMatch(/ALPHA-42/)
   })
 
+  test('Phase 1: read header includes hash and route hint on detail', async ({ rocket }) => {
+    const { origin, profile } = rocket
+    const { run } = await browserMcp(profile)
+    const detailUrl = `${origin}/spa#/record/beta`
+    const out = await run(`
+      await tab.goto(${JSON.stringify(detailUrl)});
+      await tab.waitFor('text=BETA-99', { timeout: 8000 });
+      return await tab.read({ max: 1500 });
+    `)
+    expect(out.isError).toBeFalsy()
+    expect(out.text).toMatch(/hash: #\/record\/beta/)
+    expect(out.text).toMatch(/route: detail/)
+  })
+
+  test('Phase 1: goto until request waits for slow SPA detail API', async ({ rocket }) => {
+    const { origin, profile } = rocket
+    const { run } = await browserMcp(profile)
+    const detailUrl = `${origin}/spa?slow=800#/record/alpha`
+    const out = await run(`
+      await tab.goto(${JSON.stringify(detailUrl)}, { until: 'request', untilValue: 'spa/api/records/alpha', timeout: 6000 });
+      return await tab.read({ max: 4000 });
+    `)
+    expect(out.isError).toBeFalsy()
+    expect(out.text).toMatch(/ALPHA-42/)
+    expect(out.text).not.toMatch(/Loading…/)
+  })
+
   test('SPA: network log lists record API on detail navigation', async ({ rocket }) => {
     const { origin, profile } = rocket
     const { run } = await browserMcp(profile)

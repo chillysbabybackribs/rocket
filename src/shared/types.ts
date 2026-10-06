@@ -135,8 +135,21 @@ export type Turn = {
   changes: TurnChanges | null
   /** What the turn cost in tokens, as its provider reported it; null when the provider reports nothing. */
   tokens: TurnTokens | null
+  /** What the turn opened on the web and what its reply cited; null until it has ended, or when there was neither. */
+  sources: TurnSources | null
   startedAt: number
   endedAt: number | null
+}
+
+/**
+ * What a turn read on the web against what its reply cited. `opened` is every page the app saw
+ * a request leave for, in Rocket's browser (`browser`) or through the provider's own fetch tool
+ * (`provider`); a search is not a page. `cited` is every HTTP(S) link in the reply, with whether
+ * the turn opened it. Worked out by `src/shared/sources.ts`, with no model judgment.
+ */
+export type TurnSources = {
+  opened: Array<{ url: string; via: 'browser' | 'provider' }>
+  cited: Array<{ url: string; opened: boolean }>
 }
 
 /**
@@ -584,6 +597,8 @@ export type AgentTab = {
  */
 type OnTab = { chat: string | null; tab: string | null }
 export type ReadFocus = 'all' | 'text' | 'elements' | 'network'
+/** After document-ready, optional bounded wait for SPAs (tab.goto second argument). */
+export type GotoUntil = 'none' | 'title' | 'hash' | 'request'
 
 /** What the agent host's tools can ask of the browser. Main does the work and answers once. */
 export type BrowserAgentOp =
@@ -593,7 +608,7 @@ export type BrowserAgentOp =
   | { op: 'fetch'; url: string; method: string | null; headers: Record<string, string> | null; body: string | null }
   | (OnTab & { op: 'info' })
   | (OnTab & { op: 'close' })
-  | (OnTab & { op: 'goto'; url: string })
+  | (OnTab & { op: 'goto'; url: string; until?: GotoUntil | null; untilValue?: string | null; settleTimeout?: number | null })
   /** The page as text a model can read. With a `url`, the tab goes there first. */
   | (OnTab & { op: 'read'; url: string | null; focus: ReadFocus; selector: string | null; max: number | null })
   /** JavaScript in the page's own world; the result must survive JSON. */
@@ -719,6 +734,13 @@ export type ChatLinkTarget =
   | { kind: 'browser'; url: string }
   | { kind: 'artifact'; path: string; text: string; markdown: boolean; line: number | null }
 
+/** A window or screen the capture picker offers, from Electron's desktopCapturer. Images are data URLs. */
+export type CaptureSource = { id: string; kind: 'window' | 'screen'; name: string; thumbnail: string; icon: string | null; own: boolean }
+/** What to capture: the browser's page, Rocket itself, a picked window or screen, the screen under the pointer, or a region of it. */
+export type CaptureRequest = { kind: 'page' } | { kind: 'rocket' } | { kind: 'source'; id: string } | { kind: 'screen' } | { kind: 'region' }
+/** A capture as PNG bytes at source resolution; `from` names where it came from for the review and the file name. */
+export type CaptureResult = { png: Uint8Array; width: number; height: number; from: string; name: string }
+
 /** What the preload exposes on `window.rocket`. */
 export type RocketBridge = {
   /** Ask main for a MessagePort to the agent host; it arrives as a window `message` event. */
@@ -729,6 +751,11 @@ export type RocketBridge = {
     close: () => void
   }
   pickFolder: (current: string | null) => Promise<string | null>
+  capture: {
+    sources: () => Promise<CaptureSource[]>
+    /** Null when the user cancelled (a region dismissed with Escape). */
+    take: (request: CaptureRequest) => Promise<CaptureResult | null>
+  }
   /** The system save dialog for an attachment; the host then copies the stored original there. */
   saveAttachmentAs: (name: string) => Promise<string | null>
   /** Show a stored attachment in the file manager. Main refuses paths outside the attachments folder. */

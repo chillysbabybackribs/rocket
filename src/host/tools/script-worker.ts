@@ -38,7 +38,12 @@ function makeTab(tab: string | null): Record<string, unknown> {
     id: tab,
     info: () => call({ op: 'info', tab }),
     close: () => call({ op: 'close', tab }),
-    goto: (url: string) => call({ op: 'goto', tab, url: String(url) }),
+    goto: (url: string, options: { until?: string; untilValue?: string; timeout?: number } = {}) => call({
+      op: 'goto', tab, url: String(url),
+      until: options.until ?? null,
+      untilValue: options.untilValue ?? null,
+      settleTimeout: options.timeout ?? null
+    }),
     read: (options: { focus?: string; selector?: string; max?: number } | string = {}) => {
       const { focus, selector, max } = typeof options === 'string' ? { focus: options, selector: undefined, max: undefined } : options
       return call({ op: 'read', tab, url: null, focus: focus ?? 'all', selector: selector ?? null, max: max ?? null })

@@ -3,6 +3,7 @@ import { homedir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { Worker } from 'node:worker_threads'
 import type { AgentTab, BrowserAgentOp, BrowserDownload, ProviderId, ReadFocus } from '../../shared/types.ts'
+import { openedUrl } from '../../shared/sources.ts'
 import { messageOf, stringOf } from '../json.ts'
 import { textResult, type Tool, type ToolContent, type ToolResult } from './registry.ts'
 
@@ -36,18 +37,19 @@ const WORKER = [join(here, 'script-worker.js'), join(here, '..', 'script-worker.
 export const BROWSER_RESEARCH_GUIDE = `For research, use your provider's native web search first to find and vet candidate URLs. Rocket's browser is not for scraping search-result pages, driving Google/DuckDuckGo/Bing UIs, or gathering many live sources by clicking through results.
 Open only a small set of validated, high-quality destinations you chose from search—official docs, primary sources, the user's logged-in sites—not generic search URLs or SEO aggregators. Read those pages here when they need JavaScript, the user's session, or something you must see.`
 
-const READ_DESCRIPTION = `Read a web page in Rocket's built-in browser, where the user is signed in to their sites. Returns the page as text with links, its controls with refs (e12) that browser_run can click and fill, and the data requests the page made.
+const READ_DESCRIPTION = `Read a web page in Rocket's built-in browser, where the user is signed in to their sites. Returns a header (title, hash, route hint), page text with links, controls with refs (e12) for browser_run, and recent data requests.
 ${BROWSER_RESEARCH_GUIDE}
+Decision tree: (1) browser_read or tab.read — default observe. (2) Full URL from read (including #…) or tab.goto. (3) JSON via browser.fetch or tab.eval fetch when read lists a matching API — faster than scraping the DOM on SPAs/CRMs. (4) tab.waitFor or tab.goto(..., { until }) when hash routes or XHR lag the address bar. (5) tab.click/fill only for forms and actions data cannot replace.
 Pass url to go to a destination you already chose (never a search-engine results page). Use your own tab (never the user's; Rocket switches the view to it). Pass tab (an id such as t3 from the tab list) to read a tab that is already open. Pass neither to read your tab again.
-Use this rather than fetching a URL yourself when a page needs the user's login or JavaScript to show its content.`
+Use this rather than fetching a URL yourself when a page needs the user's login or JavaScript to show its content. Stale refs after a big re-render: read again; one automatic retry may heal a single matching control.`
 
 const RUN_DESCRIPTION = `Run a script in Rocket's built-in browser. One script should do a whole task on a destination page: act, wait, extract, and return the result—not automate search engines or collect sources from SERPs. Use your provider's native web search to pick URLs first. Do as much per call as you can.
 The script is the body of an async function. It has:
-- tab: your tab, or the one named by the tab argument. tab.goto(url) returns once the page's document is ready, so use waitFor for content that arrives later; tab.read({focus, selector, max}) gives the same text as browser_read; tab.eval(fn, arg) runs fn inside the page and returns its JSON result; tab.click(target); tab.fill(target, value); tab.press('Enter') or 'Control+a'; tab.type(text); tab.waitFor(target or fn, {timeout}); tab.requests(match) lists the tab's network log; tab.body(requestId) gives a response body as text; tab.info(); tab.screenshot() saves a JPEG and gives its path; tab.close().
-- browser: browser.open(url) gives a new tab; browser.tab(id); browser.tabs(); browser.fetch(url, {method, headers, body}) requests with the browser's cookies and no CORS, giving {status, body} with body as text and a json() method.
+- tab: your tab, or the one named by the tab argument. tab.goto(url) waits for document ready; tab.goto(url, { until: 'hash' | 'title' | 'request', untilValue, timeout }) optionally waits for the hash, a title substring, or a GET URL fragment with status 200 (cap ~5s) — use on hash CRM/SPA routes instead of extra sleep. tab.read({focus, selector, max}) matches browser_read; tab.eval(fn, arg); tab.click(target); tab.fill(target, value); tab.press('Enter') or 'Control+a'; tab.type(text); tab.waitFor(target or fn, {timeout}); tab.requests(match); tab.body(requestId); tab.info(); tab.screenshot(); tab.close().
+- browser: browser.open(url); browser.tab(id); browser.tabs(); browser.fetch(url, {method, headers, body}) — session cookies, no CORS, {status, body} with json().
 - sleep(ms), console.log.
-A target is a ref from browser_read (e12), text=Visible label, or a CSS selector. Clicks and keys are real input events.
-Prefer data to UI: when a page loads what you need from a JSON endpoint (browser_read lists them), get it with tab.eval(() => fetch(...).then(r => r.json())) or browser.fetch rather than reading the screen.
+A target is a ref from browser_read (e12), text=Visible label, or a CSS selector. Clicks scroll into view only when needed.
+Prefer data to UI: when read lists a JSON endpoint (typical on Espo-style CRMs), use browser.fetch or in-page fetch before clicking lists.
 A large result is saved to a file and its path returned.`
 
 const DOWNLOAD_DESCRIPTION = `Save a file from Rocket's built-in browser to disk, with the user's sign-ins and no save dialog. Give url (a direct file address, absolute or relative to the tab's page) or click (a ref from browser_read, text=Label or a CSS selector for a download button). Waits for the file and returns its path, size and type.
@@ -57,8 +59,19 @@ Files go to the user's Downloads folder unless saveTo names a folder or a file (
 const SHOT_DESCRIPTION = `See a tab of Rocket's built-in browser as an image. For what text cannot tell you: layout, charts, images, canvas apps, or checking how a page looks. To read a page or find its controls, use browser_read, which is faster and exact.
 Pass tab (an id such as t2 from the tab list) for a tab that is already open; without it, your own tab is captured (Rocket switches the view to it).`
 
-/** `cwdOf` gives a chat's working folder, which a relative saveTo is taken from. */
-export function browserTools(link: BrowserLink, resultsDir: string, cwdOf: (chatId: string | null) => string | null = () => null): Tool[] {
+/**
+ * `cwdOf` gives a chat's working folder, which a relative saveTo is taken from. `onOpen` hears
+ * every page a chat's call asks the browser for, including each one a script goes to, so the
+ * turn's sources record (shared/sources.ts) can say what was opened.
+ */
+export function browserTools(
+  link: BrowserLink, resultsDir: string, cwdOf: (chatId: string | null) => string | null = () => null, onOpen: (chatId: string | null, url: string) => void = () => {}
+): Tool[] {
+  const request = (op: BrowserAgentOp, chatId: string | null): Promise<unknown> => {
+    const url = openedUrl(op)
+    if (url) onOpen(chatId, url)
+    return link.request(op)
+  }
   return [
     {
       name: 'browser_read',
@@ -74,7 +87,7 @@ export function browserTools(link: BrowserLink, resultsDir: string, cwdOf: (chat
         },
         additionalProperties: false
       },
-      run: async (args, context) => textResult(String(await link.request({
+      run: async (args, context) => textResult(String(await request({
         op: 'read',
         chat: context.chatId,
         tab: stringOf(args.tab) || null,
@@ -82,7 +95,7 @@ export function browserTools(link: BrowserLink, resultsDir: string, cwdOf: (chat
         focus: FOCUSES.find((focus) => focus === args.focus) ?? 'all',
         selector: stringOf(args.selector) || null,
         max: typeof args.max === 'number' && args.max > 0 ? Math.round(args.max) : null
-      })))
+      }, context.chatId)))
     },
     {
       name: 'browser_run',
@@ -97,7 +110,7 @@ export function browserTools(link: BrowserLink, resultsDir: string, cwdOf: (chat
         required: ['code'],
         additionalProperties: false
       },
-      run: (args, context) => runScript(link, resultsDir, {
+      run: (args, context) => runScript({ request: (op) => request(op, context.chatId) }, resultsDir, {
         code: stringOf(args.code),
         tab: stringOf(args.tab) || null,
         chat: context.chatId,
@@ -123,10 +136,10 @@ export function browserTools(link: BrowserLink, resultsDir: string, cwdOf: (chat
         const click = stringOf(args.click).trim() || null
         if (!url === !click) return { ...textResult('Give either url or click: the file\'s address, or what to click to start its download.'), isError: true }
         const seconds = Math.min(Math.max(typeof args.timeout === 'number' ? args.timeout : DOWNLOAD_SECONDS.default, 1), DOWNLOAD_SECONDS.max)
-        const download = await link.request({
+        const download = await request({
           op: 'download', chat: context.chatId, tab: stringOf(args.tab) || null, url, target: click,
           saveTo: savePath(stringOf(args.saveTo).trim(), cwdOf(context.chatId)), timeout: seconds * 1_000
-        }) as BrowserDownload
+        }, context.chatId) as BrowserDownload
         return { ...textResult(describeDownload(download, seconds)), isError: download.state === 'cancelled' || download.state === 'interrupted' }
       }
     },
