@@ -1,4 +1,6 @@
 import { homedir } from 'node:os'
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
   MainAgentOp, BrowserAgentReply, BrowserAgentRequest, UiSnapshot,
@@ -25,9 +27,14 @@ import { selfCheckTools } from './tools/self-check.ts'
 import { uiSnapshotTools } from './tools/ui-snapshot.ts'
 import { rocketSourceRoot, UiRunManager } from './tools/ui-run.ts'
 import { LiveUiRunner } from './tools/ui-live.ts'
+import { redactText, ToolLedger } from './tool-ledger.ts'
+import { toolHistoryTools } from './tools/tool-history.ts'
 import { Teamwork } from './teamwork.ts'
 import { workspaceContext } from './workspace.ts'
 import { UiTestAdapter, uiTestProfile } from './ui-test.ts'
+import { EvalExport } from './eval-export.ts'
+import { runEvalCell } from './eval-run-cell.ts'
+import type { TurnTiming } from './hub.ts'
 
 // The agent host: a utility process forked by Electron's main process. Everything that talks to
 // a provider or to the transcript store lives here, so none of it can stall the window or the
@@ -124,11 +131,22 @@ function onBrowserReply(reply: BrowserAgentReply): void {
 // The tools are served before any provider starts, so every session is born knowing them.
 const liveUi = new LiveUiRunner(rocketSourceRoot(), join(dataDir, 'ui-runs'), askBrowser)
 const uiRuns = new UiRunManager(rocketSourceRoot(), undefined, (args, chatId) => liveUi.run(args, chatId))
+let ledger: ToolLedger | undefined
+try {
+  const build = createHash('sha256').update(readFileSync(import.meta.filename)).digest('hex')
+  ledger = new ToolLedger(join(dataDir, 'tool-calls.db'), build, context => {
+    const turn = context.chatId ? store.turns(context.chatId).findLast(turn => turn.status === 'running' && turn.provider === context.provider) : undefined
+    return { model: turn?.model ?? null, turnId: turn?.id ?? null }
+  })
+} catch (error) { journal.add('host', 'warn', 'ledger-unavailable', messageOf(error)) }
+const evalExport = new EvalExport(dataDir, rocketSourceRoot(), () => store, () => ledger)
+const turnTiming = new Map<string, TurnTiming>()
 const tools = new ToolChannel(
-  new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', message, { provider, chatId }))
+  new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', redactText(message).slice(0, 500), { provider, chatId }), ledger)
     .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
     .add(...uiSnapshotTools(async () => await askBrowser({ op: 'uiSnapshot' }) as UiSnapshot))
     .add(...uiRuns.tools())
+    .add(...(ledger ? toolHistoryTools(ledger) : []))
     .add(...memoryTools(store))
     .add(...askTools(() => hub))
     .add(...goalTools(() => goals))
@@ -158,6 +176,13 @@ function onEvent(event: HostEvent): void {
     goals.turnEnded(event.turn)
     const { id } = event.turn
     void teamwork.turnEnded(event.turn).then((files) => goals.noteFiles(id, files))
+    try {
+      const path = evalExport.onTurnEnded(event.turn, turnTiming.get(event.turn.chatId))
+      if (path) journal.add('host', 'info', 'eval-export', `Wrote ${path}`, { turnId: id, chatId: event.turn.chatId })
+    } catch (error) {
+      journal.add('host', 'warn', 'eval-export', messageOf(error), { turnId: id })
+    }
+    turnTiming.delete(event.turn.chatId)
   } else if (event.type === 'chatDeleted') {
     goals.forget(event.chatId)
     void askBrowser({ op: 'forget', chat: event.chatId }).catch(() => {})
@@ -177,6 +202,7 @@ const hub: Hub = new Hub(
   store, adapters, onEvent,
   (timing) => {
     console.log(`[host] ${describeTiming(timing)}`)
+    turnTiming.set(timing.chatId, timing)
     journal.noteTiming(timing)
   },
   async (chatId, provider, fresh) => {
@@ -249,7 +275,19 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'journal.report': ({ message, stack }) => {
     journal.add('renderer', 'error', 'crash', oneLine(String(message), 300), { stack: String(stack ?? '').split('\n').slice(0, 6).join('\n') })
     return null
-  }
+  },
+  'eval.tagChat': ({ chatId }) => { evalExport.tagChat(chatId); return null },
+  'eval.untagChat': ({ chatId }) => { evalExport.untagChat(chatId); return null },
+  'eval.listTaggedChats': () => evalExport.listTaggedChats(),
+  'eval.exportTurn': ({ turnId, outDir }) => {
+    const ended = store.turn(turnId)
+    return evalExport.exportTurn(turnId, ended ? turnTiming.get(ended.chatId) : null, outDir ?? null)
+  },
+  'eval.setCellDir': ({ dir }) => { evalExport.setCellDir(dir); return null },
+  'eval.runCell': (input) => runEvalCell(
+    { hub, goals, store, evalExport, timingForChat: (chatId) => turnTiming.get(chatId) },
+    input
+  )
 }
 
 async function handleRequest(message: HostRequestMessage): Promise<void> {
@@ -282,6 +320,7 @@ async function shutdown(): Promise<void> {
   await Promise.race([hub.shutdown(), new Promise((resolve) => setTimeout(resolve, 1_500))])
   stopAllProcessGroups()
   tools.stop()
+  ledger?.close()
   store.close()
   process.exit(0)
 }

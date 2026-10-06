@@ -199,7 +199,7 @@ async function run(request) {
       else if (message.type === 'done') void operations.then(() => finish(message))
       else if (message.type === 'call') operations = operations.then(async () => {
         try { worker.postMessage({ id: message.id, ok: true, value: await operate(message.op, captures) }) }
-        catch (error) { worker.postMessage({ id: message.id, ok: false, error: error.message }) }
+        catch (error) { worker.postMessage({ id: message.id, ok: false, error: error.message, errorCode: error.name === 'TimeoutError' ? 'OPERATION_TIMEOUT' : error.message.includes('strict mode violation:') ? 'AMBIGUOUS_TARGET' : 'UI_OPERATION_FAILED' }) }
       })
     })
     worker.on('error', error => finish({ ok: false, error: error.message }))

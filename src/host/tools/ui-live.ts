@@ -5,7 +5,7 @@ import { Worker } from 'node:worker_threads'
 import type { Browser, Page } from 'playwright'
 import type { LiveUiConnection, MainAgentOp, UiSnapshot } from '../../shared/types.ts'
 import { recordOf, stringOf } from '../json.ts'
-import { textResult, type ToolResult } from './registry.ts'
+import { failureResult, type ToolResult } from './registry.ts'
 import { uiRunResult } from './ui-run.ts'
 
 const LOCATORS = new Set(['getByRole', 'getByText', 'getByLabel', 'getByPlaceholder', 'getByTestId', 'locator', 'filter', 'nth', 'first', 'last'])
@@ -23,13 +23,13 @@ export class LiveUiRunner {
   constructor(private readonly root: string, private readonly output: string, private readonly main: (op: MainAgentOp) => Promise<unknown>) {}
 
   async run(args: Record<string, unknown>, _chatId: string | null): Promise<ToolResult> {
-    if (this.stopping) return { ...textResult('Rocket is closing. Restart it before running UI actions.'), isError: true }
-    if (this.busy) return { ...textResult('Another live UI script is running. Wait for it to finish before interacting with the shared window.'), isError: true }
-    if (['build', 'reset', 'close'].some(key => args[key] !== undefined)) return { ...textResult('build, reset and close belong to target="isolated". Live UI actions use the app you already have open.'), isError: true }
+    if (this.stopping) return failureResult('TARGET_UNAVAILABLE', 'Rocket is closing. Restart it before running UI actions.', 'runner')
+    if (this.busy) return failureResult('UI_BUSY', 'Another live UI script is running. Wait for it to finish before interacting with the shared window.', 'runner')
+    if (['build', 'reset', 'close'].some(key => args[key] !== undefined)) return failureResult('INVALID_ARGUMENT', 'build, reset and close belong to target="isolated". Live UI actions use the app you already have open.')
     const code = stringOf(args.code)
-    if (!code.trim()) return { ...textResult('Provide code to run against the live Rocket window.'), isError: true }
+    if (!code.trim()) return failureResult('INVALID_ARGUMENT', 'Provide code to run against the live Rocket window.')
     const timeout = args.timeout ?? 30
-    if (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout < 1 || timeout > 120) return { ...textResult('Use a script timeout between 1 and 120 seconds.'), isError: true }
+    if (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout < 1 || timeout > 120) return failureResult('INVALID_ARGUMENT', 'Use a script timeout between 1 and 120 seconds.')
     this.busy = true
     let cancelled = false
     let directory = this.output
@@ -123,14 +123,18 @@ export class LiveUiRunner {
       const outcome = await new Promise<Record<string, unknown>>(resolve => {
         let finished = false
         const finish = (value: Record<string, unknown>): void => { if (!finished) { finished = true; clearTimeout(timer); resolve(value) } }
-        const timer = setTimeout(() => { cancelled = true; finish({ ok: false, timedOut: true, error: `The live UI script was stopped after ${timeout}s. Completed actions remain in the live app.` }) }, timeout * 1000)
+        const timer = setTimeout(() => { cancelled = true; finish({ ok: false, timedOut: true, errorCode: 'SCRIPT_TIMEOUT', errorOrigin: 'runner', error: `The live UI script was stopped after ${timeout}s. Completed actions remain in the live app.` }) }, timeout * 1000)
         worker.on('message', raw => {
           const message = recordOf(raw)
           if (message.type === 'log') { if (logs.join('\n').length < 12_000) logs.push(stringOf(message.text).slice(0, 2000)) }
           else if (message.type === 'done') void operations.then(() => finish(message))
           else if (message.type === 'call') operations = operations.then(async () => {
             try { worker.postMessage({ id: message.id, ok: true, value: await operate(recordOf(message.op)) ?? null }) }
-            catch (error) { worker.postMessage({ id: message.id, ok: false, error: error instanceof Error ? error.message : String(error) }) }
+            catch (error) {
+              const messageText = error instanceof Error ? error.message : String(error)
+              const errorCode = error instanceof Error && error.name === 'TimeoutError' ? 'OPERATION_TIMEOUT' : messageText.includes('strict mode violation:') ? 'AMBIGUOUS_TARGET' : 'UI_OPERATION_FAILED'
+              worker.postMessage({ id: message.id, ok: false, error: messageText, errorCode })
+            }
           }).catch(() => {})
         })
         worker.on('error', error => finish({ ok: false, error: error.message }))
@@ -143,13 +147,13 @@ export class LiveUiRunner {
       await browser.close()
       this.browser = null
       if (args.capture !== false || !outcome.ok) {
-        try { await capture() } catch (error) { logs.push(`Capture failed: ${error instanceof Error ? error.message : String(error)}`); outcome.ok = false }
+        try { await capture() } catch (error) { logs.push(`Capture failed: ${error instanceof Error ? error.message : String(error)}`); if (outcome.ok) Object.assign(outcome, { ok: false, errorCode: 'CAPTURE_FAILED', errorOrigin: 'runner', error: error instanceof Error ? error.message : String(error) }) }
       }
       const response = { ...outcome, type: undefined, id: 1, target: 'live', session: { pid: connection.pid, open: true, directory }, logs, captures }
       await writeFile(join(directory, 'run-1.json'), JSON.stringify({ ...response, captures: captures.map(c => c.metadata) }, null, 2))
       return uiRunResult(response, directory)
     } catch (error) {
-      return { ...textResult(`Live UI interaction failed: ${error instanceof Error ? error.message : String(error)}`), isError: true }
+      return failureResult('UI_CONNECTION_FAILED', `Live UI interaction failed: ${error instanceof Error ? error.message : String(error)}`, 'runner')
     } finally {
       cancelled = true
       await this.worker?.terminate()

@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url'
 import type { ChildProcess } from 'node:child_process'
 import type { UiRunRequest } from '../../shared/types.ts'
 import { recordOf, stringOf } from '../json.ts'
-import { textResult, type Tool, type ToolContent, type ToolResult } from './registry.ts'
+import { failureResult, textResult, type Tool, type ToolContent, type ToolResult, type ToolFailure } from './registry.ts'
 
 // The supervisor is plain Node on a private display. Keep it outside Electron's bundle so
 // Playwright and script workers use their own process, while the host owns their entire tree.
@@ -58,7 +58,9 @@ export function uiRunResult(response: Record<string, unknown>, directory: string
       fullResult
     })
   }
-  return { content: [{ type: 'text', text: JSON.stringify(metadata, null, 2) }, ...images], ...(response.ok ? {} : { isError: true }) }
+  const code = stringOf(response.errorCode) || (response.timedOut ? 'SCRIPT_TIMEOUT' : 'UI_RUN_FAILED')
+  const origin = (stringOf(response.errorOrigin) || 'runner') as ToolFailure['origin']
+  return { content: [{ type: 'text', text: JSON.stringify(metadata, null, 2) }, ...images], ...(response.ok ? {} : { isError: true, structuredContent: { error: { code, origin, message: stringOf(response.error) || 'UI inspection failed.' } } }) }
 }
 
 export function rocketSourceRoot(): string {
@@ -91,7 +93,7 @@ export class UiRunManager {
       },
       run: (args, context) => {
         if (args.target === 'isolated') return this.run(args, context.chatId)
-        if (args.target !== undefined && args.target !== 'live') return Promise.resolve({ ...textResult('Choose target="live" or target="isolated".'), isError: true })
+        if (args.target !== undefined && args.target !== 'live') return Promise.resolve(failureResult('INVALID_ARGUMENT', 'Choose target="live" or target="isolated".'))
         if (!this.live) return Promise.resolve({ ...textResult('Live UI control is unavailable. Restart Rocket to load the live runner.'), isError: true })
         return this.live(args, context.chatId)
       }

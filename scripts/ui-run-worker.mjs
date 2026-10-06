@@ -4,6 +4,7 @@ import { parentPort, workerData } from 'node:worker_threads'
 // terminated. Only UI operations cross the port; page and locator objects stay in the runner.
 let seq = 0
 const pending = new Map()
+const failures = new WeakMap()
 const call = op => new Promise((resolve, reject) => {
   const id = ++seq
   pending.set(id, { resolve, reject })
@@ -14,7 +15,11 @@ parentPort.on('message', reply => {
   if (!waiting) return
   pending.delete(reply.id)
   if (reply.ok) waiting.resolve(reply.value)
-  else waiting.reject(new Error(reply.error))
+  else {
+    const error = new Error(reply.error)
+    failures.set(error, { errorCode: reply.errorCode || 'UI_OPERATION_FAILED', errorOrigin: 'operation' })
+    waiting.reject(error)
+  }
 })
 const expression = (fn, arg) => `(${fn})(${arg === undefined ? '' : JSON.stringify(arg)})`
 function locator(surface, chain = []) {
@@ -54,5 +59,5 @@ try {
   const value = await new AsyncFunction('page', 'ui', 'sleep', 'console', workerData.code)(page('shell'), ui, sleep, { log, warn: log, error: log, info: log })
   parentPort.postMessage({ type: 'done', ok: true, value: value === undefined ? null : JSON.parse(JSON.stringify(value)) })
 } catch (error) {
-  parentPort.postMessage({ type: 'done', ok: false, error: error instanceof Error ? error.message : String(error) })
+  parentPort.postMessage({ type: 'done', ok: false, error: error instanceof Error ? error.message : String(error), ...(failures.get(error) || { errorCode: 'SCRIPT_ERROR', errorOrigin: 'script' }) })
 }

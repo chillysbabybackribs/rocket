@@ -9,9 +9,21 @@ import { messageOf } from '../json.ts'
 export type ToolContext = { provider: ProviderId; chatId: string | null }
 
 export type ToolContent = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
-export type ToolResult = { content: ToolContent[]; isError?: boolean }
+export type ToolResult = { content: ToolContent[]; isError?: boolean; structuredContent?: { error?: ToolFailure } }
+
+export type ToolFailure = { code: string; origin: 'validation' | 'runner' | 'operation' | 'script' | 'tool'; message: string }
+export type ObservedResult = ToolResult & { structuredContent?: { error?: ToolFailure } }
+export type ToolObserver = {
+  start: (name: string, tool: Tool | undefined, args: Record<string, unknown>, context: ToolContext) => unknown
+  finish: (id: unknown, result: ObservedResult) => void
+}
+
+export function failureResult(code: string, message: string, origin: ToolFailure['origin'] = 'validation'): ObservedResult {
+  return { ...textResult(message), isError: true, structuredContent: { error: { code, origin, message } } }
+}
 
 export type Tool = {
+  version?: number
   name: string
   description: string
   /** JSON Schema for the arguments object. */
@@ -27,7 +39,7 @@ export class ToolRegistry {
   private readonly tools = new Map<string, Tool>()
 
   /** `onFailure` hears every failed call, so the app can remember what its tools got wrong. */
-  constructor(private readonly onFailure: (name: string, message: string, context: ToolContext) => void = () => {}) {}
+  constructor(private readonly onFailure: (name: string, message: string, context: ToolContext) => void = () => {}, private readonly observer?: ToolObserver) {}
 
   add(...tools: Tool[]): this {
     for (const tool of tools) this.tools.set(tool.name, tool)
@@ -41,17 +53,18 @@ export class ToolRegistry {
   /** Run a tool. A failure is a result the model can read, never a thrown error. */
   async call(name: string, args: Record<string, unknown>, context: ToolContext): Promise<ToolResult> {
     const tool = this.tools.get(name)
-    if (!tool) {
-      this.onFailure(name, 'There is no such tool', context)
-      return { ...textResult(`There is no tool named ${name}.`), isError: true }
-    }
+    let id: unknown
+    try { id = this.observer?.start(name, tool, args, context) } catch { /* Recording cannot prevent execution. */ }
+    let result: ObservedResult
     try {
-      const result = await tool.run(args, context)
-      if (result.isError) this.onFailure(name, result.content.map((part) => (part.type === 'text' ? part.text : '')).join(' ').trim(), context)
-      return result
+      result = tool ? await tool.run(args, context) : failureResult('UNKNOWN_TOOL', `There is no tool named ${name}.`)
     } catch (error) {
-      this.onFailure(name, messageOf(error), context)
-      return { ...textResult(messageOf(error)), isError: true }
+      result = failureResult('TOOL_EXCEPTION', messageOf(error), 'tool')
     }
+    try { this.observer?.finish(id, result) } catch { /* Recording cannot change the outcome. */ }
+    if (result.isError) {
+      try { this.onFailure(name, result.structuredContent?.error?.message ?? result.content.map(part => part.type === 'text' ? part.text : '').join(' ').trim(), context) } catch { /* Diagnostics are best effort too. */ }
+    }
+    return result
   }
 }
