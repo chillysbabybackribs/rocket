@@ -1,4 +1,18 @@
-# Braintrust UI regression eval
+# Evals in Rocket
+
+## Provider × model behavior (Lane B)
+
+See [provider-model-matrix.md](./provider-model-matrix.md). Sample scenarios: `scenarios/goal-draft-minimal.jsonl`.
+
+```bash
+node scripts/run-agent-matrix.mjs docs/evals/scenarios/goal-draft-minimal.jsonl
+```
+
+Produces a run plan under `.artifacts/evals/` (manual or future host automation).
+
+---
+
+## Braintrust UI regression eval (Lane A — harness)
 
 ## One-time setup
 

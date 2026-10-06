@@ -18,6 +18,7 @@
     "eval:ui:dev": "bt eval evals/rocket-ui-regression.eval.ts --dev",
     "eval:ui": "bt eval evals/rocket-ui-regression.eval.ts",
     "eval:ui:local": "node scripts/run-ui-eval.mjs",
+    "eval:matrix:plan": "node scripts/run-agent-matrix.mjs",
     "simulate:slow-turn": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/simulate-slow-turn.ts",
     "design": "node scripts/design-library.mjs"
   },
