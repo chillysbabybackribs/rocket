@@ -1,0 +1,290 @@
+<!doctype html>
+<!-- Mockup of "what changed this turn": a line under a finished turn's reply naming the files it
+     changed, which opens the turn's diff beside the chat in the artifact panel. Static; the data
+     is invented. Two variants of the transcript line are switchable at the top right. The
+     "Ask user" tab shows the shipped ask_user card as captured by the UI check. Borrows Rocket's
+     palette and card language from src/renderer/src/styles.css. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rocket · Turn changes (mockup)</title>
+<style>
+:root {
+  color-scheme: dark;
+  --font: 'Inter Variable', Inter, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+  --canvas: #08090a; --panel: #0f1011; --raised: #17181a; --menu: #1b1c1e; --bubble: #1c1d20;
+  --composer: #151617; --composer-line: #2f3031;
+  --line: rgba(255,255,255,.07); --line-strong: rgba(255,255,255,.11); --line-focus: rgba(255,255,255,.2);
+  --text: #f7f8f8; --text-2: #b4b8c0; --text-3: #8a8f98; --text-4: #62666d;
+  --hover: rgba(255,255,255,.045); --selected: rgba(255,255,255,.08);
+  --accent: #7170ff; --button: #e6e6e6; --button-text: #08090a; --danger: #eb5757;
+  --ok: #4cb782; --warn: #f2c94c; --high: #eb5757;
+  --add: #3fb950; --del: #f85149;
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,0) 180px);
+  --menu-shadow: 0 0 0 1px rgba(0,0,0,.5), 0 12px 40px rgba(0,0,0,.6);
+  --gap: 8px; --radius: 12px;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--canvas); color: var(--text); font: 13px/1.5 var(--font); letter-spacing: -.006em; -webkit-font-smoothing: antialiased; overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.mono { font-family: var(--mono); font-size: 12px; }
+
+/* Mockup chrome: tabs for the two pages and the variant switch. Not part of the app. */
+.mock-bar { position: fixed; top: 0; left: 0; right: 0; height: 28px; display: flex; align-items: center; gap: 4px; padding: 0 12px 0 76px; z-index: 20; font-size: 11.5px; color: var(--text-4); }
+.mock-bar b { font-weight: 500; color: var(--text-3); margin-right: 6px; }
+.mock-tab { height: 20px; padding: 0 8px; border-radius: 5px; color: var(--text-3); }
+.mock-tab:hover { background: var(--hover); color: var(--text); }
+.mock-tab.on { background: var(--selected); color: var(--text); }
+.mock-bar .spacer { flex: 1; }
+.page { display: none; height: 100%; }
+.page.on { display: block; }
+
+.app { height: 100%; display: grid; gap: var(--gap); grid-template-columns: 68px minmax(520px, 1.15fr) minmax(420px, 1fr); padding: 28px var(--gap) var(--gap) 0; }
+.card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheen), var(--panel); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+
+/* Rail */
+.rail { display: flex; flex-direction: column; align-items: center; margin-top: -28px; gap: 14px; }
+.traffic { display: flex; gap: 7px; padding: 8px 0 6px; }
+.traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.ring { position: relative; width: 38px; height: 38px; display: grid; place-items: center; margin-bottom: 12px; }
+.ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.ring small { position: absolute; bottom: -14px; font-size: 9.5px; color: var(--text-4); }
+.rail-btn { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; color: var(--text-3); }
+.rail-btn:hover { background: var(--hover); color: var(--text); }
+.rail .bottom { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
+
+/* Transcript */
+.transcript { flex: 1; overflow-y: auto; padding: 24px 28px 14px; }
+.inner { max-width: 680px; margin: 0 auto; }
+.user-bubble { width: fit-content; max-width: 85%; margin: 0 0 16px auto; padding: 9px 13px; background: var(--bubble); border-radius: 10px; font-size: 14px; line-height: 1.55; }
+.turn-head { display: flex; justify-content: flex-end; font-size: 12px; color: var(--text-4); padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.prose { font-size: 14px; line-height: 1.65; color: #d7d9de; }
+.prose p { margin: 0 0 11px; }
+.prose strong { font-weight: 590; color: var(--text); }
+.prose ul { margin: 0 0 11px; padding-left: 22px; } .prose li + li { margin-top: 3px; }
+.prose code { font-family: var(--mono); font-size: .86em; padding: 1.5px 5px; border-radius: 5px; background: rgba(255,255,255,.06); border: 1px solid var(--line); }
+.summary { display: inline-flex; align-items: center; gap: 6px; line-height: 22px; font-size: 12.5px; color: var(--text-4); }
+.summary:hover { color: var(--text-2); }
+.chev { width: 12px; height: 12px; }
+
+/* The new line: what the turn changed. Variant A is one line; variant B lists the files. */
+.changes { margin-top: 2px; }
+.changes-line { display: inline-flex; align-items: center; gap: 8px; line-height: 22px; font-size: 12.5px; color: var(--text-3); border-radius: 5px; }
+.changes-line:hover { color: var(--text); }
+.changes-line.is-open { color: var(--text-2); }
+.counts { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0; }
+.counts .a { color: var(--add); } .counts .d { color: var(--del); }
+.files { display: flex; flex-direction: column; margin: 4px 0 8px; padding-left: 12px; border-left: 1px solid var(--line-strong); }
+.file-row { display: flex; align-items: center; gap: 10px; height: 24px; font-size: 12.5px; color: var(--text-3); border-radius: 5px; padding: 0 6px 0 2px; }
+.file-row:hover { background: var(--hover); color: var(--text); }
+.file-row.is-open { color: var(--text); }
+.file-row .path { font-family: var(--mono); font-size: 12px; }
+.file-row .path b { font-weight: 500; color: var(--text-2); }
+.file-row.is-open .path b { color: var(--text); }
+.file-row .kind { font-size: 10.5px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-strong); color: var(--text-4); line-height: 16px; }
+.file-row .counts { margin-left: auto; }
+.bar { display: inline-flex; gap: 1px; height: 8px; }
+.bar i { width: 8px; display: block; background: var(--line-strong); border-radius: 1px; }
+.bar i.a { background: var(--add); } .bar i.d { background: var(--del); }
+.variant { display: none; } .variant.on { display: block; }
+
+/* Composer */
+.dock { padding: 4px 28px 18px; }
+.group { max-width: 680px; margin: 0 auto; }
+.tabs { display: flex; align-items: flex-end; gap: 2px; padding-left: 14px; }
+.tab { height: 30px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-3); border: 1px solid var(--composer-line); border-bottom: 0; border-radius: 9px 9px 0 0; background: var(--composer); }
+.tab.on { color: var(--text); }
+.tab .x { color: var(--text-4); }
+.plus { width: 26px; height: 28px; display: grid; place-items: center; color: var(--text-4); }
+.composer { border: 1px solid var(--composer-line); border-radius: 12px; background: var(--composer); padding: 12px 12px 10px; margin-top: -1px; }
+.composer .ph { color: var(--text-4); font-size: 14px; padding: 2px 4px 14px; }
+.cbar { display: flex; align-items: center; justify-content: space-between; }
+.folder { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line-strong); font-size: 12px; color: var(--text-3); }
+.right { display: flex; align-items: center; gap: 8px; }
+.picker { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line-strong); font-size: 12.5px; color: var(--text-2); }
+.send { width: 26px; height: 26px; border-radius: 7px; background: var(--raised); display: grid; place-items: center; color: var(--text-4); }
+
+/* Changes panel, in the artifact panel's shape */
+.a-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.a-head .t { flex: 1; font-weight: 590; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.a-head .sub { font-size: 12px; color: var(--text-4); font-weight: 400; margin-left: 8px; }
+.btn { height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--text-2); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:hover { color: var(--text); border-color: rgba(255,255,255,.18); }
+.btn.quiet { border-color: transparent; background: none; color: var(--text-3); }
+.btn.quiet:hover { background: var(--hover); color: var(--text); }
+.icon-button { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--text-4); }
+.icon-button:hover { background: var(--hover); color: var(--text); }
+.a-files { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.a-file { height: 24px; padding: 0 9px; border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.a-file:hover { background: var(--hover); color: var(--text); }
+.a-file.on { background: var(--selected); color: var(--text); }
+.a-body { flex: 1; overflow: auto; min-height: 0; }
+.hunk-file { padding: 10px 16px 6px; display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; color: var(--text-2); position: sticky; top: 0; background: var(--panel); border-bottom: 1px solid var(--line); z-index: 1; }
+.hunk-file .counts { margin-left: auto; }
+.hunk { margin: 0; font: 12px/1.7 var(--mono); tab-size: 4; padding: 6px 0 14px; }
+.hunk .h { display: block; padding: 2px 16px; color: var(--text-4); background: rgba(255,255,255,.025); margin: 6px 0; }
+.hunk span.l { display: block; white-space: pre; padding-right: 16px; min-height: 1.7em; }
+.hunk .n { display: inline-block; width: 3.2em; padding-right: 1em; text-align: right; color: var(--text-4); user-select: none; }
+.hunk .n + .n { width: 2.6em; }
+.hunk .s { display: inline-block; width: 1.4em; color: var(--text-4); }
+.hunk .add { background: rgba(63,185,80,.13); } .hunk .add .s { color: var(--add); }
+.hunk .del { background: rgba(248,81,73,.13); } .hunk .del .s { color: var(--del); }
+.hunk .add .n, .hunk .del .n { color: var(--text-3); }
+
+/* Shipped page: the ask_user captures */
+.shipped { height: 100%; overflow: auto; padding: 44px 32px 32px; }
+.shipped .inner { max-width: 1120px; }
+.shipped h2 { font-size: 15px; font-weight: 590; margin: 0 0 4px; }
+.shipped p { color: var(--text-3); margin: 0 0 16px; max-width: 72ch; }
+.shots { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.shot { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); }
+.shot img { display: block; width: 100%; }
+.shot .cap { padding: 8px 12px; font-size: 12px; color: var(--text-3); border-top: 1px solid var(--line); }
+.notes { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px; }
+.notes ul { margin: 0; padding-left: 18px; color: var(--text-2); max-width: 80ch; }
+.notes li { margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<div class="mock-bar">
+  <b>Mockup</b>
+  <button class="mock-tab on" data-page="changes">Turn changes · proposed</button>
+  <button class="mock-tab" data-page="shipped">Ask user · shipped</button>
+  <span class="spacer"></span>
+  <span id="variants">
+    Transcript line:
+    <button class="mock-tab on" data-variant="a">A · one line</button>
+    <button class="mock-tab" data-variant="b">B · files listed</button>
+  </span>
+</div>
+
+<!-- ─── Page 1: turn changes ────────────────────────────────────────────── -->
+<div class="page on" id="page-changes">
+<div class="app">
+  <div class="rail">
+    <div class="traffic"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div style="height:170px"></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">✳</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">◎</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">➤</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">A</span><small>25%</small></div>
+    <div class="bottom">
+      <button class="rail-btn" title="Goals">◎</button>
+      <button class="rail-btn" title="History">↺</button>
+      <button class="rail-btn" title="Browser">◍</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="transcript"><div class="inner">
+      <div class="user-bubble">Add login so each person only sees their own notes. Build it.</div>
+      <div class="turn-head">Worked for 1m 20s</div>
+      <div class="prose">
+        <p><strong>Done.</strong> Login is built, tested, and documented. Each user now sees only their own notes.</p>
+        <ul>
+          <li><code>server.js</code> now has <code>POST /register</code>, <code>POST /login</code> and <code>POST /logout</code>. Every notes route requires a bearer token, and listing and creating notes are scoped to the logged-in user.</li>
+          <li>Passwords are hashed with scrypt and a per-user salt; login uses a constant-time compare.</li>
+          <li><code>test/auth.test.js</code> covers the isolation guarantee directly: two users create notes and each list returns only their own.</li>
+        </ul>
+        <p>All 6 tests pass. Storage is still in memory, matching the comment in the file.</p>
+      </div>
+      <button class="summary"><span>Worked · 9 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
+
+      <!-- Variant A: one line, opens the panel -->
+      <div class="changes variant on" data-variant="a">
+        <button class="changes-line is-open">
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 6h16M4 12h10M4 18h7"/></svg>
+          <span>Changed 3 files</span>
+          <span class="counts"><span class="a">+184</span> <span class="d">−12</span></span>
+          <span class="bar"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></span>
+        </button>
+      </div>
+
+      <!-- Variant B: files listed under the line, each opens the panel to that file -->
+      <div class="changes variant" data-variant="b">
+        <button class="changes-line is-open">
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg>
+          <span>Changed 3 files</span>
+          <span class="counts"><span class="a">+184</span> <span class="d">−12</span></span>
+        </button>
+        <div class="files">
+          <button class="file-row is-open"><span class="path"><b>server.js</b></span><span class="counts"><span class="a">+96</span> <span class="d">−12</span></span><span class="bar"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></span></button>
+          <button class="file-row"><span class="path">test/<b>auth.test.js</b></span><span class="kind">new</span><span class="counts"><span class="a">+71</span></span><span class="bar"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></span></button>
+          <button class="file-row"><span class="path"><b>README.md</b></span><span class="counts"><span class="a">+17</span></span><span class="bar"><i class="a"></i><i class="a"></i><i></i><i></i><i></i></span></button>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="dock"><div class="group">
+      <div class="tabs"><span class="tab on">Add login so each person on… <span class="x">×</span></span><span class="plus">+</span></div>
+      <div class="composer">
+        <div class="ph">Reply…</div>
+        <div class="cbar">
+          <span class="folder">▭ ~/side/notes-api</span>
+          <span class="right"><span class="picker">✳ Claude ▾</span><span class="send">↑</span></span>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- The artifact panel, showing the turn's changes -->
+  <div class="card">
+    <div class="a-head">
+      <span class="t">Changes<span class="sub">this turn · 3 files · <span class="counts"><span class="a">+184</span> <span class="d">−12</span></span></span></span>
+      <button class="btn quiet" title="Put the folder back as it was before this turn. Only offered while nothing later has touched these files.">Undo this turn</button>
+      <button class="icon-button" title="Close">✕</button>
+    </div>
+    <div class="a-files">
+      <button class="a-file on">server.js <span class="counts"><span class="a">+96</span> <span class="d">−12</span></span></button>
+      <button class="a-file">test/auth.test.js <span class="counts"><span class="a">+71</span></span></button>
+      <button class="a-file">README.md <span class="counts"><span class="a">+17</span></span></button>
+    </div>
+    <div class="a-body">
+      <div class="hunk-file">server.js <span class="counts"><span class="a">+96</span> <span class="d">−12</span></span></div>
+<pre class="hunk"><span class="h">@@ -1,8 +1,52 @@</span><span class="l"><span class="n">1</span><span class="n">1</span><span class="s"> </span>// A small notes API: in-memory for now.</span><span class="l"><span class="n">2</span><span class="n">2</span><span class="s"> </span>import { createServer } from 'node:http'</span><span class="l add"><span class="n"></span><span class="n">3</span><span class="s">+</span>import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'</span><span class="l"><span class="n">3</span><span class="n">4</span><span class="s"> </span></span><span class="l del"><span class="n">4</span><span class="n"></span><span class="s">−</span>const notes = []</span><span class="l add"><span class="n"></span><span class="n">5</span><span class="s">+</span>const users = new Map()     // username → { salt, hash, id }</span><span class="l add"><span class="n"></span><span class="n">6</span><span class="s">+</span>const sessions = new Map()  // token → userId</span><span class="l add"><span class="n"></span><span class="n">7</span><span class="s">+</span>const notes = []            // { id, userId, text, at }</span><span class="l add"><span class="n"></span><span class="n">8</span><span class="s">+</span></span><span class="l add"><span class="n"></span><span class="n">9</span><span class="s">+</span>// Who is calling, from the bearer token; null when the token is missing or unknown.</span><span class="l add"><span class="n"></span><span class="n">10</span><span class="s">+</span>function authOf(req) {</span><span class="l add"><span class="n"></span><span class="n">11</span><span class="s">+</span>  const token = (req.headers.authorization ?? '').replace(/^Bearer /, '')</span><span class="l add"><span class="n"></span><span class="n">12</span><span class="s">+</span>  const userId = sessions.get(token)</span><span class="l add"><span class="n"></span><span class="n">13</span><span class="s">+</span>  return userId === undefined ? null : { userId }</span><span class="l add"><span class="n"></span><span class="n">14</span><span class="s">+</span>}</span><span class="l add"><span class="n"></span><span class="n">15</span><span class="s">+</span></span><span class="l add"><span class="n"></span><span class="n">16</span><span class="s">+</span>function hash(password, salt) {</span><span class="l add"><span class="n"></span><span class="n">17</span><span class="s">+</span>  return scryptSync(password, salt, 64)</span><span class="l add"><span class="n"></span><span class="n">18</span><span class="s">+</span>}</span><span class="l"><span class="n">5</span><span class="n">19</span><span class="s"> </span></span><span class="l"><span class="n">6</span><span class="n">20</span><span class="s"> </span>createServer((req, res) =&gt; {</span><span class="l del"><span class="n">7</span><span class="n"></span><span class="s">−</span>  if (req.method === 'GET' &amp;&amp; req.url === '/notes') {</span><span class="l del"><span class="n">8</span><span class="n"></span><span class="s">−</span>    res.setHeader('content-type', 'application/json')</span><span class="l del"><span class="n">9</span><span class="n"></span><span class="s">−</span>    return res.end(JSON.stringify(notes))</span><span class="l add"><span class="n"></span><span class="n">21</span><span class="s">+</span>  if (req.method === 'POST' &amp;&amp; req.url === '/register') return register(req, res)</span><span class="l add"><span class="n"></span><span class="n">22</span><span class="s">+</span>  if (req.method === 'POST' &amp;&amp; req.url === '/login') return login(req, res)</span><span class="l add"><span class="n"></span><span class="n">23</span><span class="s">+</span>  const auth = authOf(req)</span><span class="l add"><span class="n"></span><span class="n">24</span><span class="s">+</span>  if (!auth) {</span><span class="l add"><span class="n"></span><span class="n">25</span><span class="s">+</span>    res.statusCode = 401</span><span class="l add"><span class="n"></span><span class="n">26</span><span class="s">+</span>    return res.end()</span><span class="l add"><span class="n"></span><span class="n">27</span><span class="s">+</span>  }</span><span class="l add"><span class="n"></span><span class="n">28</span><span class="s">+</span>  if (req.method === 'GET' &amp;&amp; req.url === '/notes') {</span><span class="l add"><span class="n"></span><span class="n">29</span><span class="s">+</span>    res.setHeader('content-type', 'application/json')</span><span class="l add"><span class="n"></span><span class="n">30</span><span class="s">+</span>    return res.end(JSON.stringify(notes.filter((note) =&gt; note.userId === auth.userId).map(publicNote)))</span><span class="l"><span class="n">10</span><span class="n">31</span><span class="s"> </span>  }</span><span class="h">@@ -14,9 +58,10 @@</span><span class="l"><span class="n">14</span><span class="n">58</span><span class="s"> </span>    req.on('end', () =&gt; {</span><span class="l del"><span class="n">15</span><span class="n"></span><span class="s">−</span>      const note = { id: notes.length + 1, text: JSON.parse(body).text, at: Date.now() }</span><span class="l add"><span class="n"></span><span class="n">59</span><span class="s">+</span>      const text = parse(body)?.text</span><span class="l add"><span class="n"></span><span class="n">60</span><span class="s">+</span>      if (typeof text !== 'string') return bad(res, 'Send JSON with a "text" string.')</span><span class="l add"><span class="n"></span><span class="n">61</span><span class="s">+</span>      const note = { id: notes.length + 1, userId: auth.userId, text, at: Date.now() }</span><span class="l"><span class="n">16</span><span class="n">62</span><span class="s"> </span>      notes.push(note)</span><span class="l"><span class="n">17</span><span class="n">63</span><span class="s"> </span>      res.statusCode = 201</span><span class="l"><span class="n">18</span><span class="n">64</span><span class="s"> </span>      res.setHeader('content-type', 'application/json')</span><span class="l del"><span class="n">19</span><span class="n"></span><span class="s">−</span>      res.end(JSON.stringify(note))</span><span class="l add"><span class="n"></span><span class="n">65</span><span class="s">+</span>      res.end(JSON.stringify(publicNote(note)))</span><span class="l"><span class="n">20</span><span class="n">66</span><span class="s"> </span>    })</span></pre>
+      <div class="hunk-file">test/auth.test.js <span class="kind" style="font-size:10.5px;padding:0 5px;border-radius:4px;border:1px solid var(--line-strong);color:var(--text-4)">new file</span> <span class="counts"><span class="a">+71</span></span></div>
+<pre class="hunk"><span class="h">@@ -0,0 +1,71 @@</span><span class="l add"><span class="n"></span><span class="n">1</span><span class="s">+</span>import assert from 'node:assert/strict'</span><span class="l add"><span class="n"></span><span class="n">2</span><span class="s">+</span>import { test } from 'node:test'</span><span class="l add"><span class="n"></span><span class="n">3</span><span class="s">+</span>import { start } from './helpers.js'</span><span class="l add"><span class="n"></span><span class="n">4</span><span class="s">+</span></span><span class="l add"><span class="n"></span><span class="n">5</span><span class="s">+</span>test('each user only sees their own notes', async () =&gt; {</span><span class="l add"><span class="n"></span><span class="n">6</span><span class="s">+</span>  const api = await start()</span><span class="l add"><span class="n"></span><span class="n">7</span><span class="s">+</span>  const ann = await api.register('ann', 'pw-ann')</span><span class="l add"><span class="n"></span><span class="n">8</span><span class="s">+</span>  const bob = await api.register('bob', 'pw-bob')</span><span class="l add"><span class="n"></span><span class="n">9</span><span class="s">+</span>  await api.create(ann, 'milk')</span><span class="l add"><span class="n"></span><span class="n">10</span><span class="s">+</span>  await api.create(bob, 'eggs')</span><span class="l add"><span class="n"></span><span class="n">11</span><span class="s">+</span>  assert.deepEqual((await api.list(ann)).map((n) =&gt; n.text), ['milk'])</span><span class="l add"><span class="n"></span><span class="n">12</span><span class="s">+</span>  assert.deepEqual((await api.list(bob)).map((n) =&gt; n.text), ['eggs'])</span><span class="l add"><span class="n"></span><span class="n">13</span><span class="s">+</span>})</span><span class="l add"><span class="n"></span><span class="n">14</span><span class="s">+</span>  …</span></pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ─── Page 2: ask_user, as shipped ────────────────────────────────────── -->
+<div class="page" id="page-shipped">
+  <div class="shipped"><div class="inner">
+    <h2>Ask user · shipped</h2>
+    <p>Captured by the isolated UI check (<code>tests/ui/question.spec.ts</code>), not drawn. Left: the card a model posts with <code>ask_user</code>; its own pick is marked and the turn has already finished. Right: after one click on "SQLite", the answer went out as the next message with the question quoted above it, and the card folded.</p>
+    <div class="shots">
+      <div class="shot"><img src="ask-user/card.png" alt="The question card with three options, Postgres marked Suggested"><div class="cap">The model asked and carried on; nothing is waiting.</div></div>
+      <div class="shot"><img src="ask-user/answered.png" alt="The answer sent as the next message, quoting the question"><div class="cap">One click sent the answer as the next message (the red line is the test harness refusing an unscripted follow-up).</div></div>
+    </div>
+    <div class="notes">
+      <h2>What the live run showed</h2>
+      <ul>
+        <li>Unforced, Claude decided for itself twice (plan prompt; "add login") and said what it chose. It asks only when the decision is clearly the user's.</li>
+        <li>Forced once, it grounded the question in the code first, gave four options each with a consequence, recommended one, then built only what did not depend on the answer and said what was waiting.</li>
+        <li>The clicked answer was understood at once on the next turn: "Going with SQLite through node:sqlite."</li>
+      </ul>
+    </div>
+  </div></div>
+</div>
+
+<script>
+  // Mockup chrome only: page tabs and the transcript-line variant.
+  const pages = document.querySelectorAll('[data-page]')
+  pages.forEach((tab) => tab.addEventListener('click', () => {
+    pages.forEach((t) => t.classList.toggle('on', t === tab))
+    document.querySelectorAll('.page').forEach((page) => page.classList.toggle('on', page.id === `page-${tab.dataset.page}`))
+    document.getElementById('variants').style.visibility = tab.dataset.page === 'changes' ? 'visible' : 'hidden'
+  }))
+  const variants = document.querySelectorAll('[data-variant].mock-tab')
+  variants.forEach((tab) => tab.addEventListener('click', () => {
+    variants.forEach((t) => t.classList.toggle('on', t === tab))
+    document.querySelectorAll('.variant').forEach((v) => v.classList.toggle('on', v.dataset.variant === tab.dataset.variant))
+  }))
+</script>
+</body>
+</html>
