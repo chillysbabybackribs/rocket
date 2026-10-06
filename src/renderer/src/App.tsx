@@ -1,4 +1,4 @@
-import { addDraftFiles, addExistingAttachment, ATTACHMENT_DRAG_TYPE, updateDraft } from './drafts.ts'
+import { addDraftFiles, ATTACHMENT_DRAG_TYPE, updateDraft } from './drafts.ts'
 import './images.css'
 import { useEffect, useRef, useState } from 'react'
 import { Images, PanelRightOpen, X } from 'lucide-react'
@@ -7,6 +7,7 @@ import { PaneContext, usePane, usePaneChatId, usePaneView } from './pane.ts'
 import { act } from './app-map.ts'
 import { dismissError, focusedChatId, paneAt, setGoalPaneOpen, setGoalWidth, useApp } from './store.ts'
 import { ArtifactPanel } from './components/ArtifactPanel.tsx'
+import { AttachmentNotice, copyTo } from './components/AttachmentMenu.tsx'
 import { BrowserPanel } from './components/BrowserPanel.tsx'
 import { EvalPanel } from './components/EvalPanel.tsx'
 import { Composer } from './components/Composer.tsx'
@@ -116,7 +117,8 @@ function ChatPane() {
   const chatId = usePaneChatId()
   const paneKey = useApp(state => paneAt(state, pane).key)
   const draftKey = chatId ?? `new:${paneKey}`
-  const [dropping, setDropping] = useState(false)
+  // 'copy' while an attachment from another chat is dragged in; 'files' for files from outside Rocket.
+  const [dropping, setDropping] = useState<false | 'copy' | 'files'>(false)
   const chat = useApp((state) => state.chats.find((entry) => entry.id === chatId) ?? null)
   const hasTurns = usePaneView((view) => view.turns.length > 0)
   const goal = useApp((state) => state.goals.find((entry) => entry.chatId === chatId) ?? null)
@@ -164,7 +166,7 @@ function ChatPane() {
         if (event.dataTransfer.types.includes('Files') || event.dataTransfer.types.includes(ATTACHMENT_DRAG_TYPE)) {
           event.preventDefault()
           event.dataTransfer.dropEffect = 'copy'
-          setDropping(true)
+          setDropping(event.dataTransfer.types.includes(ATTACHMENT_DRAG_TYPE) ? 'copy' : 'files')
         }
       }}
       onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropping(false) }}
@@ -176,11 +178,18 @@ function ChatPane() {
         focus()
         const existing = event.dataTransfer.getData(ATTACHMENT_DRAG_TYPE)
         if (existing) {
-          try { addExistingAttachment(draftKey, JSON.parse(existing)) } catch { updateDraft(draftKey, { error: 'This attachment could not be added. Choose the file again.' }) }
+          try { copyTo(JSON.parse(existing), draftKey, chat?.title ?? 'the new chat') } catch { updateDraft(draftKey, { error: 'This attachment could not be added. Choose the file again.' }) }
         } else addDraftFiles(draftKey, Array.from(event.dataTransfer.files))
       }}>
       {body}
-      {dropping && <div className="image-drop-target"><Images size={30} /><strong>{goal && goal.status !== 'done' && goal.status !== 'stopped' ? 'Use a regular chat for attachments' : 'Add files to this chat'}</strong><span>{chat?.title ?? 'New chat'}</span><small>Release to attach · send when you’re ready</small></div>}
+      {dropping && (
+        <div className="image-drop-target">
+          <Images size={30} />
+          <strong>{goal && goal.status !== 'done' && goal.status !== 'stopped' ? 'Use a regular chat for attachments' : dropping === 'copy' ? `Copy to ${chat?.title ?? 'this new chat'}` : 'Add files to this chat'}</strong>
+          <span>{dropping === 'copy' ? 'Adds the attachment to this chat’s draft' : chat?.title ?? 'New chat'}</span>
+          <small>{dropping === 'copy' ? 'Release to copy · nothing is sent' : 'Release to attach · send when you’re ready'}</small>
+        </div>
+      )}
     </section>
   )
 }
@@ -234,6 +243,7 @@ export function App() {
       <ChatCard />
       {artifact ? <ArtifactPanel /> : evalsOpen ? <EvalPanel /> : browserOpen && <BrowserPanel />}
       {newGoal && <NewGoal />}
+      <AttachmentNotice />
       {error && (
         <div className="toast" role="alert">
           <span>{error}</span>
