@@ -537,8 +537,36 @@ export type BrowserAgentOp =
   | { op: 'rest'; chat: string }
   /** The chat is gone: its own tab is closed. */
   | { op: 'forget'; chat: string }
-/** The host-to-main channel also carries app UI captures and live automation connections. */
-export type MainAgentOp = BrowserAgentOp | { op: 'uiSnapshot' } | { op: 'uiConnection' } | { op: 'uiResize'; width: number; height: number }
+/** The host-to-main channel also carries app UI captures, live automation connections and the app map. */
+export type MainAgentOp = BrowserAgentOp | { op: 'uiSnapshot' } | { op: 'uiConnection' } | { op: 'uiResize'; width: number; height: number } | UiMapOp
+/** Main runs these in the renderer's dispatcher (`window.rocketMap`); see `src/shared/app-map.ts`. */
+export type UiMapOp =
+  | { op: 'uiMap'; call: 'where' }
+  | { op: 'uiMap'; call: 'go'; place: string; params: Record<string, unknown> }
+  | { op: 'uiMap'; call: 'act'; action: string; params: Record<string, unknown> }
+/** Where the shell is, in the app map's words. `place` is the most specific place on screen. */
+export type UiWhere = {
+  place: string
+  panes: Array<{ index: number; chatId: string | null; title: string; provider: ProviderId; focused: boolean; running: boolean; goal: string | null; planOpen: boolean }>
+  focused: number
+  side: 'chat' | 'browser' | 'evals' | 'artifact'
+  artifact: { kind: string; path: string | null } | null
+  evals: {
+    view: string
+    experimentId: string | null
+    datasetId: string | null
+    playground: {
+      scenario: string; dataset: string; compare: string; diff: boolean; filter: string; busy: boolean; error: string | null
+      cells: Array<{ row: number; provider: ProviderId; status: string; pass: boolean | null; output: string | null }>
+    }
+    runSheet: { open: boolean; scenario: string; provider: ProviderId; trial: number; phase: string; chatId: string | null; error: string | null; grades: Array<{ name: string; pass: boolean; reason?: string }> | null }
+    tools: { section: 'health' | 'evaluate' }
+  } | null
+  dialogs: string[]
+  railOpen: boolean
+}
+/** A dispatcher call's answer: what it returned, or why it failed, and where the shell ended up. */
+export type UiMapResult = { ok: true; value: unknown; where: UiWhere } | { ok: false; error: string; where: UiWhere }
 export type LiveUiConnection = { endpoint: string; pid: number; surfaces: Partial<Record<'shell' | 'browser' | 'suggestions', string>> }
 export type UiSnapshot = {
   capturedAt: string

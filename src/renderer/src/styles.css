@@ -1634,6 +1634,17 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   color: var(--text);
 }
 .eval-prompt { font-size: 12px; color: var(--text-3); }
+/* Native select popups need opaque surfaces; translucent field fills can expose the OS menu colour. */
+.eval-panel select {
+  color-scheme: dark;
+  background-color: var(--canvas);
+  color: var(--text);
+}
+.eval-panel select option,
+.eval-panel select optgroup {
+  background-color: var(--menu);
+  color: var(--text);
+}
 .eval-prompt summary { cursor: pointer; color: var(--text-2); }
 .eval-prompt p { margin: 8px 0 0; white-space: pre-wrap; }
 .eval-note { color: var(--accent); }
