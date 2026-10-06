@@ -385,6 +385,44 @@ export type HostApi = {
       }>
     }>
   }]
+  /** MCP tool-call ledger for the eval Tools view (read-only; not injected into agent prompts). */
+  'toolLedger.loadPanel': [Record<string, never>, {
+    available: boolean
+    message?: string
+    path?: string
+    syncedAt?: string
+    contextPolicy?: Record<string, unknown>
+    scopes?: Array<{
+      scope: string[]
+      attempts: number
+      successes: number
+      failures: number
+      descriptionBytes: number
+      successRate: number | null
+      failureRate: number | null
+    }>
+    groups?: Array<{
+      tool: string
+      operation: string
+      code: string
+      count: number
+      failureRate: number
+      examples: string[]
+    }>
+    queue?: Array<{
+      callId: string
+      tool: string
+      code: string | null
+      lifecycle: string
+      at: number
+    }>
+    registeredTools?: Array<{ name: string; descriptionBytes: number; version: number }>
+  }]
+  'toolLedger.callDetail': [{ callId: string }, {
+    path?: string
+    calls?: Array<Record<string, unknown>>
+    matching?: number
+  }]
 }
 
 export type HostMethod = keyof HostApi

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import test from 'node:test'
 import { ToolLedger, safeEvidence, normalizedError } from './tool-ledger.ts'
+import { loadToolLedgerPanel } from './tool-ledger-panel.ts'
 import { failureResult, ToolRegistry, type Tool } from './tools/registry.ts'
 import { toolHistoryTools } from './tools/tool-history.ts'
 import { toolReviewTools } from './tools/tool-review.ts'
@@ -166,6 +167,21 @@ test('review annotations stay separate, support retry links and a bounded queue'
     f.advance(31 * 86_400_000)
     f.ledger.prune()
     assert.equal(f.ledger.review(failId), null)
+  } finally { f.ledger.close(); f.cleanup() }
+})
+
+test('panel loader exposes registered tools and summary fields for the eval Tools view', () => {
+  const f = fixture()
+  try {
+    const registry = new ToolRegistry(undefined, f.ledger)
+    registry.add(tool)
+    const id = f.ledger.start('probe', tool, {}, context)
+    f.ledger.finish(id, failureResult('AMBIGUOUS_TARGET', 'Two targets.', 'operation'))
+    const panel = loadToolLedgerPanel(f.ledger, registry.list())
+    assert.equal(panel.available, true)
+    assert.equal(panel.registeredTools?.some(row => row.name === 'probe'), true)
+    assert.equal(panel.contextPolicy?.historyInPrompts, false)
+    assert.equal((panel.groups?.length ?? 0) >= 1, true)
   } finally { f.ledger.close(); f.cleanup() }
 })
 

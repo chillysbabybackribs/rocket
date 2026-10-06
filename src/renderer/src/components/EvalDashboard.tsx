@@ -9,8 +9,10 @@ import {
   RefreshCw,
   Sparkles,
   Star,
+  Wrench,
   X
 } from 'lucide-react'
+import { EvalToolsPanel } from './EvalToolsPanel.tsx'
 import type { HostApi, ProviderId } from '../../../shared/types.ts'
 import { call } from '../host.ts'
 import { setEvalsOpen } from '../store.ts'
@@ -30,6 +32,7 @@ type NavView =
   | 'datasets'
   | 'dataset-detail'
   | 'scorers'
+  | 'tools'
 
 type LayoutMode = 'list' | 'grid' | 'summary' | 'summary-table'
 
@@ -47,6 +50,7 @@ export function EvalDashboard() {
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [runOpen, setRunOpen] = useState(false)
   const [runSeed, setRunSeed] = useState<{ scenarioId?: string; provider?: ProviderId; trial?: number }>({})
+  const [toolsRefresh, setToolsRefresh] = useState(0)
 
   const load = useCallback(async (): Promise<void> => {
     setLoadError(null)
@@ -92,7 +96,8 @@ export function EvalDashboard() {
       'experiment-detail': 'Experiment',
       datasets: 'Datasets',
       'dataset-detail': 'Dataset',
-      scorers: 'Scorers'
+      scorers: 'Scorers',
+      tools: 'Tools'
     }
     return titles[view]
   })()
@@ -329,6 +334,7 @@ export function EvalDashboard() {
   else if (view === 'experiment-detail' && selectedExperiment) content = renderExperimentDetail(selectedExperiment)
   else if (view === 'datasets') content = renderDatasets()
   else if (view === 'dataset-detail' && selectedDataset) content = renderDatasetDetail(selectedDataset)
+  else if (view === 'tools') content = <EvalToolsPanel refreshKey={toolsRefresh} />
   else if (view === 'playgrounds') content = (
     <EvalPlayground
       datasets={datasets}
@@ -358,6 +364,9 @@ export function EvalDashboard() {
         <button type="button" className={`eval-bt-nav${view === 'datasets' || view === 'dataset-detail' ? ' is-active' : ''}`} onClick={() => nav('datasets')}><Database size={16} />Datasets</button>
         <button type="button" className={`eval-bt-nav${view === 'scorers' ? ' is-active' : ''}`} onClick={() => nav('scorers')}><Star size={16} />Scorers</button>
 
+        <div className="eval-bt-nav-label">Configure</div>
+        <button type="button" className={`eval-bt-nav${view === 'tools' ? ' is-active' : ''}`} onClick={() => nav('tools')}><Wrench size={16} />Tools</button>
+
         <div className="eval-bt-sidebar-foot">
           <div className="eval-bt-plan-card">
             <strong>Local evals</strong>
@@ -374,7 +383,7 @@ export function EvalDashboard() {
               <h1 className="eval-bt-page-title">{pageTitle}</h1>
             </div>
             <div className="eval-bt-topbar-actions">
-              <button type="button" className="icon-button" title="Refresh dashboard" aria-label="Refresh dashboard" onClick={() => void load()}>
+              <button type="button" className="icon-button" title="Refresh dashboard" aria-label="Refresh dashboard" onClick={() => { void load(); setToolsRefresh((n) => n + 1) }}>
                 <RefreshCw size={15} />
               </button>
               <button type="button" className="icon-button" aria-label="Close eval panel" onClick={() => setEvalsOpen(false)}>

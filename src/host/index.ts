@@ -29,6 +29,7 @@ import { uiSnapshotTools } from './tools/ui-snapshot.ts'
 import { rocketSourceRoot, UiRunManager } from './tools/ui-run.ts'
 import { LiveUiRunner } from './tools/ui-live.ts'
 import { redactText, ToolLedger } from './tool-ledger.ts'
+import { loadToolLedgerCallDetail, loadToolLedgerPanel } from './tool-ledger-panel.ts'
 import { toolHistoryTools } from './tools/tool-history.ts'
 import { toolReviewTools } from './tools/tool-review.ts'
 import { Teamwork } from './teamwork.ts'
@@ -145,16 +146,17 @@ try {
 } catch (error) { journal.add('host', 'warn', 'ledger-unavailable', messageOf(error)) }
 const evalExport = new EvalExport(dataDir, rocketSourceRoot(), () => store, () => ledger)
 const turnTiming = new Map<string, TurnTiming>()
+const toolRegistry = new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', redactText(message).slice(0, 500), { provider, chatId }), ledger)
+  .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
+  .add(...uiSnapshotTools(async () => await askBrowser({ op: 'uiSnapshot' }) as UiSnapshot))
+  .add(...uiRuns.tools())
+  .add(...(ledger ? [...toolHistoryTools(ledger), ...toolReviewTools(ledger)] : []))
+  .add(...memoryTools(store))
+  .add(...askTools(() => hub))
+  .add(...goalTools(() => goals))
+  .add(...(selfCheck ? selfCheckTools(journal, (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)) : []))
 const tools = new ToolChannel(
-  new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', redactText(message).slice(0, 500), { provider, chatId }), ledger)
-    .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
-    .add(...uiSnapshotTools(async () => await askBrowser({ op: 'uiSnapshot' }) as UiSnapshot))
-    .add(...uiRuns.tools())
-    .add(...(ledger ? [...toolHistoryTools(ledger), ...toolReviewTools(ledger)] : []))
-    .add(...memoryTools(store))
-    .add(...askTools(() => hub))
-    .add(...goalTools(() => goals))
-    .add(...(selfCheck ? selfCheckTools(journal, (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)) : [])),
+  toolRegistry,
   join(dataDir, 'tool-channel.json'),
   (provider) => hub.runningChat(provider)
 )
@@ -301,7 +303,9 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'eval.startScenarioCell': (input) => startCellFromScenario(evalDeps(), rocketSourceRoot(), dataDir, input),
   'eval.finishScenarioCell': ({ chatId, turnId, cellDir, graders, timeoutMs }) =>
     finishCellFromScenario(evalDeps(), { chatId, turnId, cellDir }, graders, timeoutMs),
-  'eval.loadDashboard': () => loadEvalDashboard(rocketSourceRoot())
+  'eval.loadDashboard': () => loadEvalDashboard(rocketSourceRoot()),
+  'toolLedger.loadPanel': () => loadToolLedgerPanel(ledger, toolRegistry.list()),
+  'toolLedger.callDetail': ({ callId }: { callId: string }) => loadToolLedgerCallDetail(ledger, callId)
 }
 
 function evalDeps() {

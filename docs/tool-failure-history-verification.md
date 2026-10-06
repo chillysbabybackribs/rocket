@@ -1,6 +1,6 @@
 # Tool failure history — verification record
 
-**Status: built and verified.** There is no in-app screen for this feature; use this document, the plan checklist, or MCP tools to confirm behavior.
+**Status: built and verified.** In the app: **Eval panel → Configure → Tools** (read-only ledger). This document and MCP tools remain the full audit trail.
 
 Last automated run: **2026-10-06** (ledger unit tests + isolated UI loop specs + live ledger read).
 

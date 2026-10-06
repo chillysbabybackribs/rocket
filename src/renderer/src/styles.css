@@ -1790,6 +1790,11 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   padding: 12px 16px 16px;
 }
 .eval-bt-muted { color: var(--text-4); margin: 16px 0 0; line-height: 1.5; }
+.eval-tools-heading { margin: 20px 0 8px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.eval-tools-path { margin: 8px 0 0; font-size: 11px; }
+.eval-tools-detail { margin-top: 20px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0, 0, 0, 0.15); }
+.eval-tools-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.eval-tools-pre { margin: 8px 0 0; max-height: 320px; overflow: auto; font-size: 10px; white-space: pre-wrap; word-break: break-word; }
 .eval-bt-mono { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
 .eval-bt-cell-wrap { max-width: 280px; white-space: pre-wrap; word-break: break-word; }
 .eval-bt-table {
