@@ -72,8 +72,9 @@ words mid-turn, and a message to a different provider must wait for the turn any
 in the hub, show under the turn with Send now (stop, then send) and Edit (back to the composer),
 and go out together as one message to the last picked provider when the turn ends. Stop returns
 queued text to the composer instead of sending it. Answers to a question card in a plain chat go
-through the same queue. A Claude message that is still queued when Stop lands retires the Claude
-Code process, since the SDK has no way to cancel it and it would otherwise run as a turn of its own.
+through the same queue. Stop cancels a Claude message still queued inside Claude Code
+(`interrupt({ cancelQueued: true })`), so it does not run as a turn of its own; only a CLI too old
+to cancel it has its process retired instead, which ends its background work.
 
 ### Turns a provider starts by itself
 

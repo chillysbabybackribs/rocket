@@ -32,6 +32,12 @@ import {
 //   runs takes `priority` ('next': folded in between tool rounds) and a `uuid`. When the reply
 //   ends before it was taken, the `result` has `queued_turn_count` > 0 and a turn answering it
 //   follows. `interrupt()` resolves with `still_queued`: uuids that will run after the stop.
+// - (SDK 0.3.289 / CLI 2.1.289, seen live 2026-10-05) A steered message waited 12s in the queue
+//   while the model wrote a tool call. A plain interrupt then left it in `still_queued`, and
+//   retiring the process for it killed a background subagent and shell. `interrupt({cancelQueued:
+//   true})` (in the SDK runtime, not its types; capability `interrupt_cancel_queued_v1`; read, not
+//   yet seen live) cancels it in place. Assistant frames list the user messages the turn has
+//   consumed in `user_message_uuids` (types, read 2026-10-05).
 // The SDK has no supported way to import another model's turns into a session, so missed turns
 // ride at the head of the user's message as a tagged block.
 //
@@ -172,9 +178,14 @@ class Runtime {
     return this.query.supportedModels()
   }
 
-  /** The uuids of user messages that will still run after the interrupt, when the CLI says. */
+  /**
+   * Stops the turn and drops the user messages still queued behind it. Returns the uuids that
+   * will run anyway: all of them on a CLI that cannot cancel, none on one that can.
+   */
   async interrupt(): Promise<string[]> {
-    const receipt = recordOf(await this.query.interrupt())
+    // `cancelQueued` is in the SDK's runtime but not yet in its types.
+    const interrupt = this.query.interrupt as (options?: { cancelQueued?: boolean }) => ReturnType<Query['interrupt']>
+    const receipt = recordOf(await interrupt.call(this.query, { cancelQueued: true }))
     return Array.isArray(receipt.still_queued) ? receipt.still_queued.map(String) : []
   }
 
@@ -303,7 +314,8 @@ export class ClaudeAdapter implements ProviderAdapter {
       return []
     })
     // Words the user sent into the turn and Claude Code has not taken yet would run after the
-    // stop as a turn of their own. The SDK cannot cancel them, so the process goes instead.
+    // stop as a turn of their own. A CLI too old to cancel them loses its process instead, and
+    // with it any background work.
     if (survivors.some((uuid) => waiting.steers?.has(uuid))) this.retire(runtime)
   }
 
