@@ -351,6 +351,10 @@ export type HostApi = {
   'attachment.importFile': [{ name: string; bytes: Uint8Array }, FileAttachment]
   'attachment.read': [{ id: string; thumbnail?: boolean }, string]
   'attachment.preview': [{ id: string }, AttachmentPreview]
+  /** Copy an attachment's stored original to a path the user chose in the save dialog. */
+  'attachment.export': [{ id: string; path: string }, null]
+  /** Where the host keeps an attachment's original, for Reveal. */
+  'attachment.locate': [{ id: string }, string]
   'attachment.collect': [{ keepIds: string[] }, null]
   'chats.list': [Record<string, never>, Chat[]]
   'chat.create': [{ cwd: string }, Chat]
@@ -695,6 +699,10 @@ export type RocketBridge = {
     close: () => void
   }
   pickFolder: (current: string | null) => Promise<string | null>
+  /** The system save dialog for an attachment; the host then copies the stored original there. */
+  saveAttachmentAs: (name: string) => Promise<string | null>
+  /** Show a stored attachment in the file manager. Main refuses paths outside the attachments folder. */
+  revealAttachment: (path: string) => Promise<void>
   openChatLink: (href: string, cwd: string) => Promise<ChatLinkTarget>
   /** Main hands over something to open as a chat link would: a second launch of the app with a path or URL. */
   onOpen: (listener: (target: { href: string; cwd: string }) => void) => () => void

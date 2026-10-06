@@ -254,6 +254,8 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'attachment.importFile': ({ name, bytes }) => attachments.importFile(name, bytes),
   'attachment.read': ({ id, thumbnail }) => attachments.read(id, thumbnail),
   'attachment.preview': ({ id }) => attachments.preview(id),
+  'attachment.export': async ({ id, path }) => { await attachments.export(id, path); return null },
+  'attachment.locate': ({ id }) => attachments.resolve([id])[0].path,
   'attachment.collect': async ({ keepIds }) => { await attachments.collect(keepIds); return null },
   'chats.list': () => hub.listChats().filter((chat) => !inEvalFolder(chat.cwd)),
   'chat.create': ({ cwd }) => hub.createChat(cwd),

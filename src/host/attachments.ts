@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { execFile } from 'node:child_process'
-import { mkdir, readFile, readdir, writeFile, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { copyFile, mkdir, readFile, readdir, writeFile, rm } from 'node:fs/promises'
+import { isAbsolute, join } from 'node:path'
 import { promisify } from 'node:util'
 import { imageSize } from 'image-size'
 import {
@@ -169,6 +169,19 @@ export class AttachmentStore {
     } catch (error) {
       if (error instanceof Error && /poppler|password|could not be read/.test(error.message)) throw error
       throw new Error(`${file.name} is missing from Rocket's attachments folder. Attach it again.`)
+    }
+  }
+
+  /** Save as: the stored original, byte for byte, at a path the user picked in the system dialog. */
+  async export(id: string, destination: string): Promise<void> {
+    const [attachment] = this.resolve([id])
+    if (typeof destination !== 'string' || !isAbsolute(destination)) throw new Error('Choose where to save the file.')
+    try {
+      await copyFile(attachment.path, destination)
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (code === 'ENOENT' && !(await readFile(attachment.path).then(() => true, () => false))) throw new Error(`${attachment.name} is missing from Rocket's attachments folder. Attach it again.`)
+      throw new Error(`${attachment.name} could not be saved there${code ? ` (${code})` : ''}. Choose another folder.`)
     }
   }
 

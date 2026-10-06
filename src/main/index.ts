@@ -1,9 +1,9 @@
 import {
-  app, BrowserWindow, dialog, ipcMain, MessageChannelMain, utilityProcess, type UtilityProcess
+  app, BrowserWindow, dialog, ipcMain, MessageChannelMain, shell, utilityProcess, type UtilityProcess
 } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { BrowserAgentReply, BrowserAgentRequest, BrowserCommand } from '../shared/types.ts'
 import { HOST_PORT_MESSAGE } from '../shared/types.ts'
@@ -176,6 +176,21 @@ ipcMain.handle('rocket:pick-folder', async (event, current: string | null) => {
     properties: ['openDirectory', 'createDirectory']
   })
   return result.canceled ? null : result.filePaths[0] ?? null
+})
+ipcMain.handle('rocket:save-attachment-as', async (event, name: string) => {
+  if (event.sender !== window?.webContents || !window) return null
+  const result = await dialog.showSaveDialog(window, {
+    title: 'Save attachment',
+    defaultPath: join(app.getPath('downloads'), basename(String(name)) || 'attachment')
+  })
+  return result.canceled ? null : result.filePath ?? null
+})
+// Only the host's attachments folder is revealed, so a page cannot use this to open other places.
+ipcMain.handle('rocket:reveal-attachment', (event, path: string) => {
+  const folder = join(app.getPath('userData'), 'attachments')
+  const target = resolve(String(path))
+  if (event.sender !== window?.webContents || dirname(target) !== folder) throw new Error('Rocket can only reveal its own stored attachments.')
+  shell.showItemInFolder(target)
 })
 ipcMain.handle('rocket:chat-link', (event, href: string, cwd: string) => {
   if (event.sender !== window?.webContents) throw new Error('This link cannot be opened from this window.')

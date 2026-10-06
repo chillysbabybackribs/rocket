@@ -25,6 +25,8 @@ const bridge: RocketBridge = {
     close: () => ipcRenderer.send('rocket:window', 'close')
   },
   pickFolder: (current) => ipcRenderer.invoke('rocket:pick-folder', current),
+  saveAttachmentAs: (name) => ipcRenderer.invoke('rocket:save-attachment-as', name),
+  revealAttachment: (path) => ipcRenderer.invoke('rocket:reveal-attachment', path),
   openChatLink: (href, cwd) => ipcRenderer.invoke('rocket:chat-link', href, cwd),
   onOpen: (listener) => listen<{ href: string; cwd: string }>('rocket:open', listener),
   homeDir: homedir(),
