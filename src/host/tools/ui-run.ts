@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url'
 import type { ChildProcess } from 'node:child_process'
 import type { UiRunRequest } from '../../shared/types.ts'
 import { recordOf, stringOf } from '../json.ts'
-import { APP_UI_GUIDE } from './app-ui-guide.ts'
+import { SHELL_UI_TOOL_NOTE } from '../agent-situation.ts'
 import { failureResult, textResult, type Tool, type ToolContent, type ToolResult, type ToolFailure } from './registry.ts'
 
 // The supervisor is plain Node on a private display. Keep it outside Electron's bundle so
@@ -25,7 +25,7 @@ type Session = {
   seq: number
 }
 
-const DESCRIPTION = `${APP_UI_GUIDE}
+const DESCRIPTION = `${SHELL_UI_TOOL_NOTE}
 
 Interact with the LIVE Rocket window the user is using. target defaults to "live": clicks, drafts, new chat panes and browser interactions affect the current app. Await every action. Live calls attach to the existing window, never build or launch another app. Only one live script runs at a time across chats. Timeout stops the script and disconnects the automation client; completed actions remain and Rocket stays open.
 Use target="isolated" explicitly for regression testing: its first call builds current source into a private app folder, with a fresh profile, scratch workspace, controlled providers, local browser fixture and private display. Later isolated calls reuse this chat's session. Only isolated calls accept reset=true, build=false or close=true and support ui.request(), ui.release(), ui.restart().

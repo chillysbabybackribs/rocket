@@ -18,7 +18,7 @@ import { CursorAdapter } from './providers/cursor.ts'
 import type { ProviderAdapter } from './providers/provider.ts'
 import { Store } from './store.ts'
 import { answerMessage, askTools } from './tools/ask.ts'
-import { appUiContext } from './tools/app-ui-guide.ts'
+import { agentSituationContext } from './agent-situation.ts'
 import { browserContext, browserTools } from './tools/browser.ts'
 import { ToolChannel } from './tools/channel.ts'
 import { goalTools } from './tools/goal.ts'
@@ -218,7 +218,7 @@ const hub: Hub = new Hub(
         workspace(chatId, provider, fresh),
         teamwork.context(chatId, provider, fresh),
         browserTabs(chatId, provider, fresh),
-        Promise.resolve(appUiContext(() => hub.working(), chatId, fresh))
+        Promise.resolve(agentSituationContext())
       ])
     ]
     return parts.filter(Boolean).join('\n\n') || null

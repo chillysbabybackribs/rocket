@@ -1,55 +1,44 @@
-# Agent access to Rocket’s live UI — audit (2026-10-06)
+# Agent situational awareness in Rocket
 
-## Question
+## Problem
 
-How do models learn that they can **see and drive the Rocket app shell** (not just the built-in browser), and when should they use it?
+Models often behave as if they were a generic cloud assistant: they guess UI state, confuse the **built-in browser** with the **Rocket app shell**, and skip live inspection even when the user is staring at the same window.
 
-## Current architecture
+That is a **global positioning** issue, not an eval feature or a one-off prompt tweak.
 
-| Surface | User sees | Agent tools | How the model learns |
-|--------|-----------|-------------|----------------------|
-| **Web pages** (globe) | Built-in browser tabs | `browser_read`, `browser_run`, `browser_screenshot` | Tool descriptions; **`<browser>` injected** when tabs change (`browserContext`) |
-| **Rocket shell** (chat, rail, eval flask, drawers) | Electron UI | `rocket_ui_snapshot`, `rocket_ui_run` | Tool descriptions only (until this audit) |
-| **Braintrust / external** | Browser tab | Same browser tools | Same as web |
+## Design
 
-MCP tools are served from one registry (`src/host/tools/registry.ts`) on loopback. Providers differ:
+Every user message sent through the hub is prefixed with context blocks (see `hub.ts` → `context` callback in `index.ts`):
 
-- **Claude / Codex / Cursor:** MCP tools in session; descriptions visible in tool list.
-- **Antigravity:** MCP tools **not** in model prompt — first message includes `<app-tools>` with full descriptions (`toolBrief` in `antigravity.ts`).
+| Block | When | Purpose |
+|-------|------|---------|
+| `<agent-environment>` | **Every turn** | Where the agent runs, local MCP host, shell vs browser, when to snapshot/drive UI |
+| `<workspace>` | Fresh session (+ notes delta) | Cwd, file map, remember notes |
+| `<others>` | When relevant | Parallel assistants, recent edits |
+| `<browser>` | When tabs change | Open browser tabs |
+| `<git>` | Fresh session | Commit rules |
 
-## Gaps found
+Implementation: `src/host/agent-situation.ts` — `agentSituationContext()`.
 
-1. **No message-level context for the app shell** — Browser tabs ride on every user message when they change; nothing equivalent reminded models about `rocket_ui_*`.
-2. **Easy confusion** — `browser_screenshot` sounds generic; models often treat “screenshot the app” as browser tools.
-3. **Weak “when” triggers** — Old `rocket_ui_snapshot` description said *what*, not *when* (layout work, eval panel, post-CSS verification).
-4. **Live vs isolated** — `rocket_ui_run` defaults to live (correct) but descriptions led with long isolated/regression text; models under-use live snapshot.
-5. **No eval loop** — Playground UI work was documented for humans (`docs/evals/README.md`) but not in tool copy; scenario `tool-ui-readonly.jsonl` exists for matrix grading only.
-6. **Codex plugin conflict** — README notes Codex disables competing browser plugins; shell tools are separate and must be named explicitly.
+Tool descriptions for `rocket_ui_snapshot` / `rocket_ui_run` add a short shell-vs-browser note for MCP-only discovery (e.g. Antigravity `<app-tools>` on first message).
 
-## Changes made
+## What models should internalize
 
-1. **`APP_UI_GUIDE`** (`src/host/tools/app-ui-guide.ts`) — Shared copy: two surfaces, which tool for which job, when to snapshot, live vs isolated.
-2. **Tool descriptions** — Prepended to `rocket_ui_snapshot` and `rocket_ui_run`.
-3. **`<rocket-app>` context** — Injected on **fresh provider sessions** and when the **in-flight turn edits** `src/renderer/`, eval mock UI, or mockups (same hook as `<browser>` / `<workspace>` in `hub` context).
+1. **Embedded in Rocket on the user's machine** — tools hit loopback MCP, not a remote sandbox.
+2. **Two visual surfaces** — browser tabs vs app shell; different tools.
+3. **Look before claiming UI** — `rocket_ui_snapshot` when layout/visibility matters.
+4. **Act on the live app** — `rocket_ui_run` (default live), not isolated, for normal tasks.
 
-## Recommended agent behavior
+Eval panel, tool ledger, and playground are just parts of the shell; they are not called out separately in `<agent-environment>`.
 
-| Task | Tool |
-|------|------|
-| “Does the eval panel look right?” | `rocket_ui_snapshot` |
-| After editing `src/renderer` CSS/components | `rocket_ui_snapshot` (user may need restart) |
-| Open flask → Playgrounds → Run | `rocket_ui_run` live script, or user runs manually |
-| Read a docs page on braintrust.dev | `browser_read` / `browser_screenshot` |
-| Playwright regression of Rocket | `rocket_ui_run` with `target: "isolated"` |
+## Eval UI Tools tab
+
+The eval panel **Tools** view (`EvalToolsPanel`) surfaces registered MCP tools and `rocket_tool_history` for humans and debugging. It does not replace message-level `<agent-environment>` for models.
 
 ## Verification
 
-- **Matrix scenario:** `docs/evals/scenarios/goal-draft-minimal.jsonl` row `tool-ui-readonly` — graders `turn_completed`, `no_tool_error_codes`; expects snapshot or `ui.read` use.
-- **Harness:** `tests/ui/snapshot.spec.ts`, `tests/ui/ui-run.spec.ts`, `tests/ui/ui-live.spec.ts`.
-- **Manual:** In any Rocket chat, ask the model to “describe the eval panel using rocket_ui_snapshot”; transcript should show an MCP call and image result.
+- Unit: `src/host/agent-situation.test.ts`
+- Matrix: `tool-ui-readonly` scenario in `goal-draft-minimal.jsonl`
+- Manual: new chat → first user message in host/journal should include `<agent-environment>`
 
-## Future (optional)
-
-- Inject `<rocket-app>` when user message mentions layout / “looks wrong” / eval panel (needs hub to pass message text into context).
-- Cheap shell flags over IPC (evalsOpen, pane count) without a full snapshot.
-- Cursor rule or repo `AGENTS.md` pointing here for non-Rocket agents editing the repo.
+Restart Rocket after host changes.
