@@ -1,0 +1,326 @@
+<!doctype html>
+<!-- Mockup: unified Library (attachments, downloads, workspace docs) + Document viewer.
+     Locked stack: CM6 source / read-only preview, Nutrient-style PDF chrome, sidecar annotations.
+     Static pixels + light interaction; no real SDKs. Palette from Rocket mockups / styles.css. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rocket · Library &amp; document viewer</title>
+<style>
+@font-face{font-family:Inter;src:url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')}
+:root{color-scheme:dark;--canvas:#08090a;--panel:#0f1011;--composer:#151617;--line:#2f3031;--text:#f7f8f8;--muted:#8a8f98;--accent:#7170ff;--ok:#4cb782;--agent:#9896ff}
+*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--text);font:13px/1.5 Inter,system-ui,sans-serif}
+button,input{font:inherit;color:inherit}button{cursor:pointer;background:transparent;border:0;padding:0}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{display:block;flex-shrink:0}
+header{max-width:1280px;margin:auto;padding:28px 28px 18px}
+.eyebrow{color:var(--muted);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+h1{font-size:25px;letter-spacing:-.7px;font-weight:550;margin:6px 0}
+header p{color:#b4b8c0;margin:0;max-width:720px}
+.nav{display:flex;gap:5px;flex-wrap:wrap;margin-top:20px}
+.nav button{padding:8px 13px;border-radius:7px;color:#a4a8b0;border:1px solid transparent}
+.nav button:hover{background:#ffffff0b}
+.nav button[aria-pressed=true]{background:#1c1d20;border-color:var(--line);color:var(--text)}
+main{max-width:1280px;padding:0 28px 24px;margin:auto}
+.stage{position:relative;width:1220px;height:660px;border-radius:12px;overflow:hidden;border:1px solid #ffffff14}
+.win{display:flex;height:100%;background:#050506;padding:8px 8px 8px 0}
+.rail{width:52px;display:flex;flex-direction:column;align-items:center;gap:16px;padding-top:100px;color:#5d6169}
+.rail button{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#6a6f78}
+.rail button:hover{background:#ffffff0a;color:#9aa0a8}
+.rail button.is-on{background:#7170ff22;color:#b8b6ff;box-shadow:inset 0 0 0 1px #7170ff55}
+.rail svg{width:18px;height:18px}
+.chat{width:340px;display:flex;flex-direction:column;background:var(--panel);border:1px solid #ffffff12;border-radius:11px;overflow:hidden;margin-right:8px;flex:none}
+.chat-head{padding:12px 16px;border-bottom:1px solid #ffffff09;font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+.chat-head b{color:#c8cbd0;font-weight:500}
+.chat-body{flex:1;padding:20px 18px;overflow:auto}
+.bubble{align-self:flex-end;background:#1c1d20;border-radius:10px;padding:9px 12px;margin-left:auto;max-width:92%;margin-bottom:14px}
+.assistant{color:#d7d9de;font-size:12.5px}.assistant p{margin:6px 0 0;line-height:1.55}
+.meta{font-size:11px;color:#71767f;margin-bottom:4px}
+.dock{padding:10px 12px 12px;margin-top:auto}
+.tab{display:inline-block;background:var(--composer);border:1px solid var(--line);border-bottom:0;padding:5px 12px;border-radius:8px 8px 0 0;font-size:11px;color:#d7d9de;margin-left:8px}
+.composer{background:var(--composer);border:1px solid var(--line);border-radius:12px;padding:10px 12px;color:#62666d;font-size:12px}
+.library{flex:1;display:flex;min-width:0;background:var(--panel);border:1px solid #ffffff12;border-radius:11px;overflow:hidden}
+.lib-list{width:248px;flex:none;display:flex;flex-direction:column;border-right:1px solid #ffffff0a;background:#0c0d0e}
+.lib-head{padding:12px 14px 10px;border-bottom:1px solid #ffffff09}
+.lib-head b{display:block;font-weight:500;font-size:13px;margin-bottom:8px}
+.search{display:flex;align-items:center;gap:8px;background:#151617;border:1px solid #2a2b2e;border-radius:8px;padding:6px 9px;color:#8a8f98;font-size:12px}
+.search input{flex:1;border:0;background:none;outline:none;color:var(--text);min-width:0}
+.filters{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.chip{font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid #333;color:#9aa0a8}
+.chip.on{background:#7170ff20;border-color:#7170ff66;color:#d4d3ff}
+.lib-scroll{flex:1;overflow:auto;padding:6px}
+.group{margin:10px 0 4px;padding:0 8px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#62666d}
+.row{width:100%;display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:8px;text-align:left;border:1px solid transparent}
+.row:hover{background:#ffffff06}
+.row.is-on{background:#7170ff14;border-color:#7170ff44}
+.row .mark{flex:none;width:28px;height:35px}
+.row .mark svg{width:28px;height:35px}
+.row .copy{min-width:0;flex:1}
+.row .copy b{display:block;font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .copy small{display:block;margin-top:2px;font-size:10px;color:#868b95;line-height:1.35}
+.row .copy .src{color:#7170ff}
+.doc{flex:1;display:flex;flex-direction:column;min-width:0}
+.doc-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #ffffff09;flex-wrap:wrap}
+.doc-title{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.doc-title b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-actions{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.icon-btn{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;color:#a4a8b0}
+.icon-btn:hover{background:#ffffff0b;color:var(--text)}
+.text-btn{font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid #38393c;color:#c5c7cd}
+.text-btn:hover{background:#ffffff08}
+.text-btn.primary{background:#e8e8e8;color:#08090a;border-color:#e8e8e8;font-weight:500}
+.doc-meta{font-size:11px;color:#8a8f98;padding:6px 14px 0;display:flex;gap:12px;flex-wrap:wrap}
+.doc-meta .pill{background:#1a1b1d;border:1px solid #2c2d31;border-radius:6px;padding:2px 8px;font-size:10px;color:#a4a8b0}
+.doc-meta .sidecar{color:#9896ff}
+.view-tabs{display:flex;gap:2px;padding:8px 14px 0}
+.view-tabs button{font-size:11px;padding:5px 12px;border-radius:7px 7px 0 0;color:#8a8f98;border:1px solid transparent;border-bottom:0}
+.view-tabs button.on{background:#121316;border-color:#333;color:var(--text)}
+.doc-body{flex:1;min-height:0;margin:0 14px 14px;border:1px solid #2c2d31;border-radius:0 10px 10px 10px;background:#0a0b0c;overflow:hidden;display:flex;flex-direction:column}
+.toolbar{display:flex;align-items:center;gap:4px;padding:6px 10px;border-bottom:1px solid #252628;background:#101113;flex-wrap:wrap}
+.toolbar .sep{width:1px;height:18px;background:#333;margin:0 4px}
+.toolbar button{font-size:11px;padding:4px 9px;border-radius:6px;color:#b4b8c0;display:flex;align-items:center;gap:5px}
+.toolbar button.on{background:#7170ff28;color:#fff}
+.toolbar .page{font-size:11px;color:#8a8f98;margin-left:auto;display:flex;align-items:center;gap:6px}
+.toolbar .page input{width:36px;background:#151617;border:1px solid #333;border-radius:5px;padding:2px 6px;text-align:center;color:var(--text)}
+.cm{flex:1;overflow:auto;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;padding:14px 0}
+.cm .line{display:flex;padding:0 12px}
+.cm .ln{width:36px;text-align:right;padding-right:14px;color:#52565e;user-select:none;flex:none}
+.cm .code{flex:1;white-space:pre;color:#c8cdd8}
+.cm .line.hl{background:#7170ff18;box-shadow:inset 3px 0 0 var(--accent)}
+.cm .line.hl-agent{background:#4cb78214;box-shadow:inset 3px 0 0 var(--ok)}
+.cm .mark-hl{background:#7170ff40;border-radius:2px}
+.preview{flex:1;overflow:auto;padding:22px 26px;color:#d0d4dc}
+.preview h2{font-size:20px;font-weight:550;margin:0 0 12px;letter-spacing:-.3px}
+.preview h3{font-size:14px;margin:22px 0 8px;color:#e8eaef}
+.preview p,.preview li{font-size:13px;line-height:1.6;color:#b4b8c0}
+.preview ul{padding-left:18px}
+.preview .hl{background:#7170ff35;border-radius:3px;padding:0 2px}
+.pdf-wrap{flex:1;display:flex;min-height:0}
+.thumbs{width:72px;flex:none;overflow:auto;padding:8px 6px;border-right:1px solid #252628;background:#0d0e10}
+.thumb{width:100%;aspect-ratio:8.5/11;background:#f4f3ef;border-radius:4px;margin-bottom:8px;border:2px solid transparent;cursor:pointer;position:relative;overflow:hidden}
+.thumb.on{border-color:var(--accent)}
+.thumb span{position:absolute;bottom:2px;right:4px;font-size:9px;color:#555;background:#fffc;padding:0 3px;border-radius:3px}
+.thumb .pg{height:100%;padding:6px 4px;font-size:5px;color:#444;line-height:1.2;overflow:hidden}
+.pdf-main{flex:1;display:flex;flex-direction:column;min-width:0}
+.pdf-page{flex:1;overflow:auto;display:grid;place-items:start center;padding:18px;background:#18191b}
+.paper{width:min(100%,420px);background:#fff;color:#1a1f28;min-height:520px;box-shadow:0 8px 32px #0008;border-radius:2px;padding:36px 32px;position:relative;font-size:11px;line-height:1.5}
+.paper h2{font-size:18px;margin:0 0 10px;font-weight:600}
+.paper .hl{background:#ffe566;padding:0 2px}
+.paper .note-pin{position:absolute;right:24px;top:180px;width:22px;height:22px;background:#7170ff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px #0004}
+.paper .note-card{position:absolute;right:12px;top:208px;width:140px;background:#fffef5;border:1px solid #e8e4c8;border-radius:8px;padding:8px 10px;font-size:10px;box-shadow:0 4px 16px #0003;color:#333}
+.annot-layer{position:absolute;inset:36px 32px;pointer-events:none}
+.annot-rect{position:absolute;border:2px solid #7170ff;background:#7170ff22;border-radius:2px}
+.doc-foot{padding:8px 14px;font-size:10px;color:#72767f;border-top:1px solid #ffffff08;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.office-empty{flex:1;display:grid;place-items:center;padding:30px;text-align:center;color:#8a8f98}
+.office-empty b{display:block;color:#c8cbd0;font-size:14px;margin-bottom:8px;font-weight:500}
+.agent-toast{margin:10px 14px 0;padding:8px 12px;background:#4cb78218;border:1px solid #4cb78244;border-radius:8px;font-size:11px;color:#b8e6cc;display:flex;gap:10px;align-items:flex-start}
+.agent-toast svg{width:14px;height:14px;color:var(--ok);flex:none;margin-top:1px}
+.note{display:flex;justify-content:space-between;gap:15px;color:var(--muted);font-size:12px;margin-top:14px;max-width:1220px}
+.note p{margin:0;max-width:900px;line-height:1.55}
+.note strong{color:#c4c7ce;font-weight:500}
+.note button{white-space:nowrap;border:1px solid var(--line);padding:6px 10px;border-radius:6px;align-self:start}
+#status{font-size:11px;color:#a4a8b0;margin-top:8px;min-height:16px}
+.file-mark svg{filter:drop-shadow(0 2px 2px #0003)}
+@media(max-width:1240px){main{overflow-x:auto}.stage,.note{max-width:1220px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Rocket / Library</div>
+  <h1>Every file the chat touched, in one shelf.</h1>
+  <p>Attachments, browser downloads, and workspace plans open in one viewer. Agents edit markdown on disk; PDF marks live in a host sidecar until you export.</p>
+  <nav class="nav" aria-label="Mockup states">
+    <button type="button" data-state="list" aria-pressed="true">01 · Library index</button>
+    <button type="button" data-state="md" aria-pressed="false">02 · Plan · source</button>
+    <button type="button" data-state="md-preview" aria-pressed="false">03 · Plan · preview</button>
+    <button type="button" data-state="pdf" aria-pressed="false">04 · PDF + annotations</button>
+    <button type="button" data-state="office" aria-pressed="false">05 · Office · external</button>
+    <button type="button" data-state="agent" aria-pressed="false">06 · Agent highlight</button>
+  </nav>
+</header>
+<main>
+  <div class="stage" id="stage"></div>
+  <div class="note">
+    <p id="note"><strong>Library</strong> replaces the artifact panel for indexed items. <strong>Sidecar</strong> stores Instant JSON (PDF) or line ranges (markdown) under the host store — originals stay untouched. Map targets: <code>library</code>, <code>library.document</code>, actions for source/preview, annotate, save copy.</p>
+    <button type="button" id="reset">Reset mockup</button>
+  </div>
+  <div id="status" role="status">Interactive mockup · click rows and tabs · no SDKs loaded</div>
+</main>
+<script>
+const icons={
+  lib:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m4 19.5 8-8 8 8"/><path d="M12 11.5V4.5"/><path d="M4 4.5h16"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.8a2 2 0 0 0-1.4.6L2 22V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg>',
+  globe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  ext:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+}
+const entries=[
+  {id:'plan',name:'document-library-viewer-options.md',ext:'MD',type:'code',src:'workspace',meta:'Edited 12m ago · Research chat',group:'Workspace'},
+  {id:'pdf',name:'sales-ai-statistics-2024.pdf',ext:'PDF',type:'pdf',src:'download',meta:'Download · Salesforce article · 2.1 MB',group:'Downloads'},
+  {id:'attach',name:'onboarding-brief.pdf',ext:'PDF',type:'pdf',src:'attachment',meta:'Attachment · Review onboarding',group:'This chat'},
+  {id:'office',name:'Q3-board-deck.pptx',ext:'PPTX',type:'office',src:'download',meta:'Download · 4.8 MB',group:'Downloads'},
+  {id:'img',name:'capture-regions.png',ext:'PNG',type:'image',src:'attachment',meta:'Attachment · Capture mock',group:'This chat'}
+]
+const colors={pdf:'#d75a59',code:'#5086cf',image:'#9470ca',office:'#c49a5a',text:'#788598'}
+function fileMark(ext,type){const t=type==='pdf'?'pdf':type==='code'?'code':type==='image'?'image':type==='office'?'office':'text';const c=colors[t]||colors.text;const el=document.createElement('span');el.className='file-mark';el.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 50" aria-hidden="true"><path d="M7 1h18l13 13v31a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V5a4 4 0 0 1 4-4Z" fill="${c}"/><path d="M25 1v10a3 3 0 0 0 3 3h10" fill="#fff" fill-opacity=".3"/><text x="20.5" y="41" text-anchor="middle" fill="#fff" font-family="Inter,system-ui,sans-serif" font-weight="750" font-size="${ext.length>3?8:10}">${ext.slice(0,4)}</text></svg>`;return el}
+const mdLines=[
+  '# Document library & viewer: research options (pre-mock)',
+  '',
+  '## Decisions (locked for mock)',
+  '',
+  '- PDF engine: Nutrient Web SDK',
+  '- Markdown: CodeMirror 6 source-first',
+  '- Persistence: host sidecar per library entry',
+  '',
+  '### Mock implications',
+  '',
+  '- Shell: Library list + Document viewer pane',
+  '- Agent tools: library.list, document.goto, document.highlight',
+  '',
+  '## Next step',
+  '',
+  'Mock Library + Document viewer in docs/mockups/.'
+]
+let state='list',selected='plan',tab='source'
+const stage=document.getElementById('stage'),statusEl=document.getElementById('status'),noteEl=document.getElementById('note')
+function el(t,c,h){const n=document.createElement(t);if(c)n.className=c;if(h!==undefined)n.innerHTML=h;return n}
+function render(){
+  stage.replaceChildren()
+  const win=el('div','win')
+  const rail=el('div','rail')
+  ;[['chat',icons.chat,false],['globe',icons.globe,false],['lib',icons.lib,true]].forEach(([k,ic,on])=>{
+    const b=el('button','');if(on)b.classList.add('is-on');b.innerHTML=ic;b.title=k;b.setAttribute('aria-label',k)
+    rail.append(b)
+  })
+  const chat=el('section','chat')
+  chat.innerHTML=`<div class="chat-head"><b>Research · Library</b><span>Claude</span></div>
+    <div class="chat-body">
+      <div class="bubble">Start the document library mock when you are ready.</div>
+      <div class="assistant"><div class="meta">Claude</div><p>Locked Nutrient for PDF, CM6 for plans, sidecar annotations. The library should list downloads and attachments beside workspace markdown.</p></div>
+    </div>
+    <div class="dock"><span class="tab">Research · Library</span><div class="composer">Reply…</div></div>`
+  const library=el('section','library')
+  library.setAttribute('aria-label','Library')
+  const list=el('div','lib-list')
+  const lh=el('div','lib-head')
+  lh.innerHTML='<b>Library</b>'
+  const search=el('div','search')
+  search.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>'
+  const inp=el('input');inp.placeholder='Search files…';search.append(inp)
+  lh.append(search)
+  const filters=el('div','filters')
+  ;['All','Workspace','Downloads','Attachments'].forEach((f,i)=>{const c=el('span','chip'+(i===0?' on':''),f);filters.append(c)})
+  lh.append(filters)
+  list.append(lh)
+  const scroll=el('div','lib-scroll')
+  let lastGroup=''
+  entries.forEach(e=>{
+    if(e.group!==lastGroup){scroll.append(el('div','group',e.group));lastGroup=e.group}
+    const row=el('button','row'+(selected===e.id?' is-on':''))
+    row.append(fileMark(e.ext,e.type),el('span','copy',`<b>${e.name}</b><small>${e.meta}<br><span class="src">${e.src}</span></small>`))
+    row.onclick=()=>{selected=e.id;if(e.type==='office')setState('office');else if(e.type==='pdf')setState('pdf');else if(e.type==='code')setState(state==='md-preview'?'md-preview':'md');else{statusEl.textContent='Image viewer: zoom-only in v1 (not shown in this state).';render()}}
+    scroll.append(row)
+  })
+  list.append(scroll)
+  const doc=el('div','doc')
+  const entry=entries.find(x=>x.id===selected)||entries[0]
+  if(state==='list'){selected=entry.id;state='md'}
+  if(state==='agent'){selected='plan';tab='source'}
+  if(state==='md-preview'){selected='plan';tab='preview'}
+  if(state==='md'||state==='agent'){selected='plan';tab='source'}
+  if(state==='pdf')selected=selected==='plan'?'pdf':selected
+  if(state==='office')selected='office'
+  const cur=entries.find(x=>x.id===selected)||entries[0]
+  const head=el('div','doc-head')
+  const title=el('div','doc-title')
+  title.append(fileMark(cur.ext,cur.type),el('b','',cur.name))
+  const actions=el('div','doc-actions')
+  actions.innerHTML=`<button type="button" class="icon-btn" aria-label="Close library">${icons.x}</button>`
+  const saveBtn=el('button','text-btn','Reveal in folder')
+  const exportBtn=el('button','text-btn primary','Save annotated copy')
+  exportBtn.title='Exports PDF with embedded marks; optional for markdown'
+  actions.prepend(exportBtn,saveBtn)
+  head.append(title,actions)
+  doc.append(head)
+  const meta=el('div','doc-meta')
+  meta.innerHTML=`<span class="pill">${cur.src}</span><span class="pill sidecar">Sidecar · lib-${cur.id.slice(0,4)}…instant.json</span><span>Original retained</span>`
+  doc.append(meta)
+  if(state==='agent'){
+    doc.append(el('div','agent-toast',`${icons.check}<span><strong>document.highlight</strong> applied lines 12–13 from the agent tool (mock). Same path as <code>rocket_ui_act</code> → viewer dispatcher.</span>`))
+  }
+  const body=el('div','doc-body')
+  if(cur.type==='code'){
+    const tabs=el('div','view-tabs')
+    const bSrc=el('button',''+(tab==='source'?'on':''),'Source')
+    const bPre=el('button',''+(tab==='preview'?'on':''),'Preview')
+    bSrc.onclick=()=>{tab='source';setState('md')}
+    bPre.onclick=()=>{tab='preview';setState('md-preview')}
+    tabs.append(bSrc,bPre)
+    doc.append(tabs)
+    if(tab==='preview'){
+      body.innerHTML=`<div class="preview"><h2>Document library &amp; viewer</h2><p>Research note for Rocket: unified index and viewer engines.</p>
+        <h3>Decisions (locked)</h3><ul><li>PDF: Nutrient Web SDK</li><li>Markdown: <span class="hl">CodeMirror 6 source-first</span></li><li>Sidecar persistence</li></ul>
+        <h3>Agent tools</h3><p><code>library.list</code>, <code>document.highlight</code>, <code>document.gotoPage</code></p></div>`
+    }else{
+      const cm=el('div','cm')
+      mdLines.forEach((line,i)=>{
+        const n=i+1,hl=state==='agent'&&(n===12||n===13)
+        const row=el('div','line'+(hl?' hl-agent':n===7||n===8?' hl':''))
+        let code=line.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        if(n===7)code=code.replace('Nutrient Web SDK','<span class="mark-hl">Nutrient Web SDK</span>')
+        row.innerHTML=`<span class="ln">${n}</span><span class="code">${code||' '}</span>`
+        cm.append(row)
+      })
+      body.append(cm)
+    }
+  }else if(cur.type==='pdf'){
+    const bar=el('div','toolbar')
+    bar.innerHTML=`<button type="button" class="on">Highlight</button><button type="button">Ink</button><button type="button">Note</button><span class="sep"></span><button type="button">Zoom</button><span class="page">Page <input type="text" value="2" aria-label="Page"> of 6</span>`
+    const wrap=el('div','pdf-wrap')
+    const thumbs=el('div','thumbs')
+    for(let p=1;p<=4;p++){const t=el('div','thumb'+(p===2?' on':''));t.innerHTML=`<div class="pg">${p===2?'Sales teams…':'Page '+p}</div><span>${p}</span>`;t.onclick=()=>{statusEl.textContent='Page '+p+' (mock)';render()};thumbs.append(t)}
+    const main=el('div','pdf-main')
+    main.append(bar)
+    const page=el('div','pdf-page')
+    const paper=el('article','paper')
+    paper.innerHTML=`<div style="font-size:9px;color:#888;letter-spacing:.1em">SALESFORCE RESEARCH</div>
+      <h2>Sales teams using AI are 1.3× more likely to meet quota</h2>
+      <p>Survey of 5,000+ sales professionals, 2024. Highlights indicate agent-read sections.</p>
+      <p class="hl">Teams that adopted AI assistants for call prep and follow-ups reported higher win rates in enterprise segments.</p>
+      <p>Methodology: self-reported quota attainment correlated with tool usage frequency.</p>
+      <div class="note-pin"></div><div class="note-card"><strong>Agent note</strong><br>Verify primary source; blog summary only.</div>`
+    const layer=el('div','annot-layer')
+    layer.innerHTML='<div class="annot-rect" style="left:8%;top:32%;width:84%;height:12%"></div>'
+    paper.append(layer)
+    page.append(paper)
+    main.append(page)
+    wrap.append(thumbs,main)
+    body.append(wrap)
+  }else if(cur.type==='office'){
+    body.innerHTML=`<div class="office-empty"><div><b>Q3-board-deck.pptx</b>Preview in Rocket v1 is not available.<br><br><button type="button" class="text-btn primary" style="display:inline-flex;align-items:center;gap:6px">${icons.ext} Open in default app</button><br><br><span style="font-size:11px">Shown in Library with type icon and metadata. Read-only in-viewer conversion is a later spike.</span></div></div>`
+  }
+  doc.append(body)
+  doc.append(el('div','doc-foot',`<span>Nutrient Web SDK (mock chrome) · Instant JSON sidecar</span><span>Text is never executed</span>`))
+  library.append(list,doc)
+  win.append(rail,chat,library)
+  stage.append(win)
+  document.querySelectorAll('[data-state]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.state===state)))
+  const notes={
+    list:'01 · Browse unified index: workspace, downloads, attachments.',
+    md:'02 · Source-first editor (CM6). User highlight on line 7; sidecar stores line ranges.',
+    'md-preview':'03 · Read-only preview tab — same file, no second schema (Tiptap deferred).',
+    pdf:'04 · PDF toolbar + page thumbs. Marks persist in sidecar; Save annotated copy embeds.',
+    office:'05 · Office: honest external handoff in v1.',
+    agent:'06 · Agent highlight uses the same dispatcher as UI tools (lines 12–13).'
+  }
+  noteEl.innerHTML=`<strong>${notes[state]?.split('·')[0]||'Library'}</strong> ${(notes[state]||'').replace(/^[^·]+·\s*/,'')}`
+}
+function setState(s){state=s;if(s==='md')tab='source';if(s==='md-preview')tab='preview';statusEl.textContent='State: '+s;render()}
+document.querySelectorAll('[data-state]').forEach(b=>b.onclick=()=>setState(b.dataset.state))
+document.getElementById('reset').onclick=()=>{state='list';selected='plan';tab='source';statusEl.textContent='Reset.';render()}
+render()
+</script>
+</body>
+</html>

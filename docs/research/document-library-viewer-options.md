@@ -247,6 +247,6 @@ app.
 
 ## Next step
 
-Mock **Library + Document viewer** in `docs/mockups/` using Option **A** layout and **placeholder**
-chrome for Nutrient *or* Apryse PDF toolbar, CM6 source pane, and annotation tool strip — then
-align `app-map` place names (`library`, `library.document { id }`) before implementation.
+- **Mock (in review):** [document-library.html](../mockups/document-library.html) — six states:
+  index, plan source/preview, PDF + sidecar, Office external, agent highlight.
+- **Then:** align `app-map` place names (`library`, `library.document { id }`) and implement.
