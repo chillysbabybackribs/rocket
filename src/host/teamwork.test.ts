@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -65,7 +65,7 @@ test('what a turn changed is kept with it as a patch, with totals on the turn, l
     const ended = turn('one', 'claude', 'Change a', 'completed')
     await teamwork.turnEnded(ended)
     assert.equal(changed.length, 1)
-    assert.deepEqual(changed[0]!.changes, { files: 2, added: 3, removed: 1 })
+    assert.deepEqual(changed[0]!.changes, { files: 2, added: 3, removed: 1, undone: false })
     assert.equal(store.turn(ended.id)?.changes?.files, 2)
     const kept = store.turnPatch(ended.id)!
     assert.equal(kept.truncated, false)
@@ -73,6 +73,50 @@ test('what a turn changed is kept with it as a patch, with totals on the turn, l
     assert.match(kept.patch, /new file mode[\s\S]*\+fresh/)
     assert.doesNotMatch(kept.patch, /b\.ts/)
     assert.equal(store.turnPatch('no-such-turn'), undefined)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('undo puts a turn\'s files back, removes the ones it made, commits the reversal and marks the turn; a file changed since is named', async () => {
+  const { dir, git, write } = repo()
+  try {
+    const { store, teamwork, working, changed, chat, turn } = setup(dir)
+    chat('one')
+    await teamwork.context('one', 'claude', true)
+    write('a.ts', 'rewritten by the turn\n')
+    write('new.ts', 'made by the turn\n')
+    const ended = turn('one', 'claude', 'Rewrite a', 'completed')
+    await teamwork.turnEnded(ended)
+    assert.equal(git('log', '-1', '--format=%s'), 'Rewrite a')
+
+    working.push({ chatId: 'one', provider: 'claude', model: null, request: 'more', edited: [] })
+    assert.deepEqual(await teamwork.undoable(ended.id), { offered: false, reason: 'A turn is running in this folder.' })
+    working.pop()
+    assert.deepEqual(await teamwork.undoable(ended.id), { offered: true, reason: null })
+
+    const undone = await teamwork.undo(ended.id)
+    assert.equal(undone.changes?.undone, true)
+    assert.equal(store.turn(ended.id)?.changes?.undone, true)
+    assert.equal(changed.at(-1)?.id, ended.id)
+    assert.equal(readFileSync(join(dir, 'a.ts'), 'utf8'), 'a', 'the file is as it was before the turn')
+    assert.equal(existsSync(join(dir, 'new.ts')), false, 'the file the turn made is gone')
+    assert.equal(git('log', '-1', '--format=%s'), 'Undo: Rewrite a')
+    assert.match(git('log', '-1', '--format=%b'), /Undone by the user in Rocket/)
+    assert.equal(git('status', '--porcelain'), '', 'the reversal is committed whole')
+    assert.deepEqual(await teamwork.undoable(ended.id), { offered: false, reason: 'Already undone.' })
+    await assert.rejects(teamwork.undo(ended.id), /Already undone/)
+
+    // A second turn, then the user edits one of its files by hand: undo names the file and refuses.
+    await teamwork.context('one', 'claude', false)
+    write('a.ts', 'second rewrite\n')
+    write('b.ts', 'second turn touched b\n')
+    const second = turn('one', 'claude', 'Rewrite a and b', 'completed')
+    await teamwork.turnEnded(second)
+    write('b.ts', 'the user changed b afterwards\n')
+    assert.deepEqual(await teamwork.undoable(second.id), { offered: false, reason: 'b.ts changed since.' })
+    await assert.rejects(teamwork.undo(second.id), /b\.ts changed since/)
+    assert.equal(readFileSync(join(dir, 'a.ts'), 'utf8'), 'second rewrite\n', 'nothing was touched')
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
