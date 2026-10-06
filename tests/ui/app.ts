@@ -30,6 +30,19 @@ export const test = base.extend<{ rocket: Rocket }>({
     await writeFile(join(profile, 'ui-test-profile'), 'rocket-ui-check-v1')
     const server = createServer((request, response) => {
       if (request.url === '/favicon.ico') { response.writeHead(204).end(); return }
+      // Files served as attachments, and a page that links to one, for the download checks.
+      if (request.url?.startsWith('/files/')) {
+        const name = request.url.slice('/files/'.length).split('?')[0]!
+        response.setHeader('Content-Type', name.endsWith('.pdf') ? 'application/pdf' : 'text/plain')
+        response.setHeader('Content-Disposition', `attachment; filename="${name}"`)
+        response.end(name.endsWith('.pdf') ? '%PDF-1.4 Rocket download check' : 'Rocket download check\n')
+        return
+      }
+      if (request.url === '/downloads') {
+        response.setHeader('Content-Type', 'text/html')
+        response.end('<!doctype html><title>Downloads</title><h1>Downloads</h1><a id="get" href="/files/notes.txt">Download notes</a>')
+        return
+      }
       const second = request.url === '/two'
       response.setHeader('Content-Type', 'text/html')
       response.end(`<!doctype html><title>UI page ${second ? 'two' : 'one'}</title>
