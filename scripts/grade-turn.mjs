@@ -83,8 +83,25 @@ for (const name of graders) {
       else total <= limit ? pass(name, 1, { totalMs: total, limitMs: limit }) : fail(name, 'over budget', { totalMs: total, limitMs: limit })
       break
     }
-    default:
+    default: {
+      if (name.startsWith('tool_called:')) {
+        const tool = name.slice('tool_called:'.length)
+        toolSucceeded(tool) ? pass(name) : fail(name, `no successful ${tool}`)
+        break
+      }
+      if (name.startsWith('tool_not_called:')) {
+        const tool = name.slice('tool_not_called:'.length)
+        toolSucceeded(tool) ? fail(name, `${tool} was called`) : pass(name)
+        break
+      }
+      if (name.startsWith('tool_error_code:')) {
+        const code = name.slice('tool_error_code:'.length)
+        failureCodes().includes(code) ? pass(name, 1, { code }) : fail(name, `expected code ${code}`)
+        break
+      }
       results[name] = { score: 0, pass: false, metadata: { reason: 'unknown grader' } }
+      break
+    }
   }
 }
 

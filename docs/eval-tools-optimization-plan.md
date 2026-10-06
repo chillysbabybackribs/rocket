@@ -135,10 +135,10 @@ Eval dashboard **Run cell** stays for **model/scenario** evals; tool evals prefe
 
 ### Phase A — Scores without new host APIs *(mostly wiring)*
 
-- [ ] `docs/evals/scenarios/tools/` — JSONL scenarios per critical tool (`rocket_ui_run`, `goal_report`, …).
-- [ ] Extend `grade-turn.mjs`: `tool_called:*`, `tool_not_called:*`.
-- [ ] Script `scripts/tool-eval-summary.mjs`: read ledger + latest matrix `summary.json` → compute R, P, TES per toolVersion.
-- [ ] Tools tab **Scores** section reads host RPC `toolEval.scores` (thin wrapper over script logic in host).
+- [x] `docs/evals/scenarios/tools/` — starter scenarios (`rocket_ui_snapshot`, `rocket_tool_history`).
+- [x] Extend `grade-turn.mjs` + `eval-grade.ts`: `tool_called:*`, `tool_not_called:*`, `tool_error_code:*`.
+- [x] `src/host/tool-eval-scores.ts` + `toolEval.scores` host RPC (`config/tool-eval-weights.json`).
+- [x] Tools tab **Evaluate** sub-tab (TES, R, P table).
 
 ### Phase B — Variants in eval runs
 

@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { ProviderId } from '../shared/types.ts'
 
@@ -10,6 +10,8 @@ export type EvalScenario = {
   graders: string[]
   trials: number
   matrix: Array<{ provider: ProviderId; model: string | null }>
+  /** When set, Tools → Evaluate attributes scenario pass rate to this MCP tool. */
+  targetTool?: string
 }
 
 export function loadScenarios(repoRoot: string, file = 'matrix-smoke.jsonl'): EvalScenario[] {
@@ -28,7 +30,8 @@ export function loadScenarios(repoRoot: string, file = 'matrix-smoke.jsonl'): Ev
         trials: typeof row.trials === 'number' ? row.trials : 1,
         matrix: (Array.isArray((row.matrix as { include?: unknown })?.include)
           ? (row.matrix as { include: Array<{ provider: ProviderId; model: string | null }> }).include
-          : [{ provider: 'claude' as const, model: null }])
+          : [{ provider: 'claude' as const, model: null }]),
+        ...(row.targetTool ? { targetTool: String(row.targetTool) } : {})
       }
     } catch {
       throw new Error(`Invalid scenario JSONL at ${path}:${index + 1}`)
@@ -38,5 +41,10 @@ export function loadScenarios(repoRoot: string, file = 'matrix-smoke.jsonl'): Ev
 
 export function listScenarioFiles(repoRoot: string): string[] {
   const dir = join(repoRoot, 'docs/evals/scenarios')
-  return readdirSync(dir).filter((name) => name.endsWith('.jsonl')).sort()
+  const root = readdirSync(dir).filter((name) => name.endsWith('.jsonl'))
+  const toolsDir = join(dir, 'tools')
+  const nested = existsSync(toolsDir)
+    ? readdirSync(toolsDir).filter((name) => name.endsWith('.jsonl')).map((name) => join('tools', name))
+    : []
+  return [...root, ...nested].sort()
 }

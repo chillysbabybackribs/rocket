@@ -30,6 +30,7 @@ import { rocketSourceRoot, UiRunManager } from './tools/ui-run.ts'
 import { LiveUiRunner } from './tools/ui-live.ts'
 import { redactText, ToolLedger } from './tool-ledger.ts'
 import { loadToolLedgerCallDetail, loadToolLedgerPanel, setToolLedgerReview } from './tool-ledger-panel.ts'
+import { loadToolEvalScores } from './tool-eval-scores.ts'
 import type { ReviewLifecycle } from './tool-ledger.ts'
 import { toolHistoryTools } from './tools/tool-history.ts'
 import { toolReviewTools } from './tools/tool-review.ts'
@@ -307,6 +308,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'eval.loadDashboard': () => loadEvalDashboard(rocketSourceRoot()),
   'toolLedger.loadPanel': () => loadToolLedgerPanel(ledger, toolRegistry.list()),
   'toolLedger.callDetail': ({ callId }: { callId: string }) => loadToolLedgerCallDetail(ledger, callId),
+  'toolEval.scores': () => loadToolEvalScores(ledger, toolRegistry.list(), rocketSourceRoot(), dataDir),
   'toolLedger.setReview': (params: {
     callId: string; lifecycle?: ReviewLifecycle; retryCallId?: string | null; linkRetry?: boolean
     causeCode?: string | null; causeNote?: string | null; proposedFix?: string | null

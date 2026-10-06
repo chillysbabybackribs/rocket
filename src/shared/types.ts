@@ -385,6 +385,22 @@ export type HostApi = {
       }>
     }>
   }]
+  /** Tool Eval Score (TES = wR·R + wP·P) from ledger + eval-live scenario cells. */
+  'toolEval.scores': [Record<string, never>, {
+    weights: { wR: number; wP: number; description?: string }
+    syncedAt: string
+    note: string
+    tools: Array<{
+      tool: string
+      tes: number | null
+      r: number | null
+      p: number | null
+      ledgerCalls: number
+      scenarioCells: number
+      scenarioPasses: number
+      scenarioIds: string[]
+    }>
+  }]
   /** MCP tool-call ledger for the eval Tools view (read-only; not injected into agent prompts). */
   'toolLedger.loadPanel': [Record<string, never>, {
     available: boolean

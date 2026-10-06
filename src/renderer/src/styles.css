@@ -1804,6 +1804,12 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 .eval-tools-retry { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text-4); }
 .eval-tools-retry select { min-width: 180px; }
 .eval-tools-foot { margin-top: 8px; font-size: 11px; }
+.eval-tools-subtabs { display: flex; gap: 4px; margin-bottom: 12px; }
+.eval-tools-subtab {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line);
+  background: transparent; color: var(--text-4); cursor: pointer; font-size: 13px;
+}
+.eval-tools-subtab.is-on { background: rgba(255, 255, 255, 0.06); color: var(--text); font-weight: 500; }
 .eval-bt-mono { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
 .eval-bt-cell-wrap { max-width: 280px; white-space: pre-wrap; word-break: break-word; }
 .eval-bt-table {

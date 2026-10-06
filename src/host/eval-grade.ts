@@ -48,8 +48,22 @@ export function gradeTurnExport(body: unknown, graders: string[]): GradeSummary 
         codes.length ? fail(name, 'tool failures', { codes }) : pass(name, 1, { codes: [] })
         break
       }
+      case 'tool_error_codes': {
+        const codes = failureCodes()
+        codes.length ? pass(name, 1, { codes }) : fail(name, 'expected tool errors')
+        break
+      }
       default:
-        fail(name, 'unknown grader')
+        if (name.startsWith('tool_called:')) {
+          const tool = name.slice('tool_called:'.length)
+          toolSucceeded(tool) ? pass(name) : fail(name, `no successful ${tool}`)
+        } else if (name.startsWith('tool_not_called:')) {
+          const tool = name.slice('tool_not_called:'.length)
+          toolSucceeded(tool) ? fail(name, `${tool} was called`) : pass(name)
+        } else if (name.startsWith('tool_error_code:')) {
+          const code = name.slice('tool_error_code:'.length)
+          failureCodes().includes(code) ? pass(name, 1, { code }) : fail(name, `expected code ${code}`)
+        } else fail(name, 'unknown grader')
     }
   }
 

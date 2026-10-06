@@ -1,0 +1,5 @@
+{
+  "wR": 0.35,
+  "wP": 0.65,
+  "description": "TES = wR * R + wP * P. R = Wilson 95% lower bound on ledger success rate. P = scenario cell pass rate from eval-live graders.json."
+}

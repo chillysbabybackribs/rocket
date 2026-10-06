@@ -3,7 +3,9 @@ import type { HostApi } from '../../../shared/types.ts'
 import { call } from '../host.ts'
 
 type PanelData = HostApi['toolLedger.loadPanel'][1]
+type ScoresData = HostApi['toolEval.scores'][1]
 type CallDetail = HostApi['toolLedger.callDetail'][1]
+type Section = 'health' | 'scores'
 type CallRow = Record<string, unknown> & {
   id?: string
   tool?: string
@@ -14,10 +16,14 @@ type CallRow = Record<string, unknown> & {
 }
 
 const pct = (n: number | null | undefined): string => (n == null ? '—' : `${Math.round(n * 100)}%`)
+const score3 = (n: number | null | undefined): string => (n == null ? '—' : n.toFixed(2))
 const fmtDate = (ms: number): string => new Date(ms).toLocaleString()
 
 export function EvalToolsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
+  const [section, setSection] = useState<Section>('health')
   const [data, setData] = useState<PanelData | null>(null)
+  const [scores, setScores] = useState<ScoresData | null>(null)
+  const [scoresError, setScoresError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<CallDetail | null>(null)
@@ -37,7 +43,19 @@ export function EvalToolsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     setDetail(await call('toolLedger.callDetail', { callId }))
   }, [])
 
+  const loadScores = useCallback(async (): Promise<void> => {
+    setScoresError(null)
+    try {
+      setScores(await call('toolEval.scores', {}))
+    } catch (err) {
+      setScoresError(err instanceof Error ? err.message : String(err))
+    }
+  }, [])
+
   useEffect(() => { void load() }, [load, refreshKey])
+  useEffect(() => {
+    if (section === 'scores') void loadScores()
+  }, [section, loadScores, refreshKey])
 
   useEffect(() => {
     if (!selectedId) { setDetail(null); return }
@@ -70,8 +88,57 @@ export function EvalToolsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const selected = (detail?.calls?.[0] ?? null) as CallRow | null
   const artifacts = selected?.finish?.artifacts ?? []
 
+  const toolsWithScenarios = scores?.tools.filter(row => row.scenarioIds.length > 0) ?? []
+
   return (
     <div className="eval-tools" aria-label="MCP tool ledger">
+      <div className="eval-tools-subtabs" role="tablist" aria-label="Tools views">
+        <button type="button" role="tab" aria-selected={section === 'health'} className={`eval-tools-subtab${section === 'health' ? ' is-on' : ''}`} onClick={() => setSection('health')}>Health</button>
+        <button type="button" role="tab" aria-selected={section === 'scores'} className={`eval-tools-subtab${section === 'scores' ? ' is-on' : ''}`} onClick={() => setSection('scores')}>Evaluate</button>
+      </div>
+
+      {section === 'scores' && (
+        <>
+          <p className="eval-bt-muted">
+            <strong>TES</strong> = {scores ? `${Math.round(scores.weights.wR * 100)}% R + ${Math.round(scores.weights.wP * 100)}% P` : '…'}.
+            R = ledger reliability (Wilson 95% LB). P = pass rate on <span className="eval-bt-mono">targetTool</span> scenarios from eval-live runs (real chat cells).
+          </p>
+          {scoresError && <p className="eval-error">{scoresError}</p>}
+          {!scores && !scoresError && <p className="eval-bt-muted">Loading scores…</p>}
+          {scores && (
+            <>
+              <p className="eval-bt-mono eval-bt-muted eval-tools-path">{scores.note}</p>
+              <table className="eval-bt-table">
+                <thead>
+                  <tr><th>Tool</th><th>TES</th><th>R</th><th>P</th><th>Ledger n</th><th>Scenario cells</th><th>Scenarios</th></tr>
+                </thead>
+                <tbody>
+                  {scores.tools.map(row => (
+                    <tr key={row.tool}>
+                      <td className="eval-bt-mono">{row.tool}</td>
+                      <td className="eval-bt-score">{score3(row.tes)}</td>
+                      <td>{score3(row.r)}</td>
+                      <td>{row.p == null ? '—' : pct(row.p)}</td>
+                      <td>{row.ledgerCalls}</td>
+                      <td>{row.scenarioCells === 0 ? '—' : `${row.scenarioPasses}/${row.scenarioCells}`}</td>
+                      <td className="eval-bt-mono eval-bt-cell-wrap">{row.scenarioIds.join(', ') || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {toolsWithScenarios.length > 0 && (
+                <p className="eval-bt-muted">
+                  Run scenarios via <strong>Experiments → Run cell</strong> or Playground (same chat UI). Example:{' '}
+                  <span className="eval-bt-mono">{toolsWithScenarios[0]?.scenarioIds[0]}</span>.
+                </p>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {section === 'health' && (
+        <>
       <p className="eval-bt-muted">
         Rocket MCP tool health — same evidence as <span className="eval-bt-mono">rocket_tool_history</span> /
         <span className="eval-bt-mono"> rocket_tool_review</span>. History is <strong>not</strong> injected into chat prompts.
@@ -233,6 +300,8 @@ export function EvalToolsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           </div>
           <p className="eval-bt-muted eval-tools-foot">Full redacted record lives in the ledger database above; open artifacts locally only.</p>
         </section>
+      )}
+        </>
       )}
     </div>
   )
