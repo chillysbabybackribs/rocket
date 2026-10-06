@@ -251,6 +251,18 @@ the high-entropy ones for an origin that asked with `Accept-CH`. `Critical-CH` r
 emulated: such an origin gets its extra hints from the second request on. The fingerprint behind
 this is in `docs/browser-realism-audit.md`.
 
+Two more things ride on that per-tab debugger session. Electron leaves `window.chrome` an empty
+object, where Chrome has `loadTimes`, `csi` and `app`; `chrome-object.ts` is the fill, read from the
+installed Chrome 152 itself, run at document start in every frame through
+`Page.addScriptToEvaluateOnNewDocument`. And the override's `acceptLanguage` is what gives
+`navigator.languages` Chrome's `["en-US", "en"]` (Electron's own reading repeats "en"). Protocol
+commands only land once a page has a renderer, and a new view has none until it navigates, so a new
+tab loads a blank document first, then the real page with everything in place; the blank entry is
+taken out of history as soon as the next page is in. A page's own synchronous read of a brand-new
+iframe's `chrome` still sees it empty for an instant, since the fill is a script and Chrome's is
+native. Notification permission is the one tell left as is: Electron's permission handlers are
+yes/no, so a fresh site cannot be shown Chrome's "default" state.
+
 Background tabs are hidden with `setVisible(false)`, so Chromium stops drawing them.
 `ROCKET_BROWSER_HIDE=park npm run dev` moves them off screen instead, the older way, in case a
 tab ever comes back blank; see the note in `src/main/browser-url.ts`.

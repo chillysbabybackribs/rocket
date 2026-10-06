@@ -89,27 +89,45 @@ cross-process navigation), unlike the one-shot session call today.
 
 ## Moderate
 
-### 2. `window.chrome` is an empty object
+### 2. `window.chrome` is an empty object (fixed)
 
-`window.chrome` exists but has no keys: no `runtime`, `loadTimes`, `csi`, or `app`. Stock Chrome
-populates these. A few detectors probe `window.chrome.runtime` / `window.chrome.csi`. This is
-harder to fake faithfully and a weaker signal than the client hints, so it is second priority. If
-hardened, inject a minimal shim (a `chrome.csi`/`chrome.loadTimes` stub and a `runtime` object) in
-a preload for browser tabs — but only after the client-hints fix, which is the one that matters.
+`window.chrome` existed but had no keys. The installed Chrome 152, probed headless with a scratch
+profile, has exactly three on an ordinary page: `loadTimes`, `csi` and `app` (no `runtime` without
+an extension that talks to the page), all enumerable, writable and configurable. The public
+detector at bot.sannysoft.com flagged this as its one failure (`HEADCHR_IFRAME`), everything else
+passing. `src/main/chrome-object.ts` fills the object to that shape, with the value semantics from
+`chrome/renderer/loadtimes_bindings.cc`, at document start in every frame via
+`Page.addScriptToEvaluateOnNewDocument` on the per-tab debugger session. Verified: present on a
+tab's first page and in frames the page creates.
+
+**Residual:** the fill is a script where Chrome's is native, so a page that inserts an iframe and
+reads `contentWindow.chrome` *synchronously in the same tick* still sees `{}`; the sannysoft
+`HEADCHR_IFRAME` row does exactly that and still fails. Closing it would mean intercepting iframe
+creation in page JavaScript, which is deep spoofing territory and was not done.
 
 ## Minor
 
-### 3. `navigator.languages` has a duplicate
+### 3. `navigator.languages` has a duplicate (fixed)
 
-`navigator.languages` is `["en-US", "en", "en"]` while the `Accept-Language` header is the correct
-`en-US,en;q=0.9`. The header is fine; the in-page array has a stray repeated `"en"`. Cosmetic, but
-a careful fingerprint would notice the two disagree.
+`navigator.languages` read `["en-US", "en", "en"]` whatever accept-languages the session was given,
+even none: it is how Electron derives the list. Passing `acceptLanguage` in the protocol's user-agent
+override sets it to Chrome's `["en-US", "en"]` while leaving the `Accept-Language` header, which
+already read as Chrome's `en-US,en;q=0.9`, untouched. (Passing a q-value there corrupts both; the
+plain list is the right input.)
 
-### 4. Notification permission inconsistency
+### 4. Notification permission (left as is)
 
-`Notification.permission` is `"denied"` while `navigator.permissions.query({name:'notifications'})`
-reports `"granted"`. These normally agree. Worth confirming nothing in the app forces a permission
-result that desyncs them.
+Chrome shows a fresh site `Notification.permission === "default"`. Electron's permission handlers
+answer yes or no only (`setPermissionCheckHandler`, `setPermissionRequestHandler`), so a page here
+sees `"granted"` with no handler or `"denied"` with one; "default" is unreachable. "Granted" is the
+state Chrome shows for sites a user allowed and is the lesser tell, so it stays. The earlier reading
+of `"denied"` beside a `"granted"` query was taken on `about:blank`.
+
+### 5. Window geometry (left as is)
+
+`outerWidth` is the whole app window (2560) while `innerWidth` is the page region (1307). Chrome's
+differ by a few pixels. The gap is real: the page shares the window with the chat, like a browser
+with a wide side panel open. Faking it would be a lie about layout; not done.
 
 ## Healthy — no action needed
 
@@ -130,8 +148,15 @@ result that desyncs them.
 1. **Client hints** (done): CDP `setUserAgentOverride` for the page API plus `webRequest` header
    injection, both from `userAgentMetadata`. The one change likely to clear the Cloudflare
    challenge; re-test `openai.com` after a restart.
-2. `window.chrome` shim — if realism still falls short after (1).
-3. Normalize `navigator.languages`; check the notification-permission desync.
+2. `window.chrome` fill (done) and `navigator.languages` (done), both on the same debugger session.
+3. Left as is, with reasons above: notification permission state, window geometry, and the
+   synchronous first-tick read of a new iframe's `chrome`.
+
+**Live result after (1):** openai.com moved from a silent block to Cloudflare's interactive
+"Verify you are human" checkbox, which then looped on a human click while the user's own Chrome
+passes. (2) addresses the one detector-confirmed tell remaining at that point; re-test after a
+restart, in a fresh tab of the user's own with DevTools closed, since a tab a model has driven is
+instrumented beyond the baseline and open DevTools switch the page-side override off.
 
 All of these are main-process changes, so they need Rocket restarted to take effect, and should be
 verified by re-running this fingerprint plus a header echo after each step.

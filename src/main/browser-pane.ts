@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AgentTab, Bounds, BrowserCommand, BrowserState, BrowserTab } from '../shared/types.ts'
+import { CHROME_OBJECT_SCRIPT } from './chrome-object.ts'
 import { detectCookieSources, importCookies, type CookieSource } from './cookie-import.ts'
 import { Suggestions } from './browser-suggest.ts'
 import {
@@ -62,6 +63,8 @@ export class BrowserPane {
   /** Whether keyboard focus is in the browser's toolbar, in the UI's page. */
   private chromeFocused = false
   private publishQueued = false
+  /** Per page, the promise that it has been made to present as Chrome (presentAsChrome). */
+  private readonly presenting = new WeakMap<WebContents, Promise<void>>()
   private saveTimer: NodeJS.Timeout | null = null
   private disposed = false
   private refSeq = 0
@@ -315,21 +318,47 @@ export class BrowserPane {
   // override is put back when they close. It changes nothing on the wire: Electron sends no
   // client-hint headers through any path, so sendClientHints adds those. Accept-Language is left
   // to the session, whose value already comes out as Chrome's ("en-US,en;q=0.9").
-  private presentAsChrome(contents: WebContents): void {
+  private presentAsChrome(contents: WebContents): Promise<void> {
     const userAgent = session.fromPartition(PARTITION).getUserAgent()
     const metadata = userAgentMetadata(userAgent)
-    if (!metadata) return
+    if (!metadata) return Promise.resolve()
     const apply = async (): Promise<void> => {
       if (contents.isDestroyed() || contents.isDevToolsOpened()) return
       try {
         if (!contents.debugger.isAttached()) contents.debugger.attach('1.3')
-        await contents.debugger.sendCommand('Network.setUserAgentOverride', { userAgent, userAgentMetadata: metadata })
+        // Scripts for new documents only run while the Page domain is on; the domain itself is not
+        // visible to pages. The script fills window.chrome as Chrome has it (chrome-object.ts) in
+        // every frame, and `runImmediately` covers a document that already exists.
+        await contents.debugger.sendCommand('Page.enable')
+        await contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: CHROME_OBJECT_SCRIPT, runImmediately: true })
+        // acceptLanguage here is what sets navigator.languages, which Electron otherwise reads as
+        // ["en-US", "en", "en"]; the Accept-Language header stays the session's, already Chrome's.
+        await contents.debugger.sendCommand('Network.setUserAgentOverride', { userAgent, acceptLanguage: ACCEPT_LANGUAGES, userAgentMetadata: metadata })
       } catch {
-        // Without the override the page still works; it just sends no client hints, as before.
+        // Without the override the page still works; it just looks like Electron, as before.
       }
     }
-    void apply()
     contents.on('devtools-closed', () => void apply())
+    return apply()
+  }
+
+  // Protocol commands are carried out once a page has a renderer, and a new view has none until
+  // it navigates: sent before the first load, they are still queued when the first document is
+  // made, and that document misses them. So a new view first loads a blank document for them to
+  // land in, then the real page with everything in place. The blank page is scaffolding, not
+  // somewhere to go back to; it is taken out of history once the next page is in (see adopt).
+  private async loadPresented(contents: WebContents, url: string): Promise<void> {
+    try {
+      await contents.loadURL('about:blank')
+      await this.presenting.get(contents)
+      // A tab opened blank (a model's, before its first goto) is already where it should be.
+      if (isBlankTabUrl(url)) return
+      // Someone (a tool, the user) may have sent the tab elsewhere meanwhile; their page wins.
+      if (contents.isDestroyed() || contents.isLoadingMainFrame() || !isBlankTabUrl(contents.getURL())) return
+      await contents.loadURL(url)
+    } catch {
+      // A failed load shows Chromium's error page, as before.
+    }
   }
 
   // Chromium adds Sec-CH-UA headers only through a client-hints delegate, and Electron has none
@@ -364,7 +393,7 @@ export class BrowserPane {
       webPreferences: { partition: PARTITION, sandbox: true, contextIsolation: true, nodeIntegration: false }
     })
     this.adopt(tab, view)
-    void view.webContents.loadURL(tab.url).catch(() => {})
+    void this.loadPresented(view.webContents, tab.url)
     return view
   }
 
@@ -386,10 +415,12 @@ export class BrowserPane {
     conceal(this.window, view)
 
     const contents = view.webContents
-    this.presentAsChrome(contents)
+    this.presenting.set(contents, this.presentAsChrome(contents))
     const history = this.suggestions.history
     const changed = (): void => {
-      tab.url = contents.getURL() || tab.url
+      const url = contents.getURL()
+      // The blank document a new view is primed with (loadPresented) is not where the tab is going.
+      if (url && !(isBlankTabUrl(url) && !isBlankTabUrl(tab.url))) tab.url = url
       tab.title = contents.getTitle()
       this.publish()
     }
@@ -401,6 +432,11 @@ export class BrowserPane {
       if (origin(url) !== origin(tab.url)) tab.favicon = tab.faviconUrl = null
       changed()
       history.visit(url, contents.getTitle())
+      // Once a real page is in, the primed blank document (loadPresented) leaves the history.
+      const history_ = contents.navigationHistory
+      while (history_.getActiveIndex() > 0 && isBlankTabUrl(history_.getAllEntries()[0]?.url ?? '')) {
+        if (!history_.removeEntryAtIndex(0)) break
+      }
     })
     contents.on('did-navigate-in-page', (_event, url, isMainFrame) => {
       changed()
