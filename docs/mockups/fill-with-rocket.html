@@ -170,6 +170,7 @@ aside dd { margin: 0; color: var(--text-3); }
     <button data-state="working">Working</button>
     <button data-state="filled">Filled</button>
     <button data-state="again">Another go</button>
+    <button data-state="humanize">Humanize</button>
     <button data-state="form">A whole form</button>
     <button data-state="error">Can't fill</button>
     <span class="hint"><kbd>Esc</kbd> stops it · <kbd>Ctrl</kbd> <kbd>Z</kbd> after it fills</span>
@@ -291,7 +292,9 @@ aside dd { margin: 0; color: var(--text-3); }
       <p>It sits just above the field's top right corner, over the page in a view of its own. That way it covers the field's label, not the page's buttons under the field. For a form it sits above the first field it filled. It follows the field as you scroll.</p>
       <p>It keeps <b>one width</b> from start to finish. While it works, it shows <b>the step it's on</b>, taken from the model's own tool calls (reading the thread, opening a source, running a command), cut short if it's long. The full step shows on hover. Switch tabs and the tab icon keeps a small spinner.</p>
       <p><b>Sources</b> shows how many pages it has opened, and only opens if you click it. While it works, the list fills in live.</p>
-      <p>Once it has filled the field, it offers <b>Undo</b>, <b>Another go</b> and the same Sources list. It fades once you type in the field or click away. Nothing is saved, though failures go in the journal.</p>
+      <p>Once it has filled the field, it offers <b>Undo</b>, <b>Another go</b> and the same Sources list.</p>
+      <p><b>Humanize</b>, under Another go, rewrites the fill to sound like you. It reads your own messages in Rocket's chats and copies your wording, casing and punctuation. It keeps the facts and sources it already found and doesn't look anything up again. Your messages to a model are shorter and blunter than a forum reply, so it takes your voice from them, not your length. It only quotes the post it's replying to, never your old messages.</p>
+      <p> It fades once you type in the field or click away. Nothing is saved, though failures go in the journal.</p>
     </section>
     <section>
       <h4>Keys</h4>
@@ -327,6 +330,24 @@ const SOURCES = [
   ['H', '#7a5af8', 'Window Rules – Hyprland Wiki', 'wiki.hypr.land'],
 ]
 // Each step, and how many sources had been opened by then.
+// Humanize keeps the facts and the sources of the fill it rewrites; only the voice changes. The
+// voice comes from the user's own messages in Rocket's chats, which are terse and lower-case
+// here, so the rewrite borrows their wording and punctuation, not the length of a chat message.
+const HUMAN = `yeah thats expected -- float is a static rule, so hyprland only checks it once when the window opens, against the initial title and class. if the app renames itself after that its already too late
+
+if you just want everything floating, match on class only like above and leave the title out. if you really need to catch the rename the wiki has an event hook for it:
+
+hl.on("window.title", function(w)
+  if w ~= nil and w.title == "foo" then
+    hl.dispatch(hl.dsp.window.float({ action = "set" }))
+  end
+end)
+
+(window rules page on wiki.hypr.land)`
+const HUMAN_STEPS = [
+  ['Reading', 'how you write · 40 of your messages in Rocket', 2],
+  ['Rewriting', 'the reply in your voice', 2],
+]
 const STEPS = [
   ['Reading', 'the thread', 1],
   ['Opening', 'wiki.hypr.land · Window Rules', 2],
@@ -345,7 +366,7 @@ const icon = {
   warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>',
 }
 
-let state = 'menu', timer = 0, step = 0, opened = SOURCES.length
+let state = 'menu', timer = 0, step = 0, opened = SOURCES.length, voice = false
 
 // Where things sit, relative to the stage, so the chip follows its field.
 function box(el) {
@@ -386,7 +407,7 @@ function render() {
   menu.classList.remove('is-open'); chip.classList.remove('is-open'); drop.classList.remove('is-open')
   clearTargets()
   showPage(state === 'form' ? 'form' : 'thread')
-  for (const b of document.querySelectorAll('.states button')) b.setAttribute('aria-pressed', String(b.dataset.state === state))
+  for (const b of document.querySelectorAll('.states button')) b.setAttribute('aria-pressed', String(voice ? b.dataset.state === 'humanize' : b.dataset.state === state))
   const page = $('page-thread')
   if (state !== 'form') page.scrollTop = page.scrollHeight
   const words = { menu: 'Right-click a field', ask: 'With instructions', working: 'Working', filled: 'Filled', again: 'Another go', form: 'A whole form', error: "Can't fill" }
@@ -411,7 +432,8 @@ function render() {
   }
 
   if (state === 'working') {
-    reply.value = ''
+    const steps = voice ? HUMAN_STEPS : STEPS
+    reply.value = voice ? ANSWER : ''
     reply.classList.add('is-target')
     $('fav-thread').classList.add('is-busy')
     step = 0
@@ -420,14 +442,14 @@ function render() {
       <button class="act" id="src">Sources <span class="count" id="count">0</span> ${icon.down}</button>
       <button class="act" id="stop">${icon.stop} Stop</button>`
     const draw = () => {
-      const [verb, what, n] = STEPS[step]
+      const [verb, what, n] = steps[step]
       $('what').innerHTML = `${verb} <b>${what}</b>…`
       $('what').title = `${verb} ${what}`
       $('clock').textContent = `${String(step * 4 + 3).padStart(2, '\u2007')}s`
       $('count').textContent = String(n)
       opened = n
       if (drop.classList.contains('is-open')) openSources()
-      if (step === STEPS.length - 1) typeOut()
+      if (step === steps.length - 1) typeOut(voice ? HUMAN : ANSWER)
       else timer = setTimeout(() => { step++; draw() }, 1500)
     }
     requestAnimationFrame(() => { placeChip(reply); draw() })
@@ -438,10 +460,10 @@ function render() {
   }
 
   if (state === 'filled' || state === 'again') {
-    reply.value = ANSWER
+    reply.value = voice ? HUMAN : ANSWER
     reply.classList.add('is-target', 'is-done')
     opened = SOURCES.length
-    chip.innerHTML = `<span class="mark ok">${icon.check}</span><span class="what"><b>Filled</b></span><span class="sep"></span>
+    chip.innerHTML = `<span class="mark ok">${icon.check}</span><span class="what"><b>${voice ? 'Humanized' : 'Filled'}</b></span><span class="sep"></span>
       <button class="act" id="src">Sources <span class="count">${SOURCES.length}</span> ${icon.down}</button>
       <button class="act" id="again">${icon.again} Another go ${icon.down}</button>
       <button class="act" id="undo">${icon.undo} Undo</button>
@@ -488,13 +510,13 @@ function render() {
 }
 
 // The reply arrives at the end of the turn, typed in quickly so it reads as written into the field.
-function typeOut() {
+function typeOut(text) {
   let i = 0
   const tick = () => {
-    i = Math.min(ANSWER.length, i + 9)
-    reply.value = ANSWER.slice(0, i)
+    i = Math.min(text.length, i + 9)
+    reply.value = text.slice(0, i)
     reply.scrollTop = reply.scrollHeight
-    if (i < ANSWER.length) timer = setTimeout(tick, 16)
+    if (i < text.length) timer = setTimeout(tick, 16)
     else timer = setTimeout(() => set('filled'), 350)
   }
   tick()
@@ -510,14 +532,25 @@ function openSources(form) {
   placeDrop($('src')); drop.classList.add('is-open')
 }
 function openAgain() {
-  drop.innerHTML = ['Shorter', 'More detail', 'Friendlier', 'A different take'].map((t) => `<div class="item">${t}</div>`).join('') + '<div class="item" style="border-top:1px solid var(--line-strong);margin-top:4px;padding-top:6px">With instructions…</div>'
-  placeDrop($('again')); drop.classList.add('is-open')
-  drop.onclick = (e) => { if (e.target.closest('.item')) set(e.target.textContent.startsWith('With') ? 'ask' : 'working') }
+  const rule = 'border-top:1px solid var(--line-strong);margin-top:4px;padding-top:6px'
+  drop.innerHTML = `<div class="item" data-go="humanize">Humanize<span class="host">sound like you</span></div>`
+    + ['Shorter', 'More detail', 'Friendlier', 'A different take'].map((t, i) => `<div class="item" data-go="working" style="${i ? '' : rule}">${t}</div>`).join('')
+    + `<div class="item" data-go="ask" style="${rule}">With instructions…</div>`
+  placeDrop($('again'))
+  drop.onclick = (e) => {
+    const go = e.target.closest('.item')?.dataset.go
+    if (!go) return
+    voice = go === 'humanize'
+    set(go === 'humanize' ? 'working' : go)
+  }
 }
 
 function set(next) { state = next; render() }
-for (const b of document.querySelectorAll('.states button')) b.onclick = () => set(b.dataset.state)
-$('m-fill').onclick = () => set('working')
+for (const b of document.querySelectorAll('.states button')) b.onclick = () => {
+  voice = b.dataset.state === 'humanize'
+  set(voice ? 'working' : b.dataset.state)
+}
+$('m-fill').onclick = () => { voice = false; set('working') }
 $('m-ask').onclick = () => set('ask')
 for (const item of menu.querySelectorAll('.item')) item.onmouseenter = () => { for (const i of menu.querySelectorAll('.item')) i.classList.toggle('is-hot', i === item) }
 reply.addEventListener('contextmenu', (e) => { e.preventDefault(); set('menu') })
