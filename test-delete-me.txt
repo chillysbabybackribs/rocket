@@ -1,0 +1,3 @@
+Temporary test file — safe to delete.
+
+Created for a quick workspace test.
