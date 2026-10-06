@@ -32,7 +32,7 @@ test('every map name has a control in the renderer, and every name a control use
     for (const match of text.matchAll(/place:\s*'([^']+)'/g)) used.set(match[1]!, path)
   }
   for (const [name, path] of used) {
-    if (name === 'evals' || name === 'browser') continue // The rail's toggles name a side, not a place.
+    if (name === 'evals' || name === 'browser') continue // A side panel's name, not a place.
     assert.ok(isPlace(name) || isAction(name), `${path} uses "${name}", which is not in the app map`)
   }
   for (const name of [...Object.keys(PLACES), ...Object.keys(ACTIONS)]) {

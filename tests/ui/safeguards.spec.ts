@@ -1,5 +1,5 @@
 import { createServer } from 'node:http'
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 import { assertNetworkBlocked, assertOverlay, nativeViews } from './safeguards'
 
 test('network isolation blocks outside origins and detects a removed browser filter', async ({ rocket }) => {
@@ -23,7 +23,7 @@ test('network isolation blocks outside origins and detects a removed browser fil
 
 test('native overlay checks detect shifted pages, hidden dropdowns and incorrect stacking', async ({ rocket }) => {
   const { app, page, origin } = rocket
-  await page.getByRole('button', { name: 'Show browser' }).click()
+  await (await section(page, 'Browser')).click()
   await expect(await rocket.surface('browser')).toHaveTitle('UI page one')
   const browser = (await nativeViews(app)).find(view => view.visible && view.url === `${origin}/one`)!
   expect(browser).toBeDefined()

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 import { jpegBase64 } from '../fixtures/image'
 import { pdfBytes } from '../fixtures/pdf'
 
@@ -19,13 +19,13 @@ test('image uploads, queue editing, Stop and restart preserve the whole message'
   page = rocket.page
   await expect(page.locator('.is-draft .image-thumbnail img')).toHaveCount(1)
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Compare this screen')
-  await page.getByRole('button', { name: 'Show browser', exact: true }).click()
+  await (await section(page, 'Browser')).click()
   await page.getByRole('button', { name: 'Preview rocket.png' }).click()
   await expect(page.locator('dialog[open] > img')).toBeVisible()
   await rocket.capture('images-preview-with-browser')
   await page.keyboard.press('Escape')
   await expect(page.locator('dialog[open]')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Hide browser', exact: true }).click()
+  await (await section(page, 'Browser')).click()
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('UI check: stream')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.locator('.prose')).toContainText('Streaming from claude.')
@@ -219,7 +219,7 @@ test('an attachment is copied to another chat by menu or drag, saved, revealed, 
 
   // Deleting the chat the file came from leaves the copy usable, across a restart.
   page.once('dialog', dialog => void dialog.accept())
-  await page.getByRole('button', { name: 'Chat history' }).click()
+  await (await section(page, 'Chats')).click()
   await page.locator('.chat-row').filter({ hasText: 'Here is the brief' }).hover()
   await page.getByRole('button', { name: 'Delete chat: Here is the brief' }).click()
   await rocket.restart()

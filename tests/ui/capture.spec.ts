@@ -1,13 +1,13 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 
 // The composer's camera: capture, draw, add to the draft, send. Real captures through main
 // (capturePage, desktopCapturer and the region window) on the check's private display.
 test('captures of the browser page, a window and a region reach the draft with their drawing', async ({ rocket }) => {
   const { page, app } = rocket
   await page.locator('.composer-folder').click()
-  await page.getByRole('button', { name: 'Show browser', exact: true }).click()
+  await (await section(page, 'Browser')).click()
   await expect((await rocket.surface('browser')).getByRole('heading', { name: 'Rocket browser check' })).toBeVisible()
   const review = page.getByRole('dialog', { name: 'Review capture' })
   const layer = review.getByLabel('Drawing layer')

@@ -95,7 +95,7 @@ the same pane) splits the card: two side by side, three as two above one across 
 as quadrants, and no more for now. A new pane opens on the new-chat screen and takes the focus.
 Every pane is a whole chat with its own tabs, transcript, composer, folder and model, and a turn
 streams into every pane that shows its chat. The pane last clicked or typed in is the focused one:
-the rail's history and goals open chats there, Ctrl+1–4 picks its provider, and its chat is the
+the toolbar's Chats and Goals menus open chats there, Ctrl+1–4 picks its provider, and its chat is the
 one marked in the history. Closing a pane's last tab closes the pane (the only pane shows the
 new-chat screen instead); the others take the room in the same order of layouts. The goal pane
 and the plan drawer show only while the chat has the card to itself. The panes and their tabs
@@ -108,19 +108,20 @@ that means "in this chat" takes the pane it was asked in.
 
 ### The rail
 
-The left edge holds the window lights, the usage notch (one ring per provider) and the goals,
-history, library, evals and browser buttons. The button under them folds the rail to a 24px
-strip, giving the chat the width; the fold is remembered. The strip keeps the lights, a dot per provider in its
-usage colour and the goals count, and resting the pointer on it slides the whole rail out over the
-chat as an overlay (the chat never moves) until the pointer leaves, so usage, history and goals
-stay a hover away. The button at the strip's foot, or at the peek's, opens the rail again.
+The left edge holds the window lights and the usage notch (one ring per provider). Goals, chats,
+the library, the evals and the browser are not here but in the toolbar, so each has one home. The
+button at the rail's foot folds it to a 24px strip, giving the chat the width; the fold is
+remembered. The strip keeps the lights and a dot per provider in its usage colour, and resting
+the pointer on it slides the whole rail out over the chat as an overlay (the chat never moves)
+until the pointer leaves, so usage stays a hover away. The button at the strip's foot, or at the
+peek's, opens the rail again.
 
 ### The toolbar
 
 The 48px strip above the cards is a Mac-style unified toolbar (`Toolbar.tsx`, design in
 `docs/mockups/titlebar-nav-drawer-mac.html`). Its Sections icon slides a drawer out to the right
-with the rail's five destinations by name: Goals and Chats open their menus under them, Library,
-Evals and Browser show or hide the side column as the rail's buttons do. While Goals is in the
+with the app's five sections by name, and is their only home: Goals and Chats open their menus
+under them, and Library, Evals and Browser show or hide the side column. While Goals is in the
 closed drawer, its count rides on the icon. The drawer's last button, or a right-click on the icon,
 opens Customize: rename a section, drag it (or use the arrow keys on its handle) to reorder, and
 choose **Keep** to show it in the toolbar at all times or **Consolidate** to leave it in the
@@ -204,7 +205,7 @@ redirect it.
 
 ### Library
 
-The library button on the rail opens every file the chats have touched, beside the chat
+The toolbar's Library section opens every file the chats have touched, beside the chat
 (`components/LibraryPanel.tsx`, agreed in `docs/mockups/document-library.html`; the plan is
 `docs/library-plan.md`). Four sources fill it, and nothing else on the disk is listed:
 attachments a chat has sent (a draft's are not on the shelf until sent), files a model downloaded
@@ -641,7 +642,7 @@ Claude Code sessions working on this repository outside the app are covered by a
 ### Goals
 
 A goal is something the user wants done end to end. They describe it in their own words (the
-target button on the rail, then New goal); the provider picked in the composer drafts a brief from
+toolbar's Goals menu, then New goal); the provider picked in the composer drafts a brief from
 it: the goal restated, two to six lines that define done, and at most one question. The user
 edits and confirms the brief, and the work starts. The design and its reasons are in
 `docs/goals-phase1.md`.
@@ -675,7 +676,7 @@ new-goal dialog is open the browser's page is hidden, since it would paint over 
 
 ### Evals
 
-The eval panel (the flask on the rail; `EvalPanel.tsx`, design in `docs/mockups/evals.html`)
+The eval panel (the toolbar's Evals section; `EvalPanel.tsx`, design in `docs/mockups/evals.html`)
 answers one question: how does each provider handle this scenario? A scenario is a line of JSON in
 `docs/evals/scenarios/*.jsonl`: an id, a folder (`cwd`), a message, graders, trials and a matrix
 of providers and models; `runsAlone: true` marks one that uses the app window or browser.

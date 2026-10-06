@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { History as HistoryIcon, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import type { Chat } from '../../../shared/types.ts'
 import { act } from '../app-map.ts'
 import { deleteChat, focusedChatId, useApp } from '../store.ts'
 
-// Every chat, newest first, in a menu that opens from the rail. Picking one opens it as a tab.
-// The menu grows to the right over the chat column, which is always wider than it, so it never
-// reaches the browser (a native view that would paint on top of it).
+// Every chat, newest first, in a menu that opens from the toolbar's Chats section. Picking one
+// opens it as a tab. The toolbar keeps the menu inside the chat card, so it never reaches the
+// browser (a native view that would paint on top of it).
 
 function groupOf(chat: Chat, now: number): string {
   const days = Math.floor((startOfDay(now) - startOfDay(chat.updatedAt)) / 86_400_000)
@@ -69,47 +68,6 @@ export function HistoryMenu({ onPick }: { onPick: () => void }) {
           ))}
         </section>
       ))}
-    </div>
-  )
-}
-
-export function History() {
-  const [open, setOpen] = useState(false)
-  const root = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onPointer = (event: PointerEvent): void => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false)
-    }
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        setOpen(false)
-      }
-    }
-    window.addEventListener('pointerdown', onPointer)
-    window.addEventListener('keydown', onKey, true)
-    return () => {
-      window.removeEventListener('pointerdown', onPointer)
-      window.removeEventListener('keydown', onKey, true)
-    }
-  }, [open])
-
-  return (
-    <div className="history" ref={root}>
-      <button
-        type="button"
-        className={`rail-button${open ? ' is-on' : ''}`}
-        title="Chat history"
-        aria-label="Chat history"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        <HistoryIcon size={17} />
-      </button>
-      {open && <HistoryMenu onPick={() => setOpen(false)} />}
     </div>
   )
 }

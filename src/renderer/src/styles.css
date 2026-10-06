@@ -335,13 +335,7 @@ button {
 .goal-lead::before, .goal-lead::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .goal-lead.is-check { color: var(--text-3); }
 
-/* Goals menu and the rail's count. */
-.rail-button { position: relative; }
-.rail-badge {
-  position: absolute; top: 1px; right: 0; min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px;
-  display: grid; place-items: center; background: var(--accent); color: #fff; font-size: 9px; font-weight: 600;
-}
-.rail-badge.is-asking { background: var(--warn); color: #1a1500; }
+/* Goals menu. */
 .goals-menu .chat-row-main { gap: 8px; }
 .goal-row-status { flex: none; font-size: 11px; color: var(--text-4); }
 .goals-menu-foot { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
@@ -631,11 +625,6 @@ a.gd-source:hover { color: var(--text); text-decoration: underline; }
 .rail-dot.level-high { background: var(--high); }
 .rail.is-folded .rail-actions { gap: 6px; }
 .rail.is-folded .rail-fold { width: 20px; height: 22px; margin-top: 0; }
-.rail-count {
-  display: grid; place-items: center; width: 16px; height: 16px; border-radius: 8px;
-  background: var(--accent); color: #fff; font-size: 9px; font-weight: 600;
-}
-.rail-count.is-asking { background: var(--warn); color: #1a1500; }
 /* The peek: the whole rail over the chat, in its own fill, with the shadow of something on top.
    It is fixed to the window so the chat beneath never moves. */
 .rail-peek {
@@ -750,7 +739,6 @@ a.gd-source:hover { color: var(--text); text-decoration: underline; }
 
 /* Popups open under their button, drawn by the toolbar so the drawer's clipping cannot cut them. */
 .tb-popup { position: absolute; top: calc(100% - 4px); z-index: 50; }
-.tb-popup > .history-menu { position: static; animation: tb-drop 140ms ease-out; }
 @keyframes tb-drop { from { opacity: 0; transform: translateY(-4px); } }
 .tb-customize, .tb-context {
   padding: 5px;
@@ -808,12 +796,8 @@ a.gd-source:hover { color: var(--text); text-decoration: underline; }
 
 /* ── Chat history ──────────────────────────────────────────────────── */
 
-.history { position: relative; }
+/* Drawn in a toolbar popup (Toolbar.tsx), which places it under its section. */
 .history-menu {
-  position: absolute;
-  left: calc(100% + 14px);
-  bottom: -32px;
-  z-index: 50;
   width: 300px;
   max-height: min(520px, calc(100vh - 96px));
   overflow-y: auto;
@@ -822,7 +806,7 @@ a.gd-source:hover { color: var(--text); text-decoration: underline; }
   border: 1px solid var(--line-strong);
   border-radius: 12px;
   box-shadow: var(--menu-shadow);
-  animation: history-in 140ms ease-out;
+  animation: tb-drop 140ms ease-out;
 }
 @keyframes history-in { from { opacity: 0; transform: translateX(-4px); } }
 .history-heading {

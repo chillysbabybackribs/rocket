@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 import { jpegBase64 } from '../fixtures/image'
 import { pdfBytes } from '../fixtures/pdf'
 
@@ -25,7 +25,7 @@ test('the library shelves a chat’s files, filters them, and opens one beside t
 
   const library = page.getByRole('complementary', { name: 'Library', exact: true })
   await test.step('The rail opens the shelf: the attachments and the opened plan, with previews', async () => {
-    await page.getByRole('button', { name: 'Show library', exact: true }).click()
+    await (await section(page, 'Library')).click()
     await expect(library).toBeVisible()
     await expect(library.locator('.lib-card')).toHaveCount(4)
     await expect(library.locator('.lib-count')).toHaveText('4 of 4')

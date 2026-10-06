@@ -1,4 +1,4 @@
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 
 // A scenario run from the eval panel, with the controlled test responses: both providers run side
 // by side in copies of the scenario's folder, the grid fills in, a cell opens the real transcript,
@@ -7,7 +7,7 @@ import { test, expect } from './app'
 test('a scenario runs on its providers side by side and a cell opens its transcript', async ({ rocket }) => {
   const { page } = rocket
   test.setTimeout(120_000)
-  await page.getByRole('button', { name: 'Show evals', exact: true }).click()
+  await (await section(page, 'Evals')).click()
   await expect(page.getByRole('tab', { name: 'Scenarios', exact: true })).toHaveClass(/is-active/)
   await page.getByRole('button', { name: 'Open scenario matrix-smoke' }).click()
   await rocket.capture('evals-scenario')
@@ -36,7 +36,7 @@ test('a scenario runs on its providers side by side and a cell opens its transcr
   await rocket.capture('evals-cell')
 
   // Eval chats work under the profile's eval folder and never appear among the user's chats.
-  await page.getByRole('button', { name: 'Chat history', exact: true }).click()
+  await (await section(page, 'Chats')).click()
   await expect(page.getByRole('menu', { name: 'Chat history' })).toBeVisible()
   await expect(page.getByRole('menu', { name: 'Chat history' })).not.toContainText('[eval]')
   await page.keyboard.press('Escape')

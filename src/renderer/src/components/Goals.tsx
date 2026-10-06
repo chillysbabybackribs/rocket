@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { Plus, Target } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import type { Goal, GoalStatus } from '../../../shared/types.ts'
 import { act } from '../app-map.ts'
 import { focusedChatId, openNewGoal, useApp } from '../store.ts'
 import { GoalStatusIcon } from './GoalIcons.tsx'
 
-// Goals, from the rail: the ones under way first, then the finished ones, and "New goal". Like
-// the history menu, it grows to the right over the chat column and never reaches the browser.
+// The Goals menu, opened from the toolbar's Goals section: the ones under way first, then the
+// finished ones, and "New goal". The toolbar keeps it inside the chat card, clear of the browser.
 
 export const UNDER_WAY: GoalStatus[] = ['drafting', 'confirming', 'working', 'checking', 'needs_you', 'paused']
 
@@ -63,50 +62,6 @@ export function GoalsMenu({ onPick }: { onPick: () => void }) {
           <span className="chat-row-title">New goal…</span>
         </button>
       </div>
-    </div>
-  )
-}
-
-export function Goals() {
-  const [open, setOpen] = useState(false)
-  const root = useRef<HTMLDivElement>(null)
-  const waiting = useApp((state) => state.goals.filter((goal) => UNDER_WAY.includes(goal.status)).length)
-  const asking = useApp((state) => state.goals.some((goal) => goal.status === 'needs_you' || goal.status === 'confirming'))
-
-  useEffect(() => {
-    if (!open) return
-    const onPointer = (event: PointerEvent): void => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false)
-    }
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        setOpen(false)
-      }
-    }
-    window.addEventListener('pointerdown', onPointer)
-    window.addEventListener('keydown', onKey, true)
-    return () => {
-      window.removeEventListener('pointerdown', onPointer)
-      window.removeEventListener('keydown', onKey, true)
-    }
-  }, [open])
-
-  return (
-    <div className="history" ref={root}>
-      <button
-        type="button"
-        className={`rail-button${open ? ' is-on' : ''}`}
-        title="Goals"
-        aria-label={waiting ? `Goals, ${waiting} under way` : 'Goals'}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        <Target size={17} />
-        {waiting > 0 && <span className={`rail-badge${asking ? ' is-asking' : ''}`}>{waiting}</span>}
-      </button>
-      {open && <GoalsMenu onPick={() => setOpen(false)} />}
     </div>
   )
 }

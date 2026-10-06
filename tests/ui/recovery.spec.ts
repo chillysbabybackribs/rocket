@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 
 test('full app restart preserves completed chats, chosen model and browser tabs', async ({ rocket }) => {
   let page = rocket.page
@@ -14,7 +14,7 @@ test('full app restart preserves completed chats, chosen model and browser tabs'
   await rocket.release()
   await expect(page.getByRole('button', { name: 'Stop', exact: true })).toHaveCount(0)
   await expect(page.locator('.prose')).toContainText('Complete.')
-  await page.getByRole('button', { name: 'Show browser' }).click()
+  await (await section(page, 'Browser')).click()
   await (await rocket.surface('browser')).getByRole('link', { name: 'Next page' }).click()
   await expect(page.locator('.btab.is-active')).toHaveText('UI page two')
   const pid = rocket.app.process().pid

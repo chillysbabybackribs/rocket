@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 
 test('eval Tools tab loads ledger and supports mark verified', async ({ rocket }) => {
   const { page } = rocket
@@ -41,7 +41,7 @@ test('eval Tools tab loads ledger and supports mark verified', async ({ rocket }
   const failId = history.data.calls.find((row: { finish?: { error?: { code: string } } }) => row.finish?.error?.code === 'AMBIGUOUS_TARGET')?.id
   expect(failId).toBeTruthy()
 
-  await page.getByRole('button', { name: 'Show evals', exact: true }).click()
+  await (await section(page, 'Evals')).click()
   await page.getByRole('tab', { name: 'Tool health', exact: true }).click()
   const ledger = page.getByLabel('MCP tool ledger')
   await expect(ledger).toBeVisible()

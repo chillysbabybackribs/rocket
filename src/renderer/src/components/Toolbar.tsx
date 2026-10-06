@@ -9,8 +9,8 @@ import { HistoryMenu } from './History.tsx'
 
 // The strip above the cards, as a Mac unified toolbar: the Sections icon, the drawer of section
 // names it slides out to the right, the sections the user keeps in the toolbar for good, and the
-// focused chat's title (docs/mockups/titlebar-nav-drawer-mac.html). The rail keeps its own
-// buttons; both open the same places through the same store calls.
+// focused chat's title (docs/mockups/titlebar-nav-drawer-mac.html). These are the only buttons
+// for the five sections; the rail keeps the usage notch and its fold.
 //
 // The browser's page is a native view that paints over anything drawn across it, so every menu
 // and popover here is pulled left until it ends inside the chat card (`useInsideChat`).
@@ -86,7 +86,7 @@ function Section({ id, popup, setPopup, tabbable = true }: { id: SectionId; popu
     setPopup(null)
     if (id === 'library') on ? setLibraryOpen(false) : void go('library')
     else if (id === 'evals') setEvalsOpen(!on)
-    else setBrowserOpen(!on)
+    else on ? setBrowserOpen(false) : void go('browser')
   }
   return (
     <button
@@ -257,9 +257,10 @@ export function Toolbar() {
   const open = toolbar.open
 
   // The drawer's width follows its contents, so it slides to the right size and back to nothing.
+  // Measuring forces a layout, so it runs only when what is in the drawer changes.
   useLayoutEffect(() => {
     if (drawer.current && inner.current) drawer.current.style.width = open ? `${inner.current.scrollWidth}px` : '0px'
-  })
+  }, [open, toolbar, waiting])
 
   useEffect(() => {
     const onPointer = (event: PointerEvent): void => {
@@ -290,8 +291,9 @@ export function Toolbar() {
           <button
             type="button"
             className="tb-toggle"
-            aria-label={badge ? `Sections, ${waiting} goals under way` : 'Sections'}
-            title={open ? 'Hide sections' : 'Show sections'}
+            aria-label="Sections"
+            aria-description={badge ? `${waiting} ${waiting === 1 ? 'goal' : 'goals'} under way` : undefined}
+            title={`${open ? 'Hide' : 'Show'} sections${badge ? ` · ${waiting} ${waiting === 1 ? 'goal' : 'goals'} under way` : ''}`}
             aria-expanded={open}
             onClick={() => { setPopup(null); patchToolbar({ open: !open }) }}
             onContextMenu={(event) => { event.preventDefault(); setPopup({ kind: 'context', left: leftOf(event.currentTarget) }) }}

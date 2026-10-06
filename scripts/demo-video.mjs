@@ -127,7 +127,8 @@ async function main() {
   // Set the stage before recording: a folder, Claude, and the browser on the portal's home page.
   await shell.locator('.composer-folder').click()
   await chooseProvider('Claude', false)
-  await shell.getByRole('button', { name: 'Show browser' }).click()
+  await shell.getByRole('button', { name: 'Sections', exact: true }).click()
+  await shell.getByRole('button', { name: 'Browser', exact: true }).click()
   await browserPage(origin, '/')
   await sleep(1500)
 

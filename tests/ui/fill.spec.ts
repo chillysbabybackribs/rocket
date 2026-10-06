@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 
 // Fill with Rocket (docs/mockups/fill-with-rocket.html): right-click a field or a form and the
 // model writes the answer into the page, with a chip beside it that says what it is doing. The
@@ -47,7 +47,7 @@ test('Fill with Rocket fills a field, a rich editor and a form, undoes, reworks,
     })
   })
 
-  await page.getByRole('button', { name: 'Show browser' }).click()
+  await (await section(page, 'Browser')).click()
   const browser = await rocket.surface('browser')
   await page.getByRole('textbox', { name: 'Address', exact: true }).fill(`${origin}/forum`)
   await page.getByRole('textbox', { name: 'Address', exact: true }).press('Enter')
@@ -147,7 +147,7 @@ test('Fill with Rocket fills a field, a rich editor and a form, undoes, reworks,
     await expect(page.locator('.btab.is-filling')).toHaveCount(0)
     await expect(browser.locator('#reply')).toHaveValue('')
     // The stopped fill's chat is gone, and none ever reached the chat list.
-    await page.getByRole('button', { name: 'Chat history' }).click()
+    await (await section(page, 'Chats')).click()
     await expect(page.getByText('Fill', { exact: true })).toHaveCount(0)
   })
 })

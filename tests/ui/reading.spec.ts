@@ -1,12 +1,12 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 
 // Hands-free reading (docs/mockups/reading-scroll.html): the page scrolls itself from the toolbar,
 // the reader's own scrolling moves it without stopping it, and leaving the page ends it.
 test('hands-free reading scrolls the page, follows the reader’s own scrolling and stops on leaving', async ({ rocket }) => {
   const { page, origin, profile } = rocket
-  await page.getByRole('button', { name: 'Show browser' }).click()
+  await (await section(page, 'Browser')).click()
   const browser = await rocket.surface('browser')
   await page.getByRole('textbox', { name: 'Address', exact: true }).fill(`${origin}/long`)
   await page.getByRole('textbox', { name: 'Address', exact: true }).press('Enter')

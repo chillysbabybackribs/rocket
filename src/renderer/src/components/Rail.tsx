@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { FlaskConical, Globe, LibraryBig, PanelLeftClose, PanelLeftOpen, RefreshCw } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, RefreshCw } from 'lucide-react'
 import { PROVIDERS, providerLabel, type ProviderId, type UsageSnapshot, type UsageWindow } from '../../../shared/types.ts'
-import { refreshUsage, setBrowserOpen, setEvalsOpen, setLibraryOpen, setRailOpen, sideShown, useApp } from '../store.ts'
-import { go } from '../app-map.ts'
+import { refreshUsage, setRailOpen, useApp } from '../store.ts'
 import { ProviderGlyph } from './glyphs.tsx'
-import { Goals, UNDER_WAY } from './Goals.tsx'
-import { History } from './History.tsx'
 
-// The left edge of the window: window controls, the usage notch, and the global actions (goals,
-// chat history, the browser). The notch is the app's signature: a black tab growing out of the
+// The left edge of the window: window controls, the usage notch, and the button that folds the
+// rail. Goals, chats, the library, the evals and the browser live in the toolbar (Toolbar.tsx),
+// not here, so each has one home. The notch is the app's signature: a black tab growing out of the
 // window edge with one ring per provider, each showing how much of that subscription's nearest
 // limit is used. The rail folds to a strip to give the chat its width; the strip keeps a dot per
 // provider and peeks the whole rail over the chat while the pointer rests on it.
@@ -191,53 +189,14 @@ function Traffic() {
   )
 }
 
-/** The notch and the actions: the rail's body, whether it stands in its column or peeks over the chat. */
+/** The notch and the fold: the rail's body, whether it stands in its column or peeks over the chat. */
 function RailBody({ open }: { open: boolean }) {
-  const side = useApp(sideShown)
-  const browserOpen = side === 'browser'
-  const evalsOpen = side === 'evals'
-  const libraryOpen = side === 'library'
   return (
     <>
       <div className="rail-middle">
         <UsageNotch />
       </div>
       <div className="rail-actions">
-        <Goals />
-        <History />
-        <button
-          type="button"
-          className={`rail-button${libraryOpen ? ' is-on' : ''}`}
-          title={libraryOpen ? 'Hide library' : 'Show library'}
-          aria-label={libraryOpen ? 'Hide library' : 'Show library'}
-          aria-pressed={libraryOpen}
-          data-nav="library"
-          onClick={() => (libraryOpen ? setLibraryOpen(false) : void go('library'))}
-        >
-          <LibraryBig size={17} />
-        </button>
-        <button
-          type="button"
-          className={`rail-button${evalsOpen ? ' is-on' : ''}`}
-          title={evalsOpen ? 'Hide evals' : 'Show evals'}
-          aria-label={evalsOpen ? 'Hide evals' : 'Show evals'}
-          aria-pressed={evalsOpen}
-          data-nav="evals"
-          onClick={() => setEvalsOpen(!evalsOpen)}
-        >
-          <FlaskConical size={17} />
-        </button>
-        <button
-          type="button"
-          className={`rail-button${browserOpen ? ' is-on' : ''}`}
-          title={browserOpen ? 'Hide browser' : 'Show browser'}
-          aria-label={browserOpen ? 'Hide browser' : 'Show browser'}
-          aria-pressed={browserOpen}
-          data-nav="browser"
-          onClick={() => setBrowserOpen(!browserOpen)}
-        >
-          <Globe size={17} />
-        </button>
         <button
           type="button"
           className="rail-button rail-fold"
@@ -254,15 +213,12 @@ function RailBody({ open }: { open: boolean }) {
 }
 
 /**
- * The rail folded: a strip with a dot per provider in its usage colour and the goals count, so
- * the glance survives the fold. Resting the pointer on it slides the whole rail out over the chat;
- * it goes back when the pointer leaves. Menus and flyouts are children of the rail, so being in
- * one counts as being on the rail.
+ * The rail folded: a strip with a dot per provider in its usage colour, so the glance survives
+ * the fold. Resting the pointer on it slides the whole rail out over the chat; it goes back when
+ * the pointer leaves. Flyouts are children of the rail, so being in one counts as being on it.
  */
 function FoldedRail() {
   const usage = useApp((state) => state.usage)
-  const waiting = useApp((state) => state.goals.filter((goal) => UNDER_WAY.includes(goal.status)).length)
-  const asking = useApp((state) => state.goals.some((goal) => goal.status === 'needs_you' || goal.status === 'confirming'))
   const [peek, setPeek] = useState(false)
   const timer = useRef<number | null>(null)
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
@@ -291,7 +247,6 @@ function FoldedRail() {
         </div>
       </div>
       <div className="rail-actions">
-        {waiting > 0 && <span className={`rail-count${asking ? ' is-asking' : ''}`} title={`${waiting} ${waiting === 1 ? 'goal' : 'goals'} under way`}>{waiting}</span>}
         <button type="button" className="rail-button rail-fold" title="Show the rail" aria-label="Show the rail" aria-pressed onClick={() => setRailOpen(true)}>
           <PanelLeftOpen size={14} />
         </button>

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 import { assertOverlay, nativeViews } from './safeguards'
 
 test('Rocket desktop self-check', async ({ rocket }) => {
@@ -34,7 +34,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await message.pressSequentially('Second line')
     await expect(message).toHaveValue('Draft first line\nSecond line')
     await expect(send).toBeEnabled()
-    await page.getByRole('button', { name: 'Chat history', exact: true }).click()
+    await (await section(page, 'Chats')).click()
     await expect(page.getByRole('menu', { name: 'Chat history' })).toContainText('Your chats will appear here.')
     await page.keyboard.press('Escape')
     await provider('Codex')
@@ -47,7 +47,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
   })
 
   await test.step('Embedded page, navigation and browser tabs', async () => {
-    await page.getByRole('button', { name: 'Show browser' }).click()
+    await (await section(page, 'Browser')).click()
     const browser = await rocket.surface('browser')
     await expect(browser).toHaveTitle('UI page one')
     await browser.getByRole('textbox', { name: 'Test input' }).fill('Browser interaction works')
@@ -69,9 +69,9 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await expect(page.locator('.btab.is-active')).toHaveText('UI page two')
     await page.getByRole('button', { name: 'Close tab: UI page one', exact: true }).click()
     await expect(page.locator('.btab')).toHaveCount(1)
-    await page.getByRole('button', { name: 'Hide browser' }).click()
+    await (await section(page, 'Browser')).click()
     await expect(page.getByRole('region', { name: 'Browser', exact: true })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Show browser' }).click()
+    await (await section(page, 'Browser')).click()
     await expect(page.locator('.btab.is-active')).toHaveText('UI page two')
     await expect(message).toHaveValue('Draft first line\nSecond line')
   })
@@ -138,7 +138,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await expect(message).toHaveValue('Draft in existing chat')
     await page.getByRole('button', { name: 'Close tab: UI check: stream', exact: true }).click()
     await expect(message).toHaveValue('Draft in new chat')
-    await page.getByRole('button', { name: 'Chat history', exact: true }).click()
+    await (await section(page, 'Chats')).click()
     await page.getByRole('menuitem', { name: 'UI check: stream', exact: true }).click()
     await expect(page.locator('.turn')).toHaveCount(5)
     await expect(message).toHaveValue('Draft in existing chat')

@@ -1,5 +1,5 @@
 import { test as base, expect } from '@playwright/test'
-import { _electron, type ElectronApplication, type Page } from 'playwright'
+import { _electron, type ElectronApplication, type Locator, type Page } from 'playwright'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:http'
 import { readFileSync } from 'node:fs'
@@ -227,3 +227,16 @@ export const test = base.extend<{ rocket: Rocket }>({
 })
 
 export { expect }
+
+export type SectionName = 'Goals' | 'Chats' | 'Library' | 'Evals' | 'Browser'
+
+/**
+ * A toolbar section's button: the only way to Goals, Chats, Library, Evals and Browser, since the
+ * rail has none. A section in the closed Sections drawer is reached by opening the drawer first.
+ */
+export async function section(page: Page, name: SectionName): Promise<Locator> {
+  const id = name.toLowerCase()
+  const toggle = page.getByRole('button', { name: 'Sections', exact: true })
+  if (await toggle.getAttribute('aria-expanded') !== 'true' && await page.locator(`.tb-drawer [data-section="${id}"]`).count()) await toggle.click()
+  return page.locator(`.toolbar [data-section="${id}"]`)
+}

@@ -1,12 +1,12 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { UiSnapshot } from '../../src/shared/types'
-import { test, expect } from './app'
+import { test, expect, section } from './app'
 import { assertOverlay, nativeViews } from './safeguards'
 
 test('the shared snapshot tool captures native views without changing the UI and falls back explicitly', async ({ rocket }, info) => {
   const { page, app, profile } = rocket
-  await page.getByRole('button', { name: 'Show browser' }).click()
+  await (await section(page, 'Browser')).click()
   const message = page.getByRole('textbox', { name: 'Message', exact: true })
   await message.fill('An unsent draft stays here')
   await message.focus()
