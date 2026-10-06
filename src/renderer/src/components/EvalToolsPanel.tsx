@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { HostApi } from '../../../shared/types.ts'
+import { go } from '../app-map.ts'
 import { call } from '../host.ts'
+import { useApp } from '../store.ts'
 
 type PanelData = HostApi['toolLedger.loadPanel'][1]
 type ScoresData = HostApi['toolEval.scores'][1]
 type CallDetail = HostApi['toolLedger.callDetail'][1]
-type Section = 'health' | 'scores'
 type CallRow = Record<string, unknown> & {
   id?: string
   tool?: string
@@ -19,8 +20,11 @@ const pct = (n: number | null | undefined): string => (n == null ? '—' : `${Ma
 const score3 = (n: number | null | undefined): string => (n == null ? '—' : n.toFixed(2))
 const fmtDate = (ms: number): string => new Date(ms).toLocaleString()
 
-export function EvalToolsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
-  const [section, setSection] = useState<Section>('health')
+export function EvalToolsPanel() {
+  // The section and the refresh count live in the store, where the app map sets and reads them.
+  const section = useApp((state) => state.evals.tools.section)
+  const refreshKey = useApp((state) => state.evals.refresh)
+  const setSection = (next: 'health' | 'scores'): void => { void go('evals.tools', { section: next === 'scores' ? 'evaluate' : 'health' }) }
   const [data, setData] = useState<PanelData | null>(null)
   const [scores, setScores] = useState<ScoresData | null>(null)
   const [scoresError, setScoresError] = useState<string | null>(null)
