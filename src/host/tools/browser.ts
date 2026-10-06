@@ -26,11 +26,16 @@ const here = import.meta.dirname
 /** Built, the worker sits beside the host's bundle; under plain Node it is the source file. */
 const WORKER = [join(here, 'script-worker.js'), join(here, '..', 'script-worker.js')].find(existsSync) ?? join(here, 'script-worker.ts')
 
+/** Prepended once per provider session; also woven into tool descriptions. */
+export const BROWSER_RESEARCH_GUIDE = `For research, use your provider's native web search first to find and vet candidate URLs. Rocket's browser is not for scraping search-result pages, driving Google/DuckDuckGo/Bing UIs, or gathering many live sources by clicking through results.
+Open only a small set of validated, high-quality destinations you chose from search—official docs, primary sources, the user's logged-in sites—not generic search URLs or SEO aggregators. Read those pages here when they need JavaScript, the user's session, or something you must see.`
+
 const READ_DESCRIPTION = `Read a web page in Rocket's built-in browser, where the user is signed in to their sites. Returns the page as text with links, its controls with refs (e12) that browser_run can click and fill, and the data requests the page made.
-Pass url to go there first, in your own tab (never the user's; Rocket switches the view to it). Pass tab (an id such as t3 from the tab list) to read a tab that is already open. Pass neither to read your tab again.
+${BROWSER_RESEARCH_GUIDE}
+Pass url to go to a destination you already chose (never a search-engine results page). Use your own tab (never the user's; Rocket switches the view to it). Pass tab (an id such as t3 from the tab list) to read a tab that is already open. Pass neither to read your tab again.
 Use this rather than fetching a URL yourself when a page needs the user's login or JavaScript to show its content.`
 
-const RUN_DESCRIPTION = `Run a script in Rocket's built-in browser. One script should do a whole task: go, act, wait, extract, and return the result. Do as much per call as you can.
+const RUN_DESCRIPTION = `Run a script in Rocket's built-in browser. One script should do a whole task on a destination page: act, wait, extract, and return the result—not automate search engines or collect sources from SERPs. Use your provider's native web search to pick URLs first. Do as much per call as you can.
 The script is the body of an async function. It has:
 - tab: your tab, or the one named by the tab argument. tab.goto(url) returns once the page's document is ready, so use waitFor for content that arrives later; tab.read({focus, selector, max}) gives the same text as browser_read; tab.eval(fn, arg) runs fn inside the page and returns its JSON result; tab.click(target); tab.fill(target, value); tab.press('Enter') or 'Control+a'; tab.type(text); tab.waitFor(target or fn, {timeout}); tab.requests(match) lists the tab's network log; tab.body(requestId) gives a response body as text; tab.info(); tab.screenshot() saves a JPEG and gives its path; tab.close().
 - browser: browser.open(url) gives a new tab; browser.tab(id); browser.tabs(); browser.fetch(url, {method, headers, body}) requests with the browser's cookies and no CORS, giving {status, body} with body as text and a json() method.
@@ -195,14 +200,20 @@ function spill(text: string, resultsDir: string, chat: string | null, json: bool
 }
 
 /**
- * What is open in the browser, as a few lines for the head of a user's message. Null when the
- * provider's session for that chat was last told the same thing, or there is nothing to tell.
- * A `fresh` session has been told nothing, whatever the one before it was.
+ * Browser research guidance and open tabs for the head of a user's message. Null when there is
+ * nothing new for this provider session. A `fresh` session has been told nothing yet.
  */
 export function browserContext(link: BrowserLink): (chatId: string, provider: ProviderId, fresh: boolean) => Promise<string | null> {
-  const told = new Map<string, string>()
+  const toldTabs = new Map<string, string>()
+  const toldResearch = new Set<string>()
   const clip = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
   return async (chatId, provider, fresh) => {
+    const key = `${chatId}:${provider}`
+    const parts: string[] = []
+    if (fresh || !toldResearch.has(key)) {
+      toldResearch.add(key)
+      parts.push(`<browser-research>\n${BROWSER_RESEARCH_GUIDE}\n</browser-research>`)
+    }
     // A turn never waits on this: a browser that is slow to answer is simply not described.
     const tabs = await Promise.race([
       link.request({ op: 'tabs' }).catch(() => null) as Promise<AgentTab[] | null>,
@@ -210,10 +221,10 @@ export function browserContext(link: BrowserLink): (chatId: string, provider: Pr
     ])
     const open = (tabs ?? []).filter((tab) => tab.url).slice(0, 12)
     const lines = open.map((tab) => `${tab.active ? '*' : '-'} ${tab.id}${tab.agent ? ' (yours)' : ''}  ${clip(tab.title || '(untitled)', 60)}  ${clip(tab.url, 140)}`).join('\n')
-    const key = `${chatId}:${provider}`
-    if (!fresh && told.get(key) === lines) return null
-    told.set(key, lines)
-    if (!lines) return null
-    return `<browser>\nTabs open in Rocket's built-in browser (* is the one the user is looking at):\n${lines}\n</browser>`
+    if (lines && (fresh || toldTabs.get(key) !== lines)) {
+      toldTabs.set(key, lines)
+      parts.push(`<browser>\nTabs open in Rocket's built-in browser (* is the one the user is looking at):\n${lines}\n</browser>`)
+    }
+    return parts.length ? parts.join('\n\n') : null
   }
 }

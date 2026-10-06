@@ -100,9 +100,12 @@ as `rocket` (`agy mcp add`) and works out the chat from the turn that is running
 leaves MCP tools out of the model's prompt, so the adapter opens a new conversation's first
 message with the tools, their arguments and how to call them.
 
-There are three browser tools (`src/host/tools/browser.ts`). `browser_read` returns a page as text
-with links, its controls with short refs, and the data requests it made. `browser_screenshot`
-returns a tab as a small JPEG, for what text cannot say. `browser_run` runs a
+There are three browser tools (`src/host/tools/browser.ts`). For research, models are told to use
+their provider's native web search to find and vet URLs first, then open only a few validated
+destinations in the browser—not to scrape search-result pages or gather many live sources from
+the open web. `browser_read` returns a page as text with links, its controls with short refs, and
+the data requests it made. `browser_screenshot` returns a tab as a small JPEG, for what text
+cannot say. `browser_run` runs a
 script the model writes against a small Playwright-shaped API (`tab.goto`, `tab.eval`,
 `tab.click`, `tab.fill`, `tab.waitFor`, `browser.fetch`), so a whole task is one call; the script
 runs in a worker thread of the host and each step is a request to main

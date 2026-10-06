@@ -37,6 +37,7 @@ export class UiTestAdapter implements ProviderAdapter {
       if (command === 'UI check: fail') return { status: 'failed', error: 'Controlled UI test failure.' }
       if (command === 'UI check: work') return this.work(request.turnId, sink, controller.signal)
       if (command === 'UI check: ask') return this.ask(request.turnId, sink)
+      if (command === 'UI check: edit') return this.edit(request.turnId, request.cwd, sink)
       if (!['UI check: stream', 'UI check: stop', 'UI check: recover'].includes(command ?? '')) {
         return { status: 'failed', error: 'This isolated window uses UI test responses only.' }
       }
@@ -63,6 +64,17 @@ export class UiTestAdapter implements ProviderAdapter {
     } finally {
       this.active.delete(request.chatId)
     }
+  }
+
+  /** A turn that really changes files in the chat's folder, so what the app records of a turn's changes can be seen. */
+  private edit(turnId: string, cwd: string, sink: TurnSink): RunResult {
+    const notes = join(cwd, 'notes.md')
+    const before = existsSync(notes) ? readFileSync(notes, 'utf8') : ''
+    writeFileSync(notes, `${before.replace('plain notes', 'notes with login')}\nEach person sees only their own notes.\n`)
+    writeFileSync(join(cwd, 'auth.js'), "export function authOf(req) {\n  return req.headers.authorization ?? null\n}\n")
+    sink.item({ type: 'tool', id: `${turnId}:tool`, turnId, kind: 'edit', label: `${notes}, ${join(cwd, 'auth.js')}`, output: '', status: 'done' })
+    sink.item({ type: 'assistant', id: `${turnId}:reply`, turnId, text: 'Added a login check and noted it in the README.', streaming: false })
+    return { status: 'completed' }
   }
 
   /** A turn that asks the user something, as the ask_user tool would, and carries on to a reply. */
