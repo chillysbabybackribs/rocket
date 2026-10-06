@@ -9,7 +9,7 @@ const where = (patch: Partial<UiWhere> = {}): UiWhere => ({
     { index: 0, chatId: 'a', title: 'first chat', provider: 'claude', focused: true, running: false, goal: null, planOpen: false },
     { index: 1, chatId: 'b', title: 'second chat', provider: 'codex', focused: false, running: true, goal: null, planOpen: false }
   ],
-  focused: 0, side: 'chat', artifact: null, evals: null, dialogs: [], railOpen: true, ...patch
+  focused: 0, side: 'chat', artifact: null, evals: null, library: null, dialogs: [], railOpen: true, ...patch
 })
 
 const evals: NonNullable<UiWhere['evals']> = {

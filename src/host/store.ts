@@ -78,6 +78,17 @@ const SCHEMA = `
     data TEXT NOT NULL,
     created_at INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS library_files (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    path TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    source TEXT NOT NULL,
+    origin TEXT NOT NULL,
+    chat_id TEXT,
+    size INTEGER NOT NULL,
+    added_at INTEGER NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS turn_patches (
     turn_id TEXT PRIMARY KEY REFERENCES turns(id) ON DELETE CASCADE,
     patch TEXT NOT NULL,
@@ -99,6 +110,16 @@ const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }
 export type StoredPatch = { patch: string; truncated: boolean; startTree: string | null; endTree: string | null }
 
 type Row = Record<string, unknown>
+
+/** A file the library knows by its path: a download, a plan a turn wrote, or a file opened from a chat. */
+export type LibraryFileRow = { path: string; name: string; kind: string; source: string; origin: string; chatId: string | null; size: number; addedAt: number }
+
+function libraryFileOf(row: Row): LibraryFileRow & { seq: number } {
+  return {
+    seq: Number(row.seq), path: String(row.path), name: String(row.name), kind: String(row.kind), source: String(row.source),
+    origin: String(row.origin), chatId: row.chat_id === null ? null : String(row.chat_id), size: Number(row.size), addedAt: Number(row.added_at)
+  }
+}
 
 export class Store {
   private readonly db: DatabaseSync
@@ -143,6 +164,33 @@ export class Store {
     for (const queue of this.queues()) for (const message of queue.messages) for (const image of message.attachments ?? []) kept.add(image.id)
     return this.sql('SELECT id, data FROM attachments WHERE created_at < ?').all(before)
       .filter(row => !kept.has(String(row.id))).map(row => JSON.parse(String(row.data)) as Attachment)
+  }
+
+  /** Attachments a chat has sent, with the chat and when each was stored; a draft's are not on the shelf yet. */
+  sentAttachments(): Array<{ attachment: Attachment; chatId: string; addedAt: number }> {
+    const seen = new Map<string, { attachment: Attachment; chatId: string; addedAt: number }>()
+    const rows = this.sql(`SELECT i.chat_id, i.data, a.created_at, a.data AS stored FROM items i
+      JOIN json_each(i.data, '$.attachments') e
+      JOIN attachments a ON a.id = json_extract(e.value, '$.id')
+      WHERE i.data LIKE '%"attachments":%' AND json_extract(i.data, '$.type') = 'user'
+      ORDER BY i.seq`).all()
+    for (const row of rows) {
+      const attachment = JSON.parse(String(row.stored)) as Attachment
+      if (!seen.has(attachment.id)) seen.set(attachment.id, { attachment, chatId: String(row.chat_id), addedAt: Number(row.created_at) })
+    }
+    return [...seen.values()]
+  }
+
+  /** Put a file on the library's shelf. A path already there keeps where it first came from. */
+  addLibraryFile(file: LibraryFileRow): LibraryFileRow & { seq: number } {
+    this.sql(`INSERT INTO library_files (path, name, kind, source, origin, chat_id, size, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(path) DO UPDATE SET size = excluded.size`)
+      .run(file.path, file.name, file.kind, file.source, file.origin, file.chatId, file.size, file.addedAt)
+    return libraryFileOf(this.sql('SELECT * FROM library_files WHERE path = ?').get(file.path)!)
+  }
+
+  libraryFiles(): Array<LibraryFileRow & { seq: number }> {
+    return this.sql('SELECT * FROM library_files ORDER BY added_at DESC').all().map(libraryFileOf)
   }
 
   deleteAttachment(id: string): void {

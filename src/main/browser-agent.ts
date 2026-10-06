@@ -2,6 +2,9 @@ import { nativeImage, session, type WebContents } from 'electron'
 import type { AgentTab, BrowserAgentOp, GotoUntil } from '../shared/types.ts'
 import { BrowserDownloads } from './browser-downloads.ts'
 import { buildA11ySnapshot, filterReadByQuery, type AxNode } from './browser-a11y.ts'
+import { formatAttachedJson } from './browser-json-attach.ts'
+import { formatNetworkDelta, formatReadDelta } from './browser-run-delta.ts'
+import { SPA_HOOK } from './browser-spa-hook.ts'
 import { PAGE_LIB, type DigestOptions } from './browser-page-lib.ts'
 import type { BrowserPane, TabHandle } from './browser-pane.ts'
 import { toUrl } from './browser-url.ts'
@@ -54,6 +57,12 @@ type Attached = {
   ready: boolean
   /** Whether the page is kept running at full speed while hidden, as it is while a turn works in it. */
   awake: boolean
+  /** browser_run: request log position at script start. */
+  scriptMark: number | null
+  /** browser_run: compact elements digest at script start. */
+  readSnapshot: string | null
+  urlAtMark: string | null
+  spaHookInstalled: boolean
 }
 
 const KEYS: Record<string, { code: number; text?: string }> = {
@@ -175,6 +184,12 @@ export class BrowserAgent {
       }
       case 'wait':
         return this.wait(this.tab(op), op)
+      case 'waitSpa':
+        return this.waitSpa(this.tab(op), op.timeout)
+      case 'mark':
+        return this.mark(this.tab(op))
+      case 'delta':
+        return this.delta(this.tab(op))
       case 'requests': {
         const tab = this.tab(op)
         const { requests } = await this.attach(tab)
@@ -331,20 +346,26 @@ export class BrowserAgent {
       }
     }
     if (!state) {
-      const fresh: Attached = { world: null, requests: [], requestSeq: 0, pageStart: 0, dialogs: [], ready: true, awake: false }
+      const fresh: Attached = {
+        world: null, requests: [], requestSeq: 0, pageStart: 0, dialogs: [], ready: true, awake: false,
+        scriptMark: null, readSnapshot: null, urlAtMark: null, spaHookInstalled: false
+      }
       state = fresh
       this.attached.set(contents, fresh)
       contents.debugger.on('message', (_event, method, params) => this.onProtocol(contents, fresh, method, params as Record<string, unknown>))
       // Opening DevTools detaches the debugger. The pane re-attaches when they close; the domains
       // this needs come back on the next tool call.
       contents.debugger.on('detach', () => { fresh.world = null; this.enabled.delete(contents) })
-      contents.on('did-navigate', () => { fresh.world = null })
+      contents.on('did-navigate', () => { fresh.world = null; fresh.spaHookInstalled = false })
       contents.on('did-start-navigation', (details) => {
         if (!details.isMainFrame || details.isSameDocument) return
         fresh.pageStart = fresh.requestSeq
         fresh.ready = false
       })
-      contents.on('dom-ready', () => { fresh.ready = true })
+      contents.on('dom-ready', () => {
+        fresh.ready = true
+        if (this.pane.isAgentTab(tab.id)) void this.injectSpaHook(tab, fresh)
+      })
       // A navigation that fails or becomes a download leaves the old document, which is ready.
       contents.on('did-stop-loading', () => { fresh.ready = true })
     }
@@ -355,6 +376,7 @@ export class BrowserAgent {
     // A tab working in the background still behaves as the focused page it would be for a person.
     await contents.debugger.sendCommand('Emulation.setFocusEmulationEnabled', { enabled: true })
     this.enabled.add(contents)
+    await this.injectSpaHook(tab, state)
     return state
   }
 
@@ -499,7 +521,91 @@ export class BrowserAgent {
           ).join('\n'))
       } else if (all) parts.push('(No requests logged. The log starts when a tool first touches the tab; reload to capture a page\'s own.)')
     }
+    if (op.attachJson !== false && op.focus !== 'network' && url) {
+      const jsonCalls = state.requests.filter((request) =>
+        Number(request.id.slice(1)) > state.pageStart && /^(XHR|Fetch)$/i.test(request.kind)
+      )
+      const attached = await this.attachJsonFromLog(tab, jsonCalls)
+      if (attached) parts.push(attached)
+    }
     return parts.join('\n\n')
+  }
+
+  private async injectSpaHook(tab: TabHandle, state?: Attached): Promise<void> {
+    if (!this.pane.isAgentTab(tab.id)) return
+    const attached = state ?? this.attached.get(tab.contents)
+    if (attached?.spaHookInstalled) return
+    try {
+      await this.attach(tab)
+      await tab.contents.debugger.sendCommand('Runtime.evaluate', { expression: SPA_HOOK })
+      const probe = await tab.contents.debugger.sendCommand('Runtime.evaluate', {
+        expression: 'Boolean(globalThis.__rocketSpaHook)', returnByValue: true
+      }) as { result?: { value?: boolean } }
+      if (probe.result?.value && attached) attached.spaHookInstalled = true
+    } catch {
+      // Non-http pages or destroyed views.
+    }
+    try {
+      await tab.contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: SPA_HOOK })
+    } catch {
+      // Debugger may be unavailable on this view.
+    }
+  }
+
+  private async attachJsonFromLog(tab: TabHandle, calls: LoggedRequest[]): Promise<string | null> {
+    const candidate = [...calls].reverse().find((request) =>
+      request.method === 'GET' && request.status === 200 && /json/i.test(request.mime) && request.cdpId
+    )
+    if (!candidate) return null
+    try {
+      const { body, base64Encoded } = await this.send(tab, 'Network.getResponseBody', { requestId: candidate.cdpId }) as { body: string; base64Encoded: boolean }
+      if (base64Encoded) return null
+      return formatAttachedJson(candidate.id, body)
+    } catch {
+      return null
+    }
+  }
+
+  private async mark(tab: TabHandle): Promise<null> {
+    const state = await this.attach(tab)
+    await this.injectSpaHook(tab, state)
+    state.scriptMark = state.requestSeq
+    state.urlAtMark = tab.contents.getURL()
+    state.readSnapshot = String(await this.evaluate(tab, `__rocket.digest(${JSON.stringify({ focus: 'elements', selector: null, max: 60 } satisfies DigestOptions)})`, true).catch(() => ''))
+    return null
+  }
+
+  private async delta(tab: TabHandle): Promise<string | null> {
+    const state = this.attached.get(tab.contents)
+    if (!state || state.scriptMark === null) return null
+    const parts: string[] = []
+    const network = formatNetworkDelta(state.requests, state.scriptMark)
+    if (network) parts.push(network)
+    const url = tab.contents.getURL()
+    if (state.urlAtMark && url !== state.urlAtMark) parts.push(`## Since script started (location)\n${state.urlAtMark} → ${url}`)
+    if (state.readSnapshot) {
+      const now = String(await this.evaluate(tab, `__rocket.digest(${JSON.stringify({ focus: 'elements', selector: null, max: 60 } satisfies DigestOptions)})`, true).catch(() => ''))
+      const page = formatReadDelta(state.readSnapshot, now)
+      if (page) parts.push(page)
+    }
+    state.scriptMark = null
+    state.readSnapshot = null
+    state.urlAtMark = null
+    return parts.length ? parts.join('\n\n') : null
+  }
+
+  private async waitSpa(tab: TabHandle, timeout: number): Promise<null> {
+    await this.injectSpaHook(tab)
+    const start = Number(await this.evaluate(tab, 'globalThis.__rocketSpaNavigation?.seq ?? 0', false) ?? 0)
+    const deadline = Date.now() + timeout
+    for (;;) {
+      const seq = Number(await this.evaluate(tab, 'globalThis.__rocketSpaNavigation?.seq ?? 0', false) ?? 0)
+      if (seq > start) return null
+      if (Date.now() >= deadline) {
+        throw new Error(`Waited ${timeout}ms for a client-side route change (pushState/replaceState/popstate). The page is at ${tab.contents.getURL()}.`)
+      }
+      await sleep(50)
+    }
   }
 
   /** Bounded wait after goto for hash routes, title, or a matching XHR (opt-in). */

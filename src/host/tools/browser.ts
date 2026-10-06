@@ -39,7 +39,7 @@ Open only a small set of validated, high-quality destinations you chose from sea
 
 const READ_DESCRIPTION = `Read a web page in Rocket's built-in browser, where the user is signed in to their sites. Returns a header (title, hash, route hint), page text with links, controls with refs (e12) for browser_run, and recent data requests.
 ${BROWSER_RESEARCH_GUIDE}
-Decision tree: (1) browser_read or tab.read — default observe. (2) Full URL from read (including #…) or tab.goto. (3) JSON via browser.fetch or tab.eval fetch when read lists a matching API — faster than scraping the DOM on SPAs/CRMs. (4) tab.waitFor or tab.goto(..., { until }) when hash routes or XHR lag the address bar. (5) tab.click/fill only for forms and actions data cannot replace.
+Decision tree: (1) browser_read or tab.read — default observe; recent JSON record APIs may be attached inline (truncated). (2) Full URL from read (including #…) or tab.goto/tab.follow. (3) browser.fetch when you only need JSON. (4) tab.waitFor, tab.goto(..., { until }), or start tab.waitForNavigation() before a hash/pushState click. (5) tab.click/fill only when data cannot replace UI. browser_run appends network/page deltas since the script started.
 Pass url to go to a destination you already chose (never a search-engine results page). Use your own tab (never the user's; Rocket switches the view to it). Pass tab (an id such as t3 from the tab list) to read a tab that is already open. Pass neither to read your tab again.
 Use this rather than fetching a URL yourself when a page needs the user's login or JavaScript to show its content. Stale refs after a big re-render: read again; one automatic retry may heal a single matching control.`
 
@@ -212,6 +212,7 @@ async function runScript(
   const logs: string[] = []
   const started = Date.now()
   let touchedTab = false
+  let marked = false
   const worker = new Worker(WORKER, { workerData: { code: run.code, tab: run.tab } })
   const outcome = await new Promise<{ ok: true; value: unknown } | { ok: false; error: string }>((resolve) => {
     const timer = setTimeout(() => resolve({ ok: false, error: `The script was stopped after ${run.seconds}s. Do less per call, or pass a longer timeout.` }), run.seconds * 1_000)
@@ -227,11 +228,19 @@ async function runScript(
         touchedTab ||= forTab || message.op.op === 'open'
         // The worker names tabs; which chat is asking is added here.
         const op = { ...message.op, ...(forTab || message.op.op === 'open' ? { chat: run.chat } : {}) } as BrowserAgentOp
-        link.request(op).then(
+        const runOp = async (): Promise<void> => {
+          if ((forTab || message.op.op === 'open') && !marked) {
+            marked = true
+            const tab = 'tab' in op ? op.tab : run.tab
+            await link.request({ op: 'mark', chat: run.chat, tab: tab ?? run.tab }).catch(() => null)
+          }
+          return link.request(op).then(
           // A script has no use for image bytes; it gets a file it can name in what it returns.
           (result) => worker.postMessage({ id: message.id, ok: true, result: op.op === 'screenshot' ? saveShot(result, resultsDir, run.chat) : result }),
           (error: unknown) => worker.postMessage({ id: message.id, ok: false, error: messageOf(error) })
-        )
+          )
+        }
+        void runOp()
       }
     })
     worker.on('error', (error) => settle({ ok: false, error: messageOf(error) }))
@@ -255,6 +264,8 @@ async function runScript(
   if (touchedTab) {
     const where = await link.request({ op: 'info', chat: run.chat, tab: run.tab }).catch(() => null) as Pick<AgentTab, 'id' | 'url' | 'title'> | null
     if (where) text += `\n\n[tab ${where.id}: ${where.title || '(untitled)'} · ${where.url || '(blank)'}]`
+    const delta = await link.request({ op: 'delta', chat: run.chat, tab: run.tab }).catch(() => null)
+    if (typeof delta === 'string' && delta.trim()) text += `\n\n${delta}`
   }
   return { ...textResult(text), isError: !outcome.ok }
 }

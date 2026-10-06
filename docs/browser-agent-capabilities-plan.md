@@ -211,9 +211,12 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 
 ### Phase 3 — Host intelligence
 
-- Last JSON attach on read — WS3.1  
-- pushState hook for agent tabs — WS2.2  
-- Observation diff in long `browser_run` — WS1.4  
+**Status (6 Oct 2026): landed.**
+
+- [x] Last JSON attach on read (truncated, opt-out `attachJson: false`) — WS3.1
+- [x] pushState hook on agent tabs + `tab.waitForNavigation()` — WS2.2
+- [x] `browser_run` mark/delta (network, location, new control lines) — WS1.4
+- [x] Harness + `browser-json-attach.test.ts`
 
 ### Phase 4 — Optional / research
 

@@ -7,7 +7,10 @@ export type ArtifactView =
   | { kind: 'changes'; chatId: string; turnId: string; patch: TurnPatch }
   /** An attached PDF or text file; `preview` is null while it loads. */
   | { kind: 'attachment'; attachment: FileAttachment; preview: AttachmentPreview | null; error: string | null }
+  /** A file opened from the library; `view` is null while it loads. */
+  | { kind: 'library'; entry: LibraryEntry; view: LibraryView | null; error: string | null }
 import { PROVIDERS, TURN_PAGE, planItemId, providerLabel } from '../../shared/types.ts'
+import type { LibraryEntry, LibraryFilters, LibraryPreview, LibraryView } from '../../shared/library.ts'
 import { call, connectHost } from './host.ts'
 
 // Client state. Two kinds of subscription keep a fast token stream cheap: components that care
@@ -110,6 +113,9 @@ export type AppState = {
   browserOpen: boolean
   /** Local eval dashboard (Braintrust-style mock UI) beside the chat. */
   evalsOpen: boolean
+  /** The library beside the chat: every file the chats touched (docs/library-plan.md). */
+  libraryOpen: boolean
+  library: LibraryState
   /** What the eval dashboard shows and what it is running; see `EvalsState`. */
   evals: EvalsState
   /** Whether the rail stands open at its full width, or is folded to a strip that peeks on hover. */
@@ -129,6 +135,19 @@ export type AppState = {
 
 export type ModelChoices = Partial<Record<ProviderId, { id: string; label: string }>>
 
+/** The library panel's shelf, filters and card pictures. Filters live here, not in the panel, because the app map sets them too. */
+export type LibraryState = {
+  entries: LibraryEntry[]
+  loaded: boolean
+  error: string | null
+  filters: LibraryFilters
+  view: 'grid' | 'list'
+  /** The card last opened, outlined when the grid comes back. */
+  selected: string | null
+  /** A card's picture: absent until asked for, null while it is made. */
+  previews: Record<string, LibraryPreview | null>
+}
+
 // Each chat keeps its own provider and models, so a change in one never shows up in another. The
 // empty screen has a choice of its own, which a chat takes with it when it is created there.
 type Selection = { provider: ProviderId; modelChoice: ModelChoices }
@@ -142,6 +161,8 @@ type Prefs = {
   selections?: Record<string, Selection>
   browserOpen?: boolean
   evalsOpen?: boolean
+  libraryOpen?: boolean
+  libraryView?: 'grid' | 'list'
   railOpen?: boolean
   goalPaneOpen?: boolean
   goalWidth?: number
@@ -219,6 +240,8 @@ let state: AppState = {
   browserOpen: prefs.browserOpen === true,
   evalsOpen: prefs.evalsOpen === true,
   evals: INITIAL_EVALS,
+  libraryOpen: prefs.libraryOpen === true,
+  library: { entries: [], loaded: false, error: null, filters: {}, view: prefs.libraryView === 'list' ? 'list' : 'grid', selected: null, previews: {} },
   railOpen: prefs.railOpen !== false,
   goals: [],
   goalPaneOpen: prefs.goalPaneOpen !== false,
@@ -390,6 +413,9 @@ function applyEvents(events: HostEvent[]): void {
         patchEvals({ runs: [event.run, ...rest].sort((a, b) => b.startedAt - a.startedAt) })
         break
       }
+      case 'library':
+        if (state.library.loaded) scheduleLibraryLoad()
+        break
     }
   }
 }
@@ -775,13 +801,79 @@ export function setRailOpen(railOpen: boolean): void {
 export function setBrowserOpen(browserOpen: boolean): void {
   linkRequest++
   const evalsOpen = browserOpen ? false : state.evalsOpen
-  setState({ browserOpen, evalsOpen, artifact: null })
-  writePrefs({ browserOpen, evalsOpen })
+  const libraryOpen = browserOpen ? false : state.libraryOpen
+  setState({ browserOpen, evalsOpen, libraryOpen, artifact: null })
+  writePrefs({ browserOpen, evalsOpen, libraryOpen })
 }
 
 export function setEvalsOpen(evalsOpen: boolean): void {
-  setState({ evalsOpen, browserOpen: evalsOpen ? false : state.browserOpen, artifact: null })
-  writePrefs({ evalsOpen, browserOpen: evalsOpen ? false : state.browserOpen })
+  const libraryOpen = evalsOpen ? false : state.libraryOpen
+  setState({ evalsOpen, libraryOpen, browserOpen: evalsOpen ? false : state.browserOpen, artifact: null })
+  writePrefs({ evalsOpen, libraryOpen, browserOpen: evalsOpen ? false : state.browserOpen })
+}
+
+// ── Library ───────────────────────────────────────────────────────────
+
+/** Show or hide the library beside the chat; it takes the side from the browser and the evals. */
+export function setLibraryOpen(libraryOpen: boolean): void {
+  linkRequest++
+  const others = libraryOpen ? { browserOpen: false, evalsOpen: false } : {}
+  setState({ libraryOpen, ...others, artifact: null })
+  writePrefs({ libraryOpen, ...others })
+  if (libraryOpen && !state.library.loaded) void loadLibrary()
+}
+
+export function patchLibrary(patch: Partial<LibraryState>): void {
+  setState({ library: { ...state.library, ...patch } })
+  if (patch.view) writePrefs({ libraryView: patch.view })
+}
+
+/** Read the shelf from the host. Card pictures of files that changed are asked for again. */
+export async function loadLibrary(): Promise<void> {
+  try {
+    const entries = await call('library.list', {})
+    const kept = new Set(entries.map((entry) => `${entry.id}:${entry.size}`))
+    const previous = new Map(state.library.entries.map((entry) => [entry.id, `${entry.id}:${entry.size}`]))
+    const previews = Object.fromEntries(Object.entries(state.library.previews).filter(([id]) => previous.has(id) && kept.has(previous.get(id)!)))
+    patchLibrary({ entries, previews, loaded: true, error: null })
+  } catch (error) {
+    patchLibrary({ loaded: true, error: error instanceof Error ? error.message : 'The library could not be read. Close it and open it again.' })
+  }
+}
+
+let libraryTimer: ReturnType<typeof setTimeout> | null = null
+/** Several files often arrive together at a turn's end; the shelf is read once for them. */
+function scheduleLibraryLoad(): void {
+  if (libraryTimer) clearTimeout(libraryTimer)
+  libraryTimer = setTimeout(() => { libraryTimer = null; void loadLibrary() }, 250)
+}
+
+/** Ask for a card's picture once; the grid calls this as a card scrolls into view. */
+export async function loadLibraryPreview(id: string): Promise<void> {
+  if (id in state.library.previews) return
+  patchLibrary({ previews: { ...state.library.previews, [id]: null } })
+  let preview: LibraryPreview
+  try {
+    preview = await call('library.preview', { id })
+  } catch {
+    preview = { type: 'none' }
+  }
+  patchLibrary({ previews: { ...state.library.previews, [id]: preview } })
+}
+
+/** Open a library file in the side panel, over the library; closing it brings the library back. */
+export async function openLibraryEntry(id: string): Promise<void> {
+  const entry = state.library.entries.find((each) => each.id === id)
+  if (!entry) throw new Error(`There is no library file "${id}". Its id may have changed; list the library again.`)
+  const request = ++linkRequest
+  patchLibrary({ selected: id })
+  setState({ artifact: { kind: 'library', entry, view: null, error: null } })
+  try {
+    const view = await call('library.view', { id })
+    if (request === linkRequest) setState({ artifact: { kind: 'library', entry, view, error: null } })
+  } catch (error) {
+    if (request === linkRequest) setState({ artifact: { kind: 'library', entry, view: null, error: error instanceof Error ? error.message : 'This file could not be shown. Open the library again.' } })
+  }
 }
 
 // ── Evals ─────────────────────────────────────────────────────────────
@@ -1018,6 +1110,7 @@ export async function openChatLink(href: string, cwd?: string): Promise<void> {
       window.rocket.browser.send({ type: 'newTab', url: target.url })
     } else {
       setState({ artifact: target })
+      void call('library.add', { path: target.path, chatId: chatIdOf(state, state.focused) }).catch(() => {})
     }
   } catch (error) {
     if (request === linkRequest) fail(error)

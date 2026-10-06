@@ -59,6 +59,7 @@ function makeTab(tab: string | null): Record<string, unknown> {
     fill: (target: string, value: unknown) => call({ op: 'fill', tab, target: String(target), value: String(value ?? '') }),
     press: (key: string) => call({ op: 'press', tab, key: String(key) }),
     type: (text: unknown) => call({ op: 'type', tab, text: String(text) }),
+    waitForNavigation: (options: { timeout?: number } = {}) => call({ op: 'waitSpa', tab, timeout: options.timeout ?? 5_000 }),
     waitFor: (what: unknown, options: { timeout?: number } = {}) => call({
       op: 'wait', tab,
       target: typeof what === 'string' ? what : null,

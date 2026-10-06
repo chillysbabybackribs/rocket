@@ -135,6 +135,10 @@ export class BrowserPane {
   }
 
   /** A tab by the name models know it by, with its page loaded. */
+  isAgentTab(ref: string): boolean {
+    return this.tabs.some((entry) => entry.ref === ref && entry.agent)
+  }
+
   agentTab(ref: string): TabHandle | null {
     this.restore()
     const tab = this.tabs.find((entry) => entry.ref === ref)

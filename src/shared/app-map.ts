@@ -43,6 +43,18 @@ export const PLACES = {
     description: 'Evals: the MCP tool ledger (health) and tool scores (evaluate).',
     file: 'src/renderer/src/components/EvalToolsPanel.tsx',
     params: { section: '"health" or "evaluate"' }
+  },
+  library: {
+    description: 'The library beside the chat: every file the chats attached, downloaded, wrote as plans or opened, as a grid or list. Filters given here replace the shown ones; library_list lists the same files.',
+    file: 'src/renderer/src/components/LibraryPanel.tsx',
+    params: {
+      source: 'attachment, download, plan or opened',
+      kind: 'pdf, markdown, text, image, office or other',
+      chat: 'chat id',
+      added: 'today, yesterday, week or older',
+      q: 'words to search for',
+      view: '"grid" or "list"'
+    }
   }
 } satisfies Record<string, PlaceSpec>
 
@@ -61,7 +73,9 @@ export const ACTIONS = {
     place: 'evals.scenario'
   },
   'evals.run.stop': { description: 'Stop the shown scenario\'s running run: running turns stop and queued cells never start.', place: 'evals.scenario' },
-  'evals.tools.refresh': { description: 'Refresh the tool ledger and scores.', place: 'evals.tools' }
+  'evals.tools.refresh': { description: 'Refresh the tool ledger and scores.', place: 'evals.tools' },
+  'library.clear': { description: 'Clear the library\'s filters and search.', place: 'library' },
+  'library.open': { description: 'Open a library file in the side panel (text, Markdown, PDF pages or a picture); closing it returns to the library.', params: { id: 'file id from library_list (required)' }, place: 'library' }
 } satisfies Record<string, ActionSpec>
 
 export type ActionName = keyof typeof ACTIONS

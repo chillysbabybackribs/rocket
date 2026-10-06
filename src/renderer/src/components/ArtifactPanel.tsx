@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { closeArtifact, undoTurn, useApp, viewOf } from '../store.ts'
+import { formatSize } from '../../../shared/library.ts'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { parsePatch } from '../../../shared/patch.ts'
 import { ChangesView, Counts } from './ChangesView.tsx'
 import { FileMark, fileMeta } from './Attachments.tsx'
 
 // The panel beside the chat: a file a link opened (Markdown rendered, anything else as source
-// with a highlighted line), an attached PDF or text file, or what a turn changed, as a diff.
+// with a highlighted line), an attached PDF or text file, a file opened from the library, or what
+// a turn changed, as a diff.
 
 /**
  * Undo in the panel's header: offered as a quiet button; undone, a word in its place; not
@@ -40,6 +42,7 @@ function UndoConfirm({ chatId, turnId, paths, onDone }: { chatId: string; turnId
 
 export function ArtifactPanel() {
   const artifact = useApp((state) => state.artifact)
+  const fromLibrary = useApp((state) => state.libraryOpen)
   const turn = useApp((state) => (artifact?.kind === 'changes' ? viewOf(state, artifact.chatId).turns.find((entry) => entry.id === artifact.turnId) ?? null : null))
   const running = useApp((state) => (artifact?.kind === 'changes' ? state.running.has(artifact.chatId) : false))
   const selected = useRef<HTMLSpanElement>(null)
@@ -69,6 +72,26 @@ export function ArtifactPanel() {
       </section>
     )
   }
+  if (artifact.kind === 'library') {
+    const view = artifact.view
+    return (
+      <section className="artifact" aria-label="Library file">
+        <header className="artifact-head">
+          <span title={artifact.entry.path}>{artifact.entry.name}</span>
+          <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
+        </header>
+        <div className="artifact-path">{artifact.entry.path}</div>
+        <div className="artifact-content">
+          {artifact.error ? <div className="attachment-error" role="alert">{artifact.error}</div>
+            : !view ? <p className="attachment-loading">Loading preview…</p>
+            : view.type === 'text' ? (view.markdown ? <div className="prose"><ChatMarkdown text={view.text} cwd="/" /></div> : <pre className="artifact-source attachment-text">{view.text}</pre>)
+            : view.type === 'pdf' ? view.pages.map((page, index) => <img key={index} className="attachment-page" src={page} alt={`Page ${index + 1}`} />)
+            : view.type === 'image' ? <img className="attachment-page" src={view.src} alt={artifact.entry.name} />
+            : <p className="attachment-note">{view.reason}</p>}
+        </div>
+      </section>
+    )
+  }
   if (artifact.kind === 'attachment') {
     const { attachment: file, preview, error } = artifact
     const scanned = file.format === 'pdf' && !file.chars
@@ -90,6 +113,34 @@ export function ArtifactPanel() {
           {preview?.truncated ? (preview.type === 'pdf' ? `Showing the first ${preview.pages.length} of ${file.pages} pages · ` : 'Showing the start of the file · ') : ''}
           Original file retained · text is never executed
         </div>
+      </section>
+    )
+  }
+  if (artifact.kind === 'library') {
+    const { entry, view, error } = artifact
+    const folder = entry.path.slice(0, entry.path.lastIndexOf('/')) || '/'
+    return (
+      <section className="artifact" aria-label="Library file">
+        <header className="artifact-head">
+          <span className="attachment-title" title={entry.name}>
+            {fromLibrary && <button type="button" className="text-button library-back" onClick={closeArtifact}><ArrowLeft size={14} />Library</button>}
+            <span>{entry.name}</span>
+          </span>
+          <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
+        </header>
+        <div className="artifact-path" title={entry.path}>{formatSize(entry.size)} · {entry.path}</div>
+        <div className="artifact-content attachment-preview">
+          {error ? <div className="attachment-error" role="alert">{error}</div>
+            : !view ? <p className="attachment-loading">Loading…</p>
+            : view.type === 'none' ? <div className="attachment-error" role="status">{view.reason}</div>
+            : view.type === 'image' ? <img className="library-image" src={view.src} alt={entry.name} />
+            : view.type === 'pdf' ? view.pages.map((page, index) => <img key={index} className="attachment-page" src={page} alt={`Page ${index + 1} of ${entry.name}`} />)
+            : view.markdown ? <div className="prose"><ChatMarkdown text={view.text} cwd={folder} /></div>
+            : <pre className="artifact-source attachment-text">{view.text}</pre>}
+        </div>
+        {view && view.type !== 'none' && view.type !== 'image' && view.truncated && (
+          <div className="attachment-foot">{view.type === 'pdf' ? `Showing the first ${view.pages.length}${entry.pages ? ` of ${entry.pages}` : ''} pages` : 'Showing the start of the file'}</div>
+        )}
       </section>
     )
   }

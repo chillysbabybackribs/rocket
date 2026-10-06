@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { FlaskConical, Globe, PanelLeftClose, PanelLeftOpen, RefreshCw } from 'lucide-react'
+import { FlaskConical, Globe, LibraryBig, PanelLeftClose, PanelLeftOpen, RefreshCw } from 'lucide-react'
 import { PROVIDERS, providerLabel, type ProviderId, type UsageSnapshot, type UsageWindow } from '../../../shared/types.ts'
-import { refreshUsage, setBrowserOpen, setEvalsOpen, setRailOpen, useApp } from '../store.ts'
+import { refreshUsage, setBrowserOpen, setEvalsOpen, setLibraryOpen, setRailOpen, useApp } from '../store.ts'
+import { go } from '../app-map.ts'
 import { ProviderGlyph } from './glyphs.tsx'
 import { Goals, UNDER_WAY } from './Goals.tsx'
 import { History } from './History.tsx'
@@ -192,8 +193,9 @@ function Traffic() {
 
 /** The notch and the actions: the rail's body, whether it stands in its column or peeks over the chat. */
 function RailBody({ open }: { open: boolean }) {
-  const browserOpen = useApp((state) => state.browserOpen && !state.artifact && !state.evalsOpen)
-  const evalsOpen = useApp((state) => state.evalsOpen && !state.artifact)
+  const browserOpen = useApp((state) => state.browserOpen && !state.artifact && !state.evalsOpen && !state.libraryOpen)
+  const evalsOpen = useApp((state) => state.evalsOpen && !state.artifact && !state.libraryOpen)
+  const libraryOpen = useApp((state) => state.libraryOpen && !state.artifact)
   return (
     <>
       <div className="rail-middle">
@@ -202,6 +204,17 @@ function RailBody({ open }: { open: boolean }) {
       <div className="rail-actions">
         <Goals />
         <History />
+        <button
+          type="button"
+          className={`rail-button${libraryOpen ? ' is-on' : ''}`}
+          title={libraryOpen ? 'Hide library' : 'Show library'}
+          aria-label={libraryOpen ? 'Hide library' : 'Show library'}
+          aria-pressed={libraryOpen}
+          data-nav="library"
+          onClick={() => (libraryOpen ? setLibraryOpen(false) : void go('library'))}
+        >
+          <LibraryBig size={17} />
+        </button>
         <button
           type="button"
           className={`rail-button${evalsOpen ? ' is-on' : ''}`}

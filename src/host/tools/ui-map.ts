@@ -26,6 +26,11 @@ export function describeWhere(where: UiWhereForChat): string {
   if (where.side === 'chat') side = 'no side panel'
   else if (where.side === 'browser') side = 'the browser is open beside the chat'
   else if (where.side === 'artifact') side = `an artifact panel is open${where.artifact?.path ? ` (${where.artifact.path})` : ''}`
+  else if (where.side === 'library') {
+    const library = where.library
+    const filters = library ? Object.entries(library.filters).map(([name, value]) => `${name} ${value}`).join(', ') : ''
+    side = library ? `the library is open beside the chat (${library.view}, ${library.shown} of ${library.total} files${filters ? `, filtered by ${filters}` : ''})` : 'the library is open beside the chat'
+  }
   else {
     const evals = where.evals!
     const run = evals.run

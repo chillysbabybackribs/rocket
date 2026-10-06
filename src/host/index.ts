@@ -4,10 +4,11 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
-  MainAgentOp, BrowserAgentReply, BrowserAgentRequest, UiSnapshot,
+  MainAgentOp, BrowserAgentReply, BrowserDownload, BrowserAgentRequest, UiSnapshot,
   HostApi, HostEvent, HostMethod, HostRequestMessage, HostToRenderer, ProviderId, UsageSnapshot
 } from '../shared/types.ts'
 import { GoalRunner } from './goals.ts'
+import { Library } from './library.ts'
 import { describeTiming, Hub } from './hub.ts'
 import { messageOf, oneLine } from './json.ts'
 import { Journal } from './journal.ts'
@@ -23,6 +24,7 @@ import { agentSituationContext } from './agent-situation.ts'
 import { browserContext, browserTools } from './tools/browser.ts'
 import { ToolChannel } from './tools/channel.ts'
 import { goalTools } from './tools/goal.ts'
+import { libraryTools } from './tools/library.ts'
 import { ToolRegistry } from './tools/registry.ts'
 import { memoryTools } from './tools/memory.ts'
 import { selfCheckTools } from './tools/self-check.ts'
@@ -141,6 +143,13 @@ function onBrowserReply(reply: BrowserAgentReply): void {
   else pending.reject(new Error(reply.error))
 }
 
+// The library's shelf: attachments, downloads, plans and opened files (docs/library-plan.md).
+const library = new Library(store, attachments, join(dataDir, 'library-previews'), {
+  hidden: (chatId) => { const chat = store.chat(chatId); return chat !== null && inEvalFolder(chat.cwd) },
+  changed: () => emit({ type: 'library' }),
+  downloads: async (chat, since) => await askBrowser({ op: 'downloads', chat, since }) as BrowserDownload[]
+})
+
 // The tools are served before any provider starts, so every session is born knowing them.
 const liveUi = new LiveUiRunner(rocketSourceRoot(), join(dataDir, 'ui-runs'), askBrowser)
 const uiRuns = new UiRunManager(rocketSourceRoot(), undefined, (args, chatId) => liveUi.run(args, chatId))
@@ -155,12 +164,13 @@ try {
 const evalExport = new EvalExport(dataDir, rocketSourceRoot(), () => store, () => ledger)
 const turnTiming = new Map<string, TurnTiming>()
 const toolRegistry = new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', redactText(message).slice(0, 500), { provider, chatId }), ledger)
-  .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results'), (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)))
+  .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results'), (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null), (chatId, url) => hub.noteOpened(chatId, url)))
   .add(...uiSnapshotTools(async () => await askBrowser({ op: 'uiSnapshot' }) as UiSnapshot))
   .add(...uiMapTools(askBrowser))
   .add(...uiRuns.tools())
   .add(...(ledger ? [...toolHistoryTools(ledger), ...toolReviewTools(ledger)] : []))
   .add(...memoryTools(store))
+  .add(...libraryTools(library, store))
   .add(...askTools(() => hub))
   .add(...goalTools(() => goals))
   .add(...(selfCheck ? selfCheckTools(journal, (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)) : []))
@@ -192,7 +202,11 @@ function onEvent(event: HostEvent): void {
     void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
     goals.turnEnded(event.turn)
     const { id } = event.turn
-    void teamwork.turnEnded(event.turn).then((files) => goals.noteFiles(id, files))
+    const ended = event.turn
+    void teamwork.turnEnded(ended).then((files) => {
+      goals.noteFiles(id, files)
+      return library.turnEnded(ended, files)
+    }).catch((error) => journal.add('host', 'warn', 'library', messageOf(error), { turnId: id }))
     try {
       const path = evalExport.onTurnEnded(event.turn, turnTiming.get(event.turn.chatId))
       if (path) journal.add('host', 'info', 'eval-export', `Wrote ${path}`, { turnId: id, chatId: event.turn.chatId })
@@ -272,6 +286,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
     const attached = attachments.resolve(attachmentIds).map(({ path: _path, textPath: _text, ...attachment }) => attachment)
     validateAttachments(attached)
     await hub.post(chatId, provider, model, text, attached)
+    if (attached.length) emit({ type: 'library' })
     return null
   },
   'chat.stop': async ({ chatId, sendQueued }) => {
@@ -338,6 +353,10 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'evalRuns.list': ({ scenarioId }) => evalRuns.list(scenarioId),
   'evalRuns.start': (input) => evalRuns.start(input),
   'evalRuns.stop': async ({ runId }) => { await evalRuns.stop(runId); return null },
+  'library.list': () => library.list(),
+  'library.preview': ({ id }) => library.preview(id),
+  'library.view': ({ id }) => library.view(id),
+  'library.add': ({ path, chatId }) => library.add(path, 'opened', chatId),
   'toolLedger.loadPanel': () => loadToolLedgerPanel(ledger, toolRegistry.list()),
   'toolLedger.callDetail': ({ callId }: { callId: string }) => loadToolLedgerCallDetail(ledger, callId),
   'toolEval.scores': () => loadToolEvalScores(ledger, toolRegistry.list(), rocketSourceRoot(), dataDir),

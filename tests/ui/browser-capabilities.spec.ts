@@ -163,6 +163,52 @@ test.describe('Browser Phase 0 baseline (harness)', () => {
     expect(out.text).toMatch(/hash: #\/record\/beta/)
   })
 
+  test('Phase 3: read attaches truncated JSON from record API', async ({ rocket }) => {
+    const { origin, profile } = rocket
+    const { run } = await browserMcp(profile)
+    const detailUrl = `${origin}/spa#/record/alpha`
+    const out = await run(`
+      await tab.goto(${JSON.stringify(detailUrl)}, { until: 'request', untilValue: 'spa/api/records/alpha', timeout: 8000 });
+      return await tab.read({ max: 3000 });
+    `)
+    expect(out.isError).toBeFalsy()
+    expect(out.text).toMatch(/Attached JSON/)
+    expect(out.text).toMatch(/ALPHA-42/)
+  })
+
+  test('Phase 3: browser_run delta lists new network after navigation', async ({ rocket }) => {
+    const { origin, profile } = rocket
+    const { run } = await browserMcp(profile)
+    const out = await run(`
+      await tab.goto(${JSON.stringify(`${origin}/spa`)});
+      await tab.click('text=Beta LLC');
+      await tab.waitFor('text=BETA-99', { timeout: 8000 });
+      return 'done';
+    `)
+    expect(out.isError).toBeFalsy()
+    expect(out.text).toMatch(/Since script started \(network\)/)
+    expect(out.text).toMatch(/spa\/api\/records\/beta/)
+  })
+
+  test('Phase 3: spa hook and waitForNavigation (call before route change)', async ({ rocket }) => {
+    const { origin, profile } = rocket
+    const { run } = await browserMcp(profile)
+    const out = await run(`
+      await tab.goto(${JSON.stringify(`${origin}/spa`)});
+      await tab.eval(() => { if (!globalThis.__rocketSpaHook) throw new Error('SPA hook missing on agent tab'); });
+      const nav = tab.waitForNavigation({ timeout: 8000 });
+      await tab.eval(() => {
+        history.pushState({}, '', '#/record/alpha');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      });
+      await nav;
+      await tab.waitFor('text=ALPHA-42', { timeout: 8000 });
+      return await tab.read({ max: 1500 });
+    `)
+    expect(out.isError).toBeFalsy()
+    expect(out.text).toMatch(/ALPHA-42/)
+  })
+
   test('SPA: network log lists record API on detail navigation', async ({ rocket }) => {
     const { origin, profile } = rocket
     const { run } = await browserMcp(profile)

@@ -1,10 +1,11 @@
 import { ACTIONS, PLACES, isAction, isPlace, type ActionName, type PlaceName } from '../../shared/app-map.ts'
 import { PROVIDERS, type EvalScenarioInfo, type ProviderId, type UiMapResult, type UiWhere } from '../../shared/types.ts'
+import { filterEntries, parseFilters } from '../../shared/library.ts'
 import { call } from './host.ts'
 import { finished, runsOf, shownRun, startRun } from './eval-run.ts'
 import {
-  addPane, closeArtifact, closePane, focusPane, loadEvals, openChat, patchEvals, peekState,
-  setBrowserOpen, setEvalsOpen, showEvalView, type AppState, type EvalView
+  addPane, closeArtifact, closePane, focusPane, loadEvals, loadLibrary, openChat, openLibraryEntry, patchEvals, patchLibrary, peekState,
+  setBrowserOpen, setEvalsOpen, setLibraryOpen, showEvalView, type AppState, type EvalView
 } from './store.ts'
 
 // The one dispatcher behind the app map. The dashboard's buttons call `go` and `act`, and so do
@@ -20,6 +21,7 @@ const EVAL_VIEW_PLACE: Record<EvalView, PlaceName> = {
 
 function placeOf(state: AppState): PlaceName {
   if (state.artifact) return 'chat'
+  if (state.libraryOpen) return 'library'
   if (state.evalsOpen) return EVAL_VIEW_PLACE[state.evals.view]
   if (state.browserOpen) return 'browser'
   return 'chat'
@@ -45,6 +47,12 @@ function evalsWhere(state: AppState): NonNullable<UiWhere['evals']> {
   }
 }
 
+function libraryWhere(state: AppState): NonNullable<UiWhere['library']> {
+  const { library } = state
+  const title = (chatId: string): string => state.chats.find((chat) => chat.id === chatId)?.title ?? ''
+  return { filters: library.filters, view: library.view, shown: filterEntries(library.entries, library.filters, title).length, total: library.entries.length }
+}
+
 /** Where the shell is now, in the map's words. */
 export function where(): UiWhere {
   const state = peekState()
@@ -64,9 +72,10 @@ export function where(): UiWhere {
       }
     }),
     focused: state.focused,
-    side: state.artifact ? 'artifact' : state.evalsOpen ? 'evals' : state.browserOpen ? 'browser' : 'chat',
+    side: state.artifact ? 'artifact' : state.libraryOpen ? 'library' : state.evalsOpen ? 'evals' : state.browserOpen ? 'browser' : 'chat',
     artifact: state.artifact ? { kind: state.artifact.kind, path: state.artifact.kind === 'artifact' ? state.artifact.path : null } : null,
     evals: state.evalsOpen ? evalsWhere(state) : null,
+    library: state.libraryOpen ? libraryWhere(state) : null,
     dialogs: state.newGoal ? ['goal.new'] : [],
     railOpen: state.railOpen
   }
@@ -128,6 +137,17 @@ const places: Record<PlaceName, (params: Params) => Promise<void>> = {
     closeArtifact()
     if (peekState().evalsOpen) setEvalsOpen(false)
     if (peekState().browserOpen) setBrowserOpen(false)
+    if (peekState().libraryOpen) setLibraryOpen(false)
+  },
+  library: async (params) => {
+    const view = text(params, 'view')
+    if (view !== undefined && view !== 'grid' && view !== 'list') throw new Error('view is "grid" or "list".')
+    const filtering = ['source', 'kind', 'chat', 'added', 'q'].some((name) => params[name] !== undefined)
+    const filters = filtering ? parseFilters(params) : undefined
+    if (filters?.chat && !peekState().chats.some((chat) => chat.id === filters.chat)) throw new Error(`There is no chat "${filters.chat}". rocket_ui_where lists the chats on screen; library_list shows each file's chat.`)
+    if (!peekState().libraryOpen || peekState().artifact) setLibraryOpen(true)
+    if (!peekState().library.loaded) await loadLibrary()
+    patchLibrary({ ...(filters ? { filters } : {}), ...(view ? { view } : {}) })
   },
   browser: async () => { setBrowserOpen(true) },
   'evals.scenarios': async () => {
@@ -219,7 +239,14 @@ const actions: Record<ActionName, (params: Params) => Promise<unknown>> = {
     if (!running) throw new Error(`Scenario ${scenarioId} has no run going.`)
     await call('evalRuns.stop', { runId: running.id })
   },
-  'evals.tools.refresh': async () => { patchEvals({ refresh: peekState().evals.refresh + 1 }) }
+  'evals.tools.refresh': async () => { patchEvals({ refresh: peekState().evals.refresh + 1 }) },
+  'library.clear': async () => { patchLibrary({ filters: {} }) },
+  'library.open': async (params) => {
+    const id = text(params, 'id')
+    if (!id) throw new Error('Give id: a file id from library_list.')
+    await loadLibrary()
+    await openLibraryEntry(id)
+  }
 }
 
 // ── Entry points ──────────────────────────────────────────────────────

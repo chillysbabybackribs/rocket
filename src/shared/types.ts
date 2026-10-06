@@ -1,6 +1,8 @@
 // The vocabulary every process shares: the app-owned transcript, the providers that can answer a
 // turn, and the wire protocol between the renderer and the agent host.
 
+import type { LibraryEntry, LibraryFilters, LibraryPreview, LibraryView } from './library.ts'
+
 export type ProviderId = 'codex' | 'claude' | 'cursor' | 'antigravity'
 
 /** Image bytes live in Rocket's data directory; messages carry stable references only. */
@@ -313,6 +315,8 @@ export type HostEvent =
   | { type: 'queue'; chatId: string; queued: QueuedMessage[] }
   /** An eval run, whole, each time it changes. */
   | { type: 'evalRun'; run: EvalRun }
+  /** The library's shelf changed; a window showing it lists it again. */
+  | { type: 'library' }
 
 /** A scenario as the eval panel shows it; read from `docs/evals/scenarios/*.jsonl`. */
 export type EvalScenarioInfo = {
@@ -512,6 +516,14 @@ export type HostApi = {
     calls?: Array<Record<string, unknown>>
     matching?: number
   }]
+  /** Every file on the library's shelf, newest first (docs/library-plan.md). */
+  'library.list': [Record<string, never>, LibraryEntry[]]
+  /** A card's picture or opening text. */
+  'library.preview': [{ id: string }, LibraryPreview]
+  /** What the side panel shows of a file opened from the library. */
+  'library.view': [{ id: string }, LibraryView]
+  /** A file a chat opened (a link, `npm run open`) joins the shelf. */
+  'library.add': [{ path: string; chatId: string | null }, LibraryEntry | null]
   'toolLedger.setReview': [{
     callId: string
     lifecycle?: 'diagnosed' | 'regression_added' | 'fixed' | 'verified'
@@ -610,7 +622,10 @@ export type BrowserAgentOp =
   | (OnTab & { op: 'close' })
   | (OnTab & { op: 'goto'; url: string; until?: GotoUntil | null; untilValue?: string | null; settleTimeout?: number | null })
   /** The page as text a model can read. With a `url`, the tab goes there first. */
-  | (OnTab & { op: 'read'; url: string | null; focus: ReadFocus; selector: string | null; max: number | null; query?: string | null })
+  | (OnTab & { op: 'read'; url: string | null; focus: ReadFocus; selector: string | null; max: number | null; query?: string | null; attachJson?: boolean | null })
+  | (OnTab & { op: 'mark' })
+  | (OnTab & { op: 'delta' })
+  | (OnTab & { op: 'waitSpa'; timeout: number })
   | (OnTab & { op: 'follow'; href: string; until?: GotoUntil | null; untilValue?: string | null; settleTimeout?: number | null })
   /** JavaScript in the page's own world; the result must survive JSON. */
   | (OnTab & { op: 'eval'; expression: string })
@@ -647,7 +662,7 @@ export type UiWhere = {
   place: string
   panes: Array<{ index: number; chatId: string | null; title: string; provider: ProviderId; focused: boolean; running: boolean; goal: string | null; planOpen: boolean }>
   focused: number
-  side: 'chat' | 'browser' | 'evals' | 'artifact'
+  side: 'chat' | 'browser' | 'evals' | 'artifact' | 'library'
   artifact: { kind: string; path: string | null } | null
   evals: {
     view: string
@@ -663,6 +678,8 @@ export type UiWhere = {
     cell: { provider: ProviderId; trial: number } | null
     tools: { section: 'health' | 'evaluate' }
   } | null
+  /** The library panel: its filters, view and how many files they show; null while it is closed. */
+  library: { filters: LibraryFilters; view: 'grid' | 'list'; shown: number; total: number } | null
   dialogs: string[]
   railOpen: boolean
 }
