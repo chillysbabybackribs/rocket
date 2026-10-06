@@ -177,8 +177,14 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 
 ### Phase 0 — Measure (1–2 days)
 
-- Add **browser eval scenarios** (fixtures + one Espo manual script).
-- Baseline: current tools on Espo tasks (transcript + pass rate + tool call count).
+**Status (6 Oct 2026): harness baseline landed.**
+
+- [x] SPA fixture: `docs/evals/fixtures/browser/spa.html` (+ `/spa/api/records/*` on UI test server).
+- [x] Deterministic baseline: `tests/ui/browser-capabilities.spec.ts` (hash gap, waitFor, fetch, stale ref, network log).
+- [x] Report script: `node scripts/browser-phase0-baseline.mjs` → `.artifacts/browser-phase0/*/summary.json`.
+- [x] Optional LLM eval scenarios: `docs/evals/scenarios/browser-phase0-baseline.jsonl` (`runsAlone`, `targetTool: browser_run`).
+- [ ] Espo manual matrix (live demo): document in eval panel or ad-hoc turn; not in CI.
+- [ ] Baseline **LLM** pass rate + tool-call counts from eval runs (after you run scenarios once).
 
 ### Phase 1 — Fast wins (low risk)
 

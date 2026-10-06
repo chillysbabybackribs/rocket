@@ -12,6 +12,8 @@ changed and its transcript. **Tool health** is the MCP tool-call ledger (same da
 
 UI check: `npm run check:ui -- evals.spec.ts eval-tools.spec.ts`.
 
+Browser Phase 0 harness (no LLM): `npm run check:browser-phase0` — see `docs/browser-agent-capabilities-plan.md` and `tests/ui/browser-capabilities.spec.ts`.
+
 The standalone Braintrust-style mock (`npm run eval:mock-ui`, `mock-ui/`) and the Lane A / Lane B
 command lines below are separate from the panel.
 

@@ -2,8 +2,15 @@ import { test as base, expect } from '@playwright/test'
 import { _electron, type ElectronApplication, type Page } from 'playwright'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:http'
+import { readFileSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+
+const SPA_HTML = readFileSync(resolve('docs/evals/fixtures/browser/spa.html'), 'utf8')
+const SPA_RECORDS: Record<string, { name: string; note: string }> = {
+  alpha: { name: 'Alpha Corp', note: 'ALPHA-42' },
+  beta: { name: 'Beta LLC', note: 'BETA-99' }
+}
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
@@ -29,6 +36,7 @@ export const test = base.extend<{ rocket: Rocket }>({
     await mkdir(workspace, { recursive: true })
     await writeFile(join(profile, 'ui-test-profile'), 'rocket-ui-check-v1')
     const server = createServer((request, response) => {
+      const path = request.url ? new URL(request.url, 'http://127.0.0.1').pathname : ''
       if (request.url === '/favicon.ico') { response.writeHead(204).end(); return }
       // Files served as attachments, and a page that links to one, for the download checks.
       if (request.url?.startsWith('/files/')) {
@@ -43,7 +51,28 @@ export const test = base.extend<{ rocket: Rocket }>({
         response.end('<!doctype html><title>Downloads</title><h1>Downloads</h1><a id="get" href="/files/notes.txt">Download notes</a>')
         return
       }
-      const second = request.url === '/two'
+      if (path === '/spa' || path === '/spa/') {
+        response.setHeader('Content-Type', 'text/html; charset=utf-8')
+        response.end(SPA_HTML)
+        return
+      }
+      if (path.startsWith('/spa/api/records/')) {
+        const id = path.slice('/spa/api/records/'.length).split('/')[0]!
+        const row = SPA_RECORDS[id]
+        response.setHeader('Content-Type', 'application/json')
+        if (!row) {
+          response.writeHead(404)
+          response.end(JSON.stringify({ error: 'not found' }))
+          return
+        }
+        response.end(JSON.stringify(row))
+        return
+      }
+      if (path !== '/one' && path !== '/two') {
+        response.writeHead(404).end('Not found')
+        return
+      }
+      const second = path === '/two'
       response.setHeader('Content-Type', 'text/html')
       response.end(`<!doctype html><title>UI page ${second ? 'two' : 'one'}</title>
         <style>body{font:20px system-ui;padding:24px;background:#eef3ff;color:#17264a}input,button{font:inherit;padding:8px}a{display:block;margin:24px 0}</style>

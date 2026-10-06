@@ -15,6 +15,7 @@
     "test": "node --experimental-transform-types --disable-warning=ExperimentalWarning --test \"src/**/*.test.ts\" \"scripts/*.test.mjs\"",
     "check:live": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/live-check.ts",
     "check:ui": "node scripts/ui-check.mjs",
+    "check:browser-phase0": "node scripts/browser-phase0-baseline.mjs",
     "eval:ui:dev": "bt eval evals/rocket-ui-regression.eval.ts --dev",
     "eval:ui": "bt eval evals/rocket-ui-regression.eval.ts",
     "eval:ui:local": "node scripts/run-ui-eval.mjs",
