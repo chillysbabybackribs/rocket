@@ -46,6 +46,8 @@ test('the where line names the asking chat’s pane, the other panes and the sid
   assert.ok(scenario.includes('evals open at evals.scenario, scenario goal-draft-minimal (run running: 1 of 2 cells passed, 1 running)'))
   const tools = describeWhere(whereForChat(where({ place: 'evals.tools', side: 'evals', evals: { ...evals, view: 'tools' } }), 'a'))
   assert.ok(tools.includes('evals open at evals.tools, health section'))
+  const library = describeWhere(whereForChat(where({ place: 'library', side: 'library', library: { filters: { kind: 'pdf' }, view: 'grid', shown: 3, total: 22 } }), 'a'))
+  assert.ok(library.includes('the library is open beside the chat (grid, 3 of 22 files, filtered by kind pdf)'))
 })
 
 test('go and act pass through the dispatcher, add the pane and the image, and refuse unknown names', async () => {

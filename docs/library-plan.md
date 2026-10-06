@@ -127,6 +127,20 @@ stays an ordinary file edit; the editor follows the file on disk.
 - `MarksPanel.tsx`: the inspector list; clicking a mark scrolls to it, as `library.file { mark }`
   does.
 
+## Status
+
+**Slice 1 shipped (2026-10-06).** What changed from the plan as written:
+- Attachments are not copied into a table: the shelf reads sent attachments live from the store,
+  and only files known by path (downloads, plans, opened files) are rows, in `library_files`.
+  There is no backfill to run.
+- Captures are attachments, so they show as attachments; there is no separate capture source.
+- "Opened from chat" is a fourth source: a file a link or `npm run open` showed.
+- The app map has the `library` place (filters as parameters) and `library.clear` and
+  `library.open {id}` actions. `library.open` uses the existing side panel until the viewers in
+  slice 2, which add the `library.file` place.
+- No grid virtualisation yet; the cards ask for previews only as they scroll near, which holds up
+  to a few hundred files.
+
 ## Slices
 
 1. **Index and grid.** Tables, the four sources with backfill, preview generation, `LibraryPanel`

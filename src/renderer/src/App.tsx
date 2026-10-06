@@ -1,5 +1,6 @@
 import { addDraftFiles, ATTACHMENT_DRAG_TYPE, updateDraft } from './drafts.ts'
 import './images.css'
+import './library.css'
 import { useEffect, useRef, useState } from 'react'
 import { Images, PanelRightOpen, X } from 'lucide-react'
 import type { Goal } from '../../shared/types.ts'

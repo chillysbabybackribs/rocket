@@ -25,6 +25,18 @@ export type ActionSpec = {
 export const PLACES = {
   chat: { description: 'The chat panes alone, with no side panel.', file: 'src/renderer/src/App.tsx' },
   browser: { description: 'The built-in browser beside the chat.', file: 'src/renderer/src/components/BrowserPanel.tsx' },
+  library: {
+    description: 'The library beside the chat: every file the chats attached, downloaded, wrote as plans or opened, as a grid or list. Filters given here replace the shown ones; library_list lists the same files.',
+    file: 'src/renderer/src/components/LibraryPanel.tsx',
+    params: {
+      source: 'attachment, download, plan or opened',
+      kind: 'pdf, markdown, text, image, office or other',
+      chat: 'chat id',
+      added: 'today, yesterday, week or older',
+      q: 'words to search for',
+      view: '"grid" or "list"'
+    }
+  },
   'evals.scenarios': {
     description: 'Evals: the scenario list, each with its latest run per provider.',
     file: 'src/renderer/src/components/EvalPanel.tsx'
@@ -43,18 +55,6 @@ export const PLACES = {
     description: 'Evals: the MCP tool ledger (health) and tool scores (evaluate).',
     file: 'src/renderer/src/components/EvalToolsPanel.tsx',
     params: { section: '"health" or "evaluate"' }
-  },
-  library: {
-    description: 'The library beside the chat: every file the chats attached, downloaded, wrote as plans or opened, as a grid or list. Filters given here replace the shown ones; library_list lists the same files.',
-    file: 'src/renderer/src/components/LibraryPanel.tsx',
-    params: {
-      source: 'attachment, download, plan or opened',
-      kind: 'pdf, markdown, text, image, office or other',
-      chat: 'chat id',
-      added: 'today, yesterday, week or older',
-      q: 'words to search for',
-      view: '"grid" or "list"'
-    }
   }
 } satisfies Record<string, PlaceSpec>
 

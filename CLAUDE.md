@@ -46,8 +46,12 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
 - `src/host/agent-situation.ts`: the `<agent-environment>` block ahead of every message: where
   the shell is right now, and the map.
 - `src/host/workspace.ts`: the file map and saved notes a new session is told about its folder.
+- `src/shared/sources.ts`: a turn's sources record: the pages it opened against the pages its
+  reply cites, kept on the turn and marked on each link; the hub records both at a turn's end.
 - `src/host/teamwork.ts`, `git.ts`: what a model is told about others working in the folder, and
   the commit the app makes of a turn's changes.
+- `src/host/library.ts`, `src/shared/library.ts`: the library's shelf, previews and filters, shared by
+  the panel (`LibraryPanel.tsx`) and `library_list` (`docs/library-plan.md`).
 - `src/host/goals.ts`: goals, the loop of work and check turns until a brief's checklist is met
   (`docs/goals-phase1.md`); `tools/goal.ts` is how models report to it.
 - `src/main/`: the window, the browser tabs (`browser-pane.ts`) and the browser tools' hands

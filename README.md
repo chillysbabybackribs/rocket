@@ -187,6 +187,33 @@ limit) with a notice offering Undo; Retake and Cancel change nothing, and nothin
 destination is fixed when the camera is pressed, so clicking another pane meanwhile does not
 redirect it.
 
+### Library
+
+The library button on the rail opens every file the chats have touched, beside the chat
+(`components/LibraryPanel.tsx`, agreed in `docs/mockups/document-library.html`; the plan is
+`docs/library-plan.md`). Four sources fill it, and nothing else on the disk is listed:
+attachments a chat has sent (a draft's are not on the shelf until sent), files a model downloaded
+with the browser (indexed when the turn ends, from main's record of the chat's downloads), Markdown
+files a turn wrote (from the turn's changed files), and files opened from a chat (a link or
+`npm run open`). Attachments are read live from the store; the others are rows in `library_files`,
+keyed by path, so a file keeps the source it first arrived with. Eval chats' files stay off it.
+
+The panel is a filter rail (source, kind, chat, added; each option shows how many files choosing
+it would leave) and a search over names, folders, paths and chat titles, then a grid or a list.
+Cards show real previews made by the host (`src/host/library.ts`): a PDF's first page from
+`pdftoppm`, a picture's thumbnail (the attachment's own, or ImageMagick's for a download), the
+start of a text or Markdown file set as a small page, and an Office file's embedded thumbnail
+when it carries one. Previews are cached under the profile's `library-previews/` by path, size
+and time, at most two are made at once, and a card asks for its picture only as it scrolls near.
+A missing tool or a failed preview leaves the card's type mark. A file that has moved shows as
+missing. Clicking a card opens it in the side panel (text, rendered Markdown, a PDF's first 12
+pages, or the picture) with **Library** to go back; the grid outlines the card last opened.
+
+Filters, search and opening a file go through the app map (`library` place with the filters as
+parameters, `library.clear`, `library.open`), and `library_list` (`src/host/tools/library.ts`) lists
+the same shelf with the same filters (`src/shared/library.ts`), so a model and the user see one
+answer. Viewers that a model can mark (PDF.js, CodeMirror 6) come in the plan's next slices.
+
 ### Messages sent while a turn runs
 
 The composer stays open while a turn runs; Esc or the Stop button beside Send stops it. A message
@@ -441,7 +468,7 @@ Every turn's `<agent-environment>` block (`src/host/agent-situation.ts`) says wh
 carries one live "Where you are" line read through `rocket_ui_where` as the turn starts, and prints
 the map, so a prompt such as "run a tool eval" is three named calls rather than a search.
 
-Besides the browser and UI tools there is `remember` (see Workspace and memory), `ask_user` (below),
+Besides the browser and UI tools there is `library_list` (see Library), `remember` (see Workspace and memory), `ask_user` (below),
 `goal_report` (see Goals) and, with `ROCKET_SELF_CHECK=1`, the three self-check tools. Every
 tool's schema is in every session's prompt, so what a model should simply know goes ahead of the
 user's message instead (tabs, the file map, notes, trouble reports), and a tool is added only for

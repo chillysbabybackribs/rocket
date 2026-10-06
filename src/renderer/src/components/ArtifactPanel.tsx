@@ -72,26 +72,6 @@ export function ArtifactPanel() {
       </section>
     )
   }
-  if (artifact.kind === 'library') {
-    const view = artifact.view
-    return (
-      <section className="artifact" aria-label="Library file">
-        <header className="artifact-head">
-          <span title={artifact.entry.path}>{artifact.entry.name}</span>
-          <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
-        </header>
-        <div className="artifact-path">{artifact.entry.path}</div>
-        <div className="artifact-content">
-          {artifact.error ? <div className="attachment-error" role="alert">{artifact.error}</div>
-            : !view ? <p className="attachment-loading">Loading preview…</p>
-            : view.type === 'text' ? (view.markdown ? <div className="prose"><ChatMarkdown text={view.text} cwd="/" /></div> : <pre className="artifact-source attachment-text">{view.text}</pre>)
-            : view.type === 'pdf' ? view.pages.map((page, index) => <img key={index} className="attachment-page" src={page} alt={`Page ${index + 1}`} />)
-            : view.type === 'image' ? <img className="attachment-page" src={view.src} alt={artifact.entry.name} />
-            : <p className="attachment-note">{view.reason}</p>}
-        </div>
-      </section>
-    )
-  }
   if (artifact.kind === 'attachment') {
     const { attachment: file, preview, error } = artifact
     const scanned = file.format === 'pdf' && !file.chars
