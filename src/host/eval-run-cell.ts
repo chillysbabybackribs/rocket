@@ -47,13 +47,16 @@ export function cellDirectory(
   return resolve(base, 'cells', `${scenarioId}__${provider}__${modelSlug(model)}__trial${trial}`)
 }
 
-export async function runEvalCell(deps: EvalCellDeps, input: RunEvalCellInput): Promise<RunEvalCellResult> {
+export type StartedEvalCell = {
+  turnId: string
+  chatId: string
+  cellDir: string
+}
+
+export function startEvalCell(deps: EvalCellDeps, input: RunEvalCellInput): StartedEvalCell {
   const cwd = isAbsolute(input.cwd) ? input.cwd : resolve(input.cwd)
   mkdirSync(input.outDir, { recursive: true })
   deps.evalExport.setCellDir(input.outDir)
-
-  let chatId: string
-  let turnId: string
 
   if (input.openGoal) {
     const goal = deps.goals.draft({
@@ -62,23 +65,31 @@ export async function runEvalCell(deps: EvalCellDeps, input: RunEvalCellInput): 
       provider: input.provider,
       model: input.model
     })
-    chatId = goal.chatId
-    deps.evalExport.tagChat(chatId)
-    const running = deps.store.turns(chatId).find((turn) => turn.status === 'running')
+    deps.evalExport.tagChat(goal.chatId)
+    const running = deps.store.turns(goal.chatId).find((turn) => turn.status === 'running')
     if (!running) throw new Error('Goal draft did not start a turn')
-    turnId = running.id
-  } else {
-    const chat = deps.hub.createChat(cwd, input.scenarioId ? `[eval] ${input.scenarioId}` : '[eval]')
-    chatId = chat.id
-    deps.evalExport.tagChat(chatId)
-    turnId = deps.hub.send(chatId, input.provider, input.model, input.message)
+    return { chatId: goal.chatId, turnId: running.id, cellDir: input.outDir }
   }
 
-  await deps.hub.waitForTurn(chatId, { turnId, timeoutMs: input.timeoutMs })
+  const chat = deps.hub.createChat(cwd, input.scenarioId ? `[eval] ${input.scenarioId}` : '[eval]')
+  deps.evalExport.tagChat(chat.id)
+  const turnId = deps.hub.send(chat.id, input.provider, input.model, input.message)
+  return { chatId: chat.id, turnId, cellDir: input.outDir }
+}
 
-  const timing = deps.timingForChat(chatId)
-  const turnPath = deps.evalExport.exportTurn(turnId, timing ?? null, input.outDir)
+export async function finishEvalCell(
+  deps: EvalCellDeps,
+  started: StartedEvalCell,
+  input: Pick<RunEvalCellInput, 'timeoutMs'>
+): Promise<RunEvalCellResult> {
+  await deps.hub.waitForTurn(started.chatId, { turnId: started.turnId, timeoutMs: input.timeoutMs })
+  const timing = deps.timingForChat(started.chatId)
+  const turnPath = deps.evalExport.exportTurn(started.turnId, timing ?? null, started.cellDir)
   if (!turnPath) throw new Error('Turn export failed')
+  return { turnId: started.turnId, chatId: started.chatId, turnPath, cellDir: started.cellDir }
+}
 
-  return { turnId, chatId, turnPath, cellDir: input.outDir }
+export async function runEvalCell(deps: EvalCellDeps, input: RunEvalCellInput): Promise<RunEvalCellResult> {
+  const started = startEvalCell(deps, input)
+  return finishEvalCell(deps, started, input)
 }

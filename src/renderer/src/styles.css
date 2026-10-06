@@ -1594,6 +1594,58 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 .eval-stage { padding: 0; margin: 0 6px 6px; overflow: hidden; }
 .eval-frame { width: 100%; height: 100%; border: 0; display: block; background: #09090b; }
 .eval-loading { padding: 24px; color: var(--text-4); margin: 0; }
+.eval-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.eval-status { margin: 0; font-size: 12px; line-height: 1.45; color: var(--text-3); }
+.eval-error { margin: 0; color: #f87171; font-size: 12px; }
+.eval-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-3); }
+.eval-field select,
+.eval-field input {
+  padding: 7px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+}
+.eval-prompt { font-size: 12px; color: var(--text-3); }
+.eval-prompt summary { cursor: pointer; color: var(--text-2); }
+.eval-prompt p { margin: 8px 0 0; white-space: pre-wrap; }
+.eval-note { color: var(--accent); }
+.eval-run {
+  margin-top: 4px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 0;
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+  cursor: pointer;
+}
+.eval-run:disabled { opacity: 0.45; cursor: not-allowed; }
+.eval-live {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.eval-live-row { display: flex; justify-content: space-between; gap: 8px; color: var(--text-3); }
+.eval-live-row code { color: var(--text-2); font-family: var(--mono); font-size: 11px; }
+.eval-grades { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.eval-grades li { padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line); }
+.eval-grades .is-pass { border-color: rgba(34, 197, 94, 0.35); color: #86efac; }
+.eval-grades .is-fail { border-color: rgba(248, 113, 113, 0.35); color: #fca5a5; }
+.eval-grade-reason { display: block; margin-top: 4px; color: var(--text-4); font-size: 11px; }
+.eval-shell { display: flex; flex-direction: column; min-height: 0; }
 
 /* ── Toast ─────────────────────────────────────────────────────────── */
 

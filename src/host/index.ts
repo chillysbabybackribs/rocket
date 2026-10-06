@@ -34,6 +34,7 @@ import { Teamwork } from './teamwork.ts'
 import { workspaceContext } from './workspace.ts'
 import { UiTestAdapter, uiTestProfile } from './ui-test.ts'
 import { EvalExport } from './eval-export.ts'
+import { finishCellFromScenario, listScenariosForUi, startCellFromScenario } from './eval-live.ts'
 import { runEvalCell } from './eval-run-cell.ts'
 import type { TurnTiming } from './hub.ts'
 
@@ -286,9 +287,17 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   },
   'eval.setCellDir': ({ dir }) => { evalExport.setCellDir(dir); return null },
   'eval.runCell': (input) => runEvalCell(
-    { hub, goals, store, evalExport, timingForChat: (chatId) => turnTiming.get(chatId) },
+    evalDeps(),
     input
-  )
+  ),
+  'eval.listScenarios': () => listScenariosForUi(rocketSourceRoot()),
+  'eval.startScenarioCell': (input) => startCellFromScenario(evalDeps(), rocketSourceRoot(), dataDir, input),
+  'eval.finishScenarioCell': ({ chatId, turnId, cellDir, graders, timeoutMs }) =>
+    finishCellFromScenario(evalDeps(), { chatId, turnId, cellDir }, graders, timeoutMs)
+}
+
+function evalDeps() {
+  return { hub, goals, store, evalExport, timingForChat: (chatId: string) => turnTiming.get(chatId) }
 }
 
 async function handleRequest(message: HostRequestMessage): Promise<void> {

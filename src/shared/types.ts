@@ -318,6 +318,40 @@ export type HostApi = {
     scenarioId?: string
     timeoutMs?: number
   }, { turnId: string; chatId: string; turnPath: string; cellDir: string }]
+  'eval.listScenarios': [Record<string, never>, {
+    files: string[]
+    scenarios: Array<{
+      id: string
+      cwd: string
+      message: string
+      openGoal: boolean
+      graders: string[]
+      trials: number
+      matrix: Array<{ provider: ProviderId; model: string | null }>
+    }>
+  }]
+  'eval.startScenarioCell': [{
+    scenarioId: string
+    provider: ProviderId
+    model: string | null
+    trial?: number
+    timeoutMs?: number
+  }, {
+    runId: string
+    chatId: string
+    turnId: string
+    cellDir: string
+    scenarioId: string
+    provider: ProviderId
+    graders: string[]
+  }]
+  'eval.finishScenarioCell': [{
+    chatId: string
+    turnId: string
+    cellDir: string
+    graders: string[]
+    timeoutMs?: number
+  }, { turnPath: string; graders: { allPass: boolean; graders: Record<string, { pass: boolean; score: number; metadata?: Record<string, unknown> }> } }]
 }
 
 export type HostMethod = keyof HostApi

@@ -9,7 +9,7 @@ npm run eval:mock-ui:sync   # optional: pull .artifacts/evals/*/summary.json
 npm run eval:mock-ui        # http://127.0.0.1:8765/
 ```
 
-**In the app:** click the **flask** icon on the rail (beside the globe). Same UI loads from `docs/evals/mock-ui/index.html` in the side panel.
+**In the app:** click the **flask** on the rail. The panel lists scenarios from `docs/evals/scenarios/` — **Run cell** opens the eval chat in the main column so you watch the turn live, then shows grader results when it finishes.
 
 Standalone server (optional): `npm run eval:mock-ui` → `http://127.0.0.1:8765/`. Layout chips (**List / Grid / Summary / Summary table**), compare checkboxes, and dataset **Input / Expected** columns match Braintrust.
 
