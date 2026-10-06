@@ -412,10 +412,16 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     document.querySelectorAll('.only-open').forEach((e) => e.classList.toggle('on', state === 'open'))
     document.querySelectorAll('.only-hidden').forEach((e) => e.classList.toggle('on', state === 'hidden'))
   }
-  states.forEach((tab) => tab.addEventListener('click', () => {
-    states.forEach((t) => t.classList.toggle('on', t === tab))
-    apply(tab.dataset.state)
-  }))
+  states.forEach((tab) => tab.addEventListener('click', () => setDrawer(tab.dataset.state)))
+  // The head line's plan text toggles the drawer; the arrow in the drawer closes it.
+  let drawer = 'open'
+  const setDrawer = (state) => {
+    drawer = state
+    states.forEach((t) => t.classList.toggle('on', t.dataset.state === state))
+    apply(state)
+  }
+  document.querySelectorAll('.plan-btn').forEach((button) => button.addEventListener('click', () => setDrawer(drawer === 'open' ? 'hidden' : 'open')))
+  document.querySelectorAll('.gp-bar.is-bare .gp-icon').forEach((button) => button.addEventListener('click', () => setDrawer('hidden')))
   apply('open')
 </script>
 </body>
