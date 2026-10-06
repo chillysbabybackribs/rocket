@@ -104,8 +104,16 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
     const profiling = process.env.LONG_CHAT_PROFILE === '1' && chat === chats.at(-1)
     const cdp = profiling ? await page.context().newCDPSession(page) : null
     if (cdp) { await cdp.send('Profiler.enable'); await cdp.send('Profiler.start') }
-    const open = await openFromHistory(title, chat.turns)
+    // Three cold opens, the tab closed between them so nothing is kept; the median is the one
+    // judged, since one open can land on a garbage collection or a busy machine.
+    const opens: Phase[] = []
+    for (let trial = 0; trial < 3; trial++) {
+      if (trial) await page.getByRole('button', { name: `Close tab: ${title}`, exact: true }).click()
+      opens.push(await openFromHistory(title, chat.turns))
+    }
     if (cdp) await saveProfile(await cdp.send('Profiler.stop'))
+    const middle = <K extends keyof Phase>(key: K): number => opens.map((phase) => phase[key]).sort((a, b) => a - b)[1]!
+    const open: Phase = { ms: middle('ms'), longestTaskMs: middle('longestTaskMs'), shiftPx: 0 }
     const opened = await shown()
     expect(opened, 'a chat opens with one page of turns').toBe(Math.min(chat.turns, 20))
     if (chat === chats[0]) {
