@@ -22,8 +22,21 @@ export function Composer({ placeholder }: { placeholder: string }) {
   const ready = useApp((state) => state.ready)
   const provider = useApp((state) => state.provider)
   const model = useApp((state) => state.modelChoice[state.provider]?.id ?? null)
+  const answering = useApp((state) => state.turns.findLast((turn) => turn.status === 'running')?.provider ?? null)
+  const restored = useApp((state) => state.restored)
   const [text, setText] = useState(() => drafts.get(chatId ?? '') ?? '')
   const input = useRef<HTMLTextAreaElement>(null)
+  // While a turn runs, a message joins it when the provider picked is the one answering and can
+  // take it; otherwise it waits for the turn to end. The host decides; this is what the box says.
+  const steers = busy && answering === provider && PROVIDERS.some((entry) => entry.id === provider && entry.steers)
+  const waitsFor = busy && !steers && answering ? providerLabel(answering) : null
+
+  // A waiting message taken back lands in front of whatever is being typed.
+  useEffect(() => {
+    if (!restored) return
+    setText((current) => (current.trim() ? `${restored.text}\n\n${current}` : restored.text))
+    input.current?.focus()
+  }, [restored])
 
   useLayoutEffect(() => {
     const element = input.current
@@ -60,10 +73,12 @@ export function Composer({ placeholder }: { placeholder: string }) {
 
   const submit = (): void => {
     const message = text.trim()
-    if (!message || busy) return
+    if (!message) return
     setText('')
     void send(message)
   }
+
+  const hint = !busy || !text.trim() ? null : steers ? 'adds to this turn' : `sends when ${waitsFor ?? 'the turn'} finishes`
 
   return (
     <div className="composer-group">
@@ -74,7 +89,7 @@ export function Composer({ placeholder }: { placeholder: string }) {
           className="composer-input"
           rows={1}
           value={text}
-          placeholder={placeholder}
+          placeholder={steers ? 'Add to this turn…' : waitsFor ? `Message to send when ${waitsFor} finishes…` : placeholder}
           aria-label="Message"
           onChange={(event) => {
             // The first keystroke of a message: a provider retired for idleness is back by the send.
@@ -85,6 +100,9 @@ export function Composer({ placeholder }: { placeholder: string }) {
             if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault()
               submit()
+            } else if (event.key === 'Escape' && busy && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              stop()
             }
           }}
         />
@@ -101,17 +119,24 @@ export function Composer({ placeholder }: { placeholder: string }) {
           </button>
           <div className="composer-right">
             <ModelPicker onClose={() => input.current?.focus()} />
-            {busy ? (
-              <button type="button" className="send is-stop" aria-label="Stop" title="Stop" onClick={stop}>
+            {busy && (
+              <button type="button" className="send is-stop" aria-label="Stop" title="Stop (Esc)" onClick={stop}>
                 <Square size={11} fill="currentColor" />
               </button>
-            ) : (
-              <button type="button" className="send" aria-label="Send" title="Send" disabled={!text.trim()} onClick={submit}>
-                <ArrowUp size={17} strokeWidth={2.4} />
-              </button>
             )}
+            <button
+              type="button"
+              className="send"
+              aria-label={steers ? 'Add to this turn' : busy ? 'Send when the turn ends' : 'Send'}
+              title={steers ? 'Add to this turn' : busy ? 'Send when the turn ends' : 'Send'}
+              disabled={!text.trim()}
+              onClick={submit}
+            >
+              <ArrowUp size={17} strokeWidth={2.4} />
+            </button>
           </div>
         </div>
+        {hint && <div className="composer-hint"><kbd>Enter</kbd> {hint} · <kbd>Esc</kbd> stops</div>}
       </div>
     </div>
   )

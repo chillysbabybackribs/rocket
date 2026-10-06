@@ -1,9 +1,9 @@
-import { memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
 import { providerLabel, type Goal, type Item, type ToolKind, type Turn } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
-import { answerQuestion, openTurnChanges, peekItem, useApp, useItem } from '../store.ts'
+import { answerQuestion, editQueued, openTurnChanges, peekItem, sendNow, useApp, useItem } from '../store.ts'
 import { Bar, Counts } from './ChangesView.tsx'
 
 /** Markdown is the expensive part of a row; text that has not changed parses once and never again. */
@@ -359,23 +359,58 @@ function ChangesLine({ turn }: { turn: Turn }) {
   )
 }
 
+/**
+ * A turn's items cut where the user sent words into it while it ran: each part keeps the usual
+ * shape, and only the last can still be live.
+ */
+function partsOf(ids: string[]): Array<{ steer: string | null; ids: string[] }> {
+  const parts: Array<{ steer: string | null; ids: string[] }> = [{ steer: null, ids: [] }]
+  for (const id of ids) {
+    const item = peekItem(id)
+    if (item?.type === 'user' && item.steer) parts.push({ steer: id, ids: [] })
+    else parts.at(-1)!.ids.push(id)
+  }
+  return parts
+}
+
+/** One part of a turn's response: the summary of its steps, its latest words, and, if live, the work under way. */
+function Stage({ ids, running, thoughtsOpen }: { ids: string[]; running: boolean; thoughtsOpen: boolean }) {
+  const { reply, steps, live } = stageOf(ids, running)
+  return (
+    <>
+      {steps.length > 0 && <Activity ids={steps} live={false} thoughtsOpen={thoughtsOpen} />}
+      {reply && <ItemRow key={reply} id={reply} />}
+      {live.length > 0 && <Activity key={live[0]} ids={live} live thoughtsOpen={false} />}
+    </>
+  )
+}
+
 const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { turn: Turn; ids: string[]; fill: boolean; goal: Goal | null; round: number }) {
   const [userId, ...rest] = ids
   const running = turn.status === 'running'
-  const { reply, steps, live, notices } = stageOf(rest, running)
+  const parts = partsOf(rest)
   const [thoughtsOpen, setThoughtsOpen] = useState(false)
   // Thinking that stands alone, with no tool calls around it, is what the head opens.
+  const { steps } = stageOf(parts[0]!.ids, running && parts.length === 1)
   const thoughts = hasThought(steps) && steps.every((id) => peekItem(id)?.type !== 'tool')
   return (
     <article className={`turn${fill ? ' is-fill' : ''}`}>
       {turn.goalRole ? <GoalLead turn={turn} goal={goal} round={round} /> : userId && <ItemRow id={userId} />}
       <div className="answer">
         <TurnHead turn={turn} thoughts={thoughts} open={thoughtsOpen} onToggle={() => setThoughtsOpen(!thoughtsOpen)} />
-        {steps.length > 0 && <Activity ids={steps} live={false} thoughtsOpen={thoughtsOpen} />}
-        {reply && <ItemRow key={reply} id={reply} />}
-        {live.length > 0 && <Activity key={live[0]} ids={live} live thoughtsOpen={false} />}
+        {parts.map((part, index) => (
+          <Fragment key={part.steer ?? 'first'}>
+            {part.steer && (
+              <div className="steer">
+                <ItemRow id={part.steer} />
+                <div className="steer-tag">Added during the turn</div>
+              </div>
+            )}
+            <Stage ids={part.ids} running={running && index === parts.length - 1} thoughtsOpen={index === 0 && thoughtsOpen} />
+          </Fragment>
+        ))}
         {!running && <ChangesLine turn={turn} />}
-        {notices.map((id) => <ItemRow key={id} id={id} />)}
+        {parts.flatMap((part) => stageOf(part.ids, false).notices).map((id) => <ItemRow key={id} id={id} />)}
         {turn.status === 'interrupted' && <p className="notice is-info">Stopped</p>}
         {turn.status === 'failed' && <p className="notice is-error">{turn.error ?? 'This turn failed.'}</p>}
       </div>
@@ -394,6 +429,31 @@ function roundOf(goal: Goal | null, turns: Turn[], turn: Turn): number {
   // A failed work turn was replaced by the next one for the same round; a check asked again checks the round before it.
   if (turn.goalRole === 'work') return goal.rounds.find((round) => round.startedAt >= turn.startedAt)?.n ?? goal.rounds.length + 1
   return goal.rounds.filter((round) => round.startedAt <= turn.startedAt).at(-1)?.n ?? goal.rounds.length
+}
+
+/**
+ * Messages waiting for the turn in flight to end, under it: dashed until they are sent, with a
+ * way to send them now (stopping the turn) or take them back into the composer.
+ */
+function Waiting() {
+  const queued = useApp((state) => state.queued)
+  const answering = useApp((state) => state.turns.findLast((turn) => turn.status === 'running')?.provider ?? null)
+  if (!queued.length) return null
+  return (
+    <>
+      {queued.map((entry) => (
+        <div key={entry.id} className="steer is-waiting">
+          <div className="user-bubble"><ChatMarkdown text={entry.text} /></div>
+          <div className="steer-status">
+            <span>Sends when {answering ? providerLabel(answering) : 'the turn'} finishes</span>
+            <span aria-hidden>·</span>
+            <button type="button" onClick={sendNow}>Send now</button>
+            <button type="button" onClick={() => editQueued(entry.id)}>Edit</button>
+          </div>
+        </div>
+      ))}
+    </>
+  )
 }
 
 /** Per chat, the turn last sent while the app has been open: the one laid out to fill the view. */
@@ -460,6 +520,7 @@ export function Transcript() {
         {turns.map((turn) => (
           <TurnBlock key={turn.id} turn={turn} ids={turnItems[turn.id] ?? NO_ITEMS} fill={turn.id === sentId} goal={goal} round={roundOf(goal, turns, turn)} />
         ))}
+        <Waiting />
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
-import type { ModelInfo, ProviderId, UsageSnapshot } from '../shared/types.ts'
+import { PROVIDERS, type ModelInfo, type ProviderId, type UsageSnapshot } from '../shared/types.ts'
 import type { ProviderAdapter, RunRequest, RunResult, TurnSink } from './providers/provider.ts'
 
 // UI tests replace only the provider boundary. The real host, store, ports and renderer still
@@ -20,6 +20,7 @@ export function uiTestProfile(env: NodeJS.ProcessEnv = process.env): string | nu
 
 export class UiTestAdapter implements ProviderAdapter {
   private readonly active = new Map<string, AbortController>()
+  private readonly steered = new Map<string, string[]>()
 
   constructor(readonly id: ProviderId, private readonly profile: string) {}
 
@@ -57,13 +58,25 @@ export class UiTestAdapter implements ProviderAdapter {
       }
       if (controller.signal.aborted) return { status: 'interrupted' }
       sink.delta(id, '\n\n**Complete.** The controlled response finished.')
+      if (this.steered.get(request.chatId)?.length) {
+        sink.item({ type: 'tool', id: `${turnId}:after`, turnId, kind: 'edit', label: 'UI fixture, as asked', output: '', status: 'done' })
+        sink.item({ type: 'assistant', id: `${turnId}:reply-after`, turnId, text: 'Carried on with the words added mid-turn.', streaming: false })
+      }
       return { status: 'completed' }
     } catch (error) {
       if (controller.signal.aborted) return { status: 'interrupted' }
       throw error
     } finally {
       this.active.delete(request.chatId)
+      this.steered.delete(request.chatId)
     }
+  }
+
+  /** Providers that steer for real take words into a running turn here too; the others make them wait. */
+  async steer(chatId: string, text: string): Promise<boolean> {
+    if (!this.active.has(chatId) || !PROVIDERS.some((entry) => entry.id === this.id && entry.steers)) return false
+    this.steered.set(chatId, [...this.steered.get(chatId) ?? [], text])
+    return true
   }
 
   /** A turn that really changes files in the chat's folder, so what the app records of a turn's changes can be seen. */

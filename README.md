@@ -60,6 +60,21 @@ for them. Codex receives them as real history (`thread/inject_items`); the other
 tagged block in front of the message. If a provider has lost its session, it gets a new one and
 the whole conversation.
 
+### Messages sent while a turn runs
+
+The composer stays open while a turn runs; Esc or the Stop button beside Send stops it. A message
+to the provider that is answering joins its turn (`Hub.post`, `ProviderAdapter.steer`): Claude
+Code gets it as a streamed user message with priority `next`, Codex through `turn/steer`. The
+message is wrapped in an instruction to carry on without acknowledging it, so no "Got it" reply.
+It is stored as a user item marked `steer` inside the same turn, and the transcript splits the
+turn there, folding the earlier steps into their own summary. Cursor and Antigravity cannot take
+words mid-turn, and a message to a different provider must wait for the turn anyway: those queue
+in the hub, show under the turn with Send now (stop, then send) and Edit (back to the composer),
+and go out together as one message to the last picked provider when the turn ends. Stop returns
+queued text to the composer instead of sending it. Answers to a question card in a plain chat go
+through the same queue. A Claude message that is still queued when Stop lands retires the Claude
+Code process, since the SDK has no way to cancel it and it would otherwise run as a turn of its own.
+
 ### Turns a provider starts by itself
 
 Claude Code can start a turn with no message from the app: when a subagent or shell it ran in

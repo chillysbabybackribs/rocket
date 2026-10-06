@@ -75,7 +75,7 @@ kbd { font-family: var(--mono); font-size: 10.5px; padding: 0 4px; border: 1px s
 <div class="wrap">
   <div class="legend">
     <div><b>1 · Typing while Claude works</b>The composer stays live during a turn. Its placeholder says the message goes into this turn. Stop sits beside Send instead of replacing it.</div>
-    <div><b>2 · Taken into the turn</b>While pending, the message is dashed and dim. Once the provider takes it, it becomes an ordinary bubble at that point in the turn, and the reply carries on below it. It's stored as part of the same turn, so a handoff includes it.</div>
+    <div><b>2 · Taken into the turn</b>While pending, the message is dashed and dim. Once the provider takes it, it becomes an ordinary bubble at that point in the turn, and the reply carries on below it. The model is told to take it in without acknowledging it, so no "Got it" reply. It's stored as part of the same turn, so a handoff includes it.</div>
     <div><b>3 · Cursor can't steer</b>ACP has no way to add to a running prompt. The message waits and is sent as the next turn when Cursor finishes. "Send now" stops the turn and sends it at once. "Edit" pulls it back into the composer.</div>
   </div>
   <div class="panels">
@@ -115,7 +115,7 @@ kbd { font-family: var(--mono); font-size: 10.5px; padding: 0 4px; border: 1px s
           <div class="bubble">Leave the account section as it is</div>
           <div class="tag">Added during the turn</div>
         </div>
-        <p class="prose">Got it, I'll leave the account section alone. Grouping the notification toggles next.</p>
+        <p class="prose">Grouping the notification toggles next.</p>
         <div class="tool">Edit <span>src/renderer/src/components/Settings.tsx</span></div>
       </div>
       <div class="composer">
