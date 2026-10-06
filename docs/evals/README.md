@@ -1,5 +1,18 @@
 # Evals in Rocket
 
+## Mock eval UI (Braintrust-style)
+
+Local mirror of Braintrust’s **Experiments / Datasets** chrome for Rocket artifacts (not the Braintrust API):
+
+```bash
+npm run eval:mock-ui:sync   # optional: pull .artifacts/evals/*/summary.json
+npm run eval:mock-ui        # http://127.0.0.1:8765/
+```
+
+Open in Rocket: `npm run open -- http://127.0.0.1:8765/` (after starting the server). Layout chips (**List / Grid / Summary / Summary table**), compare checkboxes, and dataset **Input / Expected** columns match the open Braintrust tab pattern.
+
+---
+
 ## Provider × model behavior (Lane B)
 
 See [provider-model-matrix.md](./provider-model-matrix.md). Sample scenarios: `scenarios/goal-draft-minimal.jsonl`.

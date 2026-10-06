@@ -1,0 +1,142 @@
+{
+  "project": "Rocket Evals (mock)",
+  "org": "rocketv1",
+  "datasets": [
+    {
+      "id": "rocket-ui-regression",
+      "description": "Lane A — Playwright harness cases (mirrors Braintrust dataset rocket-ui-regression).",
+      "rows": [
+        {
+          "id": "r1",
+          "input": "{\"grep\":\"stream completes\"}",
+          "expected": "{\"pass\":true}",
+          "tags": [
+            "harness"
+          ]
+        },
+        {
+          "id": "r2",
+          "input": "{\"grep\":\"stop withdraws composer\"}",
+          "expected": "{\"pass\":true}",
+          "tags": [
+            "harness"
+          ]
+        },
+        {
+          "id": "r3",
+          "input": "{\"grep\":\"plan panel\"}",
+          "expected": "{\"pass\":true}",
+          "tags": [
+            "harness"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "goal-draft-minimal",
+      "description": "Lane B — provider×model matrix scenario (JSONL).",
+      "rows": [
+        {
+          "id": "s1",
+          "input": "Draft a goal for: add a one-line health check…",
+          "expected": "graders: turn_completed, goal_report_called",
+          "tags": [
+            "matrix",
+            "goal"
+          ]
+        }
+      ]
+    }
+  ],
+  "experiments": [
+    {
+      "id": "exp-demo-matrix",
+      "name": "goal-draft-minimal · matrix dry-run",
+      "createdAt": "2026-10-06T03:31:21.628Z",
+      "datasetId": "goal-draft-minimal",
+      "kind": "matrix",
+      "passRate": 0.75,
+      "cellCount": 12,
+      "passCount": 9,
+      "durationMs": 420000,
+      "scores": {
+        "turn_completed": 0.92,
+        "goal_report_called": 0.75,
+        "no_tool_error_codes": 0.88
+      },
+      "cells": [
+        {
+          "scenarioId": "goal-draft-minimal",
+          "provider": "claude",
+          "model": null,
+          "trial": 0,
+          "pass": true,
+          "graders": {
+            "turn_completed": true,
+            "goal_report_called": true
+          }
+        },
+        {
+          "scenarioId": "goal-draft-minimal",
+          "provider": "claude",
+          "model": null,
+          "trial": 1,
+          "pass": false,
+          "graders": {
+            "turn_completed": true,
+            "goal_report_called": false
+          }
+        },
+        {
+          "scenarioId": "goal-draft-minimal",
+          "provider": "codex",
+          "model": null,
+          "trial": 0,
+          "pass": true,
+          "graders": {
+            "turn_completed": true,
+            "goal_report_called": true
+          }
+        },
+        {
+          "scenarioId": "goal-draft-minimal",
+          "provider": "cursor",
+          "model": null,
+          "trial": 0,
+          "pass": true,
+          "graders": {
+            "turn_completed": true,
+            "goal_report_called": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "exp-demo-harness",
+      "name": "rocket-ui-regression · local",
+      "createdAt": "2026-10-05T22:00:00.000Z",
+      "datasetId": "rocket-ui-regression",
+      "kind": "harness",
+      "passRate": 1,
+      "cellCount": 7,
+      "passCount": 7,
+      "durationMs": 107000,
+      "scores": {
+        "playwright_pass": 1
+      },
+      "cells": [
+        {
+          "scenarioId": "stream completes",
+          "provider": "harness",
+          "model": "playwright",
+          "trial": 0,
+          "pass": true,
+          "graders": {
+            "playwright_pass": true
+          }
+        }
+      ]
+    }
+  ],
+  "syncedAt": "2026-10-06T03:33:59.085Z"
+}
