@@ -11,6 +11,7 @@ test('agent situation is always returned for every turn, with the map and where 
   assert.ok(block.includes('this chat is pane 0'))
   assert.ok(block.includes('- evals.playgrounds {scenario'))
   assert.ok(block.includes('- evals.runSheet.run {scenario'))
+  assert.ok(block.includes('docs/something-plan.md'))
 })
 
 test('without a readable window the block says to ask rocket_ui_where', () => {

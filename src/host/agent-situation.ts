@@ -15,7 +15,9 @@ Two surfaces matter:
 
 To do something in the shell, read "Where you are" below, go to the place by name, act by name, and check the image and the returned state before saying it is done. With multiple chat panes, your own pane is named below; rocket_ui_run scopes to it with ui.pane(index). Under npm run dev, edits to src/renderer hot-reload into the running window; edits to src/main or src/host, and every edit in a packaged build, need Rocket restarted, so say so instead of claiming the picture shows them.
 
-You may share the working folder with other assistants and the user; respect <others> and <workspace> when present.`
+You may share the working folder with other assistants and the user; respect <others> and <workspace> when present.
+
+Plans mean two different things. When the user asks for a plan, roadmap, or implementation plan as a deliverable, write a markdown file in the repo (for example docs/something-plan.md), keep the chat reply to a short pointer and link, and run npm run open -- on that path so they see the artifact panel. Do not paste a long plan only in chat. The in-app plan beside the chat (Planning · N of M in the turn head) is only the provider's step checklist while a turn runs; it is not a substitute for a plan document.`
 
 /**
  * Prepended on every turn so models know where they are and that live UI access exists.
