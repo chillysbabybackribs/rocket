@@ -261,6 +261,56 @@ export type HostEvent =
   | { type: 'goal'; goal: Goal }
   /** The chat's waiting messages, all of them, each time they change. */
   | { type: 'queue'; chatId: string; queued: QueuedMessage[] }
+  /** An eval run, whole, each time it changes. */
+  | { type: 'evalRun'; run: EvalRun }
+
+/** A scenario as the eval panel shows it; read from `docs/evals/scenarios/*.jsonl`. */
+export type EvalScenarioInfo = {
+  id: string
+  file: string
+  cwd: string
+  message: string
+  openGoal: boolean
+  graders: string[]
+  trials: number
+  runsAlone: boolean
+  matrix: Array<{ provider: ProviderId; model: string | null }>
+  targetTool?: string
+}
+
+/** One provider and trial of an eval run. */
+export type EvalRunCell = {
+  provider: ProviderId
+  model: string | null
+  /** From 0. */
+  trial: number
+  status: 'queued' | 'running' | 'done' | 'error' | 'stopped'
+  /** The run's chat, once it has one. Eval chats are kept out of the chat list. */
+  chatId: string | null
+  startedAt: number | null
+  endedAt: number | null
+  /** Every grader passed; null until graded. */
+  pass: boolean | null
+  grades: Array<{ name: string; pass: boolean; reason?: string }>
+  /** What the turn changed in its copy of the scenario's folder. */
+  files: Array<{ path: string; added: number; removed: number }>
+  patch: string
+  error: string | null
+}
+
+/** A scenario run once across its provider matrix. Saved in the profile under `eval-live/<id>/run.json`. */
+export type EvalRun = {
+  id: string
+  scenarioId: string
+  message: string
+  /** The message was edited in the panel rather than read from the scenario file. */
+  edited: boolean
+  graders: string[]
+  startedAt: number
+  endedAt: number | null
+  status: 'running' | 'done' | 'stopped'
+  cells: EvalRunCell[]
+}
 
 /** Request name → [params, result]. */
 export type HostApi = {
@@ -335,73 +385,17 @@ export type HostApi = {
     scenarioId?: string
     timeoutMs?: number
   }, { turnId: string; chatId: string; turnPath: string; cellDir: string }]
-  'eval.listScenarios': [Record<string, never>, {
-    files: string[]
-    scenarios: Array<{
-      id: string
-      cwd: string
-      message: string
-      openGoal: boolean
-      graders: string[]
-      trials: number
-      matrix: Array<{ provider: ProviderId; model: string | null }>
-    }>
-  }]
-  'eval.startScenarioCell': [{
-    scenarioId: string
-    provider: ProviderId
-    model: string | null
-    trial?: number
-    timeoutMs?: number
-  }, {
-    runId: string
-    chatId: string
-    turnId: string
-    cellDir: string
-    scenarioId: string
-    provider: ProviderId
-    graders: string[]
-  }]
-  'eval.finishScenarioCell': [{
-    chatId: string
-    turnId: string
-    cellDir: string
-    graders: string[]
-    timeoutMs?: number
-  }, { turnPath: string; graders: { allPass: boolean; graders: Record<string, { pass: boolean; score: number; metadata?: Record<string, unknown> }> } }]
-  /** Braintrust-style dashboard payload (sample + `.artifacts/evals` + live scenarios). */
-  'eval.loadDashboard': [Record<string, never>, {
-    project: string
-    org: string
-    syncedAt: string
-    datasets: Array<{
-      id: string
-      description: string
-      rows: Array<{ id: string; input: string; expected: string; tags: string[] }>
-    }>
-    experiments: Array<{
-      id: string
-      name: string
-      createdAt: string
-      datasetId: string
-      kind: 'matrix' | 'harness'
-      passRate: number
-      cellCount: number
-      passCount: number
-      durationMs: number | null
-      scores: Record<string, number>
-      sourcePath?: string
-      cells: Array<{
-        scenarioId: string
-        provider: string
-        model: string | null
-        trial: number
-        pass: boolean
-        graders: Record<string, boolean>
-        turnPath?: string
-      }>
-    }>
-  }]
+  'eval.listScenarios': [Record<string, never>, { files: string[]; scenarios: EvalScenarioInfo[] }]
+  /** Saved eval runs, newest first; one scenario's when `scenarioId` is given. */
+  'evalRuns.list': [{ scenarioId?: string }, EvalRun[]]
+  /**
+   * Run a scenario on every provider in its matrix with real provider turns, each trial in a fresh
+   * copy of its folder. Returns at once with the run queued; `evalRun` events follow its progress.
+   * `message` replaces the scenario file's message for this run only.
+   */
+  'evalRuns.start': [{ scenarioId: string; message?: string }, EvalRun]
+  /** Stop a run: its running turns are stopped and its queued cells never start. */
+  'evalRuns.stop': [{ runId: string }, null]
   /** Tool Eval Score (TES = wR·R + wP·P) from ledger + eval-live scenario cells. */
   'toolEval.scores': [Record<string, never>, {
     weights: { wR: number; wP: number; description?: string }
@@ -570,13 +564,16 @@ export type UiWhere = {
   artifact: { kind: string; path: string | null } | null
   evals: {
     view: string
-    experimentId: string | null
-    datasetId: string | null
-    playground: {
-      scenario: string; dataset: string; compare: string; diff: boolean; filter: string; busy: boolean; error: string | null
-      cells: Array<{ rowId: string; provider: ProviderId; status: string; pass: boolean | null; output: string | null }>
-    }
-    runSheet: { open: boolean; scenario: string; provider: ProviderId; trial: number; phase: string; chatId: string | null; error: string | null; grades: Array<{ name: string; pass: boolean; reason?: string }> | null }
+    scenario: string | null
+    /** The run on the scenario page or in the run view, cell by cell. */
+    run: {
+      id: string
+      status: EvalRun['status']
+      edited: boolean
+      cells: Array<{ provider: ProviderId; trial: number; status: EvalRunCell['status']; pass: boolean | null; failed: string[]; error: string | null }>
+    } | null
+    /** The cell the run view shows. */
+    cell: { provider: ProviderId; trial: number } | null
     tools: { section: 'health' | 'evaluate' }
   } | null
   dialogs: string[]

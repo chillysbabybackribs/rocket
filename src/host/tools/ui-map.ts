@@ -28,11 +28,12 @@ export function describeWhere(where: UiWhereForChat): string {
   else if (where.side === 'artifact') side = `an artifact panel is open${where.artifact?.path ? ` (${where.artifact.path})` : ''}`
   else {
     const evals = where.evals!
-    const detail = evals.view === 'playgrounds' ? `, scenario ${evals.playground.scenario || 'none'}${evals.playground.busy ? ', running' : ''}`
-      : evals.view === 'experiment' ? `, experiment ${evals.experimentId}`
-        : evals.view === 'dataset' ? `, dataset ${evals.datasetId}`
-          : evals.view === 'tools' ? `, ${evals.tools.section} section` : ''
-    side = `evals open at ${where.place}${detail}${evals.runSheet.open ? `; Run cell sheet open (${evals.runSheet.phase})` : ''}`
+    const run = evals.run
+    const counts = run ? `${run.cells.filter((cell) => cell.pass).length} of ${run.cells.length} cells passed${run.status === 'running' ? `, ${run.cells.filter((cell) => cell.status === 'running').length} running` : ''}` : ''
+    const detail = evals.view === 'tools' ? `, ${evals.tools.section} section`
+      : evals.view === 'scenario' ? `, scenario ${evals.scenario}${run ? ` (run ${run.status}: ${counts})` : ', never run'}`
+        : evals.view === 'run' && evals.cell ? `, scenario ${evals.scenario}, ${evals.cell.provider} trial ${evals.cell.trial}` : ''
+    side = `evals open at ${where.place}${detail}`
   }
   return `Where you are: ${panes}, ${own}${others.length ? ` (${others.join('; ')})` : ''}; ${side}.`
 }

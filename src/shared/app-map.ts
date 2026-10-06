@@ -25,18 +25,20 @@ export type ActionSpec = {
 export const PLACES = {
   chat: { description: 'The chat panes alone, with no side panel.', file: 'src/renderer/src/App.tsx' },
   browser: { description: 'The built-in browser beside the chat.', file: 'src/renderer/src/components/BrowserPanel.tsx' },
-  'evals.overview': { description: 'Evals: overview (placeholder).', file: 'src/renderer/src/components/EvalDashboard.tsx' },
-  'evals.logs': { description: 'Evals: logs (placeholder).', file: 'src/renderer/src/components/EvalDashboard.tsx' },
-  'evals.playgrounds': {
-    description: 'Evals: the playground grid, one scenario run across its provider matrix.',
-    file: 'src/renderer/src/components/EvalPlayground.tsx',
-    params: { scenario: 'scenario id to show', dataset: 'dataset id for the rows', compare: '"base" or a comparison task id', diff: 'true or false' }
+  'evals.scenarios': {
+    description: 'Evals: the scenario list, each with its latest run per provider.',
+    file: 'src/renderer/src/components/EvalPanel.tsx'
   },
-  'evals.experiments': { description: 'Evals: the experiments list.', file: 'src/renderer/src/components/EvalDashboard.tsx' },
-  'evals.experiment': { description: 'Evals: one experiment and its cells.', file: 'src/renderer/src/components/EvalDashboard.tsx', params: { id: 'experiment id (required)' } },
-  'evals.datasets': { description: 'Evals: the datasets list.', file: 'src/renderer/src/components/EvalDashboard.tsx' },
-  'evals.dataset': { description: 'Evals: one dataset and its rows.', file: 'src/renderer/src/components/EvalDashboard.tsx', params: { id: 'dataset id (required)' } },
-  'evals.scorers': { description: 'Evals: scorers (placeholder).', file: 'src/renderer/src/components/EvalDashboard.tsx' },
+  'evals.scenario': {
+    description: 'Evals: one scenario: its message (editable before a run), graders, the provider × trial grid of the run shown, and earlier runs.',
+    file: 'src/renderer/src/components/EvalScenario.tsx',
+    params: { id: 'scenario id (required)', run: 'run id to show, default the latest' }
+  },
+  'evals.run': {
+    description: 'Evals: one cell of a run: its grades, the files it changed, and its transcript.',
+    file: 'src/renderer/src/components/EvalRunView.tsx',
+    params: { run: 'run id (required)', provider: 'provider id (required)', trial: 'trial number from 0, default 0' }
+  },
   'evals.tools': {
     description: 'Evals: the MCP tool ledger (health) and tool scores (evaluate).',
     file: 'src/renderer/src/components/EvalToolsPanel.tsx',
@@ -52,23 +54,13 @@ export const ACTIONS = {
   'pane.close': { description: 'Close a chat pane; the only pane cannot close.', params: { pane: 'pane index' } },
   'chat.open': { description: 'Show a chat in a pane.', params: { chatId: 'chat id (required)', pane: 'pane index, default the focused one' } },
   'chat.new': { description: 'Show the new-chat screen in a pane.', params: { pane: 'pane index, default the focused one' } },
-  'evals.sync': { description: 'Reload the eval dashboard from disk and the ledger.', place: 'evals.experiments' },
-  'evals.playgrounds.run': {
-    description: 'Run playground cells with real provider turns: every visible row and task, one row, or one cell. Returns when the run ends or after `wait` seconds with it still running; rocket_ui_where then shows cell progress.',
-    params: { row: 'row number as shown, from 1; omit for all rows', provider: 'provider id for one task; omit for all tasks', wait: 'seconds to wait, default 100, at most 120' },
-    place: 'evals.playgrounds'
+  'evals.sync': { description: 'Reload the scenario files and saved runs from disk.', place: 'evals.scenarios' },
+  'evals.run.start': {
+    description: 'Run the scenario shown on every provider in its matrix with real provider turns (spends subscription usage): providers side by side, each provider\'s trials in turn, each in a fresh copy of the scenario\'s folder. Returns the graded run when it ends, or after `wait` seconds with it still running; rocket_ui_where then shows its cells.',
+    params: { scenario: 'scenario id, default the one shown', message: 'message for this run instead of the scenario\'s', wait: 'seconds to wait, default 100, at most 120' },
+    place: 'evals.scenario'
   },
-  'evals.runSheet.open': {
-    description: 'Open the Run cell sheet over the experiments list, seeded with a scenario, provider and trial.',
-    params: { scenario: 'scenario id', provider: 'provider id', trial: 'trial number, from 0' },
-    place: 'evals.experiments'
-  },
-  'evals.runSheet.run': {
-    description: 'Run one matrix cell (a scenario on one provider) with a real provider turn and grade it. Opens the sheet when closed. Returns the grades, or after `wait` seconds with the cell still running.',
-    params: { scenario: 'scenario id', provider: 'provider id', trial: 'trial number, from 0', wait: 'seconds to wait, default 100, at most 120' },
-    place: 'evals.experiments'
-  },
-  'evals.runSheet.close': { description: 'Close the Run cell sheet.', place: 'evals.experiments' },
+  'evals.run.stop': { description: 'Stop the shown scenario\'s running run: running turns stop and queued cells never start.', place: 'evals.scenario' },
   'evals.tools.refresh': { description: 'Refresh the tool ledger and scores.', place: 'evals.tools' }
 } satisfies Record<string, ActionSpec>
 
