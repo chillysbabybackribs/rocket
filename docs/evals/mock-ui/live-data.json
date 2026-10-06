@@ -50,6 +50,39 @@
   ],
   "experiments": [
     {
+      "id": "exp-2026-10-06T03-59-04-688Z-run",
+      "name": "2026-10-06T03-59-04-688Z",
+      "createdAt": "2026-10-06T03:59:04.960Z",
+      "datasetId": "goal-draft-minimal",
+      "kind": "matrix",
+      "passRate": 1,
+      "cellCount": 2,
+      "passCount": 2,
+      "durationMs": null,
+      "scores": {},
+      "cells": [
+        {
+          "scenarioId": "matrix-smoke",
+          "provider": "claude",
+          "model": null,
+          "trial": 0,
+          "pass": true,
+          "turnPath": "/home/dp/Desktop/rocketv1/.artifacts/evals/2026-10-06T03-59-04-688Z-run/cells/matrix-smoke__claude__default__trial0/turn.json",
+          "graders": {}
+        },
+        {
+          "scenarioId": "matrix-smoke",
+          "provider": "codex",
+          "model": null,
+          "trial": 0,
+          "pass": true,
+          "turnPath": "/home/dp/Desktop/rocketv1/.artifacts/evals/2026-10-06T03-59-04-688Z-run/cells/matrix-smoke__codex__default__trial0/turn.json",
+          "graders": {}
+        }
+      ],
+      "sourcePath": "/home/dp/Desktop/rocketv1/.artifacts/evals/2026-10-06T03-59-04-688Z-run/summary.json"
+    },
+    {
       "id": "exp-2026-10-06T03-39-51-292Z-run",
       "name": "2026-10-06T03-39-51-292Z",
       "createdAt": "2026-10-06T03:39:51.623Z",
@@ -171,5 +204,5 @@
       ]
     }
   ],
-  "syncedAt": "2026-10-06T03:39:51.669Z"
+  "syncedAt": "2026-10-06T03:59:05.005Z"
 }
