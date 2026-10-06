@@ -56,6 +56,11 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
 
 ## Rules
 
+- User preference: crop, zoom, resize, and inspect screenshots with deterministic tools such as
+  Python Pillow or ImageMagick. Preserve source pixels for crops; use ordinary resampling for
+  zooms, never generative reconstruction, OCR re-rendering, or invented missing text. Keep the
+  original, save a separate output, inspect it, and open it with `npm run open`. Use generative
+  editing for these tasks only when the user explicitly requests it.
 - The app's SQLite transcript is the conversation. A provider's session is a cache: resume it and
   hand over only the turns it missed. No full-history replay except after a lost session.
 - Agent work stays in the host process. Nothing that talks to a provider or the store runs in
