@@ -15,6 +15,8 @@
     "test": "node --experimental-transform-types --disable-warning=ExperimentalWarning --test \"src/**/*.test.ts\" \"scripts/*.test.mjs\"",
     "check:live": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/live-check.ts",
     "check:ui": "node scripts/ui-check.mjs",
+    "eval:ui:dev": "bt eval evals/rocket-ui-regression.eval.ts --dev",
+    "eval:ui": "bt eval evals/rocket-ui-regression.eval.ts",
     "simulate:slow-turn": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/simulate-slow-turn.ts",
     "design": "node scripts/design-library.mjs"
   },
@@ -34,9 +36,11 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^5.2.0",
+    "braintrust": "^3.37.0",
     "electron": "^44.0.0",
     "electron-vite": "^5.0.0",
     "typescript": "^5.9.3",
-    "vite": "^7.3.6"
+    "vite": "^7.3.6",
+    "zod": "^4.6.5"
   }
 }
