@@ -115,7 +115,9 @@ async function main() {
   shell = await application.firstWindow()
   const message = shell.getByRole('textbox', { name: 'Message', exact: true })
   await message.waitFor({ state: 'visible' })
-  await application.evaluate(({ BrowserWindow, dialog }, { folder, width, height }) => {
+  await application.evaluate(({ BrowserWindow, dialog, session }, { folder, width, height }) => {
+    // Squiggles under names in the composer only distract in a video.
+    session.defaultSession.setSpellCheckerEnabled(false)
     const window = BrowserWindow.getAllWindows()[0]
     window.setBounds({ x: 0, y: 0, width, height })
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] })
@@ -148,7 +150,7 @@ async function main() {
   // 1. Claude files a ticket.
   await send('File a ticket on the Acme support portal: SSO login fails after the 4.2 update.', 'Send a message. Claude answers first.')
   await waitForBrowser(origin, '/tickets/new')
-  note('camera', { box: await viewBox() })
+  note('camera', { box: await viewBox(), pad: 1.06 })
   note('caption', { text: 'browser_read opens the agent\'s own tab and reads the form', dur: 3.2 })
   const form = await browserPage(origin, '/tickets/new')
   await sleep(1300)
@@ -166,7 +168,7 @@ async function main() {
   await chooseProvider('Codex', true, 'Switch to Codex mid-chat. It is told what Claude did.')
   await send('Check that ticket\'s status page. Who is it assigned to?')
   await waitForBrowser(origin, '/tickets/4821')
-  note('camera', { box: await viewBox() })
+  note('camera', { box: await viewBox(), pad: 1.06 })
   note('caption', { text: 'Codex reads the ticket page in the same browser', dur: 2.8 })
   await settle()
   note('camera', { box: await transcriptBox() })
@@ -261,9 +263,10 @@ async function viewBounds() {
     return view.getBounds()
   })
 }
+/** The top of the browser view, with its tabs and address: where a page's news shows first. */
 async function viewBox() {
   const bounds = await viewBounds()
-  return scaled({ ...bounds })
+  return scaled({ x: bounds.x, y: bounds.y - 70, width: bounds.width, height: bounds.width * 0.5 })
 }
 async function composerBox() {
   return scaled(await shell.locator('.composer').first().boundingBox())

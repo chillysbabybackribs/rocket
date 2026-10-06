@@ -620,3 +620,11 @@ outside UI test mode.
   `ROCKET_CAPTURE_DELAY_MS` and `ROCKET_CAPTURE_EXIT=1` script a flow first and quit after.
 - `npm run check:live -- claude codex cursor antigravity` runs a real conversation across
   providers without the UI. It uses a little of each subscription.
+- `npm run demo:video` records a demo video (`.artifacts/demo/run/demo.mp4`): sending messages,
+  switching between Claude, Codex and Cursor, and the browser tools filling a form in one
+  `browser_run` script. Like `check:ui`, it runs an isolated app on a private display with a fresh
+  profile and a local site. No model is called. The turns are scripted in `src/host/ui-demo.ts`,
+  but their tool calls go through the real MCP channel. `scripts/demo-video.mjs` records the screen
+  at 2× and logs where each action happened. `scripts/demo-edit.py` adds the camera zooms, the
+  pointer, outlines on the filled fields, and captions. It only crops and resamples the recorded
+  frames.
