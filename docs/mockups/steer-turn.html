@@ -1,0 +1,163 @@
+<!doctype html>
+<!-- Mockup of steering a running turn: the composer stays usable while a provider works, and a
+     message sent then joins the turn instead of waiting for it. Static; the data is invented.
+     Three panels side by side show the states. Borrows Rocket's palette and composer from
+     src/renderer/src/styles.css. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rocket · Steer a running turn (mockup)</title>
+<style>
+:root {
+  color-scheme: dark;
+  --font: 'Inter Variable', Inter, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+  --canvas: #08090a; --panel: #0f1011; --bubble: #1c1d20;
+  --composer: #151617; --composer-line: #2f3031; --composer-line-focus: #444546;
+  --line: rgba(255,255,255,.07); --line-strong: rgba(255,255,255,.11);
+  --text: #f7f8f8; --text-2: #b4b8c0; --text-3: #8a8f98; --text-4: #62666d;
+  --hover: rgba(255,255,255,.045); --accent: #7170ff; --button: #e6e6e6; --button-text: #08090a;
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,0) 180px);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--canvas); color: var(--text); font: 13px/1.5 var(--font); letter-spacing: -.006em; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+code { font-family: var(--mono); font-size: .86em; padding: 1px 5px; border-radius: 5px; background: rgba(255,255,255,.06); border: 1px solid var(--line); }
+
+.wrap { height: 100%; display: grid; grid-template-rows: auto 1fr; gap: 10px; padding: 14px; }
+.legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.legend div { color: var(--text-3); font-size: 12px; line-height: 1.5; padding: 0 4px; }
+.legend b { display: block; color: var(--text); font-weight: 560; font-size: 13px; margin-bottom: 2px; }
+.panels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; min-height: 0; }
+.card { border: 1px solid var(--line); border-radius: 12px; background: var(--sheen), var(--panel); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+.transcript { flex: 1; overflow: hidden; padding: 20px 20px 10px; display: flex; flex-direction: column; justify-content: flex-end; }
+.bubble { width: fit-content; max-width: 88%; margin: 0 0 14px auto; padding: 8px 12px; background: var(--bubble); border-radius: 10px; font-size: 13.5px; line-height: 1.5; }
+.turn-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-4); padding-bottom: 7px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.thinking { color: var(--text-3); }
+.thinking::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; vertical-align: middle; }
+@keyframes pulse { 50% { opacity: .25; } }
+.prose { font-size: 13.5px; line-height: 1.6; color: #d7d9de; margin: 0 0 10px; }
+.tool { font-size: 12.5px; color: var(--text-4); line-height: 22px; }
+.tool span { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); }
+
+/* A message sent into a running turn. Pending: dashed, dim, with a status line under it. */
+.steer { margin: 4px 0 12px auto; width: fit-content; max-width: 88%; }
+.steer .bubble { margin: 0 0 0 auto; }
+.steer.pending .bubble { background: transparent; border: 1px dashed var(--line-strong); color: var(--text-2); }
+.steer .status { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 5px; font-size: 11.5px; color: var(--text-4); }
+.steer .status button { color: var(--text-3); padding: 1px 6px; border-radius: 5px; }
+.steer .status button:hover { background: var(--hover); color: var(--text); }
+.steer .status .sep { opacity: .5; }
+.steer .tag { font-size: 11.5px; color: var(--text-4); text-align: right; margin-top: 4px; }
+
+/* Composer, as in the app, with the input left enabled while busy. */
+.composer { margin: 0 12px 12px; border: 1px solid var(--composer-line); border-radius: 14px; background: var(--composer); }
+.composer.focus { border-color: var(--composer-line-focus); }
+.input { min-height: 44px; padding: 12px 14px 4px; font-size: 13.5px; color: var(--text); }
+.input.empty { color: var(--text-4); }
+.caret { display: inline-block; width: 1px; height: 15px; background: var(--text); vertical-align: -2px; margin-left: 1px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.bar { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 8px 10px; }
+.folder { font-size: 12px; color: var(--text-4); font-family: var(--mono); }
+.right { display: flex; align-items: center; gap: 6px; }
+.model { font-size: 12px; color: var(--text-3); padding: 3px 8px; border-radius: 6px; }
+.send, .stop { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; }
+.send { background: var(--button); color: var(--button-text); }
+.send.off { opacity: .3; }
+.stop { border: 1px solid var(--line-strong); color: var(--text-2); }
+.hint { font-size: 11px; color: var(--text-4); padding: 0 14px 8px; }
+kbd { font-family: var(--mono); font-size: 10.5px; padding: 0 4px; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--text-3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="legend">
+    <div><b>1 · Typing while Claude works</b>The composer stays live during a turn. Its placeholder says the message goes into this turn. Stop sits beside Send instead of replacing it.</div>
+    <div><b>2 · Taken into the turn</b>While pending, the message is dashed and dim. Once the provider takes it, it becomes an ordinary bubble at that point in the turn, and the reply carries on below it. It's stored as part of the same turn, so a handoff includes it.</div>
+    <div><b>3 · Cursor can't steer</b>ACP has no way to add to a running prompt. The message waits and is sent as the next turn when Cursor finishes. "Send now" stops the turn and sends it at once. "Edit" pulls it back into the composer.</div>
+  </div>
+  <div class="panels">
+
+    <!-- 1 -->
+    <div class="card">
+      <div class="transcript">
+        <div class="bubble">Make the settings page match the new design</div>
+        <div class="turn-head"><span class="thinking">Working</span><span>Claude · Opus 4.8</span></div>
+        <p class="prose">I'll start with the layout grid, then move the toggles into groups.</p>
+        <div class="tool">Read <span>src/renderer/src/components/Settings.tsx</span></div>
+        <div class="tool">Edit <span>src/renderer/src/styles.css</span></div>
+      </div>
+      <div class="composer focus">
+        <div class="input">Leave the account section as it is<span class="caret"></span></div>
+        <div class="bar">
+          <span class="folder">~/Desktop/rocketv1</span>
+          <div class="right">
+            <span class="model">Claude · Opus 4.8</span>
+            <button class="stop" title="Stop"><svg width="11" height="11"><rect width="11" height="11" rx="2" fill="currentColor"/></svg></button>
+            <button class="send" title="Add to this turn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+        <div class="hint"><kbd>Enter</kbd> adds to this turn · <kbd>Esc</kbd> stops</div>
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="card">
+      <div class="transcript">
+        <div class="bubble">Make the settings page match the new design</div>
+        <div class="turn-head"><span class="thinking">Working</span><span>Claude · Opus 4.8</span></div>
+        <p class="prose">I'll start with the layout grid, then move the toggles into groups.</p>
+        <div class="tool">Read <span>src/renderer/src/components/Settings.tsx</span></div>
+        <div class="tool">Edit <span>src/renderer/src/styles.css</span></div>
+        <div class="steer">
+          <div class="bubble">Leave the account section as it is</div>
+          <div class="tag">Added during the turn</div>
+        </div>
+        <p class="prose">Got it, I'll leave the account section alone. Grouping the notification toggles next.</p>
+        <div class="tool">Edit <span>src/renderer/src/components/Settings.tsx</span></div>
+      </div>
+      <div class="composer">
+        <div class="input empty">Add to this turn…</div>
+        <div class="bar">
+          <span class="folder">~/Desktop/rocketv1</span>
+          <div class="right">
+            <span class="model">Claude · Opus 4.8</span>
+            <button class="stop" title="Stop"><svg width="11" height="11"><rect width="11" height="11" rx="2" fill="currentColor"/></svg></button>
+            <button class="send off"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="card">
+      <div class="transcript">
+        <div class="bubble">Find why the browser tab goes blank after restore</div>
+        <div class="turn-head"><span class="thinking">Working</span><span>Cursor · Composer 2.5</span></div>
+        <p class="prose">Checking how hidden tabs are brought back on restore.</p>
+        <div class="tool">Search <span>setVisible</span></div>
+        <div class="tool">Read <span>src/main/browser-pane.ts</span></div>
+        <div class="steer pending">
+          <div class="bubble">It only happens with more than five tabs</div>
+          <div class="status">Sends when Cursor finishes<span class="sep">·</span><button>Send now</button><button>Edit</button></div>
+        </div>
+      </div>
+      <div class="composer">
+        <div class="input empty">Message to send when Cursor finishes…</div>
+        <div class="bar">
+          <span class="folder">~/Desktop/rocketv1</span>
+          <div class="right">
+            <span class="model">Cursor · Composer 2.5</span>
+            <button class="stop" title="Stop"><svg width="11" height="11"><rect width="11" height="11" rx="2" fill="currentColor"/></svg></button>
+            <button class="send off"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

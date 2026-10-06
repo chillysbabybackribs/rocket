@@ -137,6 +137,10 @@ asked is still running, it goes the moment that turn ends. In a goal's chat the 
 for the next round instead. A handoff names a question that is still open, so another provider
 knows what the user has not yet decided.
 
+Cursor has blocking questions and plan approvals of its own over ACP (`cursor/ask_question`,
+`cursor/create_plan`). Nobody would answer them, so its adapter skips the question with a
+pointer to `ask_user` and accepts the plan, as an unattended session would.
+
 ### Workspace and memory
 
 A new provider session starts already knowing the folder (`src/host/workspace.ts`): its files, one
@@ -172,8 +176,17 @@ strip of its files to jump between, each under a heading that stays while its hu
 patch is `git diff` between the snapshots of the turn's own files (`patchBetween`), read into
 files and lines by `src/shared/patch.ts`, kept with the turn in the store (`turn_patches`, cut at
 2 MB on a file boundary) and served by `turn.changes`; the totals sit on the turn itself. This
-needs no commit, so it works with committing off too. The panel is read-only for now; putting
-the folder back as it was is a decision left for later (`docs/mockups/turn-changes.html`).
+needs no commit, so it works with committing off too.
+
+The panel's header offers **Undo this turn**: one question in a strip under the header naming
+the files, and on Undo the turn's files are put back from its start snapshot (`restoreFrom`:
+working tree only, the user's index untouched; files the turn made are removed). With committing
+on, the reversal is committed as `Undo: <request>` so the history says what happened. The turn
+stays in the chat with its diff dimmed as a record, its line tagged `undone`, and the next model
+in the folder is told the files changed under it. Undo is not offered while a turn runs in that
+folder, or when one of the files has changed since; the note names the file, so the user knows
+what to look at (`teamwork.undoable`). There is no redo: the diff is still there to read, and a
+model can be asked to do it again. The states are in `docs/mockups/turn-changes.html`.
 
 Claude Code sessions working on this repository outside the app are covered by a Stop hook
 (`.claude/settings.json`, `scripts/auto-commit.sh`) that commits what a turn left changed.

@@ -349,11 +349,12 @@ function ChangesLine({ turn }: { turn: Turn }) {
   const { changes } = turn
   if (!changes || changes.files === 0) return null
   return (
-    <button type="button" className={`changes-line${open ? ' is-open' : ''}`} aria-pressed={open} onClick={() => void openTurnChanges(turn.id)}>
+    <button type="button" className={`changes-line${open ? ' is-open' : ''}${changes.undone ? ' is-undone' : ''}`} aria-pressed={open} onClick={() => void openTurnChanges(turn.id)}>
       <FileDiff size={12} className="changes-icon" />
       <span>Changed {changes.files} {changes.files === 1 ? 'file' : 'files'}</span>
       <Counts added={changes.added} removed={changes.removed} />
       <Bar added={changes.added} removed={changes.removed} />
+      {changes.undone && <span className="undone-tag">undone</span>}
     </button>
   )
 }

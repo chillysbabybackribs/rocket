@@ -295,7 +295,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     <p>Captured by the isolated UI check (<code>tests/ui/changes.spec.ts</code>) after the decisions: variant A, no Undo yet, unified diff. A controlled turn really edited two files in a git folder; the app diffed its start and end snapshots.</p>
     <div class="shots">
       <div class="shot"><img src="turn-changes/line.png" alt="The line under a finished turn: Changed 2 files, +6 −1, a bar"><div class="cap">The line under the reply, in the manner of the steps summary.</div></div>
-      <div class="shot"><img src="turn-changes/panel.png" alt="The diff beside the chat with a file strip, a new file and an edited file"><div class="cap">Clicked: the diff beside the chat, files to jump between, sticky file headings.</div></div>
+      <div class="shot"><img src="turn-changes/panel.png" alt="The diff beside the chat with a file strip, a new file and an edited file"><div class="cap">Clicked: the diff beside the chat, files to jump between, sticky file headings, Undo this turn in the header.</div></div>
+      <div class="shot"><img src="turn-changes/undone.png" alt="After Undo: the header says Undone, a line under it, the diff dimmed, the transcript line tagged undone"><div class="cap">After Undo: the files are back as they were (checked on disk by the test), the diff stays as a record.</div></div>
     </div>
   </div></div>
 </div>

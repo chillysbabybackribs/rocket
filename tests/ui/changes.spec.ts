@@ -1,5 +1,7 @@
+import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test, expect } from './app'
 
@@ -37,6 +39,24 @@ test('a turn\'s changes show as one line that opens the diff beside the chat', a
   await panel.getByRole('tab', { name: /notes\.md/ }).click()
   await expect(panel.getByRole('tab', { name: /notes\.md/ })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('region', { name: 'Browser', exact: true })).toHaveCount(0)
+
+  // Undo asks once, naming the files, and Keep changes nothing.
+  await panel.getByRole('button', { name: 'Undo this turn' }).click()
+  const confirm = panel.getByRole('alertdialog', { name: 'Undo this turn' })
+  await expect(confirm).toContainText('Put auth.js and notes.md back as they were before this turn?')
+  await confirm.getByRole('button', { name: 'Keep' }).click()
+  await expect(confirm).toHaveCount(0)
+  assert.equal(existsSync(join(workspace, 'auth.js')), true)
+
+  // Undo puts the files back, and the turn says so in the chat and the panel.
+  await panel.getByRole('button', { name: 'Undo this turn' }).click()
+  await confirm.getByRole('button', { name: 'Undo' }).click()
+  await expect(panel.locator('.undo-note.is-done')).toHaveText('Undone')
+  await expect(panel.locator('.undo-strip')).toContainText('These changes were undone')
+  await expect(line.locator('.undone-tag')).toHaveText('undone')
+  assert.equal(existsSync(join(workspace, 'auth.js')), false, 'the file the turn made is gone')
+  assert.equal(await readFile(join(workspace, 'notes.md'), 'utf8'), '# notes-api\n\nA tiny API for plain notes.\n', 'the file is as it was')
+  await rocket.capture('changes-undone')
   await page.getByRole('button', { name: 'Close artifact' }).click()
   await expect(panel).toHaveCount(0)
 })

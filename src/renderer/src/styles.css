@@ -1534,3 +1534,24 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 .diff-line.is-del .diff-sign { color: var(--del); }
 .diff-line.is-add .diff-n, .diff-line.is-del .diff-n { color: var(--text-3); }
 .diff-note { margin: 0; padding: 10px 16px 14px; font-size: 12.5px; color: var(--text-4); }
+
+/* Undo in the changes panel: a quiet text button in the header, one question in a strip under
+   it, and once done a word in the header, a line under it and the diff dimmed as a record. */
+.artifact-actions { display: inline-flex; align-items: center; gap: 10px; flex: none; }
+.text-button { font-size: 12px; color: var(--text-3); cursor: pointer; white-space: nowrap; }
+.text-button:hover { color: var(--text); }
+.undo-note { font-size: 12px; color: var(--text-4); white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+.undo-note.is-done { color: var(--text-3); }
+.undo-confirm {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 16px; flex: none;
+  border-bottom: 1px solid var(--line); background: rgba(235, 87, 87, 0.06); font-size: 12.5px; line-height: 1.45; color: var(--text-2);
+}
+.undo-confirm b { font-family: var(--mono); font-weight: 500; font-size: 12px; color: var(--text); }
+.undo-actions { display: inline-flex; gap: 6px; flex: none; }
+.gp-button.is-danger { background: var(--danger); border-color: transparent; color: #fff; }
+.gp-button.is-danger:hover { background: #f06a6a; color: #fff; }
+.gp-button:disabled { opacity: 0.55; cursor: default; }
+.undo-strip { margin: 0; padding: 8px 16px; flex: none; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--text-4); }
+.artifact.is-undone .diff-body { opacity: 0.6; }
+.undone-tag { font-size: 10.5px; line-height: 16px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-strong); color: var(--text-4); }
+.changes-line.is-undone .counts, .changes-line.is-undone .bar { opacity: 0.45; }

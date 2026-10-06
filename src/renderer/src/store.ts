@@ -541,6 +541,21 @@ export async function openTurnChanges(turnId: string): Promise<void> {
   }
 }
 
+/** Put a turn's files back as they were before it. The panel stays on the (now dimmed) diff. */
+export async function undoTurn(turnId: string): Promise<void> {
+  const chatId = state.activeChatId
+  if (!chatId) return
+  try {
+    await call('turn.undo', { chatId, turnId })
+    const view = state.artifact
+    if (view?.kind === 'changes' && view.turnId === turnId) {
+      setState({ artifact: { ...view, patch: { ...view.patch, undo: { offered: false, reason: 'Already undone.' } } } })
+    }
+  } catch (error) {
+    fail(error)
+  }
+}
+
 export async function openChatLink(href: string, cwd?: string): Promise<void> {
   const request = ++linkRequest
   const folder = cwd ?? state.chats.find((chat) => chat.id === state.activeChatId)?.cwd ?? state.defaultCwd

@@ -18,8 +18,9 @@ import {
 // process serves every chat; each chat is an ACP session.
 //
 // We drive: initialize, session/new, session/load, session/prompt, session/cancel. The agent
-// drives back: session/update (the whole transcript stream), session/request_permission, and
-// fs/read_text_file + fs/write_text_file. Facts the code depends on, verified live by the
+// drives back: session/update (the whole transcript stream), session/request_permission,
+// fs/read_text_file + fs/write_text_file, and Cursor's `cursor/*` extensions (per Cursor's ACP
+// docs, read 2026-10-05; see CURSOR_EXTENSIONS). Facts the code depends on, verified live by the
 // reference build against cursor-agent in September 2026:
 // - `terminal` is not advertised, so the agent runs commands itself and reports them as
 //   `tool_call` updates.
@@ -27,6 +28,8 @@ import {
 // - `session/load` replays the stored history as `session/update` notifications before it
 //   answers, so updates are dropped while a load is in flight.
 // - `session/new` only reserves an id: a session that never took a prompt cannot be loaded later.
+// - (cursor-agent 2026.10.01, verified 2026-10-05) `initialize` advertises `loadSession`,
+//   `sessionCapabilities.list` and image prompts; not `session/resume` or `session/fork`.
 // - Permission requests are answered with the broadest allow offered: the app has no approval
 //   prompts yet.
 // - The model list is whatever a session's setup reports in `models.availableModels`; an id is
@@ -79,6 +82,8 @@ class AcpClient extends StdioJsonRpcClient {
       } else if (request.method === 'fs/write_text_file') {
         await writeFile(String(params.path), String(params.content ?? ''), 'utf8')
         this.respond(request.id, {})
+      } else if (Object.hasOwn(CURSOR_EXTENSIONS, request.method)) {
+        this.respond(request.id, cursorExtensionReply(request.method, params))
       } else {
         this.respondWithError(request.id, -32601, `Rocket does not implement ${request.method}`)
       }
@@ -465,6 +470,31 @@ function allowOption(params: Record<string, unknown>): string {
   const always = options.find((option) => /^allow[_-]always$/.test(String(option.kind ?? option.optionId)))
   const allow = options.find((option) => /allow/i.test(String(option.kind ?? '')) || /allow/i.test(String(option.optionId ?? '')))
   return stringOf((always ?? allow ?? options[0])?.optionId) || 'allow'
+}
+
+// Cursor's own ACP extensions. A question or plan approval would hold the turn for a human, and
+// the app's questions never block (`ask_user`), so a question is skipped with a pointer to that
+// tool and a plan is accepted, as an unattended session would. The docs call todos and task
+// completions notifications but give them responses too; answered as requests, they are accepted.
+const CURSOR_EXTENSIONS: Record<string, (params: Record<string, unknown>) => unknown> = {
+  'cursor/ask_question': () => ({
+    outcome: {
+      outcome: 'skipped',
+      reason: 'Nobody is waiting on this session. Ask with the ask_user tool instead, which posts the question to the user without holding the turn, and carry on with what the answer does not change.'
+    }
+  }),
+  'cursor/create_plan': () => ({ outcome: { outcome: 'accepted' } }),
+  'cursor/update_todos': (params) => ({ outcome: { outcome: 'accepted', todos: Array.isArray(params.todos) ? params.todos : [] } }),
+  'cursor/task': (params) => ({
+    outcome: { outcome: 'completed', ...(stringOf(params.agentId) ? { agentId: stringOf(params.agentId) } : {}) }
+  })
+}
+
+/** What the app answers one of Cursor's extension requests with. */
+export function cursorExtensionReply(method: string, params: Record<string, unknown>): unknown {
+  const reply = Object.hasOwn(CURSOR_EXTENSIONS, method) ? CURSOR_EXTENSIONS[method] : undefined
+  if (!reply) throw new Error(`Rocket does not implement ${method}`)
+  return reply(params)
 }
 
 /** ACP lets a read name a window; honouring it keeps large files out of the agent's context. */
