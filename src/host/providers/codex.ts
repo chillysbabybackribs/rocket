@@ -1,3 +1,4 @@
+import { codexImageContent } from './images.ts'
 import { homedir } from 'node:os'
 import type { Item, ModelInfo, ToolStatus, TurnTokens, UsageSnapshot } from '../../shared/types.ts'
 import { clipOutput, jsonPreview, messageOf, recordOf, stringOf } from '../json.ts'
@@ -145,7 +146,7 @@ export class CodexAdapter implements ProviderAdapter {
       client.request<{ turn?: { id?: unknown } }>('turn/start', {
         threadId,
         ...(request.model ? { model: request.model } : {}),
-        input: [{ type: 'text', text: request.text }]
+        input: codexImageContent(request.text, request.attachments)
       }).then((response) => {
         if (typeof response.turn?.id === 'string') turn.codexTurnId ??= response.turn.id
         if (turn.stopRequested) void this.interruptTurn(threadId, turn)

@@ -201,9 +201,9 @@ async function awaitRun<T>(run: Promise<T>, params: Params, running: () => unkno
 
 const actions: Record<ActionName, (params: Params) => Promise<unknown>> = {
   'pane.focus': async (params) => { focusPane(paneIndex(params, 'pane', true)) },
-  'pane.add': async () => {
+  'pane.add': async (params) => {
     const before = peekState().panes.length
-    addPane()
+    addPane(paneIndex(params, 'after'))
     if (peekState().panes.length === before) throw new Error(`There are already ${before} panes, the most the card holds.`)
   },
   'pane.close': async (params) => {

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import type { Chat, ChatSnapshot, GoalRole, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnTokens, UsageSnapshot } from '../shared/types.ts'
+import { validateImages, type ProviderImage } from './attachments.ts'
+import type { Chat, ChatSnapshot, GoalRole, HostEvent, ImageAttachment, MessageDraft, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnTokens, UsageSnapshot } from '../shared/types.ts'
 import { buildHandoff, type Handoff, type MissedTurn } from './handoff.ts'
 import { messageOf, oneLine } from './json.ts'
 import { describeTokens } from './journal.ts'
@@ -85,8 +86,10 @@ export class Hub {
      * A few lines about the app's state to put ahead of the user's message, or null for none.
      * `fresh` says the provider's session is new and has been told nothing yet.
      */
-    private readonly context: ((chatId: string, provider: ProviderId, fresh: boolean) => Promise<string | null>) | null = null
+    private readonly context: ((chatId: string, provider: ProviderId, fresh: boolean) => Promise<string | null>) | null = null,
+    private readonly resolveImages: (ids: string[]) => ProviderImage[] = () => []
   ) {
+    for (const entry of store.queues()) if (store.chat(entry.chatId)) this.queues.set(entry.chatId, entry.messages)
     for (const [provider, adapter] of Object.entries(adapters) as Array<[ProviderId, ProviderAdapter]>) {
       adapter.onUnprompted?.((chatId, reason) => this.openUnprompted(chatId, provider, reason))
     }
@@ -186,9 +189,11 @@ export class Hub {
    * Start a turn and return its id; its progress and end arrive as events. A goal's turns carry
    * their `goalRole`, and their message is the app's, so it does not name the chat.
    */
-  send(chatId: string, provider: ProviderId, model: string | null, text: string, goalRole: GoalRole | null = null): string {
+  send(chatId: string, provider: ProviderId, model: string | null, text: string, goalRole: GoalRole | null = null, attachments: ImageAttachment[] = []): string {
     const message = text.trim()
-    if (!message) throw new Error('There is nothing to send')
+    if (!message && !attachments.length) throw new Error('There is nothing to send')
+    validateImages(attachments)
+    if (attachments.length && provider === 'antigravity') throw new Error('Antigravity cannot receive images yet. Choose Claude, Codex or Cursor.')
     if (this.live.has(chatId)) throw new Error('This chat is still answering the last message')
     const chat = this.requireChat(chatId)
     const adapter = this.adapters[provider]
@@ -216,16 +221,16 @@ export class Hub {
     const named = chat.lastProvider === null && goalRole === null
     const updated: Chat = {
       ...chat,
-      title: named ? oneLine(message, 60) : chat.title,
+      title: named ? oneLine(message || attachments[0]?.name || 'Images', 60) : chat.title,
       lastProvider: provider,
       updatedAt: Date.now()
     }
     this.store.updateChat(updated)
     this.emit({ type: 'chat', chat: updated })
     this.emit({ type: 'turn', turn: publicTurn(turn) })
-    this.putItem(live, { type: 'user', id: `${turn.id}:user`, turnId: turn.id, text: message })
+    this.putItem(live, { type: 'user', id: `${turn.id}:user`, turnId: turn.id, text: message, ...(attachments.length ? { attachments } : {}) })
 
-    void this.runTurn(live, updated.cwd, message, model, session.sessionId, handoff)
+    void this.runTurn(live, updated.cwd, message, model, session.sessionId, handoff, attachments)
     return turn.id
   }
 
@@ -234,18 +239,20 @@ export class Hub {
    * that turn when the provider answering is the one picked and can take it; otherwise, or when
    * messages are already waiting (they keep their order), it waits for the turn to end.
    */
-  async post(chatId: string, provider: ProviderId, model: string | null, text: string): Promise<void> {
+  async post(chatId: string, provider: ProviderId, model: string | null, text: string, attachments: ImageAttachment[] = []): Promise<void> {
     const message = text.trim()
-    if (!message) throw new Error('There is nothing to send')
+    if (!message && !attachments.length) throw new Error('There is nothing to send')
+    validateImages(attachments)
+    if (attachments.length && provider === 'antigravity') throw new Error('Antigravity cannot receive images yet. Choose Claude, Codex or Cursor.')
     const live = this.live.get(chatId)
     if (!live) {
-      this.send(chatId, provider, model, message)
+      this.send(chatId, provider, model, message, null, attachments)
       return
     }
-    const steerable = live.turn.provider === provider && live.turn.goalRole === null && !live.stopRequested
+    const steerable = !attachments.length && live.turn.provider === provider && live.turn.goalRole === null && !live.stopRequested
       && !this.queues.get(chatId)?.length && live.adapter.steer
     if (!steerable) {
-      this.enqueue(chatId, provider, model, message)
+      this.enqueue(chatId, provider, model, message, attachments)
       return
     }
     // Shown as on its way until the provider says the model has read it; it enters the turn there.
@@ -253,7 +260,7 @@ export class Hub {
     this.setTaking(chatId, [...this.taking.get(chatId) ?? [], entry])
     const steered = await live.adapter.steer!(chatId, steerText(message), () => this.taken(chatId, entry.id)).catch(() => false)
     if (steered || !this.dropTaking(chatId, entry.id)) return
-    this.enqueue(chatId, provider, model, message)
+    this.enqueue(chatId, provider, model, message, attachments)
   }
 
   /** The model has read words sent into its turn: they join the transcript at this point. */
@@ -279,41 +286,42 @@ export class Hub {
   }
 
   /** Hold a message until the chat's turn in flight has ended, then send it; sent at once when none is running. */
-  enqueue(chatId: string, provider: ProviderId, model: string | null, text: string): void {
+  enqueue(chatId: string, provider: ProviderId, model: string | null, text: string, attachments: ImageAttachment[] = []): void {
     this.requireChat(chatId)
     const queue = this.queues.get(chatId) ?? []
-    queue.push({ id: randomUUID(), provider, model, text })
-    this.queues.set(chatId, queue)
-    this.emitQueue(chatId)
+    queue.push({ id: randomUUID(), provider, model, text, ...(attachments.length ? { attachments } : {}) })
+    this.setQueue(chatId, queue)
     if (!this.live.has(chatId)) this.drain(chatId)
   }
 
   /** Take one waiting message back; returns its text. */
-  unqueue(chatId: string, id: string): string {
+  unqueue(chatId: string, id: string): string | MessageDraft {
     const queue = this.queues.get(chatId) ?? []
     const found = queue.find((entry) => entry.id === id)
     if (!found) throw new Error('That message has already been sent')
     this.setQueue(chatId, queue.filter((entry) => entry !== found))
-    return found.text
+    return found.attachments?.length ? { text: found.text, attachments: found.attachments } : found.text
   }
 
   /**
    * Take every waiting message back, as one text, with the words sent into the turn that its
    * model has not read yet (a stop cancels those); null when there were none.
    */
-  withdraw(chatId: string): string | null {
+  withdraw(chatId: string): string | MessageDraft | null {
     const all = [...this.taking.get(chatId) ?? [], ...this.queues.get(chatId) ?? []]
     if (!all.length) return null
     this.taking.delete(chatId)
     this.setQueue(chatId, [])
-    return all.map((entry) => entry.text).join('\n\n')
+    const text = all.map((entry) => entry.text).join('\n\n')
+    const attachments = all.flatMap(entry => entry.attachments ?? [])
+    return attachments.length ? { text, attachments } : text
   }
 
   /** Words on their way into the turn first, then the messages waiting for it to end. */
   queued(chatId: string): QueuedMessage[] {
     return [
       ...(this.taking.get(chatId) ?? []).map(({ id, provider, text }) => ({ id, provider, text, taking: true })),
-      ...(this.queues.get(chatId) ?? []).map(({ id, provider, text }) => ({ id, provider, text }))
+      ...(this.queues.get(chatId) ?? []).map(({ id, provider, text, attachments }) => ({ id, provider, text, ...(attachments?.length ? { attachments } : {}) }))
     ]
   }
 
@@ -327,7 +335,7 @@ export class Hub {
     this.setQueue(chatId, [])
     const last = queue.at(-1)!
     try {
-      this.send(chatId, last.provider, last.model, queue.map((entry) => entry.text).join('\n\n'))
+      this.send(chatId, last.provider, last.model, queue.map((entry) => entry.text).join('\n\n'), null, queue.flatMap(entry => entry.attachments ?? []))
     } catch {
       // Left waiting where the user can see it, take it back, or have it go with the next turn's end.
       if (this.store.chat(chatId)) this.setQueue(chatId, queue)
@@ -335,6 +343,7 @@ export class Hub {
   }
 
   private setQueue(chatId: string, queue: Queued[]): void {
+    this.store.saveQueue(chatId, queue)
     if (queue.length) this.queues.set(chatId, queue)
     else this.queues.delete(chatId)
     this.emitQueue(chatId)
@@ -457,7 +466,8 @@ export class Hub {
     text: string,
     model: string | null,
     sessionId: string | null,
-    handoff: Handoff | null
+    handoff: Handoff | null,
+    attachments: ImageAttachment[] = []
   ): Promise<void> {
     const { turn, adapter } = live
     const { chatId, provider } = turn
@@ -473,9 +483,10 @@ export class Hub {
         const lines = context ? await context(chatId, provider, fresh).catch(() => null) : null
         return lines ? `${lines}\n\n${text}` : text
       }
+      const images = (history: Handoff | null): ProviderImage[] => this.resolveImages([...new Set([...attachments, ...(history?.attachments ?? [])].map(image => image.id))])
       const first = context ? await told(session.id === null) : text
       result = live.stopRequested ? { status: 'interrupted' }
-        : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: session.id, model, text: first, handoff }, sink)
+        : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: session.id, model, text: first, handoff, attachments: images(handoff) }, sink)
       if (result.sessionLost && !live.stopRequested) {
         // The provider dropped its session: start a new one and hand over the whole chat.
         this.store.setSession(chatId, provider, { sessionId: null, seenTurnSeq: 0 })
@@ -484,7 +495,7 @@ export class Hub {
         turn.handoffTurns = full?.turns ?? 0
         const retry = await told(true)
         result = live.stopRequested ? { status: 'interrupted' }
-          : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: null, model, text: retry, handoff: full }, sink)
+          : await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: null, model, text: retry, handoff: full, attachments: images(full) }, sink)
       }
     } catch (error) {
       result = { status: 'failed', error: messageOf(error) }

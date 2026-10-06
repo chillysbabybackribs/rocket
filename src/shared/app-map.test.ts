@@ -1,6 +1,48 @@
 import assert from 'node:assert/strict'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import test from 'node:test'
 import { ACTIONS, PLACES, describeMap, isAction, isPlace } from './app-map.ts'
+
+const root = resolve(import.meta.dirname, '../..')
+
+/** Every renderer source file, read whole. */
+function rendererSources(): Array<{ path: string; text: string }> {
+  const out: Array<{ path: string; text: string }> = []
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) walk(path)
+      else if (/\.tsx?$/.test(entry.name) && !entry.name.endsWith('.test.ts')) out.push({ path, text: readFileSync(path, 'utf8') })
+    }
+  }
+  walk(join(root, 'src/renderer/src'))
+  return out
+}
+
+// The map and the UI must name the same things. A button that calls go/act with a name the map
+// lacks, or a map entry no control uses, is drift in one direction or the other; the dispatcher
+// itself is excluded, since it implements every name by construction.
+test('every map name has a control in the renderer, and every name a control uses is in the map', () => {
+  const sources = rendererSources().filter((file) => !file.path.endsWith('/app-map.ts'))
+  const used = new Map<string, string>()
+  for (const { path, text } of sources) {
+    for (const match of text.matchAll(/\b(?:go|act)\(\s*'([^']+)'/g)) used.set(match[1]!, path)
+    for (const match of text.matchAll(/data-nav="([^"]+)"/g)) used.set(match[1]!, path)
+    for (const match of text.matchAll(/place:\s*'([^']+)'/g)) used.set(match[1]!, path)
+  }
+  for (const [name, path] of used) {
+    if (name === 'evals' || name === 'browser') continue // The rail's toggles name a side, not a place.
+    assert.ok(isPlace(name) || isAction(name), `${path} uses "${name}", which is not in the app map`)
+  }
+  for (const name of [...Object.keys(PLACES), ...Object.keys(ACTIONS)]) {
+    assert.ok(used.has(name), `the app map names ${name}, but no renderer control uses it`)
+  }
+})
+
+test('every place names a component file that exists', () => {
+  for (const [name, spec] of Object.entries(PLACES)) assert.ok(existsSync(join(root, spec.file)), `${name} → ${spec.file}`)
+})
 
 test('every action with a place names a place that exists, and names are well formed', () => {
   for (const [name, spec] of Object.entries(ACTIONS)) {

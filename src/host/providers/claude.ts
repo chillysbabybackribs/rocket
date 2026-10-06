@@ -1,3 +1,4 @@
+import { claudeImageContent } from './images.ts'
 import { homedir } from 'node:os'
 import type { Options, Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { Item, ModelInfo, ToolKind, TurnTokens, UsageSnapshot } from '../../shared/types.ts'
@@ -164,7 +165,7 @@ class Runtime {
   }
 
   /** A user message; one sent while a turn runs carries a `priority` and the uuid it is known by. */
-  push(text: string, mid?: { uuid: string; priority: 'now' | 'next' | 'later' }): void {
+  push(text: string | ReturnType<typeof claudeImageContent>, mid?: { uuid: string; priority: 'now' | 'next' | 'later' }): void {
     if (this.closed) throw new Error('Claude Code is not running')
     this.queue.push({
       type: 'user',
@@ -293,7 +294,7 @@ export class ClaudeAdapter implements ProviderAdapter {
       }
       runtime.turn = turn
       try {
-        runtime.push(withHandoff(request.handoff, request.text))
+        runtime.push(request.attachments?.length ? claudeImageContent(withHandoff(request.handoff, request.text), request.attachments) : withHandoff(request.handoff, request.text))
       } catch (error) {
         turn.finish({ status: 'failed', error: messageOf(error) })
       }

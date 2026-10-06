@@ -1,3 +1,4 @@
+import { AttachmentStore, validateImages } from './attachments.ts'
 import { homedir } from 'node:os'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
@@ -63,6 +64,7 @@ const EVENT_FLUSH_MS = 16
 const testProfile = uiTestProfile()
 const dataDir = process.env.ROCKET_DATA_DIR || join(homedir(), '.config', 'rocket')
 const store = new Store(join(dataDir, 'rocket.db'))
+const attachments = new AttachmentStore(store, join(dataDir, 'attachments'))
 // The journal records always, since a crash is worth keeping; the tools and nudges that surface it are opt-in.
 const journal = new Journal(join(dataDir, 'journal.jsonl'))
 const selfCheck = process.env.ROCKET_SELF_CHECK === '1'
@@ -227,13 +229,16 @@ const hub: Hub = new Hub(
       ])
     ]
     return parts.filter(Boolean).join('\n\n') || null
-  }
+  },
+  ids => attachments.resolve(ids)
 )
 
 // Built after the hub, which it drives; goals cut off by the last exit wait for the user.
 const goals: GoalRunner = new GoalRunner(store, hub, (goal) => emit({ type: 'goal', goal }))
 
 const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | Promise<HostApi[M][1]> } = {
+  'attachment.import': ({ name, bytes, thumbnail }) => attachments.import(name, bytes, thumbnail),
+  'attachment.read': ({ id, thumbnail }) => attachments.read(id, thumbnail),
   'chats.list': () => hub.listChats(),
   'chat.create': ({ cwd }) => hub.createChat(cwd),
   'chat.open': ({ chatId }) => {
@@ -243,7 +248,12 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   },
   'chat.setCwd': ({ chatId, cwd }) => hub.setCwd(chatId, cwd),
   'chat.delete': async ({ chatId }) => { await uiRuns.close(chatId); await hub.deleteChat(chatId); return null },
-  'chat.send': async ({ chatId, provider, model, text }) => { await hub.post(chatId, provider, model, text); return null },
+  'chat.send': async ({ chatId, provider, model, text, attachmentIds = [] }) => {
+    const images = attachments.resolve(attachmentIds).map(({ path: _path, ...image }) => image)
+    validateImages(images)
+    await hub.post(chatId, provider, model, text, images)
+    return null
+  },
   'chat.stop': async ({ chatId, sendQueued }) => {
     const withdrawn = sendQueued ? null : hub.withdraw(chatId)
     await hub.stop(chatId)

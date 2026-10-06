@@ -1,5 +1,6 @@
+import { restoreDraft, updateDraft } from './drafts.ts'
 import { useSyncExternalStore } from 'react'
-import type { ChatLinkTarget, Chat, Goal, GoalEdit, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
+import type { ChatLinkTarget, Chat, Goal, GoalEdit, ImageAttachment, MessageDraft, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
 
 export type ArtifactView =
   | Extract<ChatLinkTarget, { kind: 'artifact' }>
@@ -154,7 +155,7 @@ type Prefs = {
   /** Chats whose plan drawer the user closed; it no longer opens by itself there. */
   planClosed?: Record<string, true>
   /** The panes as they were, in order, and which one had the focus. */
-  panes?: { chatId: string | null; tabs: string[] }[]
+  panes?: { chatId: string | null; tabs: string[]; key?: number }[]
   focused?: number
   /** Before panes, the one chat and its tabs; read once to become the first pane. */
   activeChatId?: string | null
@@ -313,7 +314,7 @@ function patchView(chatId: string, patch: Partial<ChatView>): void {
 }
 
 function savePanes(): void {
-  writePrefs({ panes: state.panes.map((pane) => ({ chatId: pane.chatId, tabs: pane.tabs })), focused: state.focused })
+  writePrefs({ panes: state.panes.map((pane) => ({ chatId: pane.chatId, tabs: pane.tabs, key: pane.key })), focused: state.focused })
 }
 
 // ── Events ────────────────────────────────────────────────────────────
@@ -532,19 +533,23 @@ export function closePane(pane: number): void {
 // ── Sending ───────────────────────────────────────────────────────────
 
 /** Send in a pane's chat, creating one first when the composer is on the new-chat screen. */
-export async function send(pane: number, text: string): Promise<void> {
+export async function send(pane: number, text: string, attachments: ImageAttachment[] = []): Promise<boolean> {
   try {
     const current = paneAt(state, pane)
     let chatId = current.chatId
     if (!chatId) {
       const chat = await call('chat.create', { cwd: state.defaultCwd })
       saveSelection(chat.id, { provider: current.provider, modelChoice: current.modelChoice })
-      showChat(pane, chat.id)
       chatId = chat.id
     }
-    await call('chat.send', { chatId, provider: current.provider, model: current.modelChoice[current.provider]?.id ?? null, text })
+    await call('chat.send', { chatId, provider: current.provider, model: current.modelChoice[current.provider]?.id ?? null, text, attachmentIds: attachments.map(image => image.id) })
+    updateDraft(current.chatId ?? `new:${current.key}`, { text: '', attachments: [], sending: false, error: null })
+    const at = state.panes.findIndex(entry => entry.key === current.key && entry.chatId === current.chatId)
+    if (!current.chatId && at >= 0) await openChat(chatId, at)
+    return true
   } catch (error) {
     fail(error)
+    return false
   }
 }
 
@@ -563,7 +568,7 @@ export function stop(pane: number): void {
   const chatId = chatIdOf(state, pane)
   if (!chatId) return
   void call('chat.stop', { chatId })
-    .then((withdrawn) => { if (withdrawn) restore(pane, withdrawn) })
+    .then((withdrawn) => { if (withdrawn) restore(pane, withdrawn, chatId) })
     .catch(fail)
 }
 
@@ -577,11 +582,12 @@ export function sendNow(pane: number): void {
 export function editQueued(pane: number, id: string): void {
   const chatId = chatIdOf(state, pane)
   if (!chatId) return
-  void call('chat.unqueue', { chatId, id }).then((text) => restore(pane, text)).catch(fail)
+  void call('chat.unqueue', { chatId, id }).then((text) => restore(pane, text, chatId)).catch(fail)
 }
 
-function restore(pane: number, text: string): void {
-  patchPane(pane, { restored: { text, at: Date.now() } })
+function restore(pane: number, message: string | MessageDraft, chatId: string): void {
+  restoreDraft(chatId, message)
+  if (state.panes[pane]?.chatId === chatId) patchPane(pane, { restored: { text: '', at: Date.now() } })
 }
 
 /** Answer a question a model asked in a pane's chat; the provider picked in its composer takes the reply. */
@@ -796,7 +802,12 @@ export function refreshUsage(provider: ProviderId, force = false): Promise<void>
 function savedPanes(saved: Prefs, chats: Chat[]): { panes: Pane[]; focused: number } {
   const exists = (id: string | null): id is string => id !== null && chats.some((chat) => chat.id === id)
   const entries = saved.panes ?? [{ chatId: saved.activeChatId ?? null, tabs: saved.tabs ?? [] }]
-  const panes = entries.slice(0, MAX_PANES).map((entry) => newPane(exists(entry.chatId) ? entry.chatId : null, entry.tabs.filter(exists)))
+  nextPaneKey = Math.max(nextPaneKey, ...entries.map(entry => ('key' in entry && typeof entry.key === 'number' ? entry.key : 0) + 1))
+  const panes = entries.slice(0, MAX_PANES).map((entry) => {
+    const pane = newPane(exists(entry.chatId) ? entry.chatId : null, entry.tabs.filter(exists))
+    if ('key' in entry && typeof entry.key === 'number') pane.key = entry.key
+    return pane
+  })
   if (panes.length === 0) panes.push(newPane())
   return { panes, focused: Math.min(Math.max(0, saved.focused ?? 0), panes.length - 1) }
 }

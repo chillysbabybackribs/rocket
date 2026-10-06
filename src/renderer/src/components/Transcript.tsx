@@ -1,3 +1,4 @@
+import { Attachments } from './Attachments.tsx'
 import { Fragment, memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
@@ -258,7 +259,7 @@ const ItemRow = memo(function ItemRow({ id }: { id: string }) {
   if (!item) return null
   switch (item.type) {
     case 'user':
-      return <div className="user-bubble"><ChatMarkdown text={item.text} /></div>
+      return <div className="user-bubble"><Attachments images={item.attachments} /><ChatMarkdown text={item.text} /></div>
     case 'assistant':
       return item.text.trim() ? <Prose text={item.text} streaming={item.streaming} /> : null
     case 'notice':
@@ -474,7 +475,7 @@ function Waiting() {
     <>
       {queued.map((entry) => (
         <div key={entry.id} className="steer is-waiting">
-          <div className="user-bubble"><ChatMarkdown text={entry.text} /></div>
+          <div className="user-bubble"><Attachments images={entry.attachments} /><ChatMarkdown text={entry.text} /></div>
           {entry.taking ? (
             <div className="steer-status"><span>{providerLabel(entry.provider)} reads this at its next step</span></div>
           ) : (

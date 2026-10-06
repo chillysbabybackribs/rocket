@@ -2,7 +2,8 @@ import { useRef } from 'react'
 import { PanelRightOpen, X } from 'lucide-react'
 import type { Goal } from '../../shared/types.ts'
 import { PaneContext, usePane, usePaneChatId, usePaneView } from './pane.ts'
-import { dismissError, focusPane, focusedChatId, setGoalPaneOpen, setGoalWidth, useApp } from './store.ts'
+import { act } from './app-map.ts'
+import { dismissError, focusedChatId, setGoalPaneOpen, setGoalWidth, useApp } from './store.ts'
 import { ArtifactPanel } from './components/ArtifactPanel.tsx'
 import { BrowserPanel } from './components/BrowserPanel.tsx'
 import { EvalPanel } from './components/EvalPanel.tsx'
@@ -119,7 +120,7 @@ function ChatPane() {
   const planUserId = usePaneView((view) => (view.planTurnId ? view.turnItems[view.planTurnId]?.[0] : undefined))
   const focused = useApp((state) => state.focused === pane)
   const empty = !goal && (!chat || !hasTurns)
-  const focus = (): void => focusPane(pane)
+  const focus = (): void => { void act('pane.focus', { pane }) }
 
   let body: React.ReactNode
   if (goal) {

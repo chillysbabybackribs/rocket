@@ -1,4 +1,4 @@
-import { providerLabel, type Item, type ProviderId } from '../shared/types.ts'
+import { providerLabel, type Item, type ImageAttachment, type ProviderId } from '../shared/types.ts'
 import { oneLine } from './json.ts'
 
 // What a provider is told about the turns it missed. When the user switches back to a provider,
@@ -41,6 +41,7 @@ type Block = { head: string; user: string; reply: string; files: string[]; steps
  * provider that can append to its own history (Codex `thread/inject_items`).
  */
 export type Handoff = {
+  attachments?: ImageAttachment[]
   turns: number
   text: string
   messages: Array<{ role: 'user' | 'assistant'; text: string }>
@@ -75,7 +76,8 @@ export function buildHandoff(turns: MissedTurn[], budget = HANDOFF_BUDGET_CHARS,
     if (block.reply) answer.push(block.reply)
     messages.push({ role: 'assistant', text: answer.join('\n\n') })
   }
-  return { turns: blocks.length, text, messages }
+  const attachments = turns.flatMap(turn => turn.items.flatMap(item => item.type === 'user' ? item.attachments ?? [] : []))
+  return { turns: blocks.length, text, messages, ...(attachments.length ? { attachments } : {}) }
 }
 
 /** The user's own words, for showing a message that was sent with a handoff block in front. */
@@ -93,7 +95,7 @@ function blockOf(turn: MissedTurn, root: string | null): Block {
   const ending = turn.status === 'interrupted'
     ? ', stopped by the user before it finished'
     : turn.status === 'failed' ? ', which failed before finishing' : ''
-  const user = turn.items.filter((item) => item.type === 'user').map((item) => item.text).join('\n\n')
+  const user = turn.items.filter((item) => item.type === 'user').map((item) => [item.text, ...(item.attachments ?? []).map(image => `[Image: ${image.name}; attachment ${image.id}]`)].filter(Boolean).join('\n')).join('\n\n')
   const reply = replyOf(turn.items)
   const tools = turn.items.filter((item) => item.type === 'tool')
   // Files are named once each however often they were touched; a file that was edited was also read.

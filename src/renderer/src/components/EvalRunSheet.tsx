@@ -3,7 +3,7 @@ import { providerLabel, type ProviderId } from '../../../shared/types.ts'
 import { act } from '../app-map.ts'
 import { call } from '../host.ts'
 import type { Scenario } from '../eval-run.ts'
-import { openChat, patchRunSheet, useApp } from '../store.ts'
+import { patchRunSheet, useApp } from '../store.ts'
 
 // The Run cell sheet shows the store's `evals.runSheet`; opening, choosing and running go through
 // the app map, so a model's `evals.runSheet.run` and the Run button are the same call.
@@ -86,7 +86,7 @@ export function EvalRunSheet() {
           {phase === 'running' ? 'Running…' : 'Run'}
         </button>
         {chatId && (
-          <button type="button" className="text-button" onClick={() => void openChat(chatId)}>Focus eval chat</button>
+          <button type="button" className="text-button" onClick={() => void act('chat.open', { chatId })}>Focus eval chat</button>
         )}
       </div>
 

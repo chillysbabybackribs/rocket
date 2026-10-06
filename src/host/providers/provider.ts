@@ -1,3 +1,4 @@
+import type { ProviderImage } from '../attachments.ts'
 import type { Handoff } from '../handoff.ts'
 import { planItemId, type Item, type ModelInfo, type PlanStep, type ProviderId, type TurnStatus, type TurnTokens, type UsageSnapshot } from '../../shared/types.ts'
 
@@ -6,6 +7,7 @@ import { planItemId, type Item, type ModelInfo, type PlanStep, type ProviderId, 
 // other providers, the store, or the renderer.
 
 export type RunRequest = {
+  attachments?: ProviderImage[]
   chatId: string
   turnId: string
   cwd: string

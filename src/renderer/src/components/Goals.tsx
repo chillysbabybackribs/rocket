@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus, Target } from 'lucide-react'
 import type { Goal, GoalStatus } from '../../../shared/types.ts'
-import { focusedChatId, openChat, openNewGoal, useApp } from '../store.ts'
+import { act } from '../app-map.ts'
+import { focusedChatId, openNewGoal, useApp } from '../store.ts'
 import { GoalStatusIcon } from './GoalIcons.tsx'
 
 // Goals, from the rail: the ones under way first, then the finished ones, and "New goal". Like
@@ -44,7 +45,7 @@ function GoalsMenu({ onPick }: { onPick: () => void }) {
                 role="menuitem"
                 className="chat-row-main"
                 onClick={() => {
-                  void openChat(goal.chatId)
+                  void act('chat.open', { chatId: goal.chatId })
                   onPick()
                 }}
               >

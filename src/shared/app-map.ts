@@ -48,7 +48,7 @@ export type PlaceName = keyof typeof PLACES
 
 export const ACTIONS = {
   'pane.focus': { description: 'Give a chat pane the focus.', params: { pane: 'pane index, from 0' } },
-  'pane.add': { description: 'Add a chat pane beside the focused one, showing the new-chat screen.' },
+  'pane.add': { description: 'Add a chat pane showing the new-chat screen, and give it the focus.', params: { after: 'pane index to add after, default the focused one' } },
   'pane.close': { description: 'Close a chat pane; the only pane cannot close.', params: { pane: 'pane index' } },
   'chat.open': { description: 'Show a chat in a pane.', params: { chatId: 'chat id (required)', pane: 'pane index, default the focused one' } },
   'chat.new': { description: 'Show the new-chat screen in a pane.', params: { pane: 'pane index, default the focused one' } },

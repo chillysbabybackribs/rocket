@@ -1,3 +1,4 @@
+import { cursorImageContent } from './images.ts'
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -54,6 +55,7 @@ function cursorBinary(): string {
 }
 
 class AcpClient extends StdioJsonRpcClient {
+  supportsImages = false
   constructor() {
     super({ peer: 'Cursor', executable: cursorBinary(), cwd: homedir(), args: ['acp'], version: '2.0' })
     this.on('request', (request: JsonRpcRequest) => { void this.serve(request) })
@@ -63,10 +65,11 @@ class AcpClient extends StdioJsonRpcClient {
     if (this.connected) return
     await super.start()
     try {
-      await this.request('initialize', {
+      const initialized = recordOf(await this.request('initialize', {
         protocolVersion: 1,
         clientCapabilities: { fs: { readTextFile: true, writeTextFile: true }, terminal: false }
-      })
+      }))
+      this.supportsImages = recordOf(recordOf(initialized.agentCapabilities).promptCapabilities).image === true
     } catch (error) {
       this.stop()
       throw error
@@ -180,9 +183,10 @@ export class CursorAdapter implements ProviderAdapter {
     const translator = new UpdateTranslator(request.turnId)
     this.active.set(sessionId, { sink, translator })
     try {
+      if (request.attachments?.length && !client.supportsImages) throw new Error('This Cursor version does not accept images. Update Cursor or choose Claude or Codex.')
       const result = await client.request<{ stopReason?: unknown }>(
         'session/prompt',
-        { sessionId, prompt: [{ type: 'text', text: withHandoff(request.handoff, request.text) }] },
+        { sessionId, prompt: cursorImageContent(withHandoff(request.handoff, request.text), request.attachments) },
         PROMPT_TIMEOUT_MS
       )
       for (const item of translator.finish()) sink.item(item)

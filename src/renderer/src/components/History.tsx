@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { History as HistoryIcon, Trash2 } from 'lucide-react'
 import type { Chat } from '../../../shared/types.ts'
-import { deleteChat, focusedChatId, openChat, useApp } from '../store.ts'
+import { act } from '../app-map.ts'
+import { deleteChat, focusedChatId, useApp } from '../store.ts'
 
 // Every chat, newest first, in a menu that opens from the rail. Picking one opens it as a tab.
 // The menu grows to the right over the chat column, which is always wider than it, so it never
@@ -46,7 +47,7 @@ function HistoryMenu({ onPick }: { onPick: () => void }) {
                 role="menuitem"
                 className="chat-row-main"
                 onClick={() => {
-                  void openChat(chat.id)
+                  void act('chat.open', { chatId: chat.id })
                   onPick()
                 }}
               >
