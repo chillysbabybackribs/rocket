@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rocket · Reuse attachments</title><style>
+@font-face{font-family:Inter;src:url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')}
+:root{color-scheme:dark;--canvas:#08090a;--panel:#0f1011;--composer:#151617;--menu:#1b1c1e;--line:#2f3031;--text:#f7f8f8;--muted:#8a8f98;--accent:#7170ff}
+*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--text);font:13px/1.5 Inter,system-ui,sans-serif}
+button,input,textarea{font:inherit;color:inherit}button{cursor:pointer;background:transparent;border:0;padding:0}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{width:16px;height:16px;flex-shrink:0;display:block}
+header{max-width:1260px;margin:auto;padding:28px 28px 20px}.eyebrow{color:var(--muted);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+h1{font-size:25px;letter-spacing:-.7px;font-weight:550;margin:6px 0}header p{color:#b4b8c0;margin:0}
+.nav{display:flex;gap:5px;flex-wrap:wrap;margin-top:22px}.nav button{padding:8px 13px;border-radius:7px;color:#a4a8b0;border:1px solid transparent}
+.nav button:hover{background:#ffffff0b}.nav button[aria-pressed=true]{background:#1c1d20;border-color:var(--line);color:var(--text)}
+main{max-width:1260px;padding:0 28px 24px;margin:auto}
+.stage{position:relative;display:flex;gap:8px;height:620px}
+.pane{position:relative;display:flex;flex-direction:column;min-width:0;flex:1;background:linear-gradient(#ffffff03,transparent 140px),var(--panel);border:1px solid #ffffff13;border-radius:12px;overflow:hidden}
+.pane.is-focused{border-color:#ffffff22}
+.pane-title{padding:14px 20px;border-bottom:1px solid #ffffff09;color:var(--muted);font-size:12px;display:flex;justify-content:space-between}.pane-title b{font-weight:500;color:#c8cbd0}
+.transcript{flex:1;min-height:0;overflow:auto;padding:24px 26px;display:flex;flex-direction:column;gap:18px}
+.assistant{color:#d7d9de;max-width:520px}.assistant p{margin:6px 0 0}.meta{font-size:11px;color:#71767f}
+.user-message{align-self:flex-end;max-width:92%;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.bubble{padding:10px 13px;background:#1c1d20;border-radius:10px;max-width:100%}
+.tray{display:flex;gap:8px;flex-wrap:wrap}.user-message .tray{justify-content:flex-end}
+.dock{padding:12px 18px 18px}.tabs{display:flex;align-items:center;height:29px;padding-left:10px}
+.tab{background:var(--composer);border:1px solid var(--line);border-bottom:0;padding:6px 13px;border-radius:8px 8px 0 0;transform:translateY(1px);color:#d7d9de;font-size:11px}
+.composer{background:var(--composer);border:1px solid var(--line);border-radius:12px}
+.composer .tray{padding:13px 12px 3px}.composer .tray:empty{display:none}
+.input-row{padding:10px 12px 0}.input-row textarea{width:100%;resize:none;min-height:44px;border:0;background:none;outline:none;color:var(--text);line-height:1.6}
+.input-row textarea::placeholder{color:#62666d}
+.bar{display:flex;align-items:center;gap:8px;padding:6px 10px 9px;color:#737880;font-size:11px}.bar .grow{flex:1}
+.send{width:28px;height:28px;border-radius:50%;background:#e6e6e6;color:#08090a;display:grid;place-items:center}
+/* Attachments, as approved in phase 1: no border or background. */
+.att{position:relative;min-width:0}
+.file{width:214px}.file-open{width:100%;display:flex;align-items:center;gap:11px;padding:10px 34px 10px 4px;border-radius:8px;text-align:left}
+.file-open:hover{background:#ffffff05}
+.file-mark{flex:0 0 40px;width:40px;height:50px}.file-mark svg{width:40px;height:50px;filter:drop-shadow(0 2px 2px #0003)}
+.file-copy{min-width:0}.file-copy b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;font-size:12px;line-height:1.45}
+.file-copy small{display:block;margin-top:3px;font-size:10px;color:#9197a1}
+.image{width:120px}.thumb{display:block;width:120px;height:82px;border-radius:7px;overflow:hidden}.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.composer .image{width:104px}.composer .thumb{width:104px;height:68px}
+.image-name{display:block;color:#a4a8b0;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-top:4px}
+.remove{position:absolute;top:-5px;right:-5px;border:1px solid #494a4c;background:#252628;border-radius:50%;width:21px;height:21px;display:grid;place-items:center;z-index:2}
+.remove svg{width:12px;height:12px}
+/* The one new control: More, shown on hover or focus, and always while its menu is open. */
+.more{position:absolute;width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:#c5c8ce;opacity:0;z-index:2}
+.more svg{width:15px;height:15px}.more:hover{background:#ffffff12;color:var(--text)}
+.file .more{right:6px;top:50%;transform:translateY(-50%)}
+.image .more{right:5px;top:53px;background:#0b0c0dcc}.composer .image .more{top:39px}
+.att:hover .more,.att:focus-within .more,.more[aria-expanded=true]{opacity:1}
+.more[aria-expanded=true]{background:#ffffff16}
+.att.is-new .file-open,.att.is-new .thumb{animation:arrive 1.6s ease-out}
+@keyframes arrive{0%{box-shadow:0 0 0 2px #7170ffaa;background:#7170ff1c}100%{box-shadow:0 0 0 2px #7170ff00;background:transparent}}
+/* Menus overlay the chat in a layer of their own; nothing underneath moves. */
+.layer{position:fixed;inset:0;z-index:20;display:none;pointer-events:none}.layer.open{display:block}.layer .menu{pointer-events:auto}
+.menu{position:fixed;width:236px;background:var(--menu);border:1px solid #38393c;border-radius:10px;padding:5px;box-shadow:0 14px 40px #000a,0 2px 6px #0006}
+.menu-item{width:100%;display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:6px;text-align:left;color:#dfe1e5}
+.menu-item:hover,.menu-item:focus-visible,.menu-item.is-active{background:#ffffff0d;outline:none}
+.menu-item svg{color:#9da2ab}.menu-item .key{margin-left:auto;color:#6c717a;font-size:11px}.menu-item .chev{margin-left:auto;color:#6c717a}
+.menu-sep{height:1px;background:#2c2d30;margin:5px 4px}
+.menu-label{padding:6px 9px 3px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#6f747d}
+.picker{width:286px}.picker-head{display:flex;align-items:center;gap:6px;padding:3px 3px 6px}
+.picker-head b{font-weight:500;font-size:12px}.back{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:#a4a8b0}.back:hover{background:#ffffff0d}
+.search{width:100%;background:#111214;border:1px solid #2e2f32;border-radius:7px;padding:6px 9px;outline:none;color:var(--text);margin-bottom:4px}
+.search::placeholder{color:#62666d}
+.chat-row{width:100%;display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:6px;text-align:left}
+.chat-row:hover,.chat-row:focus-visible{background:#ffffff0d;outline:none}
+.chat-row span{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#dfe1e5}
+.chat-row small{color:#6f747d;font-size:10px;white-space:nowrap}.chat-row svg{color:#9da2ab}
+.chat-row .dot{width:7px;height:7px;border-radius:50%;background:#e5b454;flex:none;margin:0 4px 0 4px}
+.chat-row .dot.idle{background:#4a4d53}
+.picker-foot{border-top:1px solid #2c2d30;margin:5px -5px -5px;padding:8px 13px;font-size:11px;color:#7d828b}
+.empty-row{padding:10px 9px;color:#7d828b;font-size:12px}
+/* Drop target, named for the chat that receives the file. */
+.drop{position:absolute;inset:7px;border:1px dashed #9896ff;border-radius:9px;display:none;place-content:center;text-align:center;background:#12121bef;z-index:5;pointer-events:none}
+.pane.dropping .drop{display:grid}.drop svg{width:30px;height:30px;margin:0 auto 14px;color:#a5a3ff}
+.drop strong{font-size:17px;font-weight:500}.drop span{color:#a6a8b4;margin-top:6px;font-size:12px}.drop small{margin-top:22px;color:#777b87}
+.ghost{position:absolute;z-index:6;pointer-events:none;display:none;align-items:center;gap:9px;padding:8px 12px 8px 8px;background:#1d1e21f2;border:1px solid #3b3c40;border-radius:9px;box-shadow:0 10px 30px #0009;font-size:12px;transform:rotate(-2deg)}
+.ghost .file-mark,.ghost .file-mark svg{width:26px;height:33px;flex-basis:26px}
+.stage.show-ghost .ghost{display:flex}
+/* Toast and the simulated native save dialog. */
+.toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:none;align-items:center;gap:14px;background:#1d1e21;border:1px solid #38393c;border-radius:9px;padding:9px 10px 9px 14px;box-shadow:0 10px 30px #0009;z-index:8;white-space:nowrap;font-size:12px}
+.toast.open{display:flex}.toast b{font-weight:500}.toast button{color:#b9b8ff;padding:3px 7px;border-radius:5px}.toast button:hover{background:#ffffff0d}
+.native{position:fixed;inset:0;background:#0009;display:none;place-items:center;z-index:30}.native.open{display:grid}
+.native-box{width:520px;max-width:92vw;background:#2b2b2e;border:1px solid #47474b;border-radius:12px;box-shadow:0 20px 60px #000c;font-family:system-ui,sans-serif;overflow:hidden}
+.native-top{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#323236;font-size:13px}
+.native-top button{padding:5px 12px;border-radius:6px;background:#3d3d42}.native-top .primary{background:#5b5af0}
+.native-body{padding:16px;display:grid;grid-template-columns:70px 1fr;gap:10px 12px;align-items:center;font-size:13px}
+.native-body label{color:#b8b8bd;text-align:right}.native-body input{background:#1f1f22;border:1px solid #4a4a4f;border-radius:6px;padding:6px 9px;outline:none}
+.native-note{grid-column:1/-1;color:#8d8d94;font-size:11px;margin-top:4px}
+.note{display:flex;justify-content:space-between;gap:15px;color:var(--muted);font-size:12px;margin-top:14px}.note p{margin:0;max-width:820px}
+.note button{white-space:nowrap;border:1px solid var(--line);padding:6px 10px;border-radius:6px;align-self:start}.note button:hover{background:#ffffff0b}
+#status{font-size:11px;color:#a4a8b0;margin-top:10px;min-height:17px}
+@media(max-width:800px){header{padding:18px 14px}main{padding:0 14px 20px}.stage{flex-direction:column;height:auto}.pane{min-height:480px}.note{flex-direction:column}}
+</style>
+<header><div class="eyebrow">Rocket / Phase 2</div><h1>Use a file again, anywhere.</h1><p>Every attachment gets one menu: copy it to another chat, save the original, or show where Rocket keeps it. Nothing is ever sent for you.</p>
+<nav class="nav" aria-label="Mockup states">
+<button data-state="menu" aria-pressed="true">01 · Attachment menu</button>
+<button data-state="picker" aria-pressed="false">02 · Copy to chat</button>
+<button data-state="drag" aria-pressed="false">03 · Drag to another chat</button>
+<button data-state="copied" aria-pressed="false">04 · After copying</button>
+</nav></header>
+<main><div class="stage" id="stage"></div>
+<div class="note"><p id="note"></p><button id="reset">Reset this state</button></div>
+<div id="status" role="status">Interactive mockup · no files leave this page · no model calls</div></main>
+<div class="layer" id="layer"></div>
+<div class="native" id="native" role="dialog" aria-label="Save file"><div class="native-box">
+<div class="native-top"><button id="native-cancel">Cancel</button><span>Save File</span><button class="primary" id="native-save">Save</button></div>
+<div class="native-body"><label for="native-name">Name</label><input id="native-name"><label>Folder</label><input value="~/Downloads" readonly>
+<div class="native-note">This is the system's own save dialog (Electron <code>showSaveDialog</code>), drawn here only to show the step. Cancel changes nothing.</div></div></div></div>
+<script>
+const I={
+more:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>',
+x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.8a2 2 0 0 0-1.4.6l-2.2 2.2A.7.7 0 0 1 2 21.3V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M12 8v6M9 11h6"/></svg>',
+save:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
+reveal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><circle cx="12" cy="13" r="2.5"/><path d="m14 15 2 2"/></svg>',
+preview:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>',
+back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg>',
+plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7M12 19V5"/></svg>',
+drop:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>'}
+// The phase 1 document mark, unchanged.
+function mark(file){
+  const ext=file.ext,type=ext==='PDF'?'pdf':ext==='TS'?'code':'text'
+  const colors={pdf:'#d75a59',code:'#5086cf',text:'#788598'}
+  const symbols={pdf:'<path d="M12 15h9M12 20h15M12 25h11"/>',text:'<path d="M12 15h9M12 20h15M12 25h11"/>',code:'<path d="m15 15-5 5 5 5m10-10 5 5-5 5m-3-11-4 12"/>'}
+  return `<span class="file-mark"><svg viewBox="0 0 40 50" aria-hidden="true"><path d="M7 1h18l13 13v31a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V5a4 4 0 0 1 4-4Z" fill="${colors[type]}"/><path d="M25 1v10a3 3 0 0 0 3 3h10" fill="white" fill-opacity=".3"/><path d="m25 14 13 8v-8Z" fill="black" fill-opacity=".08"/><g stroke="white" stroke-opacity=".9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none">${symbols[type]}</g><text x="20.5" y="41" text-anchor="middle" fill="white" font-family="Inter,system-ui,sans-serif" font-weight="750" font-size="11" letter-spacing=".3">${ext}</text></svg></span>`
+}
+const FILES={
+  brief:{id:'brief',name:'onboarding-brief.pdf',ext:'PDF',meta:'PDF · 4 pages · 184 KB',stored:'3f2a91c4.pdf'},
+  invite:{id:'invite',name:'invite.ts',ext:'TS',meta:'TS · 1.2 KB',stored:'b81e07d2.ts'},
+  shot:{id:'shot',name:'setup-screen.png',image:'image-attachments-assets/rocket.png',stored:'9c4d2a10.png'}}
+const CHATS=[{id:'a',title:'Review onboarding',pane:1,running:false},{id:'b',title:'Invite flow fixes',pane:2,running:true},
+  {id:'c',title:'Rail retract polish',recent:'Yesterday'},{id:'d',title:'Evals dashboard',recent:'Mon'},{id:'e',title:'Landing page copy',recent:'Oct 1'}]
+let mode='menu',drafts,menuFor=null,lastCopy=null
+const $=s=>document.querySelector(s),stage=$('#stage'),layer=$('#layer'),status=$('#status')
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function att(file,{removable=false,fresh=false,where}={}){
+  const more=`<button class="more" aria-label="More for ${esc(file.name)}" aria-haspopup="menu" aria-expanded="false" data-more="${file.id}" data-where="${where}">${I.more}</button>`
+  const remove=removable?`<button class="remove" aria-label="Remove ${esc(file.name)}" data-remove="${file.id}" data-where="${where}">${I.x}</button>`:''
+  if(file.image)return `<div class="att image${fresh?' is-new':''}" draggable="true" data-drag="${file.id}" data-where="${where}"><button class="thumb" aria-label="Preview ${esc(file.name)}"><img src="${file.image}" alt="" draggable="false"></button>${more}${remove}<span class="image-name">${esc(file.name)}</span></div>`
+  return `<div class="att file${fresh?' is-new':''}" draggable="true" data-drag="${file.id}" data-where="${where}"><button class="file-open" aria-label="Preview ${esc(file.name)}">${mark(file)}<span class="file-copy"><b>${esc(file.name)}</b><small>${file.meta}</small></span></button>${more}${remove}</div>`
+}
+function pane(chat,body,draft,focused){
+  const tray=draft.files.map(f=>att(FILES[f],{removable:true,fresh:f===draft.fresh,where:chat.id})).join('')
+  return `<section class="pane${focused?' is-focused':''}" data-pane="${chat.id}" aria-label="${chat.title}">
+  <div class="pane-title"><b>${chat.title}</b><span>${chat.running?'Codex · working':'Claude'}</span></div>
+  <div class="transcript">${body}</div>
+  <div class="dock"><div class="tabs"><span class="tab">${chat.title}</span></div><div class="composer"><div class="tray">${tray}</div>
+  <div class="input-row"><textarea aria-label="Message" placeholder="Reply…">${esc(draft.text)}</textarea></div>
+  <div class="bar"><span class="grow">~/Desktop/northstar</span><span>${chat.running?'Codex':'Claude'}</span><button class="send" aria-label="Send">${I.up}</button></div></div></div>
+  <div class="drop">${I.drop}<strong>Copy to ${chat.title}</strong><span>Adds onboarding-brief.pdf to this chat's draft</span><small>Release to copy · nothing is sent</small></div></section>`
+}
+function render(){
+  closeMenu(true);status.textContent='Interactive mockup · no files leave this page · no model calls'
+  drafts={a:{text:'',files:[]},b:{text:mode==='copied'?'Use the same brief for the invite screen.':'Use the same brief for the invite screen.',files:mode==='copied'?['brief']:[],fresh:mode==='copied'?'brief':null}}
+  draw()
+  if(mode==='menu')openMenu('brief','a')
+  if(mode==='picker'){openMenu('brief','a');showPicker()}
+  if(mode==='drag'){stage.classList.add('show-ghost');stage.querySelector('[data-pane=b]').classList.add('dropping');placeGhost()}
+  if(mode==='copied')toast(`Copied <b>onboarding-brief.pdf</b> to Invite flow fixes`,true)
+  document.querySelectorAll('[data-state]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.state===mode)))
+  $('#note').textContent={
+    menu:'Hover a file or image and click ⋯ (or right-click it, or press Shift+F10 on it). The same menu appears on draft, queued and sent attachments.',
+    picker:'Copy to chat lists the chats open in panes first, then recent ones, with a search. Choosing one appends the file to that chat\'s draft, beside its text and files.',
+    drag:'Drag any attachment, not only images, onto another pane. The drop target names the chat that will receive it. Try dragging the PDF or code file yourself.',
+    copied:'The destination draft keeps its text and gains the file, highlighted briefly. Undo takes it back out. The source chat is untouched; deleting it later leaves this copy working.'}[mode]
+}
+function draw(){
+  const sent=`<div class="assistant"><div class="meta">Claude</div><p>Attach the brief and the implementation, and I can compare them.</p></div>
+  <div class="user-message"><div class="tray">${att(FILES.brief,{where:'a'})}${att(FILES.invite,{where:'a'})}${att(FILES.shot,{where:'a'})}</div><div class="bubble">Does this implementation cover the brief?</div></div>
+  <div class="assistant"><div class="meta">Claude</div><p>Mostly. The brief asks for a pending state after sending, and <code>invite.ts</code> returns as soon as the request succeeds, so the screen never shows one.</p></div>`
+  const other=`<div class="assistant"><div class="meta">Codex</div><p>I'm updating the invite form's error handling now. Send me the brief when you have it and I'll check the copy against it.</p></div>`
+  stage.innerHTML=pane(CHATS[0],sent,drafts.a,mode!=='copied')+pane(CHATS[1],other,drafts.b,mode==='copied')+`<div class="ghost">${mark(FILES.brief)}onboarding-brief.pdf</div><div class="toast" role="status"></div>`
+  stage.classList.remove('show-ghost')
+}
+function placeGhost(){const b=stage.querySelector('[data-pane=b]').getBoundingClientRect(),s=stage.getBoundingClientRect(),g=stage.querySelector('.ghost');g.style.left=(b.left-s.left+b.width*.5-90)+'px';g.style.top=(b.top-s.top+b.height*.5+70)+'px'}
+function trigger(id,where){return stage.querySelector(`[data-more="${id}"][data-where="${where}"]`)}
+function place(menu,anchor){const r=anchor.getBoundingClientRect();menu.style.visibility='hidden';layer.append(menu);const m=menu.getBoundingClientRect();let left=Math.min(r.right-m.width,innerWidth-m.width-8);left=Math.max(8,left);let top=r.bottom+6;if(top+m.height>innerHeight-8)top=r.top-m.height-6;menu.style.left=left+'px';menu.style.top=Math.max(8,top)+'px';menu.style.visibility=''}
+function openMenu(id,where,at){
+  closeMenu(true);menuFor={id,where};const btn=trigger(id,where);btn?.setAttribute('aria-expanded','true')
+  const file=FILES[id],menu=document.createElement('div');menu.className='menu';menu.setAttribute('role','menu');menu.setAttribute('aria-label',file.name)
+  menu.innerHTML=`<button class="menu-item" role="menuitem" data-act="preview">${I.preview}Preview</button>
+  <div class="menu-sep"></div>
+  <button class="menu-item${mode==='menu'?' is-active':''}" role="menuitem" aria-haspopup="true" data-act="copy">${I.copy}Copy to chat<span class="chev">${I.chev}</span></button>
+  <button class="menu-item" role="menuitem" data-act="save">${I.save}Save as…</button>
+  <button class="menu-item" role="menuitem" data-act="reveal">${I.reveal}Reveal stored file</button>`
+  layer.replaceChildren();layer.classList.add('open')
+  if(at){menu.style.left=at.x+'px';menu.style.top=at.y+'px';layer.append(menu)}else place(menu,btn)
+  menu.onclick=e=>{const act=e.target.closest('[data-act]')?.dataset.act;if(!act)return
+    if(act==='copy')showPicker()
+    if(act==='save'){closeMenu();$('#native-name').value=file.name;$('#native').classList.add('open');$('#native-save').focus()}
+    if(act==='reveal'){closeMenu();toast(`Files opened Rocket's attachments folder with <b>${file.stored}</b> selected`)}
+    if(act==='preview'){closeMenu();status.textContent=`Preview opens in the side panel, as in phase 1.`}}
+  menu.querySelector('.menu-item')?.focus({preventScroll:true})
+}
+function showPicker(){
+  const old=layer.querySelector('.menu'),file=FILES[menuFor.id],picker=document.createElement('div')
+  picker.className='menu picker';picker.setAttribute('role','dialog');picker.setAttribute('aria-label','Copy to chat')
+  picker.innerHTML=`<div class="picker-head"><button class="back" aria-label="Back">${I.back}</button><b>Copy ${esc(file.name)} to…</b></div>
+  <input class="search" placeholder="Search chats" aria-label="Search chats"><div class="rows"></div>
+  <div class="picker-foot">Adds to the chat's draft. Nothing is sent.</div>`
+  const rows=picker.querySelector('.rows')
+  const draw=q=>{q=q.trim().toLowerCase();const match=c=>!q||c.title.toLowerCase().includes(q)
+    const open=CHATS.filter(c=>c.pane&&match(c)),recent=CHATS.filter(c=>!c.pane&&match(c))
+    const row=c=>`<button class="chat-row" data-to="${c.id}"><i class="dot${c.running?'':' idle'}"></i><span>${c.title}</span><small>${c.pane?(c.id===menuFor.where?'This chat':'Pane '+c.pane):c.recent}</small></button>`
+    rows.innerHTML=`<button class="chat-row" data-to="new">${I.plus}<span>New chat</span><small>Opens beside this one</small></button>`
+      +(open.length?`<div class="menu-label">Open</div>${open.map(row).join('')}`:'')+(recent.length?`<div class="menu-label">Recent</div>${recent.map(row).join('')}`:'')
+      +(!open.length&&!recent.length?`<div class="empty-row">No chat matches “${esc(q)}”.</div>`:'')}
+  draw('')
+  picker.querySelector('.search').oninput=e=>draw(e.target.value)
+  picker.querySelector('.back').onclick=()=>{const {id,where}=menuFor;openMenu(id,where)}
+  rows.onclick=e=>{const to=e.target.closest('[data-to]')?.dataset.to;if(!to)return;copyTo(menuFor.id,to,menuFor.where)}
+  const anchor=old?{left:parseFloat(old.style.left),top:parseFloat(old.style.top)}:null
+  old?.remove();layer.append(picker)
+  if(anchor){picker.style.left=Math.min(anchor.left,innerWidth-300)+'px';picker.style.top=anchor.top+'px';const r=picker.getBoundingClientRect();if(r.bottom>innerHeight-8)picker.style.top=Math.max(8,innerHeight-r.height-8)+'px'}
+  picker.querySelector('.search').focus({preventScroll:true})
+}
+function closeMenu(silent){layer.classList.remove('open');layer.replaceChildren();stage.querySelectorAll('.more[aria-expanded=true]').forEach(b=>b.setAttribute('aria-expanded','false'));if(!silent)menuFor=null}
+function copyTo(id,to,from){
+  closeMenu()
+  if(to==='new'){toast(`Opened a new chat beside this one with <b>${FILES[id].name}</b> in its draft`);return}
+  const chat=CHATS.find(c=>c.id===to)
+  if(!chat.pane){toast(`Copied <b>${FILES[id].name}</b> to ${chat.title}'s draft`,true);lastCopy=null;return}
+  const d=drafts[to]
+  if(d.files.includes(id)){toast(`${FILES[id].name} is already in ${chat.title}'s draft`);return}
+  d.files.push(id);d.fresh=id;lastCopy={id,to};draw();toast(`Copied <b>${FILES[id].name}</b> to ${chat.title}`,true)
+}
+function toast(html,undo){const t=stage.querySelector('.toast');t.innerHTML=`<span>${html}</span>${undo?'<button id="undo">Undo</button>':''}`;t.classList.add('open')
+  const u=t.querySelector('#undo');if(u)u.onclick=()=>{const c=lastCopy||{id:'brief',to:'b'};const d=drafts[c.to];if(d){d.files=d.files.filter(f=>f!==c.id);d.fresh=null;draw()};status.textContent='Undone. The draft is as it was.'}
+  clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('open'),mode==='copied'&&undo?60000:6000)}
+stage.addEventListener('click',e=>{
+  const more=e.target.closest('[data-more]');if(more){e.stopPropagation();more.getAttribute('aria-expanded')==='true'?closeMenu():openMenu(more.dataset.more,more.dataset.where);return}
+  const rm=e.target.closest('[data-remove]');if(rm){const d=drafts[rm.dataset.where];d.files=d.files.filter(f=>f!==rm.dataset.remove);d.fresh=null;draw();return}
+  if(e.target.closest('.file-open,.thumb'))status.textContent='Preview opens in the side panel, as in phase 1.'})
+stage.addEventListener('contextmenu',e=>{const a=e.target.closest('[data-drag]');if(!a)return;e.preventDefault();openMenu(a.dataset.drag,a.dataset.where,{x:Math.min(e.clientX,innerWidth-250),y:Math.min(e.clientY,innerHeight-200)})})
+stage.addEventListener('keydown',e=>{const a=e.target.closest('[data-drag]');if(a&&e.shiftKey&&e.key==='F10'){e.preventDefault();openMenu(a.dataset.drag,a.dataset.where)}})
+document.addEventListener('mousedown',e=>{if(layer.classList.contains('open')&&!e.target.closest('.menu,[data-more]'))closeMenu()})
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('#native').classList.contains('open'))$('#native-cancel').click();else if(layer.classList.contains('open'))closeMenu()}})
+$('#native-cancel').onclick=()=>{$('#native').classList.remove('open');status.textContent='Save cancelled. Nothing changed.'}
+$('#native-save').onclick=()=>{$('#native').classList.remove('open');toast(`Saved <b>~/Downloads/${esc($('#native-name').value)}</b>, byte-for-byte the stored original`)}
+// Real drag and drop between the two panes, for any attachment.
+let dragging=null
+stage.addEventListener('dragstart',e=>{const a=e.target.closest('[data-drag]');if(!a)return;dragging={id:a.dataset.drag,from:a.dataset.where};e.dataTransfer.setData('text/plain',FILES[dragging.id].name);e.dataTransfer.effectAllowed='copy'})
+stage.addEventListener('dragover',e=>{const p=e.target.closest('[data-pane]');if(!p||!dragging)return;e.preventDefault();stage.querySelectorAll('.pane').forEach(x=>x.classList.toggle('dropping',x===p));p.querySelector('.drop span').textContent=`Adds ${FILES[dragging.id].name} to this chat's draft`})
+stage.addEventListener('dragleave',e=>{const p=e.target.closest('[data-pane]');if(p&&!p.contains(e.relatedTarget))p.classList.remove('dropping')})
+stage.addEventListener('drop',e=>{const p=e.target.closest('[data-pane]');if(!p||!dragging)return;e.preventDefault();p.classList.remove('dropping');stage.classList.remove('show-ghost');copyTo(dragging.id,p.dataset.pane,dragging.from);dragging=null})
+stage.addEventListener('dragend',()=>{dragging=null;stage.querySelectorAll('.pane').forEach(x=>x.classList.remove('dropping'))})
+document.querySelectorAll('[data-state]').forEach(b=>b.onclick=()=>{mode=b.dataset.state;render()})
+$('#reset').onclick=render;addEventListener('resize',()=>{if(mode==='drag')placeGhost();if(layer.classList.contains('open')&&menuFor)openMenu(menuFor.id,menuFor.where)})
+render()
+</script></html>
