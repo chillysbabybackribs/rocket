@@ -187,7 +187,7 @@ aside b { color: var(--text); font-weight: 500; }
       <dl>
         <dt><kbd>Alt</kbd> <kbd>S</kbd></dt><dd>Start, or stop. Works from anywhere in the browser.</dd>
         <dt><kbd>Space</kbd></dt><dd>Pause or carry on, in place of the usual page down</dd>
-        <dt><kbd>Alt</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Slower or faster: ½× ¾× 1× 1¼× 1½× 2× 3×</dd>
+        <dt><kbd>Alt</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Slower or faster: ½× ¾× 1× 1¼× 1½× 2× 3× 4× 6× 8×</dd>
         <dt><kbd>Esc</kbd></dt><dd>Stop, leaving the page where it is</dd>
       </dl>
     </section>
@@ -201,7 +201,7 @@ aside b { color: var(--text); font-weight: 500; }
     </section>
     <section>
       <h4>Speed</h4>
-      <p>1× is about 30 pixels a second, an unhurried read of an article column. The last speed you chose is used next time, in every tab.</p>
+      <p>1× is about 30 pixels a second, an unhurried read of an article column. The top speed, 8×, is about 240 pixels a second, fast enough to skim a long feed. The last speed you chose is used next time, in every tab.</p>
     </section>
   </aside>
 </main>
@@ -231,7 +231,7 @@ const icons = {
   play: '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5Z"/></svg>',
   again: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
 }
-const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2, 3]
+const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4, 6, 8]
 const label = (s) => ({ 0.5: '½×', 0.75: '¾×', 1.25: '1¼×', 1.5: '1½×' }[s] ?? `${s}×`)
 const BASE = 30 // pixels a second at 1×
 
