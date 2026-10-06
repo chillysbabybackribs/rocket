@@ -66,6 +66,8 @@ export type AppState = {
   /** What the panel beside the chat shows: a file a link opened, or what a turn changed. */
   artifact: ArtifactView | null
   browserOpen: boolean
+  /** Local eval dashboard (Braintrust-style mock UI) beside the chat. */
+  evalsOpen: boolean
   /** Whether the rail stands open at its full width, or is folded to a strip that peeks on hover. */
   railOpen: boolean
   /** Every goal, newest first. A goal's chat is an ordinary chat with the goal beside it. */
@@ -95,6 +97,7 @@ type Prefs = {
   /** chatId → that chat's choice. */
   selections?: Record<string, Selection>
   browserOpen?: boolean
+  evalsOpen?: boolean
   railOpen?: boolean
   goalPaneOpen?: boolean
   goalWidth?: number
@@ -170,6 +173,7 @@ let state: AppState = {
   usage: {},
   models: {},
   browserOpen: prefs.browserOpen === true,
+  evalsOpen: prefs.evalsOpen === true,
   railOpen: prefs.railOpen !== false,
   goals: [],
   goalPaneOpen: prefs.goalPaneOpen !== false,
@@ -675,8 +679,14 @@ export function setRailOpen(railOpen: boolean): void {
 
 export function setBrowserOpen(browserOpen: boolean): void {
   linkRequest++
-  setState({ browserOpen, artifact: null })
-  writePrefs({ browserOpen })
+  const evalsOpen = browserOpen ? false : state.evalsOpen
+  setState({ browserOpen, evalsOpen, artifact: null })
+  writePrefs({ browserOpen, evalsOpen })
+}
+
+export function setEvalsOpen(evalsOpen: boolean): void {
+  setState({ evalsOpen, browserOpen: evalsOpen ? false : state.browserOpen, artifact: null })
+  writePrefs({ evalsOpen, browserOpen: evalsOpen ? false : state.browserOpen })
 }
 
 /** Choose the folder a pane's chat works in, or the folder new chats start in. */

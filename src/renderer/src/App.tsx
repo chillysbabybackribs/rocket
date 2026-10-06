@@ -5,6 +5,7 @@ import { PaneContext, usePane, usePaneChatId, usePaneView } from './pane.ts'
 import { dismissError, focusPane, focusedChatId, setGoalPaneOpen, setGoalWidth, useApp } from './store.ts'
 import { ArtifactPanel } from './components/ArtifactPanel.tsx'
 import { BrowserPanel } from './components/BrowserPanel.tsx'
+import { EvalPanel } from './components/EvalPanel.tsx'
 import { Composer } from './components/Composer.tsx'
 import { GoalStatusIcon } from './components/GoalIcons.tsx'
 import { goalStatusText } from './components/Goals.tsx'
@@ -179,6 +180,7 @@ function ChatCard() {
 export function App() {
   const artifact = useApp((state) => state.artifact)
   const browserOpen = useApp((state) => state.browserOpen)
+  const evalsOpen = useApp((state) => state.evalsOpen)
   const railOpen = useApp((state) => state.railOpen)
   const error = useApp((state) => state.error)
   const newGoal = useApp((state) => state.newGoal !== null)
@@ -189,10 +191,10 @@ export function App() {
     return state.goals.some((goal) => goal.chatId === chatId) ? state.goalPaneOpen : (chatId !== null && state.views[chatId]?.planTurnId != null)
   })
   return (
-    <div className={`app${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}${railOpen ? '' : ' rail-folded'}`}>
+    <div className={`app${browserOpen || evalsOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}${railOpen ? '' : ' rail-folded'}`}>
       <Rail />
       <ChatCard />
-      {artifact ? <ArtifactPanel /> : browserOpen && <BrowserPanel />}
+      {artifact ? <ArtifactPanel /> : evalsOpen ? <EvalPanel /> : browserOpen && <BrowserPanel />}
       {newGoal && <NewGoal />}
       {error && (
         <div className="toast" role="alert">

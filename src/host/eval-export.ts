@@ -119,7 +119,7 @@ export class EvalExport {
   private cellDir: string | null = process.env.ROCKET_EVAL_CELL?.trim() || null
 
   constructor(
-    private readonly dataDir: string,
+    dataDir: string,
     private readonly repoRoot: string,
     private readonly store: () => Store,
     private readonly ledger: () => ToolLedger | undefined

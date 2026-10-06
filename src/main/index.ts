@@ -4,6 +4,7 @@ import {
 import { readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type { BrowserAgentReply, BrowserAgentRequest, BrowserCommand } from '../shared/types.ts'
 import { HOST_PORT_MESSAGE } from '../shared/types.ts'
 import { readChatLink } from './chat-links.ts'
@@ -168,6 +169,10 @@ ipcMain.handle('rocket:pick-folder', async (event, current: string | null) => {
 ipcMain.handle('rocket:chat-link', (event, href: string, cwd: string) => {
   if (event.sender !== window?.webContents) throw new Error('This link cannot be opened from this window.')
   return readChatLink(href, cwd)
+})
+ipcMain.handle('rocket:eval-panel-url', () => {
+  const html = join(app.getAppPath(), 'docs/evals/mock-ui/index.html')
+  return pathToFileURL(html).href
 })
 ipcMain.on('rocket:browser', (event, command: BrowserCommand) => {
   browser?.handle(event.sender, command)

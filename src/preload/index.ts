@@ -33,7 +33,8 @@ const bridge: RocketBridge = {
     onState: (listener) => listen<BrowserState>('rocket:browser-state', listener),
     onSuggestions: (listener) => listen<SuggestionList>('rocket:browser-suggestions', listener),
     onFocusAddress: (listener) => listen<void>('rocket:browser-focus-address', listener)
-  }
+  },
+  evalPanelUrl: () => ipcRenderer.invoke('rocket:eval-panel-url') as Promise<string>
 }
 
 contextBridge.exposeInMainWorld('rocket', bridge)

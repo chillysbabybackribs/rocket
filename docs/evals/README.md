@@ -9,7 +9,9 @@ npm run eval:mock-ui:sync   # optional: pull .artifacts/evals/*/summary.json
 npm run eval:mock-ui        # http://127.0.0.1:8765/
 ```
 
-Open in Rocket: `npm run open -- http://127.0.0.1:8765/` (after starting the server). Layout chips (**List / Grid / Summary / Summary table**), compare checkboxes, and dataset **Input / Expected** columns match the open Braintrust tab pattern.
+**In the app:** click the **flask** icon on the rail (beside the globe). Same UI loads from `docs/evals/mock-ui/index.html` in the side panel.
+
+Standalone server (optional): `npm run eval:mock-ui` → `http://127.0.0.1:8765/`. Layout chips (**List / Grid / Summary / Summary table**), compare checkboxes, and dataset **Input / Expected** columns match Braintrust.
 
 ---
 

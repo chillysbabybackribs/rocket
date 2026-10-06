@@ -486,6 +486,8 @@ export type RocketBridge = {
     /** Main asks for the address field to take focus (Ctrl+L, a new tab). */
     onFocusAddress: (listener: () => void) => () => void
   }
+  /** file: URL of the bundled eval panel (docs/evals/mock-ui). */
+  evalPanelUrl: () => Promise<string>
 }
 
 export const HOST_PORT_MESSAGE = 'rocket:host-port'

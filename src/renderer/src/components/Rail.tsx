@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Globe, PanelLeftClose, PanelLeftOpen, RefreshCw } from 'lucide-react'
+import { FlaskConical, Globe, PanelLeftClose, PanelLeftOpen, RefreshCw } from 'lucide-react'
 import { PROVIDERS, providerLabel, type ProviderId, type UsageSnapshot, type UsageWindow } from '../../../shared/types.ts'
-import { refreshUsage, setBrowserOpen, setRailOpen, useApp } from '../store.ts'
+import { refreshUsage, setBrowserOpen, setEvalsOpen, setRailOpen, useApp } from '../store.ts'
 import { ProviderGlyph } from './glyphs.tsx'
 import { Goals, UNDER_WAY } from './Goals.tsx'
 import { History } from './History.tsx'
@@ -192,7 +192,8 @@ function Traffic() {
 
 /** The notch and the actions: the rail's body, whether it stands in its column or peeks over the chat. */
 function RailBody({ open }: { open: boolean }) {
-  const browserOpen = useApp((state) => state.browserOpen && !state.artifact)
+  const browserOpen = useApp((state) => state.browserOpen && !state.artifact && !state.evalsOpen)
+  const evalsOpen = useApp((state) => state.evalsOpen && !state.artifact)
   return (
     <>
       <div className="rail-middle">
@@ -201,6 +202,16 @@ function RailBody({ open }: { open: boolean }) {
       <div className="rail-actions">
         <Goals />
         <History />
+        <button
+          type="button"
+          className={`rail-button${evalsOpen ? ' is-on' : ''}`}
+          title={evalsOpen ? 'Hide evals' : 'Show evals'}
+          aria-label={evalsOpen ? 'Hide evals' : 'Show evals'}
+          aria-pressed={evalsOpen}
+          onClick={() => setEvalsOpen(!evalsOpen)}
+        >
+          <FlaskConical size={17} />
+        </button>
         <button
           type="button"
           className={`rail-button${browserOpen ? ' is-on' : ''}`}

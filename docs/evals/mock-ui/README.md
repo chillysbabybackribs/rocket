@@ -18,10 +18,7 @@ Braintrust-style **local** panel for Rocket eval artifacts. Component parity wit
 
 **Run**
 
-```bash
-npm run eval:mock-ui:sync
-npm run eval:mock-ui
-# → http://127.0.0.1:8765/
-```
+- **In Rocket:** rail **flask** icon (side panel, same column as the browser).
+- **Browser only:** `npm run eval:mock-ui:sync` then `npm run eval:mock-ui` → http://127.0.0.1:8765/
 
-Link to production UI is in the sidebar footer.
+Link to production Braintrust is in the mock sidebar footer.

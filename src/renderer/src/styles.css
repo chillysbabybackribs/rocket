@@ -1579,6 +1579,12 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 @keyframes address-load { from { width: 4%; } to { width: 90%; } }
 
 .browser-stage { flex: 1; min-height: 0; margin: 0 6px 6px; border-radius: 8px; background: #141518; }
+.eval-panel .eval-bar { justify-content: space-between; }
+.eval-title { font-weight: 600; font-size: 13px; }
+.eval-bar-actions { display: flex; gap: 4px; align-items: center; }
+.eval-stage { padding: 0; margin: 0 6px 6px; overflow: hidden; }
+.eval-frame { width: 100%; height: 100%; border: 0; display: block; background: #09090b; }
+.eval-loading { padding: 24px; color: var(--text-4); margin: 0; }
 
 /* ── Toast ─────────────────────────────────────────────────────────── */
 
