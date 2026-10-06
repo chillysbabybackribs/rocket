@@ -1,0 +1,382 @@
+<!doctype html>
+<!-- Mockup: one toolbar icon that slides a drawer of section names out to the right. Each
+     section can be renamed, reordered, kept in the toolbar, or consolidated into the drawer,
+     from a Customize popover (or right-click on the icon, as a Mac toolbar offers Customize
+     Toolbar…). The first window is live; the ones below are fixed states for review.
+     Follows titlebar-nav-tabs-mac.html for the toolbar, glass and menu styling. Static data. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rocket · Toolbar section drawer (mockup)</title>
+<style>
+:root {
+  color-scheme: dark;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', Inter, sans-serif;
+  --canvas: #08090a; --panel: #0f1011; --bubble: #1c1d20;
+  --composer: #151617; --composer-line: #2f3031;
+  --line: rgba(255,255,255,.07);
+  --text: #f7f8f8; --text-2: #b4b8c0; --text-3: #8a8f98; --text-4: #62666d;
+  --hover: rgba(255,255,255,.06); --accent: #7170ff; --highlight: #5e5ce6;
+  --warn: #f2c94c; --ok: #4cb782;
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,0) 180px);
+  --rail: 68px; --gap: 8px; --toolbar: 48px;
+  --glass: rgba(255,255,255,.055);
+  --glass-edge: inset 0 .5px 0 rgba(255,255,255,.16), inset 0 0 0 .5px rgba(255,255,255,.08), 0 1px 3px rgba(0,0,0,.35);
+  --glass-raised: rgba(255,255,255,.14);
+  /* The ease Apple's sheets and drawers settle with: fast out, long soft landing. */
+  --spring: cubic-bezier(.32,.72,0,1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #050506; color: var(--text); font: 13px/1.45 var(--font); -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; background: none; border: 0; padding: 0; }
+button { cursor: default; }
+svg.i { display: block; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+.page { max-width: 1120px; margin: 0 auto; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 30px; }
+.intro h1 { margin: 0 0 6px; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+.intro p { margin: 0; max-width: 780px; color: var(--text-3); line-height: 1.55; }
+.intro b { color: var(--text-2); font-weight: 600; }
+.cap { margin: 0 0 10px 4px; color: var(--text-3); font-size: 12px; }
+.cap b { color: var(--text); font-weight: 600; margin-right: 6px; }
+.live-tag { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 999px; background: rgba(113,112,255,.18); color: #b9b8ff; font-size: 10.5px; font-weight: 650; letter-spacing: .03em; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+
+.desk {
+  position: relative; padding: 22px; border-radius: 16px;
+  background:
+    radial-gradient(120% 90% at 10% 0%, #1d2350 0%, transparent 55%),
+    radial-gradient(90% 80% at 100% 100%, #3a1c4a 0%, transparent 60%),
+    linear-gradient(160deg, #0d1020, #120c1a);
+}
+
+/* ── Window ─────────────────────────────────────────────── */
+.win {
+  position: relative; height: 360px;
+  display: grid; grid-template-columns: var(--rail) minmax(0, 1fr) minmax(0, 1.1fr);
+  padding: var(--toolbar) var(--gap) var(--gap) 0;
+  background: var(--canvas); border-radius: 16px;
+  box-shadow: 0 0 0 .5px rgba(255,255,255,.14), 0 0 0 1px rgba(0,0,0,.6), 0 30px 80px rgba(0,0,0,.6);
+}
+.win.short { height: var(--toolbar); padding: 0; }
+.win.short > .card { display: none; }
+.lights { position: absolute; top: 18px; left: 16px; display: flex; gap: 8px; z-index: 3; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+.lights i:nth-child(1) { background: #ff5f57; } .lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+
+.toolbar { position: absolute; top: 0; left: var(--rail); right: 0; height: var(--toolbar); display: flex; align-items: center; gap: 10px; padding: 0 10px 0 6px; z-index: 4; }
+.glass { display: flex; align-items: center; height: 32px; padding: 2px; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-edge); }
+.glass:empty { display: none; }
+
+/* The icon that opens the drawer. */
+.toggle { position: relative; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; color: var(--text-2); }
+.toggle:hover { background: var(--hover); color: var(--text); }
+.dock.open .toggle { background: var(--glass-raised); color: var(--text); }
+.toggle svg { transition: transform 380ms var(--spring); }
+.dock.open .toggle svg { transform: rotate(90deg); }
+.toggle .count { position: absolute; top: -4px; right: -7px; transition: opacity 160ms, transform 240ms var(--spring); }
+.dock.open .toggle .count { opacity: 0; transform: scale(.6); }
+
+/* The drawer: its width animates from nothing to its contents, and each name follows a beat later. */
+.drawer { width: 0; overflow: hidden; transition: width 420ms var(--spring); }
+.drawer-inner { display: flex; align-items: center; width: max-content; padding-left: 2px; }
+.drawer .item, .drawer .fade { opacity: 0; transform: translateX(-10px); transition: opacity 200ms, transform 360ms var(--spring); }
+.dock.open .drawer .item, .dock.open .drawer .fade { opacity: 1; transform: none; }
+.static .drawer, .static .drawer .item, .static .drawer .fade, .static .toggle svg, .static .toggle .count { transition: none !important; }
+
+.item { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; color: var(--text-3); font-weight: 500; white-space: nowrap; }
+.item:hover { color: var(--text); background: var(--hover); }
+.item.on { background: var(--glass-raised); color: var(--text); box-shadow: inset 0 .5px 0 rgba(255,255,255,.18), 0 1px 2px rgba(0,0,0,.4); }
+.item .chev { opacity: .55; margin-left: -2px; }
+.item.customize { padding: 0 8px; color: var(--text-4); }
+.vsep { width: .5px; height: 16px; margin: 0 3px; background: rgba(255,255,255,.14); flex: none; }
+.count { min-width: 18px; height: 16px; padding: 0 5px; border-radius: 999px; background: var(--warn); color: #1a1500; font-size: 10.5px; font-weight: 650; line-height: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+
+.title { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; padding-left: 4px; }
+.title strong { font-size: 13px; font-weight: 650; white-space: nowrap; }
+.title span { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+
+/* ── Rail and cards (unchanged from the app) ─────────────── */
+.rail { display: flex; flex-direction: column; justify-content: flex-end; margin: calc(-1 * var(--toolbar)) 0 calc(-1 * var(--gap)); padding-bottom: 12px; }
+.win.short .rail { visibility: hidden; }
+.rb { display: grid; place-items: center; width: 32px; height: 32px; margin: 1px auto; border-radius: 8px; color: var(--text-4); }
+.card { border: 1px solid var(--line); border-radius: 12px; background: var(--sheen), var(--panel); min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+.card + .card { margin-left: var(--gap); }
+.chat { flex: 1; padding: 14px 18px; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; }
+.bubble { align-self: flex-end; max-width: 80%; padding: 7px 11px; background: var(--bubble); border-radius: 10px; font-size: 12.5px; margin: 0; }
+.composer { margin: 0 14px 12px; height: 56px; background: var(--composer); border: 1px solid var(--composer-line); border-radius: 10px; }
+.side-head { display: flex; align-items: center; height: 40px; padding: 0 12px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--text-3); }
+.side-body { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.ph { height: 10px; border-radius: 4px; background: rgba(255,255,255,.05); }
+
+/* ── Customize popover ──────────────────────────────────── */
+.pop {
+  position: absolute; top: 46px; left: 0; z-index: 20; width: 400px;
+  border-radius: 14px; background: rgba(30,30,34,.97);
+  box-shadow: inset 0 0 0 .5px rgba(255,255,255,.14), 0 0 0 .5px rgba(0,0,0,.8), 0 18px 50px rgba(0,0,0,.6);
+  transform-origin: 18px -8px; animation: pop-in 260ms var(--spring);
+}
+@keyframes pop-in { from { opacity: 0; transform: scale(.94); } }
+.pop::before { content: ''; position: absolute; top: -6px; left: 14px; width: 12px; height: 12px; transform: rotate(45deg); background: rgba(30,30,34,.97); box-shadow: -.5px -.5px 0 rgba(255,255,255,.14); }
+.pop-head { padding: 12px 14px 4px; }
+.pop-head strong { display: block; font-size: 13px; font-weight: 650; }
+.pop-head span { font-size: 11.5px; color: var(--text-3); }
+.pop-list { padding: 6px; }
+.prow { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 6px 0 4px; border-radius: 8px; }
+.prow:hover { background: rgba(255,255,255,.035); }
+.prow.dragging { opacity: .4; }
+.prow.drop-above { box-shadow: inset 0 2px 0 var(--highlight); }
+.handle { color: var(--text-4); cursor: grab; display: grid; place-items: center; width: 16px; }
+.prow .ic { color: var(--text-2); }
+.prow input {
+  flex: 1; min-width: 0; height: 24px; padding: 0 7px; border-radius: 6px;
+  background: transparent; box-shadow: inset 0 0 0 .5px transparent; color: var(--text); outline: none;
+}
+.prow input:hover { box-shadow: inset 0 0 0 .5px rgba(255,255,255,.14); }
+.prow input:focus { background: rgba(0,0,0,.3); box-shadow: inset 0 0 0 1px var(--highlight), 0 0 0 3px rgba(94,92,230,.3); }
+.prow .renamed { font-size: 10.5px; color: var(--text-4); white-space: nowrap; }
+.choice { display: inline-flex; padding: 2px; border-radius: 999px; background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.08); flex: none; }
+.choice button { height: 22px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; color: var(--text-3); }
+.choice button.on { background: var(--glass-raised); color: var(--text); box-shadow: inset 0 .5px 0 rgba(255,255,255,.18); }
+.pop-foot { display: flex; align-items: center; gap: 8px; padding: 8px 12px 12px; border-top: .5px solid rgba(255,255,255,.1); margin-top: 2px; }
+.pop-foot .link { color: var(--text-3); font-size: 12px; }
+.pop-foot .link:hover { color: var(--text); }
+.pop-foot .done { margin-left: auto; height: 26px; padding: 0 14px; border-radius: 999px; background: var(--highlight); color: #fff; font-weight: 600; font-size: 12.5px; }
+
+/* Context menu on the icon. */
+.ctx { position: absolute; top: 40px; left: 22px; z-index: 20; width: 210px; padding: 5px; border-radius: 12px; background: rgba(30,30,34,.97); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.14), 0 0 0 .5px rgba(0,0,0,.8), 0 14px 40px rgba(0,0,0,.55); }
+.ctx div { display: flex; align-items: center; gap: 7px; height: 24px; padding: 0 10px 0 8px; border-radius: 6px; }
+.ctx div .ck { width: 12px; }
+.ctx div.hi { background: var(--highlight); color: #fff; }
+.ctx hr { border: 0; height: .5px; margin: 5px 10px; background: rgba(255,255,255,.12); }
+
+.notes { margin: 0; padding-left: 18px; color: var(--text-3); line-height: 1.7; max-width: 880px; }
+.notes b { color: var(--text-2); font-weight: 600; }
+kbd { font: inherit; color: var(--text-3); letter-spacing: .08em; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></symbol>
+  <symbol id="target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></symbol>
+  <symbol id="history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="library" viewBox="0 0 24 24"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></symbol>
+  <symbol id="flask" viewBox="0 0 24 24"><path d="M14 2v6a2 2 0 0 0 .25.96l5.5 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.75-2.96l5.5-10.08A2 2 0 0 0 10 8V2"/><path d="M6.5 15h11"/><path d="M8.5 2h7"/></symbol>
+  <symbol id="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a13 13 0 0 0 0 18 13 13 0 0 0 0-18"/><path d="M3 12h18"/></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+  <symbol id="sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="handle" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+</svg>
+
+<div class="page">
+  <header class="intro">
+    <h1>Section drawer in the toolbar</h1>
+    <p>One icon (<b>Sections</b>) sits after the traffic lights. Clicking it <b>slides the section names out to the
+      right</b>, pushing the title along. Each section can be <b>kept</b> in the toolbar for good,
+      <b>consolidated</b> into the drawer, <b>renamed</b> or <b>reordered</b>, from the Customize popover at the end of
+      the drawer or by right-clicking the icon. When Goals is in the closed drawer, its count rides on the icon.</p>
+  </header>
+
+  <section>
+    <p class="cap"><span class="live-tag">LIVE</span><b>Try it</b>Click the grid icon. Click the sliders at the end of the drawer (or right-click the icon) to customize: rename, drag to reorder, Keep or Consolidate.</p>
+    <div class="desk"><div id="live"></div></div>
+  </section>
+
+  <div style="display:flex;flex-direction:column;gap:22px">
+    <section><p class="cap"><b>A · Closed</b>Everything consolidated: the toolbar is one icon and the title. The badge keeps Goals' count visible.</p><div class="desk"><div id="a"></div></div></section>
+    <section><p class="cap"><b>B · Open</b>Names slide out in order; menus keep their chevron, the open panel its raised fill.</p><div class="desk"><div id="b"></div></div></section>
+  </div>
+
+  <section>
+    <p class="cap"><b>C · Customize</b>Chats renamed to History, Browser and Goals kept, the rest consolidated. Changes show in the toolbar as you make them.</p>
+    <div class="desk"><div id="c"></div></div>
+  </section>
+
+  <div class="grid2">
+    <section><p class="cap"><b>D · After customizing, closed</b>Kept sections sit beside the icon; the drawer holds the rest.</p><div class="desk"><div id="d"></div></div></section>
+    <section><p class="cap"><b>E · Right-click on the icon</b>The Mac toolbar's own route to customizing, plus a quick switch for every section.</p><div class="desk" style="padding-bottom:150px"><div id="e"></div></div></section>
+  </div>
+
+  <ul class="notes">
+    <li><b>Kept</b> sections live outside the drawer, right of the icon, in their own glass group. <b>Consolidated</b> ones only show when the drawer is open. If every section is kept, the icon still opens Customize.</li>
+    <li><b>Renaming only changes the label.</b> The app map, the agent tools and screen-reader names keep the real section names, so a model asked to open "evals" still finds it.</li>
+    <li><b>The drawer stays open until toggled</b>, so a section you use often doesn't need two clicks each time; it closes with <kbd>Esc</kbd> when focus is in it. The choice (open or closed, kept, names, order) is saved per window.</li>
+    <li><b>Motion:</b> the drawer's width and each name ease in with Apple's spring-like curve, names staggered 30ms apart; the grid icon turns a quarter as it opens.</li>
+  </ul>
+</div>
+
+<script>
+const SECTIONS = {
+  goals:   { name: 'Goals',   icon: 'target',  kind: 'menu', badge: 19 },
+  chats:   { name: 'Chats',   icon: 'history', kind: 'menu' },
+  library: { name: 'Library', icon: 'library', kind: 'panel' },
+  evals:   { name: 'Evals',   icon: 'flask',   kind: 'panel' },
+  browser: { name: 'Browser', icon: 'globe',   kind: 'panel' },
+}
+const DEFAULT_ORDER = ['goals', 'chats', 'library', 'evals', 'browser']
+const icon = (id, size = 15) => `<svg class="i" width="${size}" height="${size}"><use href="#${id}"/></svg>`
+
+function freshState(over = {}) {
+  return { order: [...DEFAULT_ORDER], names: {}, kept: new Set(), open: false, active: 'browser', popover: false, ctx: false, ...over }
+}
+
+function itemHtml(s, id, i) {
+  const sec = SECTIONS[id]
+  const label = s.names[id] || sec.name
+  const on = sec.kind === 'panel' && s.active === id ? ' on' : ''
+  const badge = sec.badge ? `<span class="count">${sec.badge}</span>` : ''
+  const chev = sec.kind === 'menu' ? `<svg class="i chev" width="11" height="11"><use href="#chev"/></svg>` : ''
+  return `<button class="item${on}" data-id="${id}" style="transition-delay:${s.open ? i * 30 : 0}ms">${icon(sec.icon)}${label}${badge}${chev}</button>`
+}
+
+function render(root, s, opts = {}) {
+  const tucked = s.order.filter(id => !s.kept.has(id))
+  const kept = s.order.filter(id => s.kept.has(id))
+  const showBadge = tucked.includes('goals')
+  const titleText = opts.title || 'Research task'
+  root.innerHTML = `
+  <div class="win${opts.short ? ' short' : ''}${opts.static ? ' static' : ''}">
+    <div class="lights"><i></i><i></i><i></i></div>
+    <div class="toolbar">
+      <div style="position:relative">
+        <div class="glass dock${s.open ? ' open' : ''}">
+          <button class="toggle" title="Sections" aria-expanded="${s.open}">${icon('grid', 16)}${showBadge ? '<span class="count">19</span>' : ''}</button>
+          <div class="drawer"><div class="drawer-inner">
+            ${tucked.map((id, i) => itemHtml(s, id, i)).join('')}
+            ${tucked.length ? '<span class="vsep fade"></span>' : ''}
+            <button class="item customize" title="Customize Sections…">${icon('sliders', 14)}</button>
+          </div></div>
+        </div>
+        ${s.popover ? popoverHtml(s) : ''}
+        ${s.ctx ? ctxHtml(s) : ''}
+      </div>
+      <div class="glass kept">${kept.map((id, i) => itemHtml(s, id, i)).join('')}</div>
+      <div class="title"><strong>${titleText}</strong><span>Claude · ~/rocketv1</span></div>
+    </div>
+    <aside class="rail">${['target','history','library','flask','globe'].map(n => `<span class="rb">${icon(n, 17)}</span>`).join('')}</aside>
+    <main class="card"><div class="chat"><p class="bubble">Compare Stripe pricing for teams vs enterprise.</p></div><div class="composer"></div></main>
+    <aside class="card side"><div class="side-head">stripe.com/pricing</div><div class="side-body"><div class="ph" style="width:60%"></div><div class="ph" style="width:85%"></div><div class="ph" style="width:40%"></div></div></aside>
+  </div>`
+  const drawer = root.querySelector('.drawer')
+  const inner = root.querySelector('.drawer-inner')
+  const target = s.open ? inner.scrollWidth : 0
+  if (opts.from != null && !opts.static) {
+    drawer.style.width = opts.from + 'px'
+    drawer.getBoundingClientRect()
+  }
+  drawer.style.width = target + 'px'
+}
+
+function popoverHtml(s) {
+  return `<div class="pop" role="dialog" aria-label="Customize Sections">
+    <div class="pop-head"><strong>Customize Sections</strong><span>Rename, drag to reorder, and choose what stays in the toolbar.</span></div>
+    <div class="pop-list">
+      ${s.order.map(id => {
+        const sec = SECTIONS[id]
+        const keep = s.kept.has(id)
+        const renamed = s.names[id] && s.names[id] !== sec.name ? `<span class="renamed">was ${sec.name}</span>` : ''
+        return `<div class="prow" draggable="true" data-id="${id}">
+          <span class="handle">${icon('handle', 14)}</span>
+          <span class="ic">${icon(sec.icon)}</span>
+          <input value="${s.names[id] || sec.name}" aria-label="Name for ${sec.name}" spellcheck="false">
+          ${renamed}
+          <span class="choice"><button data-keep="1" class="${keep ? 'on' : ''}">Keep</button><button data-keep="0" class="${keep ? '' : 'on'}">Consolidate</button></span>
+        </div>`
+      }).join('')}
+    </div>
+    <div class="pop-foot"><button class="link reset">Restore Defaults</button><button class="done">Done</button></div>
+  </div>`
+}
+
+function ctxHtml(s) {
+  return `<div class="ctx" role="menu">
+    ${s.order.map((id, i) => `<div class="${i === 4 ? 'hi' : ''}"><span class="ck">${s.kept.has(id) ? icon('check', 12) : ''}</span>Keep ${s.names[id] || SECTIONS[id].name} in Toolbar</div>`).join('')}
+    <hr>
+    <div><span class="ck"></span>Customize Sections…</div>
+  </div>`
+}
+
+// The live window: every control does what the notes describe.
+function live(root) {
+  let s = freshState()
+  const draw = (from) => render(root, s, { from })
+  draw()
+  root.addEventListener('click', (e) => {
+    const t = e.target.closest('button')
+    if (s.ctx && !e.target.closest('.ctx')) { s.ctx = false; draw(); return }
+    if (!t) return
+    const width = root.querySelector('.drawer').getBoundingClientRect().width
+    if (t.classList.contains('toggle')) { s.open = !s.open; s.popover = false; draw(width); return }
+    if (t.classList.contains('customize')) { s.popover = !s.popover; draw(width); return }
+    if (t.classList.contains('done')) { s.popover = false; draw(width); return }
+    if (t.classList.contains('reset')) { const open = s.open; s = freshState({ open, popover: true }); draw(width); return }
+    if (t.dataset.keep) {
+      const id = t.closest('.prow').dataset.id
+      t.dataset.keep === '1' ? s.kept.add(id) : s.kept.delete(id)
+      draw(width); return
+    }
+    const id = t.dataset.id
+    if (id && SECTIONS[id].kind === 'panel') { s.active = s.active === id ? null : id; draw(width) }
+  })
+  root.addEventListener('contextmenu', (e) => {
+    if (!e.target.closest('.toggle')) return
+    e.preventDefault(); s.ctx = true; s.popover = false
+    draw(root.querySelector('.drawer').getBoundingClientRect().width)
+  })
+  root.addEventListener('click', (e) => {
+    const row = e.target.closest('.ctx div')
+    if (!row) return
+    const text = row.textContent
+    if (text.includes('Customize')) { s.ctx = false; s.popover = true }
+    else {
+      const id = s.order.find(k => text.includes(s.names[k] || SECTIONS[k].name))
+      if (id) s.kept.has(id) ? s.kept.delete(id) : s.kept.add(id)
+      s.ctx = false
+    }
+    draw(root.querySelector('.drawer').getBoundingClientRect().width)
+  }, true)
+  root.addEventListener('input', (e) => {
+    if (e.target.tagName !== 'INPUT') return
+    const id = e.target.closest('.prow').dataset.id
+    s.names[id] = e.target.value.trim() || SECTIONS[id].name
+    // Update the labels without redrawing the popover, so typing keeps focus.
+    root.querySelectorAll(`.item[data-id="${id}"]`).forEach(b => {
+      for (const n of b.childNodes) if (n.nodeType === 3) n.textContent = s.names[id]
+    })
+    const drawer = root.querySelector('.drawer')
+    if (s.open) drawer.style.width = root.querySelector('.drawer-inner').scrollWidth + 'px'
+  })
+  root.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { s.popover = false; s.ctx = false; draw(root.querySelector('.drawer').getBoundingClientRect().width) }
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT') e.target.blur()
+  })
+  let dragging = null
+  root.addEventListener('dragstart', (e) => { const r = e.target.closest('.prow'); if (!r) return; dragging = r.dataset.id; r.classList.add('dragging') })
+  root.addEventListener('dragover', (e) => {
+    const r = e.target.closest('.prow'); if (!r || !dragging) return
+    e.preventDefault()
+    root.querySelectorAll('.drop-above').forEach(x => x.classList.remove('drop-above'))
+    r.classList.add('drop-above')
+  })
+  root.addEventListener('drop', (e) => {
+    const r = e.target.closest('.prow'); if (!r || !dragging) return
+    e.preventDefault()
+    const order = s.order.filter(k => k !== dragging)
+    order.splice(order.indexOf(r.dataset.id), 0, dragging)
+    s.order = order; dragging = null
+    draw(root.querySelector('.drawer').getBoundingClientRect().width)
+  })
+  root.addEventListener('dragend', () => { dragging = null; root.querySelectorAll('.dragging,.drop-above').forEach(x => x.classList.remove('dragging', 'drop-above')) })
+}
+
+live(document.getElementById('live'))
+render(document.getElementById('a'), freshState(), { static: true, short: true })
+render(document.getElementById('b'), freshState({ open: true }), { static: true, short: true })
+const custom = { order: ['goals', 'chats', 'browser', 'library', 'evals'], names: { chats: 'History' }, kept: new Set(['goals', 'browser']) }
+render(document.getElementById('c'), freshState({ ...custom, open: true, popover: true }), { static: true })
+render(document.getElementById('d'), freshState(custom), { static: true, short: true })
+render(document.getElementById('e'), freshState({ ...custom, ctx: true }), { static: true, short: true })
+</script>
+</body>
+</html>
