@@ -1,0 +1,1 @@
+{"id":"matrix-smoke","cwd":"evals/fixtures/minimal-repo","message":"Reply with one sentence confirming you received this eval prompt. Do not edit files.","setup":{"openGoal":false},"matrix":{"include":[{"provider":"claude","model":null},{"provider":"codex","model":null}]},"graders":["turn_completed"],"trials":1}

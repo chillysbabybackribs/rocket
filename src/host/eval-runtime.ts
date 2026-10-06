@@ -14,6 +14,7 @@ import { browserTools } from './tools/browser.ts'
 import { ToolChannel } from './tools/channel.ts'
 import { goalTools } from './tools/goal.ts'
 import { ToolRegistry } from './tools/registry.ts'
+import { evalFixtureAdapters } from './eval-fixture-adapters.ts'
 import { uiTestProfile, UiTestAdapter } from './ui-test.ts'
 import { rocketSourceRoot } from './tools/ui-run.ts'
 
@@ -33,7 +34,8 @@ export async function createEvalRuntime(options: { dataDir?: string; repoRoot?: 
   const dataDir = options.dataDir ?? join(homedir(), '.config', 'rocket')
   const store = new Store(join(dataDir, 'rocket-eval-matrix.db'))
   const turnTiming = new Map<string, TurnTiming>()
-  const testProfile = uiTestProfile()
+  const fixture = process.env.ROCKET_EVAL_FIXTURE === '1'
+  const testProfile = fixture ? null : uiTestProfile()
 
   const emit = (_event: HostEvent): void => {}
   let hub!: Hub
@@ -51,7 +53,9 @@ export async function createEvalRuntime(options: { dataDir?: string; repoRoot?: 
   await tools.start()
 
   const onUsage = (snapshot: UsageSnapshot): void => { hub.noteUsage(snapshot) }
-  const adapters = testProfile
+  const adapters = fixture
+    ? evalFixtureAdapters()
+    : testProfile
     ? {
       codex: new UiTestAdapter('codex', testProfile),
       claude: new UiTestAdapter('claude', testProfile),

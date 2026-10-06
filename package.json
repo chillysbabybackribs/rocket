@@ -20,6 +20,7 @@
     "eval:ui:local": "node scripts/run-ui-eval.mjs",
     "eval:matrix:plan": "node scripts/run-agent-matrix.mjs",
     "eval:matrix:run": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/host/eval-matrix-runner.ts",
+    "eval:matrix:smoke": "node scripts/eval-matrix-smoke.mjs",
     "eval:export-turn": "node --experimental-transform-types --disable-warning=ExperimentalWarning scripts/export-turn.mjs",
     "eval:grade-turn": "node scripts/grade-turn.mjs",
     "eval:mock-ui:sync": "node scripts/sync-eval-mock-data.mjs",

@@ -52,7 +52,11 @@ ROCKET_EVAL_MATRIX_RUN=1 npm run eval:matrix:run -- .artifacts/evals/<timestamp>
 # one cell: ... manifest.json --yes --cell 0
 ```
 
-With `ROCKET_UI_TEST=1` / ui test profile, the runner uses fixture adapters instead of live providers.
+**Smoke (no API):** `npm run eval:matrix:smoke` — fixture adapters (`ROCKET_EVAL_FIXTURE=1`), 2 cells, syncs mock UI.
+
+**Live providers:** omit fixture env; use `--yes` or `ROCKET_EVAL_MATRIX_RUN=1` (usage $).
+
+With `ROCKET_UI_TEST=1` / ui test profile, the runner uses UI-test adapters (requires `check:ui` profile).
 
 Offline export from the profile DB:
 
