@@ -9,8 +9,10 @@ import { toUrl } from './browser-url.ts'
 // BrowserAgentOp) and this does it to a tab through the DevTools protocol, which Electron lets
 // the app speak to its own pages directly: no debugging port, no second browser.
 //
-// A tab is attached to the first time a tool touches it and stays attached, so a tab only the
-// user browses in is never instrumented. Reading and finding run in an isolated world
+// Every tab's debugger is attached by the pane as the tab is made, for the user-agent client-hint
+// override (browser-pane.ts); attaching alone enables nothing a page can see. The domains the
+// tools need are enabled the first time a tool touches a tab and stay on, so a tab only the user
+// browses in is never instrumented. Reading and finding run in an isolated world
 // (browser-page-lib.ts); a model's own JavaScript runs in the page's world; clicks and keys are
 // real input events, which pages cannot tell from the user's.
 
@@ -63,6 +65,8 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 
 export class BrowserAgent {
   private readonly attached = new WeakMap<WebContents, Attached>()
+  /** Tabs whose Network and Page domains this has enabled on the current debugger attachment. */
+  private readonly enabled = new WeakSet<WebContents>()
   /** chat → the tab its model works in. */
   private readonly workTabs = new Map<string, string>()
   /** chat → the pages its running turn has used. */
@@ -299,21 +303,27 @@ export class BrowserAgent {
       contents.setBackgroundThrottling(false)
       attached.awake = true
     }
-    if (state && contents.debugger.isAttached()) {
+    // The pane attaches every tab as it is made (browser-pane.ts), so being attached does not
+    // mean this tab's domains are enabled yet; `enabled` tracks that for the current attachment.
+    if (state && this.enabled.has(contents) && contents.debugger.isAttached()) {
       wake(state)
       return state
     }
-    try {
-      contents.debugger.attach('1.3')
-    } catch (error) {
-      throw new Error(`Tab ${tab.id} cannot be driven right now (${error instanceof Error ? error.message : String(error)}). If its DevTools are open, close them.`)
+    if (!contents.debugger.isAttached()) {
+      try {
+        contents.debugger.attach('1.3')
+      } catch (error) {
+        throw new Error(`Tab ${tab.id} cannot be driven right now (${error instanceof Error ? error.message : String(error)}). If its DevTools are open, close them.`)
+      }
     }
     if (!state) {
       const fresh: Attached = { world: null, requests: [], requestSeq: 0, pageStart: 0, dialogs: [], ready: true, awake: false }
       state = fresh
       this.attached.set(contents, fresh)
       contents.debugger.on('message', (_event, method, params) => this.onProtocol(contents, fresh, method, params as Record<string, unknown>))
-      contents.debugger.on('detach', () => { fresh.world = null })
+      // Opening DevTools detaches the debugger. The pane re-attaches when they close; the domains
+      // this needs come back on the next tool call.
+      contents.debugger.on('detach', () => { fresh.world = null; this.enabled.delete(contents) })
       contents.on('did-navigate', () => { fresh.world = null })
       contents.on('did-start-navigation', (details) => {
         if (!details.isMainFrame || details.isSameDocument) return
@@ -330,6 +340,7 @@ export class BrowserAgent {
     await contents.debugger.sendCommand('Page.enable')
     // A tab working in the background still behaves as the focused page it would be for a person.
     await contents.debugger.sendCommand('Emulation.setFocusEmulationEnabled', { enabled: true })
+    this.enabled.add(contents)
     return state
   }
 

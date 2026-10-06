@@ -17,7 +17,7 @@ type Notice = { id: number; text: string; undo?: () => void }
 let notice: Notice | null = null
 let noticeTimer: ReturnType<typeof setTimeout> | undefined
 const noticeListeners = new Set<() => void>()
-function showNotice(text: string, undo?: () => void): void {
+export function showNotice(text: string, undo?: () => void): void {
   notice = { id: (notice?.id ?? 0) + 1, text, undo }
   clearTimeout(noticeTimer)
   noticeTimer = setTimeout(() => setNotice(null), undo ? 8000 : 5000)

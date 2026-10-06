@@ -21,10 +21,10 @@ function useMenuRequest() {
   }
 }
 
-// Electron's native browser view must hide while the renderer's image dialog is open.
+// Electron's native browser view must hide while a renderer dialog (an image preview, a capture) is open.
 let previewOpen = false
 const previewListeners = new Set<() => void>()
-function setPreviewOpen(open: boolean): void {
+export function setPreviewOpen(open: boolean): void {
   previewOpen = open
   for (const notify of previewListeners) notify()
 }

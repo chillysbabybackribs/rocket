@@ -1,7 +1,7 @@
 import {
   app, clipboard, dialog, Menu, session, WebContentsView,
   type BrowserWindow, type ContextMenuParams, type Event, type Input, type MenuItemConstructorOptions,
-  type Rectangle, type WebContents
+  type Rectangle, type Session, type WebContents
 } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -10,7 +10,8 @@ import type { AgentTab, Bounds, BrowserCommand, BrowserState, BrowserTab } from 
 import { detectCookieSources, importCookies, type CookieSource } from './cookie-import.ts'
 import { Suggestions } from './browser-suggest.ts'
 import {
-  ACCEPT_LANGUAGES, BROWSER_PARTITION, conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, PAGE_BACKGROUND, plainUserAgent, reveal, toUrl
+  ACCEPT_LANGUAGES, BROWSER_PARTITION, clientHintHeaders, conceal, isBlankTabUrl, isNewTabUrl, NEW_TAB_URL, PAGE_BACKGROUND, parseAcceptCh,
+  plainUserAgent, reveal, toUrl, userAgentMetadata
 } from './browser-url.ts'
 
 // The embedded browser: a strip of tabs, each a WebContentsView laid over the region of the
@@ -69,6 +70,7 @@ export class BrowserPane {
     // Set before any tab exists: a session's user agent only reaches pages made after it.
     const pages = session.fromPartition(PARTITION)
     pages.setUserAgent(plainUserAgent(pages.getUserAgent(), app.name), ACCEPT_LANGUAGES)
+    this.sendClientHints(pages)
     this.suggestions = new Suggestions(window)
     window.on('resize', () => {
       for (const tab of this.tabs) {
@@ -304,6 +306,59 @@ export class BrowserPane {
     else conceal(this.window, view)
   }
 
+  // The constructor gives the session Chrome's plain user agent, which reaches the User-Agent
+  // header and navigator.userAgent. navigator.userAgentData, though, is filled from metadata the
+  // public API cannot set, so a page saw a browser claiming Chrome whose page API said plain
+  // Chromium: one of the inconsistencies bot checks such as Cloudflare's challenge key on. The
+  // DevTools protocol can set that metadata, per page, for as long as it is attached; attaching
+  // alone enables no domain and is not visible to the page. Opening DevTools detaches it, so the
+  // override is put back when they close. It changes nothing on the wire: Electron sends no
+  // client-hint headers through any path, so sendClientHints adds those. Accept-Language is left
+  // to the session, whose value already comes out as Chrome's ("en-US,en;q=0.9").
+  private presentAsChrome(contents: WebContents): void {
+    const userAgent = session.fromPartition(PARTITION).getUserAgent()
+    const metadata = userAgentMetadata(userAgent)
+    if (!metadata) return
+    const apply = async (): Promise<void> => {
+      if (contents.isDestroyed() || contents.isDevToolsOpened()) return
+      try {
+        if (!contents.debugger.isAttached()) contents.debugger.attach('1.3')
+        await contents.debugger.sendCommand('Network.setUserAgentOverride', { userAgent, userAgentMetadata: metadata })
+      } catch {
+        // Without the override the page still works; it just sends no client hints, as before.
+      }
+    }
+    void apply()
+    contents.on('devtools-closed', () => void apply())
+  }
+
+  // Chromium adds Sec-CH-UA headers only through a client-hints delegate, and Electron has none
+  // (ElectronBrowserContext::GetClientHintsControllerDelegate returns null, Electron 44), so a
+  // page here got none at all. These are the headers a real Chrome of this version sends, from the
+  // same metadata presentAsChrome gives navigator.userAgentData: the three low-entropy hints on
+  // every HTTPS request, and the high-entropy ones to an origin that asked for them with Accept-CH,
+  // remembered for the run as Chrome remembers them. A Critical-CH restart is not emulated: such
+  // an origin gets its extra hints from its second request on.
+  private sendClientHints(pages: Session): void {
+    const metadata = userAgentMetadata(pages.getUserAgent())
+    if (!metadata) return
+    const askedFor = new Map<string, Set<string>>()
+    pages.webRequest.onBeforeSendHeaders({ urls: ['https://*/*'] }, (details, done) => {
+      const hints = clientHintHeaders(metadata, askedFor.get(origin(details.url)) ?? [])
+      done({ requestHeaders: { ...details.requestHeaders, ...hints } })
+    })
+    pages.webRequest.onHeadersReceived({ urls: ['https://*/*'] }, (details, done) => {
+      const accept = Object.entries(details.responseHeaders ?? {}).find(([name]) => name.toLowerCase() === 'accept-ch')?.[1]
+      if (accept) {
+        const key = origin(details.url)
+        const wanted = askedFor.get(key) ?? new Set<string>()
+        for (const name of parseAcceptCh(accept)) wanted.add(name)
+        askedFor.set(key, wanted)
+      }
+      done({})
+    })
+  }
+
   private load(tab: Tab): WebContentsView {
     const view = new WebContentsView({
       webPreferences: { partition: PARTITION, sandbox: true, contextIsolation: true, nodeIntegration: false }
@@ -331,6 +386,7 @@ export class BrowserPane {
     conceal(this.window, view)
 
     const contents = view.webContents
+    this.presentAsChrome(contents)
     const history = this.suggestions.history
     const changed = (): void => {
       tab.url = contents.getURL() || tab.url

@@ -25,15 +25,20 @@ Sec-Fetch-Dest: document      Sec-Fetch-Mode: navigate      Sec-Fetch-Site: none
 (no Sec-CH-UA, no Sec-CH-UA-Mobile, no Sec-CH-UA-Platform)
 ```
 
-A real Chrome 152 on Linux always sends, on every request:
+A real Chrome 152 on Linux always sends, on every request (brand text, GREASE version and order
+all follow from the major version, per Chromium's `user_agent_utils.cc`):
 
 ```
-Sec-CH-UA: "Chromium";v="152", "Google Chrome";v="152", "Not?A_Brand";v="99"
+Sec-CH-UA: "Chromium";v="152", "Not?A_Brand";v="24", "Google Chrome";v="152"
 Sec-CH-UA-Mobile: ?0
 Sec-CH-UA-Platform: "Linux"
 ```
 
-And in the page, `navigator.userAgentData` is a populated object. Here it is `null`.
+And in the page, `navigator.userAgentData.brands` lists Chrome's three brands. Here it lists two,
+Chromium's own default (`Not?A_Brand`, `Chromium`), with no `Google Chrome`. (An earlier reading of
+`null` was taken on `about:blank`, which is not a secure context; on a real page the object exists.)
+So three things disagree: the UA string says Chrome, the page API says plain Chromium, and the
+headers say nothing at all.
 
 **Cause.** `src/main/browser-pane.ts` sets a cleaned user-agent string:
 
@@ -42,43 +47,43 @@ pages.setUserAgent(plainUserAgent(pages.getUserAgent(), app.name), ACCEPT_LANGUA
 ```
 
 `plainUserAgent` strips the `Rocket/…` and `Electron/…` tokens so the UA string reads as plain
-Chrome. That part is correct and worth keeping. The problem is that Chromium's
-`setUserAgent()` overrides **only the UA string** and leaves the UA-Client-Hints metadata
-(`userAgentMetadata`) empty. So the browser advertises "Chrome/152" in the UA but emits no client
-hints and exposes no `navigator.userAgentData`. A UA that claims Chrome while sending no client
-hints is a trivially-detectable inconsistency, and modern Cloudflare (and most managed challenges)
-key on exactly this.
+Chrome. That part is correct and worth keeping. The missing headers have a different cause,
+verified in Electron's source: `ElectronBrowserContext::GetClientHintsControllerDelegate()` returns
+`nullptr` (branch `44-x-y`), and Chromium only adds `Sec-CH-UA*` headers through that delegate. So
+no Electron app sends client hints, whatever `setUserAgent` or the metadata says. Meanwhile the
+page-side `navigator.userAgentData` is filled from Chromium's build metadata, which for a
+Chromium-branded build is the two-brand list. A UA that claims Chrome while sending no client hints
+is a trivially-detectable inconsistency, and modern Cloudflare (and most managed challenges) key on
+exactly this.
 
-**Fix.** Set the UA string and its client-hint metadata together, so they agree. Chromium only
-exposes this through CDP `Network.setUserAgentOverride` with a `userAgentMetadata` object; the
-session-level `setUserAgent` has no metadata parameter. The app already drives tabs over the
-DevTools protocol (`src/main/browser-agent.ts`), so the plumbing exists. Per tab, after the view is
-created:
+**Fix (implemented).** Make the UA string, the page API and the headers agree, from one piece of
+metadata. Two layers are needed, because the DevTools protocol fixes only the page side: tested
+live, `Network.setUserAgentOverride` with `userAgentMetadata` changes `navigator.userAgentData` to
+the Chrome brand list (and holds across a cross-site navigation), but with no delegate Chromium
+still emits no headers. So:
 
 ```ts
+// 1. Page side, per tab as it is made (browser-pane.ts, presentAsChrome). The debugger stays
+//    attached; opening DevTools detaches it and the override is put back when they close.
 await contents.debugger.sendCommand('Network.setUserAgentOverride', {
-  userAgent: plainUserAgent(session.getUserAgent(), app.name),
-  acceptLanguage: ACCEPT_LANGUAGES,
-  userAgentMetadata: {
-    brands: [
-      { brand: 'Chromium', version: major },
-      { brand: 'Google Chrome', version: major },
-      { brand: 'Not?A_Brand', version: '99' }
-    ],
-    fullVersionList: [
-      { brand: 'Chromium', version: full },
-      { brand: 'Google Chrome', version: full },
-      { brand: 'Not?A_Brand', version: '99.0.0.0' }
-    ],
-    platform: 'Linux', platformVersion: '6.0.0',
-    architecture: 'x86', bitness: '64',
-    model: '', mobile: false, wow64: false
-  }
+  userAgent,                                   // the session's plain Chrome UA, unchanged
+  userAgentMetadata: userAgentMetadata(userAgent)   // browser-url.ts
 })
+// 2. Header side, once per session (browser-pane.ts, sendClientHints): webRequest adds
+//    clientHintHeaders(metadata, hintsAskedFor(origin)) to every HTTPS request, where the
+//    high-entropy set per origin is learned from Accept-CH response headers.
 ```
 
-`major`/`full` must be **derived from the real Chrome version in the UA string** (not hardcoded),
-so they stay true across Electron upgrades — the same discipline `plainUserAgent` already follows.
+Verified by echo: the server then receives `Sec-CH-UA`, `Sec-CH-UA-Mobile` and `Sec-CH-UA-Platform`
+on both the navigation and a subresource `fetch`. Not emulated: a `Critical-CH` restart, so an
+origin that insists on high-entropy hints gets them from its second request on.
+
+`userAgentMetadata()` builds the metadata **from the real Chrome version in the UA string**, with
+Chrome's own algorithm for the GREASE brand and the brand order (both seeded by the major
+version), so it stays true across Electron upgrades — the same discipline `plainUserAgent` already
+follows. Two details verified against Chromium source rather than assumed: on Linux Chrome's
+`platformVersion` is the **empty string** (not a kernel version), and for Chrome 152 the GREASE
+brand is `Not?A_Brand` v**24**, placed second.
 Note CDP overrides are per-WebContents and must be applied to each tab (and re-applied after a
 cross-process navigation), unlike the one-shot session call today.
 
@@ -122,8 +127,9 @@ result that desyncs them.
 
 ## Recommended order
 
-1. **Client hints via CDP `setUserAgentOverride`** — the only change likely to clear the Cloudflare
-   challenge. Do this first and re-test `openai.com`.
+1. **Client hints** (done): CDP `setUserAgentOverride` for the page API plus `webRequest` header
+   injection, both from `userAgentMetadata`. The one change likely to clear the Cloudflare
+   challenge; re-test `openai.com` after a restart.
 2. `window.chrome` shim — if realism still falls short after (1).
 3. Normalize `navigator.languages`; check the notification-permission desync.
 

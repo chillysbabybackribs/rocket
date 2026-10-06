@@ -219,6 +219,21 @@ user agent is Chrome's own (`plainUserAgent` in `src/main/browser-url.ts`, keepi
 version), and main finds a free loopback port itself and passes it by number. The debugging port
 is still only on loopback and still read from `DevToolsActivePort` by the live UI connection.
 
+Client hints are the third tell. Electron has no client-hints delegate
+(`ElectronBrowserContext::GetClientHintsControllerDelegate` returns null, Electron 44), so Chromium
+never sends the `Sec-CH-UA` headers a real Chrome puts on every secure request, and
+`navigator.userAgentData` carries a Chromium-only brand list; against a user agent that says Chrome,
+both are inconsistencies a managed challenge (Cloudflare's "Just a moment…" on openai.com, for one)
+picks up. `userAgentMetadata` (`browser-url.ts`) builds the metadata Chrome itself would send for
+the bundled Chrome version, with Chrome's own algorithm for the GREASE brand and the brand order.
+It reaches pages two ways, from the same metadata so they agree: the pane attaches each tab's
+debugger as the tab is made and sets it with `Network.setUserAgentOverride`, which is what
+`navigator.userAgentData` reads (opening DevTools detaches it; it is put back when they close); and
+the session's `webRequest` adds the headers, the three low-entropy hints on every HTTPS request and
+the high-entropy ones for an origin that asked with `Accept-CH`. `Critical-CH` restarts are not
+emulated: such an origin gets its extra hints from the second request on. The fingerprint behind
+this is in `docs/browser-realism-audit.md`.
+
 Background tabs are hidden with `setVisible(false)`, so Chromium stops drawing them.
 `ROCKET_BROWSER_HIDE=park npm run dev` moves them off screen instead, the older way, in case a
 tab ever comes back blank; see the note in `src/main/browser-url.ts`.

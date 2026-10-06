@@ -104,9 +104,11 @@ function looksLikeImage(file: File, bytes: Uint8Array): boolean {
 
 /** Uploads are serialized per draft so a tab switch cannot redirect an in-flight import. */
 const uploads = new Map<string, Promise<void>>()
-export function addDraftFiles(key: string, files: File[]): void {
-  if (draftOf(key).sending) return
+/** Resolves with what was added, so a caller can offer to take it back out. */
+export function addDraftFiles(key: string, files: File[]): Promise<Attachment[]> {
+  if (draftOf(key).sending) return Promise.resolve([])
   updateDraft(key, { pending: draftOf(key).pending + files.length, error: null })
+  const added: Attachment[] = []
   const work = (uploads.get(key) ?? Promise.resolve()).then(async () => {
     for (const file of files) {
       try {
@@ -118,7 +120,8 @@ export function addDraftFiles(key: string, files: File[]): void {
         const image = looksLikeImage(file, bytes)
         const limit = overLimit(current.attachments, { size: file.size, file: !image })
         if (limit) throw new Error(limit)
-        addExistingAttachment(key, image ? await importImage(file, bytes) : await call('attachment.importFile', { name: file.name || 'Pasted text.txt', bytes }))
+        const attachment = image ? await importImage(file, bytes) : await call('attachment.importFile', { name: file.name || 'Pasted text.txt', bytes })
+        if (addExistingAttachment(key, attachment)) added.push(attachment)
       } catch (error) {
         updateDraft(key, { error: error instanceof Error ? error.message : 'Could not attach this file. Try again.' })
       } finally {
@@ -128,4 +131,5 @@ export function addDraftFiles(key: string, files: File[]): void {
   })
   uploads.set(key, work)
   void work.finally(() => { if (uploads.get(key) === work) uploads.delete(key) })
+  return work.then(() => added)
 }
