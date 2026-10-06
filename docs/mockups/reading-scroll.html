@@ -220,11 +220,12 @@ aside b { color: var(--text); font-weight: 500; }
         <dt><kbd>Space</kbd></dt><dd>Pause or carry on, in place of the usual page down</dd>
         <dt><kbd>Alt</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Slower or faster, about a tenth at a time</dd>
         <dt><kbd>Esc</kbd></dt><dd>Stop, leaving the page where it is</dd>
+        <dt><kbd>↑</kbd> <kbd>↓</kbd> <kbd>PgUp</kbd> <kbd>PgDn</kbd></dt><dd>Move as usual; reading carries on from there</dd>
       </dl>
     </section>
     <section>
       <h4>What stops or pauses it</h4>
-      <p><b>The wheel or trackpad</b> moves you, and reading carries on from there, so you can skip ahead or go back without stopping.</p>
+      <p><b>Your own scrolling never stops it.</b> The wheel, the trackpad, the scrollbar and the arrow, Page Up/Down, Home and End keys all move the page as usual, so you can flick back to reread or jump ahead. Reading holds while you scroll and carries on from where you let go, about half a second later. Scrolling back up from the end starts it reading again.</p>
       <p><b>Typing in a field</b> or <b>dragging to select text</b> pauses it. Pressing Space or play carries on.</p>
       <p><b>The bottom of the page</b> pauses it and says so. On pages that load more as you go, like Reddit or X, it waits for the new posts and keeps going.</p>
       <p><b>Leaving the page</b>, through a link or back, stops it. <b>Switching tabs</b> pauses it, and each tab keeps its own state.</p>
@@ -310,10 +311,21 @@ function render() {
   document.getElementById('live-state').innerHTML = state === 'rest' ? 'At rest' : `<b>${words[state]}</b> · ${label(speed)} · ${Math.round(progress() * 100)}% down`
 }
 
+// While you scroll yourself, reading holds still so the two never fight: setting scrollTop every
+// frame would cut a smooth wheel scroll short. It picks up from wherever you stopped, a moment
+// after your last wheel tick, key or scrollbar drag. Scrolling back up from the end reads on.
+let heldUntil = 0, dragging = false
+const held = (now) => dragging || now < heldUntil
+function hold() {
+  heldUntil = performance.now() + 450
+  carry = 0
+  if (state === 'end') state = 'running'
+}
+
 // scrollTop rounds to whole pixels, so slow speeds keep the fraction and add it next frame.
 function tick(now) {
-  if (state === 'running') {
-    const dt = last ? (now - last) / 1000 : 0
+  if (state === 'running' && !held(now)) {
+    const dt = last ? Math.min(0.1, (now - last) / 1000) : 0
     carry += BASE * speed * dt
     const whole = Math.floor(carry)
     if (whole) { page.scrollTop += whole; carry -= whole }
@@ -358,8 +370,19 @@ addEventListener('keydown', (e) => {
   else if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); setSpeed(speed / 1.1) }
   else if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); setSpeed(speed * 1.1) }
 })
-// Dragging to select pauses; the wheel just moves you and reading carries on.
-page.addEventListener('mousedown', () => { if (state === 'running') set('paused') })
+// Your own scrolling: the wheel, the scroll keys and the scrollbar move the page and reading
+// carries on from there. Dragging in the text to select it pauses instead.
+page.addEventListener('wheel', () => { if (state !== 'rest') hold() }, { passive: true })
+addEventListener('keydown', (e) => {
+  if (state === 'rest' || e.altKey) return
+  if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)) hold()
+})
+page.addEventListener('mousedown', (e) => {
+  if (state === 'rest') return
+  if (e.offsetX >= page.clientWidth) { dragging = true; hold(); return }
+  if (state === 'running') set('paused')
+})
+addEventListener('mouseup', () => { if (dragging) { dragging = false; hold() } })
 </script>
 </body>
 </html>
