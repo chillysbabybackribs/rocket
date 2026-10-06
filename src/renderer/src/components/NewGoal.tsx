@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Folder } from 'lucide-react'
 import { providerLabel } from '../../../shared/types.ts'
-import { closeNewGoal, draftGoal, steerGoal, useApp } from '../store.ts'
+import { closeNewGoal, cwdOf, draftGoal, paneAt, steerGoal, useApp } from '../store.ts'
 import { GoalBrief } from './GoalBrief.tsx'
 import { GoalStatusIcon } from './GoalIcons.tsx'
 
@@ -26,9 +26,9 @@ function shortPath(path: string): string {
 export function NewGoal() {
   const goalId = useApp((state) => state.newGoal?.goalId ?? null)
   const goal = useApp((state) => state.goals.find((entry) => entry.id === goalId) ?? null)
-  // A goal starts where the user is working: the open chat's folder, or the one new chats start in.
-  const defaultCwd = useApp((state) => state.chats.find((chat) => chat.id === state.activeChatId)?.cwd ?? state.defaultCwd)
-  const provider = useApp((state) => state.provider)
+  // A goal starts where the user is working: the focused pane's folder, or the one new chats start in.
+  const defaultCwd = useApp((state) => cwdOf(state, state.focused))
+  const provider = useApp((state) => paneAt(state, state.focused).provider)
   const [text, setText] = useState('')
   const [cwd, setCwd] = useState(defaultCwd)
   const [busy, setBusy] = useState(false)

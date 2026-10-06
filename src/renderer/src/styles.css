@@ -490,6 +490,27 @@ button {
 .gp-footnote svg { flex: none; margin-top: 2px; }
 .goal-pane .brief-section:first-of-type { margin-top: 0; }
 
+/* The plan drawer: the goal pane with nothing but the hide arrow in its bar, the task as the
+   title and the plan's lines. The same lines make "This round's plan" in a goal's pane. Done
+   lines dim behind a tick, the line under way carries the accent and a pulse, the rest are
+   hollow boxes. */
+.gp-bar.is-bare { height: 36px; border-bottom: 0; }
+.plan-drawer .gp-scroll { padding-top: 4px; }
+.gp-count.is-lead { margin-left: 0; }
+.plan-lines { margin-top: 2px; }
+.plan-box {
+  flex: none; display: grid; place-items: center; width: 14px; height: 14px; margin-top: 2.5px;
+  border-radius: 4px; border: 1px solid var(--line-focus);
+}
+.gp-line.is-done .plan-box { border-color: transparent; background: rgba(255, 255, 255, 0.06); }
+.gp-line.is-done .plan-box::after {
+  content: ''; width: 7px; height: 4px; margin-top: -2px; border: solid var(--text-3); border-width: 0 0 1.5px 1.5px; transform: rotate(-45deg);
+}
+.gp-line.is-done .gp-line-text { color: var(--text-4); }
+.gp-line.is-now .plan-box { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(113, 112, 255, 0.16); }
+.gp-line.is-now .plan-box::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s infinite; }
+.gp-line.is-now .gp-line-text { font-weight: 510; }
+
 /* The goal's chip over the chat while the pane is hidden. */
 .goal-chip-toggle {
   display: inline-flex; align-items: center; gap: 7px; max-width: 100%; height: 28px; padding: 0 10px;
@@ -770,6 +791,9 @@ a.gd-source:hover { color: var(--text); text-decoration: underline; }
 .turn-head-toggle { display: inline-flex; align-items: center; gap: 6px; color: inherit; font: inherit; }
 .turn-head-time { margin-left: auto; }
 .turn-head-toggle:hover > span:not(.shimmer) { color: var(--text-2); }
+/* "Planning · 2 of 5": the head line as the plan's switch. Open, it reads a shade brighter. */
+.plan-toggle.is-open > span:not(.shimmer) { color: var(--text-2); }
+.plan-toggle:hover > span:not(.shimmer) { color: var(--text); }
 
 /* Work between replies. While it happens: one borderless line that is replaced by each new tool
    call, directly under the reply text it follows. Afterwards: one quiet summary that opens the

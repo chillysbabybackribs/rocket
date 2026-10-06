@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
-import { closeArtifact, undoTurn, useApp } from '../store.ts'
+import { closeArtifact, undoTurn, useApp, viewOf } from '../store.ts'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { parsePatch } from '../../../shared/patch.ts'
 import { ChangesView, Counts } from './ChangesView.tsx'
@@ -22,7 +22,7 @@ function UndoControl({ undo, undone, running, asking, onAsk }: { undo: { offered
 }
 
 /** One question, with the files named, and nothing happens until Undo. */
-function UndoConfirm({ turnId, paths, onDone }: { turnId: string; paths: string[]; onDone: () => void }) {
+function UndoConfirm({ chatId, turnId, paths, onDone }: { chatId: string; turnId: string; paths: string[]; onDone: () => void }) {
   const [busy, setBusy] = useState(false)
   const named = paths.length <= 3 ? paths : [...paths.slice(0, 2), `${paths.length - 2} more files`]
   const list = named.length === 1 ? named[0] : `${named.slice(0, -1).join(', ')} and ${named.at(-1)}`
@@ -31,7 +31,7 @@ function UndoConfirm({ turnId, paths, onDone }: { turnId: string; paths: string[
       <span>Put <b>{list}</b> back as they were before this turn? The turn's reply and steps stay in the chat.</span>
       <span className="undo-actions">
         <button type="button" className="gp-button" disabled={busy} onClick={onDone}>Keep</button>
-        <button type="button" className="gp-button is-danger" disabled={busy} onClick={async () => { setBusy(true); await undoTurn(turnId); setBusy(false); onDone() }}>Undo</button>
+        <button type="button" className="gp-button is-danger" disabled={busy} onClick={async () => { setBusy(true); await undoTurn(chatId, turnId); setBusy(false); onDone() }}>Undo</button>
       </span>
     </div>
   )
@@ -39,7 +39,7 @@ function UndoConfirm({ turnId, paths, onDone }: { turnId: string; paths: string[
 
 export function ArtifactPanel() {
   const artifact = useApp((state) => state.artifact)
-  const turn = useApp((state) => (artifact?.kind === 'changes' ? state.turns.find((entry) => entry.id === artifact.turnId) ?? null : null))
+  const turn = useApp((state) => (artifact?.kind === 'changes' ? viewOf(state, artifact.chatId).turns.find((entry) => entry.id === artifact.turnId) ?? null : null))
   const running = useApp((state) => (artifact?.kind === 'changes' ? state.running.has(artifact.chatId) : false))
   const selected = useRef<HTMLSpanElement>(null)
   const [asking, setAsking] = useState(false)
@@ -62,7 +62,7 @@ export function ArtifactPanel() {
             <button type="button" className="icon-button" aria-label="Close artifact" onClick={closeArtifact}><X size={15} /></button>
           </span>
         </header>
-        {asking && !undone && <UndoConfirm turnId={artifact.turnId} paths={paths} onDone={() => setAsking(false)} />}
+        {asking && !undone && <UndoConfirm chatId={artifact.chatId} turnId={artifact.turnId} paths={paths} onDone={() => setAsking(false)} />}
         {undone && <p className="undo-strip">These changes were undone. The diff is kept for the record; the files are as they were before the turn.</p>}
         <ChangesView patch={artifact.patch} />
       </section>

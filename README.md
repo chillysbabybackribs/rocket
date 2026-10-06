@@ -139,6 +139,12 @@ loaded when its document is ready, not when its last ad is. While a turn uses a 
 at full speed even when concealed; when the turn ends it goes back to being an ordinary background
 tab, and a deleted chat's own tab is closed.
 
+Rocket's Codex process disables the bundled `unified-computer-use`, `browser` and `chrome`
+plugins through process-local configuration overrides, so `cua_repl` and the related browser
+skills and hooks do not compete with Rocket's browser tools. The overrides apply to new and
+resumed chats when that process starts; restart Rocket after updating to apply them. Native web
+search and other plugins retain their configured settings, as do Codex sessions outside Rocket.
+
 Besides the browser tools there is `remember` (see Workspace and memory), `ask_user` (below),
 `goal_report` (see Goals) and, with `ROCKET_SELF_CHECK=1`, the three self-check tools. Every
 tool's schema is in every session's prompt, so what a model should simply know goes ahead of the
@@ -162,6 +168,24 @@ knows what the user has not yet decided.
 Cursor has blocking questions and plan approvals of its own over ACP (`cursor/ask_question`,
 `cursor/create_plan`). Nobody would answer them, so its adapter skips the question with a
 pointer to `ask_user` and accepts the plan, as an unattended session would.
+
+### Plans
+
+The plan a model keeps while it works is shown beside the chat, not in it. Each adapter turns
+its provider's own list into one `plan` item per turn (`<turnId>:plan`, `PlanStep[]` with
+`todo` / `doing` / `done`), replaced whole on every update: Claude Code's `TodoWrite` calls, which
+no longer appear as tool rows; Codex's `turn/plan/updated` notifications; the ACP `plan` session
+update from Cursor. The turn's head line, which reads "Thinking" while it works, reads
+`Planning · 2 of 5` instead, the count moving as steps finish, and `Planned · 5 of 5` once the
+turn is over. The line opens and closes the plan drawer (`PlanDrawer.tsx`): the goal pane's
+layout with only a hide arrow for chrome, the request as its title and the plan's lines under a
+count, done lines ticked and dim, the one under way marked with the accent. The drawer opens by
+itself on the first plan of a running turn; closing it is remembered per chat (`planClosed` in
+the renderer's preferences), after which only the head line opens it. Nothing else is added to the
+transcript, and the handoff does not carry the plan: the reply says what was done. In a goal's
+chat there is no drawer; the goal pane gains a "This round's plan" section under the checklist,
+showing the latest work turn's plan in the same style. The agreed states are in
+`docs/mockups/plan.html`.
 
 ### Workspace and memory
 

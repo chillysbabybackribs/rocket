@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowUp, ChevronRight, Info, Pause, Play, PanelRightClose, Square } from 'lucide-react'
-import type { Goal, GoalAgent, GoalRound } from '../../../shared/types.ts'
-import { agentLabel, pauseGoal, resumeGoal, setGoalPaneOpen, steerGoal, stopGoal } from '../store.ts'
+import { planItemId, type Goal, type GoalAgent, type GoalRound } from '../../../shared/types.ts'
+import { agentLabel, pauseGoal, resumeGoal, setGoalPaneOpen, steerGoal, stopGoal, useApp, useItem } from '../store.ts'
 import { GoalBrief } from './GoalBrief.tsx'
 import { GoalDesignView } from './GoalDesign.tsx'
 import { GoalStatusIcon, LineIcon, ProgressRing } from './GoalIcons.tsx'
+import { PlanLines } from './PlanDrawer.tsx'
 import { goalStatusText } from './Goals.tsx'
 import { ProviderGlyph } from './glyphs.tsx'
 import { Tabs } from './Tabs.tsx'
@@ -145,6 +146,22 @@ function RoundEvents({ goal, round, now }: { goal: Goal; round: GoalRound; now: 
   )
 }
 
+/**
+ * The plan the worker keeps in the round under way, in the same list style as the checklist. A
+ * goal's chat has no plan drawer of its own; this is where its plan shows. Once the round has
+ * ended the section stays until the next work turn begins.
+ */
+function RoundPlan({ goal }: { goal: Goal }) {
+  const workTurnId = useApp((state) => state.turns.findLast((turn) => turn.goalRole === 'work')?.id ?? null)
+  const plan = useItem(workTurnId ? planItemId(workTurnId) : '')
+  if (plan?.type !== 'plan' || goal.status === 'done' || goal.status === 'stopped') return null
+  return (
+    <section className="gp-section gp-round-plan">
+      <PlanLines steps={plan.steps} title="This round's plan" />
+    </section>
+  )
+}
+
 export function GoalPane({ goal }: { goal: Goal }) {
   const live = goal.status === 'working' || goal.status === 'checking' || goal.status === 'drafting'
   const now = useNow(true)
@@ -239,6 +256,8 @@ export function GoalPane({ goal }: { goal: Goal }) {
             </ul>
           </section>
         )}
+
+        <RoundPlan goal={goal} />
 
         {goal.rounds.length > 0 && (
           <section className="gp-section">

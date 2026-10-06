@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, ChevronLeft } from 'lucide-react'
 import { PROVIDERS, type ModelInfo, type ProviderId } from '../../../shared/types.ts'
-import { loadModels, selectModel, setProvider, useApp } from '../store.ts'
+import { usePane } from '../pane.ts'
+import { loadModels, paneAt, selectModel, setProvider, useApp } from '../store.ts'
 import { ProviderGlyph } from './glyphs.tsx'
 
 // Provider first, model second: the menu lists the four providers, and resting on one opens its
@@ -10,11 +11,12 @@ import { ProviderGlyph } from './glyphs.tsx'
 // (a native view that would paint on top of it).
 
 function Models({ provider, onPick }: { provider: ProviderId; onPick: () => void }) {
+  const pane = usePane()
   const models = useApp((state) => state.models[provider])
-  const chosen = useApp((state) => state.modelChoice[provider])
+  const chosen = useApp((state) => paneAt(state, pane).modelChoice[provider])
   const label = PROVIDERS.find((entry) => entry.id === provider)?.label ?? provider
   const pick = (model: ModelInfo | null): void => {
-    selectModel(provider, model)
+    selectModel(pane, provider, model)
     onPick()
   }
   return (
@@ -59,8 +61,9 @@ function Models({ provider, onPick }: { provider: ProviderId; onPick: () => void
 }
 
 export function ModelPicker({ onClose }: { onClose?: () => void }) {
-  const provider = useApp((state) => state.provider)
-  const modelChoice = useApp((state) => state.modelChoice)
+  const pane = usePane()
+  const provider = useApp((state) => paneAt(state, pane).provider)
+  const modelChoice = useApp((state) => paneAt(state, pane).modelChoice)
   const models = useApp((state) => state.models)
   const [open, setOpen] = useState(false)
   const [hovered, setHovered] = useState<ProviderId>(provider)
@@ -125,7 +128,7 @@ export function ModelPicker({ onClose }: { onClose?: () => void }) {
                 onMouseEnter={() => setHovered(id)}
                 onFocus={() => setHovered(id)}
                 onClick={() => {
-                  setProvider(id)
+                  setProvider(pane, id)
                   close()
                 }}
               >

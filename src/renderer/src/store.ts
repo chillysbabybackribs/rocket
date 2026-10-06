@@ -11,29 +11,58 @@ import { call, connectHost } from './host.ts'
 // about structure (which chats, which turns, which items exist) read `useApp`, and each
 // transcript row reads its own item with `useItem`. A text delta therefore re-renders exactly
 // one row, never the list around it.
+//
+// The chat card holds one to four panes, each a whole chat with its own tabs and composer. What
+// a pane shows is in `panes`; what a shown chat holds (its turns, their items, what is waiting)
+// is in `views`, keyed by chat, so two panes on the same chat share one copy. Every action that
+// means "in this chat" takes the pane it was asked in; the rail acts on the focused pane.
+
+/** The most panes the card splits into: side by side, two over one, then quadrants. */
+export const MAX_PANES = 4
+
+export type Pane = {
+  /** Stable while the pane is open, so closing one pane never remounts another. */
+  key: number
+  /** The chat on screen, or null for a new chat that has not been sent to yet. */
+  chatId: string | null
+  /** The chats open as tabs over this pane's composer, in the order they were opened. */
+  tabs: string[]
+  /** The provider chosen in this pane's chat, or for the next new one. */
+  provider: ProviderId
+  /** The model chosen per provider, in the same place; a provider absent here runs its own default. */
+  modelChoice: ModelChoices
+  /** Text handed back to the composer (a waiting message taken back); `at` tells one hand-back from the next. */
+  restored: { text: string; at: number } | null
+}
+
+export type ChatView = {
+  turns: Turn[]
+  /** turnId → its item ids, in order. */
+  turnItems: Record<string, string[]>
+  /** Messages waiting for the chat's turn in flight to end. */
+  queued: QueuedMessage[]
+  /**
+   * The turn whose plan shows in the drawer beside the chat, or null while it is closed. It opens
+   * by itself on the first plan of a running turn unless this chat has closed it before.
+   */
+  planTurnId: string | null
+}
+
+const EMPTY_VIEW: ChatView = { turns: [], turnItems: {}, queued: [], planTurnId: null }
 
 export type AppState = {
   ready: boolean
   chats: Chat[]
-  activeChatId: string | null
-  /** The chats open as tabs over the composer, in the order they were opened. */
-  tabs: string[]
-  turns: Turn[]
-  /** turnId → its item ids, in order. */
-  turnItems: Record<string, string[]>
+  panes: Pane[]
+  /** The pane the user last worked in: where the rail opens chats, and whose chat the rail marks. */
+  focused: number
+  /** Each chat on screen, keyed by chat id. */
+  views: Record<string, ChatView>
   /** Chats with a turn in flight, including ones not on screen. */
   running: ReadonlySet<string>
-  /** The open chat's messages waiting for its turn in flight to end. */
-  queued: QueuedMessage[]
-  /** Text handed back to the composer (a waiting message taken back); `at` tells one hand-back from the next. */
-  restored: { text: string; at: number } | null
   usage: Partial<Record<ProviderId, UsageSnapshot>>
-  /** The provider chosen in the open chat, or on the empty screen for the next new one. */
-  provider: ProviderId
   /** Each provider's models, once read. A provider absent here has not been asked yet. */
   models: Partial<Record<ProviderId, ModelInfo[]>>
-  /** The model chosen per provider, in the same place; a provider absent here runs its own default. */
-  modelChoice: ModelChoices
   /** What the panel beside the chat shows: a file a link opened, or what a turn changed. */
   artifact: ArtifactView | null
   browserOpen: boolean
@@ -43,11 +72,6 @@ export type AppState = {
   goalPaneOpen: boolean
   /** The goal side's width, in pixels. */
   goalWidth: number
-  /**
-   * The turn whose plan shows in the drawer beside the chat, or null while it is closed. It opens
-   * by itself on the first plan of a running turn unless this chat has closed it before.
-   */
-  planTurnId: string | null
   /** The new-goal dialog: closed, describing, or following the goal it drafted. */
   newGoal: { goalId: string | null } | null
   /** The folder a new chat starts in: the last one the user chose, or their home folder. */
@@ -73,6 +97,10 @@ type Prefs = {
   goalWidth?: number
   /** Chats whose plan drawer the user closed; it no longer opens by itself there. */
   planClosed?: Record<string, true>
+  /** The panes as they were, in order, and which one had the focus. */
+  panes?: { chatId: string | null; tabs: string[] }[]
+  focused?: number
+  /** Before panes, the one chat and its tabs; read once to become the first pane. */
   activeChatId?: string | null
   tabs?: string[]
   cwd?: string
@@ -122,30 +150,32 @@ function forgetSelection(chatId: string): void {
   writePrefs({ selections, planClosed })
 }
 
+let nextPaneKey = 1
+
+function newPane(chatId: string | null = null, tabs: string[] = []): Pane {
+  return { key: nextPaneKey++, chatId, tabs, restored: null, ...selectionFor(chatId) }
+}
+
 let state: AppState = {
   artifact: null,
   ready: false,
   chats: [],
-  activeChatId: null,
-  tabs: [],
-  turns: [],
-  turnItems: {},
+  panes: [],
+  focused: 0,
+  views: {},
   running: new Set(),
-  queued: [],
-  restored: null,
   usage: {},
-  provider: PROVIDERS.some((provider) => provider.id === prefs.provider) ? prefs.provider! : 'claude',
   models: {},
-  modelChoice: prefs.modelChoice ?? {},
   browserOpen: prefs.browserOpen === true,
   goals: [],
   goalPaneOpen: prefs.goalPaneOpen !== false,
   goalWidth: prefs.goalWidth ?? 400,
-  planTurnId: null,
   newGoal: null,
   defaultCwd: prefs.cwd || window.rocket.homeDir,
   error: null
 }
+// The first pane exists before anything is loaded, so the composer has somewhere to be.
+state.panes = [newPane()]
 const items = new Map<string, Item>()
 const stateListeners = new Set<() => void>()
 const itemListeners = new Map<string, Set<() => void>>()
@@ -189,31 +219,72 @@ export function useItem(id: string): Item | undefined {
   )
 }
 
+// ── Reading panes ─────────────────────────────────────────────────────
+
+export function paneAt(state: AppState, pane: number): Pane {
+  return state.panes[pane] ?? state.panes[0]!
+}
+
+export function chatIdOf(state: AppState, pane: number): string | null {
+  return paneAt(state, pane).chatId
+}
+
+/** The chat the focused pane shows: what the rail means by "the open chat". */
+export function focusedChatId(state: AppState): string | null {
+  return chatIdOf(state, state.focused)
+}
+
+export function viewOf(state: AppState, chatId: string | null): ChatView {
+  return (chatId && state.views[chatId]) || EMPTY_VIEW
+}
+
+/** The folder a pane's chat works in, or the one new chats start in. */
+export function cwdOf(state: AppState, pane: number): string {
+  const chatId = chatIdOf(state, pane)
+  return state.chats.find((chat) => chat.id === chatId)?.cwd ?? state.defaultCwd
+}
+
+function patchPane(pane: number, patch: Partial<Pane>): void {
+  setState({ panes: state.panes.map((entry, index) => (index === pane ? { ...entry, ...patch } : entry)) })
+}
+
+function patchView(chatId: string, patch: Partial<ChatView>): void {
+  const view = state.views[chatId]
+  if (view) setState({ views: { ...state.views, [chatId]: { ...view, ...patch } } })
+}
+
+function savePanes(): void {
+  writePrefs({ panes: state.panes.map((pane) => ({ chatId: pane.chatId, tabs: pane.tabs })), focused: state.focused })
+}
+
+// ── Events ────────────────────────────────────────────────────────────
+
 function sortChats(chats: Chat[]): Chat[] {
   return [...chats].sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
-function putItem(item: Item): void {
+function putItem(chatId: string, item: Item): void {
   const known = items.has(item.id)
   items.set(item.id, item)
   if (known) {
     notifyItem(item.id)
     return
   }
-  const list = state.turnItems[item.turnId] ?? []
-  setState({ turnItems: { ...state.turnItems, [item.turnId]: [...list, item.id] } })
+  const view = state.views[chatId]!
+  const list = view.turnItems[item.turnId] ?? []
+  patchView(chatId, { turnItems: { ...view.turnItems, [item.turnId]: [...list, item.id] } })
 }
 
 function applyEvents(events: HostEvent[]): void {
   for (const event of events) {
     switch (event.type) {
       case 'item':
-        if (event.chatId !== state.activeChatId) break
-        putItem(event.item)
+        if (!state.views[event.chatId]) break
+        putItem(event.chatId, event.item)
         if (event.item.type === 'plan') openPlanIfNew(event.chatId, event.item.turnId)
         break
       case 'delta': {
-        const item = event.chatId === state.activeChatId ? items.get(event.itemId) : undefined
+        const item = state.views[event.chatId] ? items.get(event.itemId) : undefined
         if (!item) break
         if (item.type === 'assistant' || item.type === 'reasoning') items.set(item.id, { ...item, text: item.text + event.delta })
         else if (item.type === 'tool') items.set(item.id, { ...item, output: item.output + event.delta })
@@ -225,13 +296,15 @@ function applyEvents(events: HostEvent[]): void {
         const running = new Set(state.running)
         if (turn.status === 'running') running.add(turn.chatId)
         else running.delete(turn.chatId)
-        const patch: Partial<AppState> = { running }
-        if (turn.chatId === state.activeChatId) {
-          patch.turns = state.turns.some((entry) => entry.id === turn.id)
-            ? state.turns.map((entry) => (entry.id === turn.id ? turn : entry))
-            : [...state.turns, turn]
+        setState({ running })
+        const view = state.views[turn.chatId]
+        if (view) {
+          patchView(turn.chatId, {
+            turns: view.turns.some((entry) => entry.id === turn.id)
+              ? view.turns.map((entry) => (entry.id === turn.id ? turn : entry))
+              : [...view.turns, turn]
+          })
         }
-        setState(patch)
         break
       }
       case 'chat': {
@@ -242,7 +315,10 @@ function applyEvents(events: HostEvent[]): void {
       case 'chatDeleted':
         setState({ chats: state.chats.filter((chat) => chat.id !== event.chatId), goals: state.goals.filter((goal) => goal.chatId !== event.chatId) })
         forgetSelection(event.chatId)
-        closeTab(event.chatId)
+        // Closing a pane shifts the ones after it, so the panes are walked from the end.
+        for (let index = state.panes.length - 1; index >= 0; index--) {
+          if (state.panes[index]!.tabs.includes(event.chatId)) closeTab(event.chatId, index)
+        }
         break
       case 'usage':
         setState({ usage: { ...state.usage, [event.snapshot.provider]: event.snapshot } })
@@ -251,26 +327,45 @@ function applyEvents(events: HostEvent[]): void {
         putGoal(event.goal)
         break
       case 'queue':
-        if (event.chatId === state.activeChatId) setState({ queued: event.queued })
+        if (state.views[event.chatId]) patchView(event.chatId, { queued: event.queued })
         break
     }
   }
 }
 
-function showChat(chatId: string | null, turns: Turn[] = [], loaded: Item[] = [], queued: QueuedMessage[] = []): void {
+// ── Showing chats ─────────────────────────────────────────────────────
+
+/** Drop the views no pane shows any more, and the items that were theirs. */
+function pruneViews(panes: Pane[]): Record<string, ChatView> {
+  const shown = new Set(panes.map((pane) => pane.chatId))
+  const views: Record<string, ChatView> = {}
+  for (const [chatId, view] of Object.entries(state.views)) {
+    if (shown.has(chatId)) views[chatId] = view
+    else for (const ids of Object.values(view.turnItems)) for (const id of ids) items.delete(id)
+  }
+  return views
+}
+
+function showChat(pane: number, chatId: string | null, turns: Turn[] = [], loaded: Item[] = [], queued: QueuedMessage[] = []): void {
   linkRequest++
   setState({ artifact: null })
-  items.clear()
-  const turnItems: Record<string, string[]> = {}
-  for (const item of loaded) {
-    items.set(item.id, item)
-    ;(turnItems[item.turnId] ??= []).push(item.id)
-  }
   const running = new Set(state.running)
   for (const turn of turns) if (turn.status === 'running') running.add(turn.chatId)
-  const tabs = chatId && !state.tabs.includes(chatId) ? [...state.tabs, chatId] : state.tabs
-  setState({ activeChatId: chatId, tabs, turns, turnItems, running, queued, planTurnId: null, ...selectionFor(chatId) })
-  writePrefs({ activeChatId: chatId, tabs })
+  const current = paneAt(state, pane)
+  const tabs = chatId && !current.tabs.includes(chatId) ? [...current.tabs, chatId] : current.tabs
+  const panes = state.panes.map((entry, index) => (index === pane ? { ...entry, chatId, tabs, restored: null, ...selectionFor(chatId) } : entry))
+  const views = pruneViews(panes)
+  if (chatId) {
+    // A fresh snapshot replaces whatever another pane loaded of the same chat; it is the newer.
+    const turnItems: Record<string, string[]> = {}
+    for (const item of loaded) {
+      items.set(item.id, item)
+      ;(turnItems[item.turnId] ??= []).push(item.id)
+    }
+    views[chatId] = { turns, turnItems, queued, planTurnId: null }
+  }
+  setState({ panes, views, running })
+  savePanes()
   // Coming back to a chat whose turn is still planning shows the plan again, as it did when it started.
   const planning = turns.findLast((turn) => turn.status === 'running' && items.has(planItemId(turn.id)))
   if (chatId && planning) openPlanIfNew(chatId, planning.id)
@@ -278,34 +373,32 @@ function showChat(chatId: string | null, turns: Turn[] = [], loaded: Item[] = []
 
 /** The drawer opens itself for a running turn's plan, once per chat, until the user closes it there. */
 function openPlanIfNew(chatId: string, turnId: string): void {
-  if (state.planTurnId !== null || readPrefs().planClosed?.[chatId]) return
+  const view = state.views[chatId]
+  if (!view || view.planTurnId !== null || readPrefs().planClosed?.[chatId]) return
   if (goalOf(chatId)) return
-  if (state.turns.find((turn) => turn.id === turnId)?.status !== 'running') return
-  setState({ planTurnId: turnId })
+  if (view.turns.find((turn) => turn.id === turnId)?.status !== 'running') return
+  patchView(chatId, { planTurnId: turnId })
 }
 
-/** Show a turn's plan beside the chat, or close the drawer; closing is remembered for this chat. */
-export function togglePlan(turnId: string): void {
-  const chatId = state.activeChatId
-  if (!chatId) return
-  if (state.planTurnId === turnId) {
-    closePlan()
+/** Show a turn's plan beside its chat, or close the drawer; closing is remembered for that chat. */
+export function togglePlan(chatId: string, turnId: string): void {
+  if (viewOf(state, chatId).planTurnId === turnId) {
+    closePlan(chatId)
     return
   }
   const { [chatId]: _reopened, ...planClosed } = readPrefs().planClosed ?? {}
   writePrefs({ planClosed })
-  setState({ planTurnId: turnId })
+  patchView(chatId, { planTurnId: turnId })
 }
 
-export function closePlan(): void {
-  const chatId = state.activeChatId
-  if (chatId) writePrefs({ planClosed: { ...readPrefs().planClosed, [chatId]: true } })
-  setState({ planTurnId: null })
+export function closePlan(chatId: string): void {
+  writePrefs({ planClosed: { ...readPrefs().planClosed, [chatId]: true } })
+  patchView(chatId, { planTurnId: null })
 }
 
-function setTabs(tabs: string[]): void {
-  setState({ tabs })
-  writePrefs({ tabs })
+function setTabs(pane: number, tabs: string[]): void {
+  patchPane(pane, { tabs })
+  savePanes()
 }
 
 function fail(error: unknown): void {
@@ -316,86 +409,128 @@ export function dismissError(): void {
   setState({ error: null })
 }
 
-export async function openChat(chatId: string | null): Promise<void> {
+/** Show a chat (or the new-chat screen) in a pane; the focused one unless said otherwise. */
+export async function openChat(chatId: string | null, pane: number = state.focused): Promise<void> {
   if (chatId === null) {
-    showChat(null)
+    showChat(pane, null)
     return
   }
   try {
     const snapshot = await call('chat.open', { chatId })
-    showChat(chatId, snapshot.turns, snapshot.items, snapshot.queued)
+    showChat(pane, chatId, snapshot.turns, snapshot.items, snapshot.queued)
   } catch (error) {
-    setTabs(state.tabs.filter((id) => id !== chatId))
-    showChat(null)
+    setTabs(pane, paneAt(state, pane).tabs.filter((id) => id !== chatId))
+    showChat(pane, null)
     fail(error)
   }
 }
 
-/** Close a chat's tab. The chat stays in the history; closing the open one moves to its neighbour. */
-export function closeTab(chatId: string): void {
-  const index = state.tabs.indexOf(chatId)
+/**
+ * Close a chat's tab in a pane. The chat stays in the history; closing the open one moves to its
+ * neighbour. A pane whose last tab closes goes away, unless it is the only pane: that one shows
+ * the new-chat screen instead.
+ */
+export function closeTab(chatId: string, pane: number): void {
+  const current = paneAt(state, pane)
+  const index = current.tabs.indexOf(chatId)
   if (index === -1) return
-  const tabs = state.tabs.filter((id) => id !== chatId)
-  setTabs(tabs)
-  if (state.activeChatId === chatId) void openChat(tabs[index] ?? tabs[index - 1] ?? null)
+  const tabs = current.tabs.filter((id) => id !== chatId)
+  if (tabs.length === 0 && state.panes.length > 1) {
+    closePane(pane)
+    return
+  }
+  setTabs(pane, tabs)
+  if (current.chatId === chatId) void openChat(tabs[index] ?? tabs[index - 1] ?? null, pane)
 }
 
-/** Send in the open chat, creating one first when the composer is on the empty screen. */
-export async function send(text: string): Promise<void> {
+// ── Panes ─────────────────────────────────────────────────────────────
+
+export function focusPane(pane: number): void {
+  if (pane === state.focused || !state.panes[pane]) return
+  setState({ focused: pane })
+  savePanes()
+}
+
+/** Add a pane after the one asked from, showing the new-chat screen, and give it the focus. */
+export function addPane(after: number = state.focused): void {
+  if (state.panes.length >= MAX_PANES) return
+  const panes = [...state.panes]
+  const at = Math.min(after + 1, panes.length)
+  panes.splice(at, 0, newPane())
+  setState({ panes, focused: at })
+  savePanes()
+}
+
+/** Close a pane; the others take its room. The only pane cannot close. */
+export function closePane(pane: number): void {
+  if (state.panes.length <= 1 || !state.panes[pane]) return
+  const panes = state.panes.filter((_, index) => index !== pane)
+  const focused = state.focused > pane || state.focused >= panes.length ? Math.max(0, state.focused - 1) : state.focused
+  setState({ panes, views: pruneViews(panes), focused })
+  savePanes()
+}
+
+// ── Sending ───────────────────────────────────────────────────────────
+
+/** Send in a pane's chat, creating one first when the composer is on the new-chat screen. */
+export async function send(pane: number, text: string): Promise<void> {
   try {
-    let chatId = state.activeChatId
+    const current = paneAt(state, pane)
+    let chatId = current.chatId
     if (!chatId) {
       const chat = await call('chat.create', { cwd: state.defaultCwd })
-      saveSelection(chat.id, { provider: state.provider, modelChoice: state.modelChoice })
-      showChat(chat.id)
+      saveSelection(chat.id, { provider: current.provider, modelChoice: current.modelChoice })
+      showChat(pane, chat.id)
       chatId = chat.id
     }
-    await call('chat.send', { chatId, provider: state.provider, model: state.modelChoice[state.provider]?.id ?? null, text })
+    await call('chat.send', { chatId, provider: current.provider, model: current.modelChoice[current.provider]?.id ?? null, text })
   } catch (error) {
     fail(error)
   }
 }
 
 /**
- * Have the host warm up the chosen provider for the open chat (or for the next new one), so the
+ * Have the host warm up the chosen provider for a pane's chat (or for the next new one), so the
  * message being typed does not wait on a cold start. Costs nothing to repeat.
  */
-export function prepare(): void {
-  const chatId = state.activeChatId
+export function prepare(pane: number): void {
+  const { chatId, provider, modelChoice } = paneAt(state, pane)
   if (!state.ready || (chatId && state.running.has(chatId))) return
-  const model = state.modelChoice[state.provider]?.id ?? null
-  void call('chat.prepare', { chatId, cwd: state.defaultCwd, provider: state.provider, model }).catch(() => {})
+  void call('chat.prepare', { chatId, cwd: state.defaultCwd, provider, model: modelChoice[provider]?.id ?? null }).catch(() => {})
 }
 
-/** Stop the open chat's turn. Messages that were waiting on it come back to the composer. */
-export function stop(): void {
-  if (!state.activeChatId) return
-  void call('chat.stop', { chatId: state.activeChatId })
-    .then((withdrawn) => { if (withdrawn) restore(withdrawn) })
+/** Stop a pane's turn. Messages that were waiting on it come back to the composer. */
+export function stop(pane: number): void {
+  const chatId = chatIdOf(state, pane)
+  if (!chatId) return
+  void call('chat.stop', { chatId })
+    .then((withdrawn) => { if (withdrawn) restore(pane, withdrawn) })
     .catch(fail)
 }
 
-/** Stop the open chat's turn and send what was waiting on it straight away. */
-export function sendNow(): void {
-  if (state.activeChatId) void call('chat.stop', { chatId: state.activeChatId, sendQueued: true }).catch(fail)
+/** Stop a pane's turn and send what was waiting on it straight away. */
+export function sendNow(pane: number): void {
+  const chatId = chatIdOf(state, pane)
+  if (chatId) void call('chat.stop', { chatId, sendQueued: true }).catch(fail)
 }
 
 /** Take a waiting message back into the composer. */
-export function editQueued(id: string): void {
-  if (!state.activeChatId) return
-  void call('chat.unqueue', { chatId: state.activeChatId, id }).then(restore).catch(fail)
+export function editQueued(pane: number, id: string): void {
+  const chatId = chatIdOf(state, pane)
+  if (!chatId) return
+  void call('chat.unqueue', { chatId, id }).then((text) => restore(pane, text)).catch(fail)
 }
 
-function restore(text: string): void {
-  setState({ restored: { text, at: Date.now() } })
+function restore(pane: number, text: string): void {
+  patchPane(pane, { restored: { text, at: Date.now() } })
 }
 
-/** Answer a question a model asked in the open chat; the provider picked in the composer takes the reply. */
-export async function answerQuestion(itemId: string, answer: string): Promise<void> {
-  const chatId = state.activeChatId
+/** Answer a question a model asked in a pane's chat; the provider picked in its composer takes the reply. */
+export async function answerQuestion(pane: number, itemId: string, answer: string): Promise<void> {
+  const { chatId, provider, modelChoice } = paneAt(state, pane)
   if (!chatId) return
   try {
-    await call('question.answer', { chatId, itemId, answer, provider: state.provider, model: state.modelChoice[state.provider]?.id ?? null })
+    await call('question.answer', { chatId, itemId, answer, provider, model: modelChoice[provider]?.id ?? null })
   } catch (error) {
     fail(error)
   }
@@ -405,18 +540,20 @@ export function deleteChat(chatId: string): void {
   void call('chat.delete', { chatId }).catch(fail)
 }
 
-export function setProvider(provider: ProviderId): void {
-  setState({ provider })
-  saveSelection(state.activeChatId, { provider, modelChoice: state.modelChoice })
+export function setProvider(pane: number, provider: ProviderId): void {
+  const current = paneAt(state, pane)
+  patchPane(pane, { provider })
+  saveSelection(current.chatId, { provider, modelChoice: current.modelChoice })
 }
 
 /** Pick a provider's model, or null to go back to that provider's default. Also selects the provider. */
-export function selectModel(provider: ProviderId, model: ModelInfo | null): void {
-  const modelChoice = { ...state.modelChoice }
+export function selectModel(pane: number, provider: ProviderId, model: ModelInfo | null): void {
+  const current = paneAt(state, pane)
+  const modelChoice = { ...current.modelChoice }
   if (model) modelChoice[provider] = { id: model.id, label: model.label }
   else delete modelChoice[provider]
-  setState({ provider, modelChoice })
-  saveSelection(state.activeChatId, { provider, modelChoice })
+  patchPane(pane, { provider, modelChoice })
+  saveSelection(current.chatId, { provider, modelChoice })
 }
 
 const modelLoads = new Map<ProviderId, Promise<void>>()
@@ -428,7 +565,7 @@ export function loadModels(provider: ProviderId): Promise<void> {
     load = call('models.list', { provider }).then((models) => {
       setState({ models: { ...state.models, [provider]: models } })
       // Drops a remembered model the provider no longer offers; other chats drop theirs when shown.
-      setState({ modelChoice: selectionFor(state.activeChatId).modelChoice })
+      setState({ panes: state.panes.map((pane) => ({ ...pane, modelChoice: selectionFor(pane.chatId).modelChoice })) })
     }).catch(() => {
       modelLoads.delete(provider)
       setState({ models: { ...state.models, [provider]: [] } })
@@ -473,12 +610,13 @@ export function closeNewGoal(): void {
   setState({ newGoal: null })
 }
 
-/** Have the chosen provider draft a goal from what the user wrote, in a chat of its own. */
+/** Have the focused pane's provider draft a goal from what the user wrote, in a chat of its own. */
 export async function draftGoal(text: string, cwd: string): Promise<void> {
   try {
-    const goal = await call('goal.draft', { cwd, text, provider: state.provider, model: state.modelChoice[state.provider]?.id ?? null })
+    const { provider, modelChoice } = paneAt(state, state.focused)
+    const goal = await call('goal.draft', { cwd, text, provider, model: modelChoice[provider]?.id ?? null })
     putGoal(goal)
-    saveSelection(goal.chatId, { provider: state.provider, modelChoice: state.modelChoice })
+    saveSelection(goal.chatId, { provider, modelChoice })
     writePrefs({ cwd })
     setState({ defaultCwd: cwd, newGoal: { goalId: goal.id }, goalPaneOpen: true })
     void openChat(goal.chatId)
@@ -532,9 +670,9 @@ export function setBrowserOpen(browserOpen: boolean): void {
   writePrefs({ browserOpen })
 }
 
-/** Choose the folder the open chat works in, or the folder new chats start in. */
-export async function chooseFolder(): Promise<void> {
-  const chat = state.chats.find((entry) => entry.id === state.activeChatId)
+/** Choose the folder a pane's chat works in, or the folder new chats start in. */
+export async function chooseFolder(pane: number): Promise<void> {
+  const chat = state.chats.find((entry) => entry.id === chatIdOf(state, pane))
   const picked = await window.rocket.pickFolder(chat?.cwd ?? state.defaultCwd)
   if (!picked) return
   writePrefs({ cwd: picked })
@@ -548,22 +686,33 @@ export function refreshUsage(provider: ProviderId, force = false): Promise<void>
     .catch(() => {})
 }
 
+/** The panes as they were last time, keeping only chats that still exist; a profile from before panes becomes one pane. */
+function savedPanes(saved: Prefs, chats: Chat[]): { panes: Pane[]; focused: number } {
+  const exists = (id: string | null): id is string => id !== null && chats.some((chat) => chat.id === id)
+  const entries = saved.panes ?? [{ chatId: saved.activeChatId ?? null, tabs: saved.tabs ?? [] }]
+  const panes = entries.slice(0, MAX_PANES).map((entry) => newPane(exists(entry.chatId) ? entry.chatId : null, entry.tabs.filter(exists)))
+  if (panes.length === 0) panes.push(newPane())
+  return { panes, focused: Math.min(Math.max(0, saved.focused ?? 0), panes.length - 1) }
+}
+
 async function load(): Promise<void> {
   try {
     const [chats, goals] = await Promise.all([call('chats.list', {}), call('goals.list', {})])
     setState({ goals })
     const saved = readPrefs()
     setState({ ready: true, chats: sortChats(chats) })
-    setTabs((saved.tabs ?? []).filter((id) => chats.some((chat) => chat.id === id)))
-    const last = saved.activeChatId
-    if (last && chats.some((chat) => chat.id === last)) await openChat(last)
+    const { panes, focused } = savedPanes(saved, chats)
+    items.clear()
+    setState({ panes, focused, views: {} })
+    savePanes()
+    await Promise.all(panes.map((pane, index) => (pane.chatId ? openChat(pane.chatId, index) : Promise.resolve())))
   } catch (error) {
     setState({ ready: true })
     fail(error)
   }
   // The warm-up is asked for ahead of the usage readings, so a provider that can answer those
   // from the process being warmed does not start another for them.
-  prepare()
+  state.panes.forEach((_, index) => prepare(index))
   for (const provider of PROVIDERS) refreshUsage(provider.id)
 }
 
@@ -596,9 +745,9 @@ export function closeArtifact(): void {
   setState({ artifact: null })
 }
 
-/** Show what a turn of the open chat changed, beside the conversation. */
-export async function openTurnChanges(turnId: string): Promise<void> {
-  const chatId = state.activeChatId
+/** Show what a turn of a pane's chat changed, beside the conversation. */
+export async function openTurnChanges(pane: number, turnId: string): Promise<void> {
+  const chatId = chatIdOf(state, pane)
   if (!chatId) return
   const request = ++linkRequest
   try {
@@ -612,9 +761,7 @@ export async function openTurnChanges(turnId: string): Promise<void> {
 }
 
 /** Put a turn's files back as they were before it. The panel stays on the (now dimmed) diff. */
-export async function undoTurn(turnId: string): Promise<void> {
-  const chatId = state.activeChatId
-  if (!chatId) return
+export async function undoTurn(chatId: string, turnId: string): Promise<void> {
   try {
     await call('turn.undo', { chatId, turnId })
     const view = state.artifact
@@ -626,9 +773,10 @@ export async function undoTurn(turnId: string): Promise<void> {
   }
 }
 
+/** Open a link from a chat; without a folder of its own it resolves against the focused pane's. */
 export async function openChatLink(href: string, cwd?: string): Promise<void> {
   const request = ++linkRequest
-  const folder = cwd ?? state.chats.find((chat) => chat.id === state.activeChatId)?.cwd ?? state.defaultCwd
+  const folder = cwd ?? cwdOf(state, state.focused)
   try {
     const target = await window.rocket.openChatLink(href, folder)
     if (request !== linkRequest) return

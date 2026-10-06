@@ -1,9 +1,10 @@
 import { Fragment, memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
-import { providerLabel, type Goal, type Item, type ToolKind, type Turn } from '../../../shared/types.ts'
+import { planItemId, providerLabel, type Goal, type Item, type ToolKind, type Turn } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
-import { answerQuestion, editQueued, openTurnChanges, peekItem, sendNow, useApp, useItem } from '../store.ts'
+import { usePane, usePaneChatId, usePaneView } from '../pane.ts'
+import { answerQuestion, editQueued, openTurnChanges, peekItem, sendNow, togglePlan, useApp, useItem } from '../store.ts'
 import { Bar, Counts } from './ChangesView.tsx'
 
 /** Markdown is the expensive part of a row; text that has not changed parses once and never again. */
@@ -190,6 +191,7 @@ type QuestionItem = Extract<Item, { type: 'question' }>
  * answered it shows the choice and nothing to click.
  */
 function QuestionCard({ item }: { item: QuestionItem }) {
+  const pane = usePane()
   const [other, setOther] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const input = useRef<HTMLInputElement>(null)
@@ -199,7 +201,7 @@ function QuestionCard({ item }: { item: QuestionItem }) {
   const answer = async (text: string): Promise<void> => {
     if (sending || !text.trim()) return
     setSending(true)
-    await answerQuestion(item.id, text.trim())
+    await answerQuestion(pane, item.id, text.trim())
     setSending(false)
   }
   if (item.answer !== null) {
@@ -277,11 +279,33 @@ function duration(ms: number): string {
 }
 
 /**
+ * The turn's plan, as its head line says it: "Planning · 2 of 5" while the turn runs, the count
+ * moving as steps finish, and "Planned · 5 of 5" once it is over. It opens and closes the plan
+ * beside the chat. In a goal's chat the plan is a section of the goal pane, so the line is plain.
+ */
+function PlanLabel({ turn, running }: { turn: Turn; running: boolean }) {
+  const plan = useItem(planItemId(turn.id))
+  const chatId = usePaneChatId()
+  const open = usePaneView((view) => view.planTurnId === turn.id)
+  const inGoal = useApp((state) => state.goals.some((goal) => goal.chatId === chatId))
+  if (plan?.type !== 'plan') return null
+  const done = plan.steps.filter((step) => step.status === 'done').length
+  const text = <span className={running ? 'shimmer' : ''}>{running ? 'Planning' : 'Planned'} · {done} of {plan.steps.length}</span>
+  if (inGoal) return text
+  return (
+    <button type="button" className={`turn-head-toggle plan-toggle${open ? ' is-open' : ''}`} aria-pressed={open} title={open ? 'Hide the plan' : 'Show the plan'} onClick={() => { if (chatId) togglePlan(chatId, turn.id) }}>
+      {text}
+    </button>
+  )
+}
+
+/**
  * The line every response starts with, above a divider: a shimmering "Thinking" and a running
  * clock while the turn works, and how long it took once it is over. Everything the model says
- * and does goes under the divider. When the turn has thinking to show, the line opens it.
+ * and does goes under the divider. When the turn has thinking to show, the line opens it; when
+ * it keeps a plan, the line names the plan and opens that instead.
  */
-function TurnHead({ turn, thoughts, open, onToggle }: { turn: Turn; thoughts: boolean; open: boolean; onToggle: () => void }) {
+function TurnHead({ turn, thoughts, plan, open, onToggle }: { turn: Turn; thoughts: boolean; plan: boolean; open: boolean; onToggle: () => void }) {
   const running = turn.status === 'running'
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
@@ -294,14 +318,16 @@ function TurnHead({ turn, thoughts, open, onToggle }: { turn: Turn; thoughts: bo
   const label = running ? <span className="shimmer">{turn.activity ?? 'Thinking'}</span> : thoughts && <span>Thought</span>
   return (
     <div className="turn-head" role={running ? 'status' : undefined}>
-      {thoughts
-        ? (
-          <button type="button" className="turn-head-toggle" aria-expanded={open} onClick={onToggle}>
-            {label}
-            <ChevronRight size={12} className={`tool-chevron${open ? ' is-open' : ''}`} />
-          </button>
-        )
-        : label}
+      {plan
+        ? <PlanLabel turn={turn} running={running} />
+        : thoughts
+          ? (
+            <button type="button" className="turn-head-toggle" aria-expanded={open} onClick={onToggle}>
+              {label}
+              <ChevronRight size={12} className={`tool-chevron${open ? ' is-open' : ''}`} />
+            </button>
+          )
+          : label}
       {running
         ? <span className="turn-head-time">Working for {duration(now - turn.startedAt)}</span>
         : turn.endedAt !== null && <span className="turn-head-time">Worked for {duration(turn.endedAt - turn.startedAt)}</span>}
@@ -345,11 +371,12 @@ function GoalLead({ turn, goal, round }: { turn: Turn; goal: Goal | null; round:
  * added and removed lines, and a bar of their balance. It opens the diff beside the chat.
  */
 function ChangesLine({ turn }: { turn: Turn }) {
+  const pane = usePane()
   const open = useApp((state) => state.artifact?.kind === 'changes' && state.artifact.turnId === turn.id)
   const { changes } = turn
   if (!changes || changes.files === 0) return null
   return (
-    <button type="button" className={`changes-line${open ? ' is-open' : ''}${changes.undone ? ' is-undone' : ''}`} aria-pressed={open} onClick={() => void openTurnChanges(turn.id)}>
+    <button type="button" className={`changes-line${open ? ' is-open' : ''}${changes.undone ? ' is-undone' : ''}`} aria-pressed={open} onClick={() => void openTurnChanges(pane, turn.id)}>
       <FileDiff size={12} className="changes-icon" />
       <span>Changed {changes.files} {changes.files === 1 ? 'file' : 'files'}</span>
       <Counts added={changes.added} removed={changes.removed} />
@@ -386,7 +413,9 @@ function Stage({ ids, running, thoughtsOpen }: { ids: string[]; running: boolean
 }
 
 const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { turn: Turn; ids: string[]; fill: boolean; goal: Goal | null; round: number }) {
-  const [userId, ...rest] = ids
+  // The plan is not a row of the response; the head line names it and it shows beside the chat.
+  const planId = planItemId(turn.id)
+  const [userId, ...rest] = ids.filter((id) => id !== planId)
   const running = turn.status === 'running'
   const parts = partsOf(rest)
   const [thoughtsOpen, setThoughtsOpen] = useState(false)
@@ -397,7 +426,7 @@ const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { tu
     <article className={`turn${fill ? ' is-fill' : ''}`}>
       {turn.goalRole ? <GoalLead turn={turn} goal={goal} round={round} /> : userId && <ItemRow id={userId} />}
       <div className="answer">
-        <TurnHead turn={turn} thoughts={thoughts} open={thoughtsOpen} onToggle={() => setThoughtsOpen(!thoughtsOpen)} />
+        <TurnHead turn={turn} thoughts={thoughts} plan={ids.includes(planId)} open={thoughtsOpen} onToggle={() => setThoughtsOpen(!thoughtsOpen)} />
         {parts.map((part, index) => (
           <Fragment key={part.steer ?? 'first'}>
             {part.steer && (
@@ -437,8 +466,9 @@ function roundOf(goal: Goal | null, turns: Turn[], turn: Turn): number {
  * the turn wait here too, until its model reads them and they join the turn at that point.
  */
 function Waiting() {
-  const queued = useApp((state) => state.queued)
-  const answering = useApp((state) => state.turns.findLast((turn) => turn.status === 'running')?.provider ?? null)
+  const pane = usePane()
+  const queued = usePaneView((view) => view.queued)
+  const answering = usePaneView((view) => view.turns.findLast((turn) => turn.status === 'running')?.provider ?? null)
   if (!queued.length) return null
   return (
     <>
@@ -451,8 +481,8 @@ function Waiting() {
             <div className="steer-status">
               <span>Sends when {answering ? providerLabel(answering) : 'the turn'} finishes</span>
               <span aria-hidden>·</span>
-              <button type="button" onClick={sendNow}>Send now</button>
-              <button type="button" onClick={() => editQueued(entry.id)}>Edit</button>
+              <button type="button" onClick={() => sendNow(pane)}>Send now</button>
+              <button type="button" onClick={() => editQueued(pane, entry.id)}>Edit</button>
             </div>
           )}
         </div>
@@ -465,10 +495,10 @@ function Waiting() {
 const sentTurns = new Map<string, string>()
 
 export function Transcript() {
-  const turns = useApp((state) => state.turns)
-  const turnItems = useApp((state) => state.turnItems)
-  const chatId = useApp((state) => state.activeChatId)
-  const goal = useApp((state) => state.goals.find((entry) => entry.chatId === state.activeChatId) ?? null)
+  const turns = usePaneView((view) => view.turns)
+  const turnItems = usePaneView((view) => view.turnItems)
+  const chatId = usePaneChatId()
+  const goal = useApp((state) => state.goals.find((entry) => entry.chatId === chatId) ?? null)
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)

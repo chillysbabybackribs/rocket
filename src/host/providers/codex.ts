@@ -4,7 +4,7 @@ import { clipOutput, jsonPreview, messageOf, recordOf, stringOf } from '../json.
 import { StdioJsonRpcClient, type JsonRpcNotification, type JsonRpcRequest } from '../stdio-json-rpc.ts'
 import { codexUsage } from '../usage-parsers.ts'
 import {
-  itemId, TOOL_SERVER, unavailableUsage,
+  itemId, planItem, TOOL_SERVER, unavailableUsage,
   type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type ToolEndpoint, type TurnSink
 } from './provider.ts'
 
@@ -19,10 +19,18 @@ import {
 //   other providers answered are handed over: as history with roles, not as pasted text.
 // - (app-server docs, read 2026-10-05; not yet seen live) `turn/steer {threadId, expectedTurnId,
 //   input}` appends the user's words to the turn in flight without a new `turn/started`, and
-//   fails when that turn is no longer the active one.
+//   fails when that turn is no longer the active one. (Seen live 2026-10-05) Codex takes them at
+//   its next tool boundary, seconds later, and then reports a `userMessage` item holding them.
+// - (codex-cli 0.160.0 `app-server generate-json-schema`, read 2026-10-05; not yet seen live) The
+//   model's plan is the `turn/plan/updated` notification: `{threadId, turnId, explanation, plan:
+//   [{step, status: 'pending'|'inProgress'|'completed'}]}`, the whole list each time. It becomes
+//   the turn's plan item. The `plan` thread item is something else: a proposed plan as text.
 // - `model/list` pages through the account's models; `turn/start` takes a `model` for that turn.
 // - `account/rateLimits/read` and the `account/rateLimits/updated` notification carry the
 //   subscription windows.
+// - (codex-cli 0.160.0, config/read verified 2026-10-05) Process-local `-c
+//   plugins.<name>@openai-bundled.enabled=false` overrides inherited plugin settings.
+//   Do not quote the key inside the argument: the CLI treats those quotes as part of its name.
 //
 // Threads run with approvalPolicy 'never' and full access, like the Codex CLI in its
 // unattended mode: the app has no approval prompts yet.
@@ -36,11 +44,23 @@ type ActiveTurn = {
   stopRequested: boolean
   interrupt: Promise<void> | null
   finish: (result: RunResult) => void
+  /** The user's words sent into this turn that Codex has not taken yet. */
+  steers?: Array<{ text: string; taken: () => void }>
 }
 
 class AppServerClient extends StdioJsonRpcClient {
   constructor() {
-    super({ peer: 'Codex', executable: 'codex', cwd: homedir(), args: ['app-server', '--listen', 'stdio://'] })
+    // Rocket owns the browser. Exclude ChatGPT's competing browser tools, skills and hooks
+    // from this process, including resumed threads, without editing the user's Codex config.
+    super({
+      peer: 'Codex', executable: 'codex', cwd: homedir(),
+      args: [
+        'app-server', '--listen', 'stdio://',
+        '-c', 'plugins.unified-computer-use@openai-bundled.enabled=false',
+        '-c', 'plugins.browser@openai-bundled.enabled=false',
+        '-c', 'plugins.chrome@openai-bundled.enabled=false'
+      ]
+    })
   }
 
   override async start(): Promise<void> {
@@ -158,15 +178,19 @@ export class CodexAdapter implements ProviderAdapter {
     await turn.interrupt
   }
 
-  async steer(chatId: string, text: string): Promise<boolean> {
+  async steer(chatId: string, text: string, taken: () => void): Promise<boolean> {
     const threadId = this.loaded.get(chatId)?.threadId
     const turn = threadId ? this.active.get(threadId) : undefined
     // Until Codex has named its turn there is nothing to steer; the words wait for the turn's end instead.
     if (!threadId || !turn?.codexTurnId || !this.client?.connected) return false
+    // Registered first: the item saying Codex took them may come before the reply to the request.
+    const steer = { text, taken }
+    ;(turn.steers ??= []).push(steer)
     try {
       await this.client.request('turn/steer', { threadId, expectedTurnId: turn.codexTurnId, input: [{ type: 'text', text }] })
       return true
     } catch {
+      turn.steers = turn.steers.filter((each) => each !== steer)
       return false
     }
   }
@@ -286,6 +310,12 @@ export class CodexAdapter implements ProviderAdapter {
         break
       case 'item/started':
       case 'item/completed': {
+        const steered = steeredText(params.item)
+        const steer = steered === null ? undefined : turn.steers?.find((each) => each.text === steered)
+        if (steer) {
+          turn.steers = turn.steers!.filter((each) => each !== steer)
+          steer.taken()
+        }
         const item = codexItem(params.item, request.turnId, notification.method === 'item/completed')
         if (item) sink.item(item)
         break
@@ -296,6 +326,11 @@ export class CodexAdapter implements ProviderAdapter {
       case 'item/commandExecution/outputDelta': {
         const delta = stringOf(params.delta)
         if (delta) sink.delta(itemId(request.turnId, stringOf(params.itemId)), delta)
+        break
+      }
+      case 'turn/plan/updated': {
+        const plan = planItem(request.turnId, params.plan, (step) => stringOf(step.step))
+        if (plan) sink.item(plan)
         break
       }
       case 'error': {
@@ -350,6 +385,13 @@ export class CodexAdapter implements ProviderAdapter {
 
 function notice(turnId: string, key: string, text: string): Item {
   return { type: 'notice', id: itemId(turnId, key), turnId, text, tone: 'error' }
+}
+
+/** The text of a user message item, which is how Codex shows it has taken words sent mid-turn. */
+export function steeredText(value: unknown): string | null {
+  const item = recordOf(value)
+  if (item.type !== 'userMessage' || !Array.isArray(item.content)) return null
+  return item.content.map((part) => stringOf(recordOf(part).text)).join('')
 }
 
 /** One app-server thread item in transcript form; null for kinds the transcript does not show. */

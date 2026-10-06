@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus, Target } from 'lucide-react'
 import type { Goal, GoalStatus } from '../../../shared/types.ts'
-import { openChat, openNewGoal, useApp } from '../store.ts'
+import { focusedChatId, openChat, openNewGoal, useApp } from '../store.ts'
 import { GoalStatusIcon } from './GoalIcons.tsx'
 
 // Goals, from the rail: the ones under way first, then the finished ones, and "New goal". Like
@@ -25,7 +25,7 @@ export function goalStatusText(goal: Goal): string {
 
 function GoalsMenu({ onPick }: { onPick: () => void }) {
   const goals = useApp((state) => state.goals)
-  const activeChatId = useApp((state) => state.activeChatId)
+  const activeChatId = useApp(focusedChatId)
   const groups = [
     { label: 'Under way', goals: goals.filter((goal) => UNDER_WAY.includes(goal.status)) },
     { label: 'Finished', goals: goals.filter((goal) => !UNDER_WAY.includes(goal.status)) }

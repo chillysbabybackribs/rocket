@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
-import { PROVIDERS, type ModelInfo, type ProviderId, type UsageSnapshot } from '../shared/types.ts'
+import { PROVIDERS, planItemId, type ModelInfo, type PlanStep, type ProviderId, type UsageSnapshot } from '../shared/types.ts'
 import type { ProviderAdapter, RunRequest, RunResult, TurnSink } from './providers/provider.ts'
 
 // UI tests replace only the provider boundary. The real host, store, ports and renderer still
@@ -39,6 +39,7 @@ export class UiTestAdapter implements ProviderAdapter {
       if (command === 'UI check: work') return this.work(request.turnId, sink, controller.signal)
       if (command === 'UI check: ask') return this.ask(request.turnId, sink)
       if (command === 'UI check: edit') return this.edit(request.turnId, request.cwd, sink)
+      if (command === 'UI check: plan') return this.plan(request.turnId, sink, controller.signal)
       if (!['UI check: stream', 'UI check: stop', 'UI check: recover'].includes(command ?? '')) {
         return { status: 'failed', error: 'This isolated window uses UI test responses only.' }
       }
@@ -90,6 +91,39 @@ export class UiTestAdapter implements ProviderAdapter {
     writeFileSync(join(cwd, 'auth.js'), "export function authOf(req) {\n  return req.headers.authorization ?? null\n}\n")
     sink.item({ type: 'tool', id: `${turnId}:tool`, turnId, kind: 'edit', label: `${notes}, ${join(cwd, 'auth.js')}`, output: '', status: 'done' })
     sink.item({ type: 'assistant', id: `${turnId}:reply`, turnId, text: 'Added a login check and noted it in the README.', streaming: false })
+    return { status: 'completed' }
+  }
+
+  /**
+   * A turn that keeps a plan, as Claude Code's TodoWrite does: the whole list each time, replaced
+   * in place as steps finish. It holds at two of five until the test has seen the drawer open.
+   */
+  private async plan(turnId: string, sink: TurnSink, signal: AbortSignal): Promise<RunResult> {
+    const lines = [
+      'Read the existing API and its storage',
+      'Add register and login with scrypt-hashed passwords',
+      'Scope the notes routes to the logged-in user',
+      'Write an isolation test: two users, each sees only their own',
+      'Document the endpoints in the README'
+    ]
+    const plan = (done: number, doing: boolean): void => {
+      const steps: PlanStep[] = lines.map((text, index) => ({ text, status: index < done ? 'done' : doing && index === done ? 'doing' : 'todo' }))
+      sink.item({ type: 'plan', id: planItemId(turnId), turnId, steps })
+    }
+    plan(0, true)
+    sink.item({ type: 'tool', id: `${turnId}:tool1`, turnId, kind: 'read', label: 'server.js', output: '', status: 'done' })
+    plan(2, true)
+    sink.item({ type: 'assistant', id: `${turnId}:say`, turnId, text: 'Plain Node with no dependencies. Keeping that: scrypt-hashed passwords, bearer-token sessions, and notes scoped to the logged-in user.', streaming: false })
+    sink.item({ type: 'tool', id: `${turnId}:tool2`, turnId, kind: 'edit', label: 'server.js', output: '', status: 'running' })
+    const release = join(this.profile, `ui-release-${turnId}`)
+    const deadline = Date.now() + 60_000
+    while (!existsSync(release)) {
+      if (Date.now() > deadline) throw new Error('The UI test did not release the controlled response.')
+      await delay(25, undefined, { signal })
+    }
+    sink.item({ type: 'tool', id: `${turnId}:tool2`, turnId, kind: 'edit', label: 'server.js', output: '', status: 'done' })
+    plan(5, false)
+    sink.item({ type: 'assistant', id: `${turnId}:reply`, turnId, text: '**Done.** Login is built, tested and documented; each user sees only their own notes.', streaming: false })
     return { status: 'completed' }
   }
 
