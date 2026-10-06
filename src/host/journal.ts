@@ -1,5 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs'
 import { dirname } from 'node:path'
+import type { TurnTokens } from '../shared/types.ts'
 import { recordOf, stringOf } from './json.ts'
 
 // The app's memory of its own trouble. Console output vanishes; this keeps what went wrong, what
@@ -33,6 +34,8 @@ export type TimingReading = {
   firstEventMs: number | null
   firstTextMs: number | null
   totalMs: number
+  /** What the turn cost, when its provider says. */
+  tokens?: TurnTokens | null
 }
 
 const MAX_BYTES = 2_000_000
@@ -112,7 +115,8 @@ export class Journal {
     const label = `${timing.provider}${timing.model ? ` (${timing.model})` : ''}`
     const details = {
       chatId: timing.chatId, provider: timing.provider, model: timing.model,
-      firstEventMs: timing.firstEventMs, firstTextMs: timing.firstTextMs, totalMs: Math.round(timing.totalMs)
+      firstEventMs: timing.firstEventMs, firstTextMs: timing.firstTextMs, totalMs: Math.round(timing.totalMs),
+      ...(timing.tokens ? { tokens: timing.tokens } : {})
     }
     if (timing.status === 'failed') {
       this.add('turn', 'error', 'turn-failed', `${label} failed: ${timing.error ?? 'no reason given'}`, details)
@@ -129,25 +133,30 @@ export class Journal {
       }
       this.usual.set(key, [...samples, timing.firstTextMs].slice(-SAMPLES_KEPT))
     }
-    this.add('turn', 'info', 'timing', `${label} ${timing.status} in ${(timing.totalMs / 1000).toFixed(1)}s`, details)
+    this.add('turn', 'info', 'timing', `${label} ${timing.status} in ${(timing.totalMs / 1000).toFixed(1)}s${timing.tokens ? `; ${describeTokens(timing.tokens)}` : ''}`, details)
   }
 
-  /** Time to first text and total time per provider and model, from the timings on record. */
+  /** Time to first text, total time and tokens per provider and model, from the timings on record. */
   stats(since = 0): string {
-    const groups = new Map<string, { first: number[]; total: number[]; failed: number }>()
+    const groups = new Map<string, { first: number[]; total: number[]; failed: number; input: number[]; context: number[] }>()
     for (const entry of this.read({ since, limit: 5_000 })) {
       const d = recordOf(entry.details)
       if (entry.source !== 'turn' || typeof d.totalMs !== 'number') continue
       const key = `${stringOf(d.provider)}${stringOf(d.model) ? ` (${stringOf(d.model)})` : ''}`
-      const group = groups.get(key) ?? { first: [], total: [], failed: 0 }
+      const group = groups.get(key) ?? { first: [], total: [], failed: 0, input: [], context: [] }
       group.total.push(d.totalMs)
       if (typeof d.firstTextMs === 'number') group.first.push(d.firstTextMs)
+      const tokens = recordOf(d.tokens)
+      if (typeof tokens.input === 'number') group.input.push(tokens.input)
+      if (typeof tokens.context === 'number') group.context.push(tokens.context)
       if (entry.kind === 'turn-failed') group.failed++
       groups.set(key, group)
     }
     const s = (ms: number): string => `${(ms / 1000).toFixed(1)}s`
     return [...groups].map(([key, g]) =>
       `${key}: ${g.total.length} turns, ${g.failed} failed; first text p50 ${s(percentile(g.first, 0.5))} p95 ${s(percentile(g.first, 0.95))}; total p50 ${s(percentile(g.total, 0.5))} p95 ${s(percentile(g.total, 0.95))}`
+      + (g.input.length ? `; input tokens p50 ${kilo(percentile(g.input, 0.5))} p95 ${kilo(percentile(g.input, 0.95))}` : '')
+      + (g.context.length ? `; context p50 ${kilo(percentile(g.context, 0.5))} max ${kilo(Math.max(...g.context))}` : '')
     ).join('\n')
   }
 
@@ -164,6 +173,16 @@ export class Journal {
     const counts = [errors && `${errors} error${errors === 1 ? '' : 's'}`, trouble.length - errors && `${trouble.length - errors} warning${trouble.length - errors === 1 ? '' : 's'}`]
     return `<self-check>\nRocket logged ${counts.filter(Boolean).join(' and ')} since you last heard. Latest: ${trouble.at(-1)!.message}\nCall rocket_diagnostics to read them.\n</self-check>`
   }
+}
+
+/** A turn's tokens in a few words: "input 41.2k (38.0k cached), output 1.3k, context 30.1k of 200k". */
+export function describeTokens(tokens: TurnTokens): string {
+  const context = tokens.context === null ? '' : `, context ${kilo(tokens.context)}${tokens.contextWindow ? ` of ${kilo(tokens.contextWindow)}` : ''}`
+  return `input ${kilo(tokens.input)} (${kilo(tokens.cached)} cached), output ${kilo(tokens.output)}${context}`
+}
+
+function kilo(count: number): string {
+  return count < 1_000 ? String(Math.round(count)) : `${(count / 1_000).toFixed(1).replace(/\.0$/, '')}k`
 }
 
 /** Parse "30m", "2h" or "1d" into milliseconds; null when it is none of those. */

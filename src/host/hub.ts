@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import type { Chat, ChatSnapshot, GoalRole, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, UsageSnapshot } from '../shared/types.ts'
+import type { Chat, ChatSnapshot, GoalRole, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnTokens, UsageSnapshot } from '../shared/types.ts'
 import { buildHandoff, type Handoff, type MissedTurn } from './handoff.ts'
 import { messageOf, oneLine } from './json.ts'
+import { describeTokens } from './journal.ts'
 import type { ProviderAdapter, RunResult, TurnSink, UnpromptedTurn } from './providers/provider.ts'
 import { unavailableUsage } from './providers/provider.ts'
 import { publicTurn, type Store, type StoredTurn } from './store.ts'
@@ -14,7 +15,7 @@ import type { Working } from './teamwork.ts'
 const USAGE_REUSE_MS = 60_000
 const MODELS_REUSE_MS = 10 * 60_000
 
-/** How long a turn took to show something, measured from the moment the message was sent. */
+/** How long a turn took to show something, measured from the moment the message was sent, and what it cost. */
 export type TurnTiming = {
   chatId: string
   provider: ProviderId
@@ -27,12 +28,14 @@ export type TurnTiming = {
   /** To the first reasoning or reply text the user could read. */
   firstTextMs: number | null
   totalMs: number
+  tokens: TurnTokens | null
 }
 
 export function describeTiming(timing: TurnTiming): string {
   const ms = (value: number | null): string => (value === null ? 'none' : `${Math.round(value)}ms`)
   return `turn ${timing.provider}${timing.model ? ` (${timing.model})` : ''} ${timing.status}: `
     + `first event ${ms(timing.firstEventMs)}, first text ${ms(timing.firstTextMs)}, total ${(timing.totalMs / 1000).toFixed(1)}s`
+    + (timing.tokens ? `; ${describeTokens(timing.tokens)}` : '')
 }
 
 type Question = Extract<Item, { type: 'question' }>
@@ -176,6 +179,7 @@ export class Hub {
       handoffTurns: handoff?.turns ?? 0,
       goalRole,
       changes: null,
+      tokens: null,
       startedAt: Date.now(),
       endedAt: null
     })
@@ -474,7 +478,7 @@ export class Hub {
     const adapter = this.adapters[provider]
     const turn = this.store.createTurn({
       id: randomUUID(), chatId, provider, model: null, status: 'running', error: null,
-      handoffTurns: 0, goalRole: null, changes: null, startedAt: Date.now(), endedAt: null
+      handoffTurns: 0, goalRole: null, changes: null, tokens: null, startedAt: Date.now(), endedAt: null
     })
     const live: LiveTurn = { turn, adapter, clock: { sent: performance.now(), firstEvent: null, firstText: null }, items: new Map(), stopRequested: false }
     this.live.set(chatId, live)
@@ -528,6 +532,8 @@ export class Hub {
         this.emit({ type: 'turn', turn: publicTurn(turn) })
       },
       usage: (snapshot) => this.noteUsage(snapshot),
+      // Kept on the turn and saved with its end.
+      tokens: (tokens) => { turn.tokens = tokens },
       activity: (text) => {
         if ((turn.activity ?? null) === text) return
         turn.activity = text
@@ -580,7 +586,8 @@ export class Hub {
       error: turn.error,
       firstEventMs: clock.firstEvent === null ? null : clock.firstEvent - clock.sent,
       firstTextMs: clock.firstText === null ? null : clock.firstText - clock.sent,
-      totalMs: performance.now() - clock.sent
+      totalMs: performance.now() - clock.sent,
+      tokens: turn.tokens
     })
     void this.usage(provider, true)
   }

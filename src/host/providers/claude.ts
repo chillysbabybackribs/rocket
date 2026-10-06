@@ -1,6 +1,6 @@
 import { homedir } from 'node:os'
 import type { Options, Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
-import type { Item, ModelInfo, ToolKind, UsageSnapshot } from '../../shared/types.ts'
+import type { Item, ModelInfo, ToolKind, TurnTokens, UsageSnapshot } from '../../shared/types.ts'
 import { withHandoff } from '../handoff.ts'
 import { clipOutput, jsonPreview, messageOf, oneLine, recordOf, stringOf } from '../json.ts'
 import { claudeRateLimitWindow, claudeUsage, mergeWindow, planName } from '../usage-parsers.ts'
@@ -45,6 +45,11 @@ import {
 // - (CLI 2.1.289, seen live 2026-10-05) The model's plan is its `TodoWrite` tool_use: `input.todos`
 //   is the whole list each time, `{content, status: 'pending'|'in_progress'|'completed',
 //   activeForm}`. It becomes the turn's plan item, not a tool row; its tool_result is dropped.
+// - (SDK 0.3.289 types, read 2026-10-05; not yet seen live) A turn's tokens: `result.usage` is the
+//   main loop's for that turn alone (`input_tokens` uncached, plus `cache_read_input_tokens` and
+//   `cache_creation_input_tokens`), subagents excluded; `result.modelUsage` is cumulative over the
+//   process and only read for `contextWindow`. Each model call's `message_start` stream event
+//   carries that call's usage, so the last one says how full the context is.
 // The SDK has no supported way to import another model's turns into a session, so missed turns
 // ride at the head of the user's message as a tagged block.
 //
@@ -481,6 +486,7 @@ export class ClaudeAdapter implements ProviderAdapter {
       turn.sink.session(out.sessionId)
     }
     if (out.model) turn.sink.model(out.model)
+    if (out.tokens) turn.sink.tokens(out.tokens)
     for (const op of out.ops) {
       if (op.type === 'item') turn.sink.item(op.item)
       else turn.sink.delta(op.itemId, op.delta)
@@ -629,7 +635,7 @@ export class ClaudeAdapter implements ProviderAdapter {
 }
 
 type Op = { type: 'item'; item: Item } | { type: 'delta'; itemId: string; delta: string }
-type Translation = { ops: Op[]; sessionId?: string; model?: string; end?: RunResult }
+type Translation = { ops: Op[]; sessionId?: string; model?: string; end?: RunResult; tokens?: TurnTokens }
 type Block = { id: string; kind: 'text' | 'thinking' | 'tool'; text: string; json: string; settled: boolean }
 type ToolItem = Extract<Item, { type: 'tool' }>
 
@@ -647,6 +653,11 @@ export class TurnTranslator {
   private lastPlan = ''
   private messageCount = 0
   private pendingError: string | null = null
+  private model: string | null = null
+  /** Summed over the turn's results: a turn that follows up after background work has several. */
+  private spent = { input: 0, cached: 0, output: 0 }
+  /** Input of the latest model call. */
+  private context: number | null = null
 
   constructor(private readonly turnId: string) {}
 
@@ -656,6 +667,7 @@ export class TurnTranslator {
     switch (message.type) {
       case 'system':
         if (message.subtype === 'init') {
+          if (typeof message.model === 'string') this.model = message.model
           return {
             ops: [],
             ...(typeof message.session_id === 'string' ? { sessionId: message.session_id } : {}),
@@ -685,10 +697,13 @@ export class TurnTranslator {
   private streamEvent(event: Record<string, unknown>): Op[] {
     const index = Number(event.index ?? 0)
     switch (event.type) {
-      case 'message_start':
+      case 'message_start': {
         this.messageCount += 1
         this.blocks.clear()
+        const usage = recordOf(recordOf(event.message).usage)
+        if (Object.keys(usage).length) this.context = inputOf(usage)
         return []
+      }
       case 'content_block_start': {
         const block = recordOf(event.content_block)
         if (block.type === 'text' || block.type === 'thinking') {
@@ -785,14 +800,31 @@ export class TurnTranslator {
   }
 
   private result(message: Record<string, unknown>): Translation {
-    if (ABORT_REASONS.has(stringOf(message.terminal_reason))) return { ops: [], end: { status: 'interrupted' } }
-    if (message.subtype === 'success' && message.is_error !== true) return { ops: [], end: { status: 'completed' } }
+    const tokens = this.tokens(message)
+    const close = (end: RunResult): Translation => ({ ops: [], end, ...(tokens ? { tokens } : {}) })
+    if (ABORT_REASONS.has(stringOf(message.terminal_reason))) return close({ status: 'interrupted' })
+    if (message.subtype === 'success' && message.is_error !== true) return close({ status: 'completed' })
     const errors = Array.isArray(message.errors) ? message.errors.filter((e): e is string => typeof e === 'string' && !!e.trim()) : []
     const error = this.pendingError
       ?? (errors.length ? errors.join('\n') : null)
       ?? (stringOf(message.result).trim() || `Claude turn ended: ${stringOf(message.subtype) || 'error'}`)
-    if (/no conversation found/i.test(error)) return { ops: [], end: { status: 'failed', sessionLost: true } }
-    return { ops: [], end: { status: 'failed', error } }
+    if (/no conversation found/i.test(error)) return close({ status: 'failed', sessionLost: true })
+    return close({ status: 'failed', error })
+  }
+
+  /** The turn's tokens with this result's added in; undefined when the result carries none. */
+  private tokens(message: Record<string, unknown>): TurnTokens | undefined {
+    const usage = recordOf(message.usage)
+    if (!Object.keys(usage).length) return undefined
+    this.spent = {
+      input: this.spent.input + inputOf(usage),
+      cached: this.spent.cached + count(usage.cache_read_input_tokens),
+      output: this.spent.output + count(usage.output_tokens)
+    }
+    const models = recordOf(message.modelUsage)
+    const windows = Object.values(models).map((entry) => count(recordOf(entry).contextWindow)).filter(Boolean)
+    const own = this.model ? count(recordOf(models[this.model]).contextWindow) : 0
+    return { ...this.spent, context: this.context, contextWindow: own || (windows.length ? Math.max(...windows) : null) }
   }
 
   private startTool(id: string, name: string, input: Record<string, unknown>): Op[] {
@@ -867,6 +899,15 @@ export function describeTool(name: string, input: Record<string, unknown>): { ki
       return { kind: mcp ? 'mcp' : 'other', label: args && args !== '{}' ? `${title} ${args}` : title }
     }
   }
+}
+
+function count(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
+/** Every input token of an Anthropic usage block: the uncached ones and both kinds of cached. */
+function inputOf(usage: Record<string, unknown>): number {
+  return count(usage.input_tokens) + count(usage.cache_read_input_tokens) + count(usage.cache_creation_input_tokens)
 }
 
 function resultText(content: unknown): string {
