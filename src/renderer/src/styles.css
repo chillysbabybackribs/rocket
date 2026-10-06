@@ -115,9 +115,10 @@ button {
 .app.has-browser {
   grid-template-columns: var(--rail-width) minmax(380px, 1fr) minmax(360px, 1.15fr);
 }
-/* Eval dashboard uses the same wide third column as the browser. */
-.app.has-evals {
-  grid-template-columns: var(--rail-width) minmax(380px, 1fr) minmax(360px, 1.15fr);
+/* The eval dashboard and the library share one wide side column, so switching between them
+   from the rail never moves the chat. The library's filter rail and grid set the width. */
+.app.has-evals, .app.has-library {
+  grid-template-columns: var(--rail-width) minmax(340px, 0.8fr) minmax(560px, 1.5fr);
 }
 
 .chat, .browser {
@@ -823,6 +824,10 @@ a.gd-source:hover { color: var(--text); text-decoration: underline; }
 .prose li::marker { color: var(--text-4); }
 .prose a, .user-bubble a { color: #828fff; text-decoration: none; }
 .prose a:hover, .user-bubble a:hover { text-decoration: underline; }
+/* Whether the turn opened a cited page: a tick, or a warning for a page cited unread (ChatMarkdown.tsx). */
+.source-mark { display: inline-flex; vertical-align: -1px; margin-left: 3px; }
+.source-mark.is-opened { color: var(--ok); }
+.source-mark.is-unopened { color: var(--warn); }
 .prose code {
   font-family: var(--mono);
   font-size: 0.86em;

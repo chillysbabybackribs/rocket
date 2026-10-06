@@ -2,9 +2,7 @@
    tokens. A filter rail, then a dense grid of 16:10 frames where photos fill the frame and pages
    sit on a backdrop running off its foot, so a document's title and first lines read. */
 
-.app.has-library {
-  grid-template-columns: var(--rail-width) minmax(340px, 0.8fr) minmax(560px, 1.5fr);
-}
+/* Its column width is shared with the eval dashboard, in styles.css. */
 
 .library-panel {
   margin-left: var(--gap);
