@@ -1,8 +1,8 @@
 <!doctype html>
 <!-- Mockup of hands-free reading scroll in Rocket's browser. One button at the right of the
      toolbar starts the page moving at a steady pace; while it runs, the button opens into a small
-     control (pause, slower, speed, faster, stop) with a line underneath for how far down the page
-     you are. Everything stays in the toolbar, so nothing ever covers or moves the page.
+     control: play/pause inside a ring that fills as you go down the page, a speed slider with the
+     speed and the time left beside it, and stop. Everything stays in the toolbar, so nothing ever covers or moves the page.
      The stage is live: the buttons and keys really scroll the invented article below.
      Borrows Rocket's palette and toolbar metrics from src/renderer/src/styles.css. -->
 <html lang="en">
@@ -55,7 +55,7 @@ main { max-width: 1240px; margin: auto; padding: 0 28px 40px; display: grid; gri
 .frame { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--chrome); }
 /* Both sides keep room for the open reading control, so the address field stays put and centred
    when it opens. */
-.bar { flex: none; height: 44px; display: grid; grid-template-columns: minmax(172px, 1fr) minmax(0, 560px) minmax(172px, 1fr); align-items: center; gap: 8px; padding: 0 8px 0 6px; }
+.bar { flex: none; height: 44px; display: grid; grid-template-columns: minmax(236px, 1fr) minmax(0, 560px) minmax(236px, 1fr); align-items: center; gap: 8px; padding: 0 8px 0 6px; }
 .nav { display: flex; gap: 2px; }
 .icon-button { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; color: var(--text-3); position: relative; }
 .icon-button:not(:disabled):hover { background: var(--hover); color: var(--text); }
@@ -66,26 +66,54 @@ main { max-width: 1240px; margin: auto; padding: 0 28px 40px; display: grid; gri
 
 /* The reading control. At rest it is one icon button; reading, it opens leftward into a pill
    the height of the address field, so the toolbar keeps its rhythm. */
-.reader { position: relative; display: flex; align-items: center; height: 30px; border-radius: 8px; transition: background 160ms ease, padding 160ms ease; }
+.reader { position: relative; display: flex; align-items: center; height: 30px; border-radius: 15px; transition: background 160ms ease, box-shadow 160ms ease; }
 .reader .rest { display: grid; }
-.reader .live { display: none; align-items: center; gap: 1px; }
-.reader.is-on { background: rgba(255,255,255,.07); padding: 0 2px; }
+.reader .live { display: none; align-items: center; gap: 6px; padding: 0 3px 0 2px; }
+.reader.is-on { background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
 .reader.is-on .rest { display: none; }
-.reader.is-on .live { display: flex; }
-.reader .icon-button { width: 26px; height: 26px; border-radius: 6px; }
-.reader .play { color: var(--text); }
-.reader.is-running .play { color: var(--accent); }
-.speed { min-width: 40px; text-align: center; font: 500 11.5px 'Geist Mono', ui-monospace, monospace; color: var(--text-2); font-variant-numeric: tabular-nums; }
-.state-word { display: none; padding: 0 6px 0 2px; font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
-.reader.is-end .state-word { display: block; }
-.reader.is-end .speed, .reader.is-end .slower, .reader.is-end .faster, .reader.is-end .sep.first { display: none; }
-.sep { width: 1px; height: 14px; background: var(--line-strong); margin: 0 3px; }
-/* How far down the page you are, along the pill's foot, like the load line under the address. */
-.reader .track { position: absolute; left: 8px; right: 8px; bottom: 0; height: 2px; border-radius: 2px; background: rgba(255,255,255,.06); opacity: 0; transition: opacity 160ms; }
-.reader.is-on .track { opacity: 1; }
-.reader .fill { height: 100%; width: 0; border-radius: 2px; background: var(--text-3); }
-.reader.is-running .fill { background: var(--accent); }
-.reader.is-end .fill { background: var(--ok); }
+.reader.is-on .live { display: flex; animation: open 180ms cubic-bezier(.2,.8,.2,1); }
+@keyframes open { from { opacity: 0; clip-path: inset(0 0 0 100% round 15px); } to { opacity: 1; clip-path: inset(0 0 0 0 round 15px); } }
+
+/* Play and pause sit inside a ring that fills as you go down the page. */
+.ring { position: relative; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--text); }
+.ring svg.dial { position: absolute; inset: 0; transform: rotate(-90deg); }
+.ring .groove { stroke: rgba(255,255,255,.1); }
+.ring .done { stroke: var(--text-3); transition: stroke 160ms; }
+.ring .face { position: absolute; inset: 4px; border-radius: 50%; background: rgba(255,255,255,.06); transition: background 160ms; }
+.ring svg.glyph { position: relative; }
+.ring:hover .face { background: rgba(255,255,255,.12); }
+.reader.is-running .ring .done { stroke: var(--accent); }
+.reader.is-running .ring .face { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.reader.is-running .ring:hover .face { background: color-mix(in srgb, var(--accent) 34%, transparent); }
+.reader.is-end .ring .done { stroke: var(--ok); }
+.reader.is-end .ring .face { background: color-mix(in srgb, var(--ok) 18%, transparent); }
+
+/* The speed slider runs on a log scale, so the slow end is as easy to set as the fast end. Dots
+   on the groove mark the round speeds it snaps to. */
+.slider { position: relative; width: 104px; height: 26px; display: flex; align-items: center; }
+.slider .ticks { position: absolute; left: 6px; right: 6px; top: 50%; height: 0; pointer-events: none; }
+.slider .ticks i { position: absolute; top: -1.5px; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: rgba(255,255,255,.28); }
+.slider .ticks i.is-under { background: rgba(255,255,255,.55); }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 26px; margin: 0; background: none; cursor: pointer; }
+input[type=range]:focus-visible { outline: none; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--fill-colour) var(--fill), rgba(255,255,255,.12) var(--fill)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4px; border-radius: 50%; background: #f2f2f4; box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 1px 4px rgba(0,0,0,.5); transition: transform 120ms; }
+input[type=range]:hover::-webkit-slider-thumb, input[type=range]:active::-webkit-slider-thumb { transform: scale(1.18); }
+input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 0 0 4px color-mix(in srgb, var(--accent) 45%, transparent); }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); }
+input[type=range]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--fill-colour); }
+input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: #f2f2f4; }
+.reader { --fill-colour: var(--text-3); }
+.reader.is-running { --fill-colour: var(--accent); }
+
+/* The speed, and under it how long the rest of the page takes at that speed. */
+.readout { width: 42px; display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; cursor: default; user-select: none; }
+.readout .speed { font: 600 12px 'Geist Mono', ui-monospace, monospace; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -.2px; }
+.readout .left { font: 10px Inter, sans-serif; color: var(--text-3); white-space: nowrap; }
+.reader.is-end .readout .left { color: var(--ok); }
+.reader .stop { width: 24px; height: 24px; border-radius: 50%; }
+.reader .stop:not(:disabled):hover { background: rgba(255,255,255,.1); }
+.sep { width: 1px; height: 14px; background: var(--line-strong); }
 
 /* Tooltips here are pictures of the native ones, shown on hover. */
 [data-tip]:hover::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: 0; z-index: 5; white-space: pre; padding: 6px 9px; border-radius: 7px; background: var(--menu); box-shadow: var(--menu-shadow); color: var(--text-2); font-size: 11.5px; line-height: 1.45; text-align: left; pointer-events: none; }
@@ -125,8 +153,8 @@ aside b { color: var(--text); font-weight: 500; }
   <div class="eyebrow">Browser · mockup</div>
   <h1>Hands-free reading scroll</h1>
   <p>A button at the right of the toolbar sets the page moving at a steady reading pace. While it
-    runs, the button opens into a small control with pause, speed and stop controls, plus a line
-    that shows how far down the page you are. It all stays in the toolbar and never covers or moves the page.
+    runs, the button opens into a small control: play/pause inside a ring that fills as you go down
+    the page, a speed slider with the time left beside it, and stop. It all stays in the toolbar and never covers or moves the page.
     The stage below is live, so try it.</p>
   <div class="states" role="group" aria-label="Show a state">
     <button data-state="rest" aria-pressed="true">At rest</button>
@@ -160,16 +188,19 @@ aside b { color: var(--text); font-weight: 500; }
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 6 5 5 5-5"/><path d="m7 13 5 5 5-5"/></svg>
             </button>
             <div class="live">
-              <button class="icon-button play" id="play" aria-label="Pause" data-tip="Pause   Space"></button>
-              <span class="state-word">End of page</span>
-              <span class="sep first"></span>
-              <button class="icon-button slower" id="slower" aria-label="Slower" data-tip="Slower   Alt+↑"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
-              <span class="speed" id="speed">1×</span>
-              <button class="icon-button faster" id="faster" aria-label="Faster" data-tip="Faster   Alt+↓"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button>
+              <button class="ring" id="play" aria-label="Pause" data-tip="Pause   Space">
+                <svg class="dial" width="26" height="26" viewBox="0 0 26 26" fill="none" stroke-width="2"><circle class="groove" cx="13" cy="13" r="12"/><circle class="done" id="done" cx="13" cy="13" r="12" stroke-linecap="round" stroke-dasharray="75.4" stroke-dashoffset="75.4"/></svg>
+                <span class="face"></span>
+                <span id="glyph"></span>
+              </button>
+              <div class="slider" data-tip="Speed   Alt+↑ ↓, or scroll over it&#10;Double-click the speed for 1×">
+                <div class="ticks" id="ticks"></div>
+                <input type="range" id="range" min="0" max="1000" step="1" aria-label="Reading speed">
+              </div>
+              <div class="readout" id="readout" title="Double-click for 1×"><span class="speed" id="speed">1×</span><span class="left" id="left"></span></div>
               <span class="sep"></span>
-              <button class="icon-button" id="stop" aria-label="Stop reading" data-tip="Stop   Esc"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+              <button class="icon-button stop" id="stop" aria-label="Stop reading" data-tip="Stop   Esc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
             </div>
-            <div class="track"><div class="fill" id="fill"></div></div>
           </div>
         </div>
       </div>
@@ -187,7 +218,7 @@ aside b { color: var(--text); font-weight: 500; }
       <dl>
         <dt><kbd>Alt</kbd> <kbd>S</kbd></dt><dd>Start, or stop. Works from anywhere in the browser.</dd>
         <dt><kbd>Space</kbd></dt><dd>Pause or carry on, in place of the usual page down</dd>
-        <dt><kbd>Alt</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Slower or faster: ½× ¾× 1× 1¼× 1½× 2× 3× 4× 6× 8×</dd>
+        <dt><kbd>Alt</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Slower or faster, about a tenth at a time</dd>
         <dt><kbd>Esc</kbd></dt><dd>Stop, leaving the page where it is</dd>
       </dl>
     </section>
@@ -201,7 +232,10 @@ aside b { color: var(--text); font-weight: 500; }
     </section>
     <section>
       <h4>Speed</h4>
-      <p>1× is about 30 pixels a second, an unhurried read of an article column. The top speed, 8×, is about 240 pixels a second, fast enough to skim a long feed. The last speed you chose is used next time, in every tab.</p>
+      <p><b>Drag the slider</b> anywhere from ¼× to 8×. It runs on a log scale, so the slow end is as easy to set as the fast end. It clicks onto ½×, 1×, 2× and 4× as you pass them, which the dots mark.</p>
+      <p><b>Scroll over the control</b> to nudge it, and <b>double-click the speed</b> to go back to 1×.</p>
+      <p>1× is about 30 pixels a second, an unhurried read of an article column. 8× is about 240, fast enough to skim a feed. Under the speed is <b>how long the rest of the page takes</b> at that speed, and it updates as you drag.</p>
+      <p>The ring around play fills as you go down the page. The last speed you chose is used next time, in every tab.</p>
     </section>
   </aside>
 </main>
@@ -226,49 +260,66 @@ for (let h = 0; h < heads.length; h++) {
 html += '<p class="end">· · ·</p>'
 document.getElementById('article').innerHTML = html
 
-const icons = {
-  pause: '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>',
-  play: '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5Z"/></svg>',
-  again: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
-}
-const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4, 6, 8]
-const label = (s) => ({ 0.5: '½×', 0.75: '¾×', 1.25: '1¼×', 1.5: '1½×' }[s] ?? `${s}×`)
+const MIN = 0.25, MAX = 8
 const BASE = 30 // pixels a second at 1×
+const SNAPS = [0.5, 1, 2, 4]
+// The slider's 0–1000 maps onto MIN–MAX on a log scale; near a round speed it clicks onto it.
+const toSpeed = (v) => MIN * (MAX / MIN) ** (v / 1000)
+const toValue = (x) => 1000 * Math.log(x / MIN) / Math.log(MAX / MIN)
+const snap = (x) => SNAPS.find((r) => Math.abs(toValue(r) - toValue(x)) < 22) ?? x
+const label = (x) => ({ 0.25: '¼×', 0.5: '½×' }[x] ?? `${x < 10 ? Math.round(x * 10) / 10 : Math.round(x)}×`)
 
 const page = document.getElementById('page')
 const reader = document.getElementById('reader')
 const play = document.getElementById('play')
-let state = 'rest', step = 2, carry = 0, last = 0
+const range = document.getElementById('range')
+let state = 'rest', speed = 1, carry = 0, last = 0
 
+document.getElementById('ticks').innerHTML = SNAPS.map((r) => `<i data-r="${r}" style="left:${toValue(r) / 10}%"></i>`).join('')
+
+const icons = {
+  pause: '<svg class="glyph" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="5" height="18" rx="1.5"/><rect x="14" y="3" width="5" height="18" rx="1.5"/></svg>',
+  play: '<svg class="glyph" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3.8v16.4a1 1 0 0 0 1.5.86l13-8.2a1 1 0 0 0 0-1.72l-13-8.2A1 1 0 0 0 7 3.8Z"/></svg>',
+  again: '<svg class="glyph" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
+}
+const progress = () => page.scrollTop / Math.max(1, page.scrollHeight - page.clientHeight)
+const atEnd = () => page.scrollTop >= page.scrollHeight - page.clientHeight - 1
+function timeLeft() {
+  const s = (page.scrollHeight - page.clientHeight - page.scrollTop) / (BASE * speed)
+  return s < 1 ? 'done' : s < 60 ? `${Math.ceil(s)} s left` : `${Math.round(s / 60)} min left`
+}
+
+let shown = ''
 function render() {
   reader.classList.toggle('is-on', state !== 'rest')
   reader.classList.toggle('is-running', state === 'running')
   reader.classList.toggle('is-end', state === 'end')
-  play.innerHTML = state === 'running' ? icons.pause : state === 'end' ? icons.again : icons.play
+  const g = state === 'running' ? 'pause' : state === 'end' ? 'again' : 'play'
+  if (g !== shown) { document.getElementById('glyph').innerHTML = icons[g]; shown = g }
   const tip = state === 'running' ? ['Pause', 'Pause   Space'] : state === 'end' ? ['Read from the top', 'Read from the top'] : ['Carry on', 'Carry on   Space']
   play.setAttribute('aria-label', tip[0]); play.dataset.tip = tip[1]
-  document.getElementById('speed').textContent = label(speeds[step])
-  document.getElementById('slower').disabled = step === 0
-  document.getElementById('faster').disabled = step === speeds.length - 1
+  document.getElementById('done').style.strokeDashoffset = String(75.4 * (1 - progress()))
+  if (document.activeElement !== range || !range.matches(':active')) range.value = String(toValue(speed))
+  range.style.setProperty('--fill', `${range.value / 10}%`)
+  for (const i of document.querySelectorAll('#ticks i')) i.classList.toggle('is-under', Number(i.dataset.r) <= speed)
+  document.getElementById('speed').textContent = label(speed)
+  document.getElementById('left').textContent = state === 'end' ? 'Done' : timeLeft()
+  range.setAttribute('aria-valuetext', `${label(speed)}, ${timeLeft()}`)
   for (const b of document.querySelectorAll('.states button')) b.setAttribute('aria-pressed', String(b.dataset.state === state))
   const words = { rest: 'At rest', running: 'Reading', paused: 'Paused', end: 'End of page' }
-  document.getElementById('live-state').innerHTML = state === 'rest' ? 'At rest' : `<b>${words[state]}</b> · ${label(speeds[step])} · ${Math.round(progress() * 100)}% down`
-  page.classList.toggle('is-reading', state === 'running')
+  document.getElementById('live-state').innerHTML = state === 'rest' ? 'At rest' : `<b>${words[state]}</b> · ${label(speed)} · ${Math.round(progress() * 100)}% down`
 }
-const progress = () => page.scrollTop / Math.max(1, page.scrollHeight - page.clientHeight)
-const atEnd = () => page.scrollTop >= page.scrollHeight - page.clientHeight - 1
 
 // scrollTop rounds to whole pixels, so slow speeds keep the fraction and add it next frame.
 function tick(now) {
   if (state === 'running') {
     const dt = last ? (now - last) / 1000 : 0
-    carry += BASE * speeds[step] * dt
+    carry += BASE * speed * dt
     const whole = Math.floor(carry)
     if (whole) { page.scrollTop += whole; carry -= whole }
     if (atEnd()) state = 'end'
   }
   last = now
-  document.getElementById('fill').style.width = `${progress() * 100}%`
   render()
   requestAnimationFrame(tick)
 }
@@ -278,11 +329,18 @@ function set(next) {
   if (next === 'running' && atEnd()) page.scrollTop = 0
   state = next; carry = 0
 }
+const setSpeed = (x) => { speed = Math.min(MAX, Math.max(MIN, x)) }
 document.getElementById('start').onclick = () => set('running')
 play.onclick = () => set(state === 'running' ? 'paused' : 'running')
 document.getElementById('stop').onclick = () => set('rest')
-document.getElementById('slower').onclick = () => { step = Math.max(0, step - 1) }
-document.getElementById('faster').onclick = () => { step = Math.min(speeds.length - 1, step + 1) }
+range.oninput = () => { setSpeed(snap(toSpeed(Number(range.value)))) }
+document.getElementById('readout').ondblclick = () => setSpeed(1)
+// Scrolling over the control nudges the speed instead of the page.
+reader.addEventListener('wheel', (e) => {
+  if (state === 'rest') return
+  e.preventDefault()
+  setSpeed(toSpeed(toValue(speed) + (e.deltaY < 0 ? 30 : -30)))
+}, { passive: false })
 
 // The state buttons pose the stage at a sensible place on the page.
 for (const b of document.querySelectorAll('.states button')) b.onclick = () => {
@@ -297,8 +355,8 @@ addEventListener('keydown', (e) => {
   if (state === 'rest') return
   if (e.key === 'Escape') set('rest')
   else if (e.key === ' ') { e.preventDefault(); if (state !== 'end') set(state === 'running' ? 'paused' : 'running') }
-  else if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); step = Math.max(0, step - 1) }
-  else if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); step = Math.min(speeds.length - 1, step + 1) }
+  else if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); setSpeed(speed / 1.1) }
+  else if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); setSpeed(speed * 1.1) }
 })
 // Dragging to select pauses; the wheel just moves you and reading carries on.
 page.addEventListener('mousedown', () => { if (state === 'running') set('paused') })

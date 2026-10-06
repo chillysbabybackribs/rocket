@@ -149,6 +149,7 @@ const library = new Library(store, attachments, join(dataDir, 'library-previews'
   changed: () => emit({ type: 'library' }),
   downloads: async (chat, since) => await askBrowser({ op: 'downloads', chat, since }) as BrowserDownload[]
 })
+void library.backfill().catch((error) => journal.add('host', 'warn', 'library', `The library could not add earlier plans: ${messageOf(error)}`))
 
 // The tools are served before any provider starts, so every session is born knowing them.
 const liveUi = new LiveUiRunner(rocketSourceRoot(), join(dataDir, 'ui-runs'), askBrowser)

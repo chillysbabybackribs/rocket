@@ -74,14 +74,14 @@ export class Library {
   }
 
   /** Put a file on the shelf by its path. Returns null for something that is not a readable file. */
-  async add(path: string, source: LibrarySource, chatId: string | null, origin?: string): Promise<LibraryEntry | null> {
+  async add(path: string, source: LibrarySource, chatId: string | null, origin?: string, addedAt = Date.now()): Promise<LibraryEntry | null> {
     if (typeof path !== 'string' || !isAbsolute(path)) return null
     if (chatId && this.options.hidden(chatId)) return null
     const info = await stat(path).catch(() => null)
     if (!info?.isFile()) return null
     const name = basename(path)
     const row = this.store.addLibraryFile({
-      path, name, kind: await sniffKind(path, name), source, origin: origin ?? basename(dirname(path)), chatId, size: info.size, addedAt: Date.now()
+      path, name, kind: await sniffKind(path, name), source, origin: origin ?? basename(dirname(path)), chatId, size: info.size, addedAt
     })
     this.options.changed()
     return { id: `f${row.seq}`, name: row.name, kind: row.kind as LibraryKind, source: row.source as LibrarySource, origin: row.origin, chatId: row.chatId, path, size: row.size, addedAt: row.addedAt, missing: false }
@@ -98,13 +98,34 @@ export class Library {
     for (const download of downloads) {
       if (download.state === 'completed') await this.add(download.path, 'download', chat.id, hostOf(download.url))
     }
+    await this.addPlans(chat.id, chat.cwd, changed, Date.now())
+  }
+
+  /**
+   * Once, on the first start with a library: the Markdown files that turns before it wrote, read
+   * from the patches the store kept. Newest turns come first, so a file written several times is
+   * dated by, and belongs to the chat of, the turn that last wrote it. Files since deleted or moved
+   * are skipped.
+   */
+  async backfill(): Promise<number> {
+    if (this.store.libraryBackfilled()) return 0
+    const before = this.store.libraryFiles().length
+    for (const { chatId, cwd, endedAt, paths } of this.store.markdownWrittenByTurns()) {
+      if (!this.options.hidden(chatId)) await this.addPlans(chatId, cwd, paths, endedAt, true)
+    }
+    this.store.setLibraryBackfilled()
+    return this.store.libraryFiles().length - before
+  }
+
+  private async addPlans(chatId: string, cwd: string, changed: string[], addedAt: number, quiet = false): Promise<void> {
     const plans = changed.filter((path) => kindOf(path) === 'markdown')
     if (!plans.length) return
-    const top = await repoRoot(chat.cwd)
+    const top = await repoRoot(cwd)
     if (!top) return
     for (const path of plans) {
       const full = isAbsolute(path) ? path : join(top, path)
-      await this.add(full, 'plan', chat.id, relative(top, dirname(full)) || basename(top))
+      if (quiet && !existsSync(full)) continue
+      await this.add(full, 'plan', chatId, relative(top, dirname(full)) || basename(top), addedAt)
     }
   }
 

@@ -78,6 +78,7 @@ const SCHEMA = `
     data TEXT NOT NULL,
     created_at INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS app_flags (name TEXT PRIMARY KEY);
   CREATE TABLE IF NOT EXISTS library_files (
     seq INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT NOT NULL UNIQUE,
@@ -187,6 +188,28 @@ export class Store {
       ON CONFLICT(path) DO UPDATE SET size = excluded.size`)
       .run(file.path, file.name, file.kind, file.source, file.origin, file.chatId, file.size, file.addedAt)
     return libraryFileOf(this.sql('SELECT * FROM library_files WHERE path = ?').get(file.path)!)
+  }
+
+  /**
+   * The Markdown files each finished turn wrote, newest turn first, read from the kept patches'
+   * `+++ b/<path>` lines (paths are relative to the turn's repository).
+   */
+  markdownWrittenByTurns(): Array<{ chatId: string; cwd: string; endedAt: number; paths: string[] }> {
+    const rows = this.sql(`SELECT t.chat_id, c.cwd, t.ended_at, p.patch FROM turn_patches p
+      JOIN turns t ON t.id = p.turn_id JOIN chats c ON c.id = t.chat_id
+      WHERE p.patch LIKE '%.md%' ORDER BY t.seq DESC`).all()
+    return rows.map((row) => ({
+      chatId: String(row.chat_id), cwd: String(row.cwd), endedAt: Number(row.ended_at ?? 0),
+      paths: [...String(row.patch).matchAll(/^\+\+\+ b\/(.+\.(?:md|markdown|mdx))$/gm)].map((match) => match[1]!)
+    })).filter((row) => row.paths.length)
+  }
+
+  libraryBackfilled(): boolean {
+    return this.sql(`SELECT 1 FROM app_flags WHERE name = 'library-backfill'`).get() !== undefined
+  }
+
+  setLibraryBackfilled(): void {
+    this.sql(`INSERT OR IGNORE INTO app_flags (name) VALUES ('library-backfill')`).run()
   }
 
   libraryFiles(): Array<LibraryFileRow & { seq: number }> {

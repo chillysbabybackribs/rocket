@@ -130,3 +130,29 @@ test('library_list lists with the panel’s filters, "this" chat included, and r
     await done()
   }
 })
+
+test('the first start shelves the Markdown files earlier turns wrote, once, dated by the last turn to write each', async () => {
+  const { root, store, library, chat, done } = await setup()
+  try {
+    const { execFileSync } = await import('node:child_process')
+    execFileSync('git', ['init', '-q', root])
+    chat('c1')
+    chat('c2')
+    await writeFile(join(root, 'plan.md'), '# Plan\n')
+    const patched = (id: string, chatId: string, endedAt: number, patch: string): void => {
+      store.createTurn({ ...turn(chatId, endedAt - 1), id, endedAt })
+      store.setTurnChanges(id, { files: 1, added: 1, removed: 0, undone: false }, { patch, truncated: false, startTree: null, endTree: null })
+    }
+    patched('old', 'c1', 1_000, 'diff --git a/plan.md b/plan.md\n--- a/plan.md\n+++ b/plan.md\n@@ -0,0 +1 @@\n+# Plan\n')
+    patched('new', 'c2', 2_000, 'diff --git a/plan.md b/plan.md\n--- a/plan.md\n+++ b/plan.md\n@@ -1 +1 @@\n-# P\n+# Plan\n')
+    patched('gone', 'c1', 3_000, 'diff --git a/deleted.md b/deleted.md\n--- a/deleted.md\n+++ b/deleted.md\n@@ -0,0 +1 @@\n+x\n')
+    assert.equal(await library.backfill(), 1)
+    const [plan] = library.list()
+    assert.equal(plan!.name, 'plan.md')
+    assert.equal(plan!.chatId, 'c2')
+    assert.equal(plan!.addedAt, 2_000)
+    assert.equal(await library.backfill(), 0)
+  } finally {
+    await done()
+  }
+})
