@@ -7,7 +7,7 @@ export type ArtifactView =
   | { kind: 'changes'; chatId: string; turnId: string; patch: TurnPatch }
   /** An attached PDF or text file; `preview` is null while it loads. */
   | { kind: 'attachment'; attachment: FileAttachment; preview: AttachmentPreview | null; error: string | null }
-import { PROVIDERS, planItemId, providerLabel } from '../../shared/types.ts'
+import { PROVIDERS, TURN_PAGE, planItemId, providerLabel } from '../../shared/types.ts'
 import { call, connectHost } from './host.ts'
 
 // Client state. Two kinds of subscription keep a fast token stream cheap: components that care
@@ -396,39 +396,69 @@ function applyEvents(events: HostEvent[]): void {
 
 // ── Showing chats ─────────────────────────────────────────────────────
 
-/** Drop the views no pane shows any more, and the items that were theirs. */
+/**
+ * Drop the views of chats no pane has open any more, and the items that were theirs. A chat open
+ * as a tab keeps its view, which live events keep current, so going back to it asks the host for
+ * nothing.
+ */
 function pruneViews(panes: Pane[]): Record<string, ChatView> {
-  const shown = new Set([...panes.map((pane) => pane.chatId), evalChatId(state)])
+  const open = new Set([...panes.flatMap((pane) => [pane.chatId, ...pane.tabs]), evalChatId(state)])
   const views: Record<string, ChatView> = {}
   for (const [chatId, view] of Object.entries(state.views)) {
-    if (shown.has(chatId)) views[chatId] = view
-    else for (const ids of Object.values(view.turnItems)) for (const id of ids) items.delete(id)
+    if (open.has(chatId)) views[chatId] = view
+    else dropItems(view.turnItems)
   }
   return views
 }
 
-function showChat(pane: number, chatId: string | null, turns: Turn[] = [], loaded: Item[] = [], queued: QueuedMessage[] = [], hasOlder = false): void {
+function dropItems(turnItems: Record<string, string[]>): void {
+  for (const ids of Object.values(turnItems)) for (const id of ids) items.delete(id)
+}
+
+/**
+ * A kept chat cut back to its newest page as it comes back on screen, so returning to it costs
+ * the same however far up it was read. Not while another pane shows it, which would lose its place.
+ */
+function newestPage(view: ChatView): ChatView {
+  if (view.turns.length <= TURN_PAGE) return view
+  const turns = view.turns.slice(-TURN_PAGE)
+  const kept = new Set(turns.map((turn) => turn.id))
+  const turnItems: Record<string, string[]> = {}
+  for (const [turnId, ids] of Object.entries(view.turnItems)) {
+    if (kept.has(turnId)) turnItems[turnId] = ids
+    else dropItems({ [turnId]: ids })
+  }
+  return { ...view, turns, turnItems, hasOlder: true }
+}
+
+/** What `chat.open` gave for a chat; without one, the chat's kept view is shown. */
+type Page = { turns: Turn[]; items: Item[]; queued: QueuedMessage[]; hasOlder: boolean }
+
+function showChat(pane: number, chatId: string | null, page?: Page): void {
   linkRequest++
   setState({ artifact: null })
   const running = new Set(state.running)
-  for (const turn of turns) if (turn.status === 'running') running.add(turn.chatId)
+  for (const turn of page?.turns ?? []) if (turn.status === 'running') running.add(turn.chatId)
   const current = paneAt(state, pane)
   const tabs = chatId && !current.tabs.includes(chatId) ? [...current.tabs, chatId] : current.tabs
   const panes = state.panes.map((entry, index) => (index === pane ? { ...entry, chatId, tabs, restored: null, ...selectionFor(chatId) } : entry))
   const views = pruneViews(panes)
-  if (chatId) {
+  if (chatId && page) {
     // A fresh snapshot replaces whatever another pane loaded of the same chat; it is the newer.
+    if (views[chatId]) dropItems(views[chatId].turnItems)
     const turnItems: Record<string, string[]> = {}
-    for (const item of loaded) {
+    for (const item of page.items) {
       items.set(item.id, item)
       ;(turnItems[item.turnId] ??= []).push(item.id)
     }
-    views[chatId] = { turns, turnItems, queued, planTurnId: null, hasOlder }
+    views[chatId] = { turns: page.turns, turnItems, queued: page.queued, planTurnId: null, hasOlder: page.hasOlder }
+  } else if (chatId && views[chatId] && !state.panes.some((entry, index) => index !== pane && entry.chatId === chatId)) {
+    views[chatId] = newestPage(views[chatId])
   }
   setState({ panes, views, running })
   savePanes()
   // Coming back to a chat whose turn is still planning shows the plan again, as it did when it started.
-  const planning = turns.findLast((turn) => turn.status === 'running' && items.has(planItemId(turn.id)))
+  const planning = chatId ? views[chatId]?.turns.findLast((turn) => turn.status === 'running' && items.has(planItemId(turn.id))) : undefined
   if (chatId && planning) openPlanIfNew(chatId, planning.id)
 }
 
@@ -459,6 +489,8 @@ export function closePlan(chatId: string): void {
 
 function setTabs(pane: number, tabs: string[]): void {
   patchPane(pane, { tabs })
+  // A tab closed in the background lets its chat go.
+  setState({ views: pruneViews(state.panes) })
   savePanes()
 }
 
@@ -476,9 +508,14 @@ export async function openChat(chatId: string | null, pane: number = state.focus
     showChat(pane, null)
     return
   }
+  // A chat open as a tab is kept current by live events, so it is shown as it stands.
+  if (state.views[chatId]) {
+    showChat(pane, chatId)
+    return
+  }
   try {
     const snapshot = await call('chat.open', { chatId })
-    showChat(pane, chatId, snapshot.turns, snapshot.items, snapshot.queued, snapshot.hasOlder)
+    showChat(pane, chatId, { turns: snapshot.turns, items: snapshot.items, queued: snapshot.queued ?? [], hasOlder: snapshot.hasOlder })
   } catch (error) {
     setTabs(pane, paneAt(state, pane).tabs.filter((id) => id !== chatId))
     showChat(pane, null)
@@ -772,6 +809,25 @@ export function showEvalView(view: EvalView, ids: Partial<Pick<EvalsState, 'scen
     cell: view === 'run' ? ids.cell ?? state.evals.cell : null
   })
   if (!state.evalsOpen) setEvalsOpen(true)
+}
+
+/**
+ * Fetch the output a page left out of a finished tool call (`outputLength`), when its step is
+ * opened. The row re-renders with it; a call that has since gone keeps showing none.
+ */
+export async function loadOutput(chatId: string, itemId: string): Promise<void> {
+  const item = items.get(itemId)
+  if (item?.type !== 'tool' || !item.outputLength || item.output) return
+  try {
+    const output = await call('item.output', { chatId, itemId })
+    const current = items.get(itemId)
+    if (current?.type !== 'tool') return
+    const { outputLength: _left, ...rest } = current
+    items.set(itemId, { ...rest, output })
+    notifyItem(itemId)
+  } catch (error) {
+    fail(error)
+  }
 }
 
 /** Chats whose earlier turns are on their way, so a scroll that fires twice asks once. */

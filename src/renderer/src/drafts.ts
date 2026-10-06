@@ -3,7 +3,8 @@ import { imageSize } from 'image-size'
 import { MAX_FILE_BYTES, MAX_IMAGE_BYTES, MAX_MESSAGE_ATTACHMENTS, MAX_MESSAGE_FILE_BYTES, MAX_MESSAGE_IMAGE_BYTES, isFileAttachment, type Attachment, type MessageDraft } from '../../shared/types.ts'
 import { call } from './host.ts'
 
-type Draft = MessageDraft & { attachments: Attachment[]; pending: number; sending: boolean; error: string | null }
+/** `fresh` is an attachment just copied in, highlighted for a moment; it is not saved. */
+type Draft = MessageDraft & { attachments: Attachment[]; pending: number; sending: boolean; error: string | null; fresh?: string | null }
 const empty: Draft = { text: '', attachments: [], pending: 0, sending: false, error: null }
 const drafts = new Map<string, Draft>()
 const listeners = new Set<() => void>()
@@ -49,20 +50,28 @@ function overLimit(attachments: Attachment[], adding: { size: number; file: bool
   return null
 }
 
-export function addExistingAttachment(key: string, attachment: Attachment): void {
+/** Why an existing attachment cannot join a draft, or null when it can (already there counts as fine). */
+export function attachmentProblem(key: string, attachment: Attachment): string | null {
   if (!attachment || typeof attachment.id !== 'string' || typeof attachment.name !== 'string' || !Number.isFinite(attachment.size) || attachment.size <= 0) {
-    updateDraft(key, { error: 'This attachment could not be added. Choose the file again.' })
-    return
+    return 'This attachment could not be added. Choose the file again.'
   }
   const current = draftOf(key)
-  if (current.sending) return
-  if (current.attachments.some(each => each.id === attachment.id)) return
-  const limit = overLimit(current.attachments, { size: attachment.size, file: isFileAttachment(attachment) })
-  if (limit) {
-    updateDraft(key, { error: limit })
-    return
+  if (current.sending) return 'That message is being sent. Try again in a moment.'
+  if (current.attachments.some(each => each.id === attachment.id)) return null
+  return overLimit(current.attachments, { size: attachment.size, file: isFileAttachment(attachment) })
+}
+
+/** Adds to the end of a draft, keeping its text and files; returns whether it was added now. */
+export function addExistingAttachment(key: string, attachment: Attachment): boolean {
+  const problem = attachmentProblem(key, attachment)
+  if (problem) {
+    if (!draftOf(key).sending) updateDraft(key, { error: problem })
+    return false
   }
+  const current = draftOf(key)
+  if (current.attachments.some(each => each.id === attachment.id)) return false
   updateDraft(key, { attachments: [...current.attachments, attachment], error: null })
+  return true
 }
 
 const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']

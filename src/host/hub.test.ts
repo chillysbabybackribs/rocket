@@ -421,3 +421,23 @@ test("a turn's tokens are kept on it and reported with its timing; the latest re
   assert.deepEqual(timings[0]!.tokens, tokens)
   assert.deepEqual(hub.openChat(chat.id).turns[0]!.tokens, tokens)
 })
+
+test('a page leaves finished tool output out and serves it on request; the turn in flight keeps its own', async () => {
+  const { adapter, hub, ended } = setup()
+  const chat = hub.createChat('/work')
+  const turnId = (): string => adapter.ran.at(-1)!.turnId
+  adapter.answer = (sink) => sink.item({ type: 'tool', id: 'done-call', turnId: turnId(), kind: 'command', label: 'ls', status: 'done', output: 'a.txt\nb.txt' })
+  hub.send(chat.id, 'claude', null, 'list')
+  adapter.complete()
+  await ended()
+  const finished = hub.openChat(chat.id).items.find((item) => item.id === 'done-call')
+  assert.deepEqual(finished?.type === 'tool' && [finished.output, finished.outputLength], ['', 11])
+  assert.equal(hub.itemOutput(chat.id, 'done-call'), 'a.txt\nb.txt')
+  assert.throws(() => hub.itemOutput(chat.id, 'no-such-step'), /no longer in this chat/)
+
+  adapter.answer = (sink) => sink.item({ type: 'tool', id: 'live-call', turnId: turnId(), kind: 'command', label: 'cat', status: 'done', output: 'streamed so far' })
+  hub.send(chat.id, 'claude', null, 'again')
+  const live = hub.openChat(chat.id).items.find((item) => item.id === 'live-call')
+  assert.deepEqual(live?.type === 'tool' && [live.output, live.outputLength], ['streamed so far', undefined])
+  adapter.complete()
+})

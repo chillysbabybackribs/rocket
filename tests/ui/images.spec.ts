@@ -158,3 +158,75 @@ test('PDF and code files attach beside images, preview in the side panel, and re
   await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
   await expect(page.getByRole('alert')).toHaveCount(0)
 })
+
+test('an attachment is copied to another chat by menu or drag, saved, revealed, and outlives its source chat', async ({ rocket }) => {
+  let page = rocket.page
+  await page.locator('.composer-folder').click()
+  const brief = pdfBytes('Invite your first teammate')
+  await page.locator('.image-file-input').setInputFiles({ name: 'onboarding-brief.pdf', mimeType: 'application/pdf', buffer: brief })
+  await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Here is the brief')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.locator('.prose').last()).toHaveText('Received 1 file(s).')
+  await page.getByRole('button', { name: 'Add a chat beside this one', exact: true }).click()
+  const source = page.locator('.pane').nth(0)
+  const target = page.locator('.pane').nth(1)
+  const sent = source.locator('.user-message .file-attachment')
+  const draft = target.locator('.is-draft .file-attachment')
+  const notice = page.locator('.attachment-notice')
+
+  // Drag from the sent message onto the other pane: the drop target names the copy, and Undo takes it back.
+  await sent.locator('.file-open').dragTo(target.locator('.composer'))
+  await expect(draft).toHaveCount(1)
+  await expect(notice).toContainText('Copied onboarding-brief.pdf to')
+  await notice.getByRole('button', { name: 'Undo' }).click()
+  await expect(draft).toHaveCount(0)
+
+  // The ⋯ menu: Copy to chat lists the open panes, and copying keeps the destination's text.
+  await target.getByRole('textbox', { name: 'Message', exact: true }).fill('Use the same brief here')
+  await sent.hover()
+  await source.getByRole('button', { name: 'More for onboarding-brief.pdf' }).click()
+  await expect(page.getByRole('menu', { name: 'onboarding-brief.pdf' })).toBeVisible()
+  await rocket.capture('reuse-menu')
+  await page.getByRole('menuitem', { name: 'Copy to chat' }).click()
+  await expect(page.locator('.attachment-chat').filter({ hasText: 'This chat' })).toHaveCount(1)
+  await rocket.capture('reuse-picker')
+  await page.locator('.attachment-chat').filter({ hasText: 'Pane 2' }).click()
+  await expect(draft).toHaveCount(1)
+  await expect(target.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Use the same brief here')
+  await rocket.capture('reuse-copied')
+  // Right-click opens the same menu; copying again says it is already there.
+  await sent.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Copy to chat' }).click()
+  await page.locator('.attachment-chat').filter({ hasText: 'Pane 2' }).click()
+  await expect(notice).toContainText('already in')
+  await expect(draft).toHaveCount(1)
+
+  // Save as writes the stored original; Reveal shows only Rocket's own copy.
+  const saved = join(rocket.profile, 'saved-brief.pdf')
+  await rocket.app.evaluate(({ dialog, shell }, path) => {
+    dialog.showSaveDialog = (async () => ({ canceled: false, filePath: path })) as unknown as typeof dialog.showSaveDialog
+    shell.showItemInFolder = (shown: string) => { (globalThis as { revealed?: string }).revealed = shown }
+  }, saved)
+  await sent.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Save as…' }).click()
+  await expect(notice).toContainText('Saved saved-brief.pdf')
+  expect(await readFile(saved)).toEqual(brief)
+  await sent.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Reveal stored file' }).click()
+  await expect(notice).toContainText('stored as')
+  const revealed = await rocket.app.evaluate(() => (globalThis as { revealed?: string }).revealed)
+  expect(revealed).toMatch(/[/\\]attachments[/\\][0-9a-f-]+\.pdf$/)
+
+  // Deleting the chat the file came from leaves the copy usable, across a restart.
+  page.once('dialog', dialog => void dialog.accept())
+  await page.getByRole('button', { name: 'Chat history' }).click()
+  await page.locator('.chat-row').filter({ hasText: 'Here is the brief' }).hover()
+  await page.getByRole('button', { name: 'Delete chat: Here is the brief' }).click()
+  await rocket.restart()
+  page = rocket.page
+  const kept = page.locator('.is-draft .file-attachment')
+  await expect(kept).toHaveCount(1)
+  await kept.locator('.file-open').click()
+  await expect(page.locator('.attachment-page')).toHaveCount(1)
+  await rocket.capture('reuse-after-source-deleted')
+})

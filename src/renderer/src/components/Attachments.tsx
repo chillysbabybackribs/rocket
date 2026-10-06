@@ -1,9 +1,25 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type MouseEvent } from 'react'
 import { X } from 'lucide-react'
 import { isFileAttachment, type Attachment, type FileAttachment, type ImageAttachment } from '../../../shared/types.ts'
 import { call } from '../host.ts'
 import { ATTACHMENT_DRAG_TYPE } from '../drafts.ts'
 import { openAttachment, useApp } from '../store.ts'
+import { AttachmentMenu } from './AttachmentMenu.tsx'
+
+type MenuRequest = { point: { x: number; y: number } | null; at: number } | null
+/** Right-click, Shift+F10 or the context-menu key on a tile opens the same menu as its ⋯ button. */
+function useMenuRequest() {
+  const [request, setRequest] = useState<MenuRequest>(null)
+  return {
+    request,
+    handlers: {
+      onContextMenu: (event: MouseEvent) => { event.preventDefault(); setRequest({ point: { x: event.clientX, y: event.clientY }, at: Date.now() }) },
+      onKeyDown: (event: KeyboardEvent) => {
+        if ((event.shiftKey && event.key === 'F10') || event.key === 'ContextMenu') { event.preventDefault(); setRequest({ point: null, at: Date.now() }) }
+      }
+    }
+  }
+}
 
 // Electron's native browser view must hide while the renderer's image dialog is open.
 let previewOpen = false
@@ -16,7 +32,8 @@ export function useImagePreviewOpen(): boolean {
   return useSyncExternalStore(listener => { previewListeners.add(listener); return () => { previewListeners.delete(listener) } }, () => previewOpen)
 }
 
-function ImageTile({ image, remove }: { image: ImageAttachment; remove?: () => void }) {
+function ImageTile({ image, remove, fresh }: { image: ImageAttachment; remove?: () => void; fresh?: boolean }) {
+  const menu = useMenuRequest()
   const [src, setSrc] = useState<string | null>(null)
   const [full, setFull] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -34,11 +51,12 @@ function ImageTile({ image, remove }: { image: ImageAttachment; remove?: () => v
     catch (reason) { setError(reason instanceof Error ? reason.message : 'This image could not be opened.') }
   }
   return (
-    <div className="image-attachment">
+    <div className={`image-attachment${fresh ? ' is-fresh' : ''}`} {...menu.handlers}>
       <button type="button" className="image-thumbnail" aria-label={`Preview ${image.name}`} onClick={() => void enlarge()} draggable
         onDragStart={event => { event.dataTransfer.setData(ATTACHMENT_DRAG_TYPE, JSON.stringify(image)); event.dataTransfer.effectAllowed = 'copy' }}>
         {src ? <img src={src} alt={image.name} draggable={false} /> : <span>{error ? 'Unavailable' : 'Loading…'}</span>}
       </button>
+      <AttachmentMenu attachment={image} onPreview={() => void enlarge()} className="is-image" request={menu.request} />
       {remove && <button type="button" className="image-remove" aria-label={`Remove ${image.name}`} onClick={remove}><X size={12} /></button>}
       <span className="image-name" title={image.name}>{image.name}</span>
       <dialog ref={dialog} className="image-preview" aria-label={`Image preview: ${image.name}`} onClick={event => { if (event.target === event.currentTarget) dialog.current?.close() }} onClose={() => { setFull(null); setPreviewOpen(false) }}>
@@ -95,28 +113,30 @@ export function FileMark({ file, small }: { file: FileAttachment; small?: boolea
   )
 }
 
-function FileCard({ file, remove }: { file: FileAttachment; remove?: () => void }) {
+function FileCard({ file, remove, fresh }: { file: FileAttachment; remove?: () => void; fresh?: boolean }) {
+  const menu = useMenuRequest()
   const open = useApp(state => state.artifact?.kind === 'attachment' && state.artifact.attachment.id === file.id)
   return (
-    <div className="file-attachment">
+    <div className={`file-attachment${fresh ? ' is-fresh' : ''}`} {...menu.handlers}>
       <button type="button" className={`file-open${open ? ' is-open' : ''}`} aria-label={`Preview ${file.name}`} aria-pressed={open} title={file.name} onClick={() => void openAttachment(file)} draggable
         onDragStart={event => { event.dataTransfer.setData(ATTACHMENT_DRAG_TYPE, JSON.stringify(file)); event.dataTransfer.effectAllowed = 'copy' }}>
         <FileMark file={file} />
         <span className="file-copy"><b>{file.name}</b><small>{fileMeta(file)}</small></span>
       </button>
+      <AttachmentMenu attachment={file} onPreview={() => void openAttachment(file)} className="is-file" request={menu.request} />
       {remove && <button type="button" className="image-remove" aria-label={`Remove ${file.name}`} onClick={remove}><X size={12} /></button>}
     </div>
   )
 }
 
 /** Images show as thumbnails and files as cards, in one row kept apart from the prompt. */
-export function Attachments({ attachments, onRemove }: { attachments?: Attachment[]; onRemove?: (id: string) => void }) {
+export function Attachments({ attachments, onRemove, fresh }: { attachments?: Attachment[]; onRemove?: (id: string) => void; fresh?: string | null }) {
   if (!attachments?.length) return null
   return (
     <div className={`image-attachments${onRemove ? ' is-draft' : ''}`}>
       {attachments.map((each, index) => isFileAttachment(each)
-        ? <FileCard key={`${each.id}:${index}`} file={each} remove={onRemove ? () => onRemove(each.id) : undefined} />
-        : <ImageTile key={`${each.id}:${index}`} image={each} remove={onRemove ? () => onRemove(each.id) : undefined} />)}
+        ? <FileCard key={`${each.id}:${index}`} file={each} fresh={each.id === fresh} remove={onRemove ? () => onRemove(each.id) : undefined} />
+        : <ImageTile key={`${each.id}:${index}`} image={each} fresh={each.id === fresh} remove={onRemove ? () => onRemove(each.id) : undefined} />)}
     </div>
   )
 }

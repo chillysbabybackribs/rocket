@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { Store } from './store.ts'
 import { buildHandoff, type MissedTurn } from './handoff.ts'
+import { withoutOutput } from './hub.ts'
 import { seedLongChat } from '../../tests/fixtures/long-chat.ts'
 
 // The host's half of the long-chat benchmark (`npm run bench:transcript`): how long the store
@@ -37,15 +38,18 @@ for (const turns of SIZES) {
     new Store(path).close()
     const seeded = seedLongChat(path, { turns, cwd: folder })
     const store = new Store(path)
+    // What `chat.open` sends: the newest page, its finished tool output left for when a step is opened.
     const snapshot = store.snapshot(seeded.chatId)!
-    const payload = JSON.stringify(snapshot)
+    const sent = { ...snapshot, items: snapshot.items.map(withoutOutput) }
+    const whole = JSON.stringify(snapshot).length
     rows.push({
       turns,
       items: seeded.items,
       'stored MB': Math.round(seeded.bytes / 1e5) / 10,
       'open: store read ms': time(() => store.snapshot(seeded.chatId)),
-      'open: sent MB': Math.round(payload.length / 1e5) / 10,
-      'open: clone ms': time(() => structuredClone(snapshot)),
+      'open: page KB': Math.round(whole / 1e3),
+      'open: sent KB': Math.round(JSON.stringify(sent).length / 1e3),
+      'open: clone ms': time(() => structuredClone(sent)),
       'running turn ms': time(() => store.runningTurn(seeded.chatId)),
       'attachment sweep ms': time(() => store.unusedAttachments([], 0)),
       'full handoff ms': time(() => {

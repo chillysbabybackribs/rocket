@@ -9,14 +9,14 @@ keep importing, previewing and sending distinct actions.
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | 1 | PDF, text and code attachments | Built: cards, side-panel preview, provider delivery as text; real model turns not yet run |
-| 2 | Copy to chat, Save as and Reveal stored file | Mockup for review: [attachment reuse](mockups/attachment-reuse.html) |
+| 2 | Copy to chat, Save as and Reveal stored file | Built to the approved [attachment reuse](mockups/attachment-reuse.html) mockup |
 | 3 | Browser, window and region capture | Planned |
 | 4 | Crop and annotate images | Planned |
 
 The image upload baseline is implemented: paste, file selection, per-pane drop targets,
 preview, restart persistence, queue restoration and provider handoff references. Phase 1 was
 built to the approved [general file attachment mockup](mockups/file-attachments.html); the
-README's "Images and files in chat" describes what shipped. Phase 2 starts with its mockup.
+README's "Images and files in chat" describes what shipped for phases 1 and 2. Phase 3 starts with its mockup.
 
 Each phase proceeds through mockup review, implementation, controlled desktop checks and
 visual inspection. Real provider checks that send model turns require separate approval.

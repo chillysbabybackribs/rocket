@@ -108,6 +108,14 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
     if (cdp) await saveProfile(await cdp.send('Profiler.stop'))
     const opened = await shown()
     expect(opened, 'a chat opens with one page of turns').toBe(Math.min(chat.turns, 20))
+    if (chat === chats[0]) {
+      // A page leaves finished tool output out; opening a step brings it.
+      const newest = page.locator('.pane').first().locator('.turn').last()
+      await newest.locator('.activity-summary').click()
+      await newest.locator('.tool-line:not([disabled])').first().click()
+      await expect(newest.locator('.tool-output').first()).toContainText('store.')
+      await newest.locator('.activity-summary').click()
+    }
     const page2 = opened < chat.turns ? await measure('top', { more: opened }) : null
     const all = await measure('top', 'first')
     await expect(page.locator('.pane').first().locator('.turn')).toHaveCount(chat.turns)
@@ -140,7 +148,9 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
     const at = `${chat.turns} turns`
     expect(open.longestTaskMs, `opening ${at} freezes the window no longer than 250 ms`).toBeLessThan(250)
     expect(open.ms, `opening ${at} shows the newest reply within 600 ms`).toBeLessThan(600)
-    expect(back.longestTaskMs, `switching back to ${at} freezes the window no longer than 250 ms`).toBeLessThan(250)
+    // The tab's chat is kept, so switching back asks the host for nothing and parses nothing new.
+    expect(back.longestTaskMs, `switching back to ${at} freezes the window no longer than 120 ms`).toBeLessThan(120)
+    expect(back.ms, `switching back to ${at} shows the newest reply within 300 ms`).toBeLessThan(300)
     if (page2) {
       expect(page2.longestTaskMs, `the page above ${at} goes in without a freeze over 250 ms`).toBeLessThan(250)
       expect(page2.shiftPx, 'turns put in above leave the reader where they were').toBeLessThanOrEqual(2)

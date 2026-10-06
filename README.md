@@ -158,6 +158,18 @@ budget, or for a PDF with no text (likely scanned), the model is told to read th
 Because files travel as text, Antigravity takes them, though not images. No provider's native
 document input is relied on yet.
 
+Every attachment, in a draft, a waiting message or a sent one, has a ⋯ menu (also right-click,
+Shift+F10 or the context-menu key; `components/AttachmentMenu.tsx`, agreed in
+`docs/mockups/attachment-reuse.html`). **Copy to chat** lists New chat, the chats open in panes,
+then recent chats with a search, and appends the attachment to that chat's draft, keeping its
+text and files; nothing is sent, the card is highlighted briefly, and a notice offers Undo.
+Dragging any attachment onto another pane does the same, with a drop target that names the
+chat. A copy is the same stored file referenced twice, so deleting the source chat leaves it
+working: collection keeps every attachment a draft, queue or transcript still names. **Save as**
+opens the system save dialog in main and the host copies the stored original there byte for
+byte. **Reveal stored file** shows the host's copy in the file manager under its stored name
+(`<id>.<ext>`); main refuses any path outside the profile's `attachments/` folder.
+
 ### Messages sent while a turn runs
 
 The composer stays open while a turn runs; Esc or the Stop button beside Send stops it. A message

@@ -95,7 +95,7 @@ export function Composer({ placeholder }: { placeholder: string }) {
     <div className="composer-group">
       <Tabs />
       <div className="composer">
-        <Attachments attachments={attachments} onRemove={id => { if (!draft.sending) updateDraft(draftKey, { attachments: attachments.filter(each => each.id !== id) }) }} />
+        <Attachments attachments={attachments} fresh={draft.fresh} onRemove={id => { if (!draft.sending) updateDraft(draftKey, { attachments: attachments.filter(each => each.id !== id) }) }} />
         <div className="composer-entry">
         <button
           type="button"

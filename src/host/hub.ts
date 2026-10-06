@@ -711,7 +711,7 @@ export class Hub {
  * A finished tool call as a page for the window carries it: without its output, which is most of
  * a long chat's bytes and shows only when the step is opened. `outputLength` says there is some.
  */
-function withoutOutput(item: Item): Item {
+export function withoutOutput(item: Item): Item {
   return item.type === 'tool' && item.status !== 'running' && item.output.length > 0
     ? { ...item, output: '', outputLength: item.output.length }
     : item

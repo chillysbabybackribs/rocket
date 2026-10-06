@@ -5,12 +5,12 @@ import { Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Searc
 import { planItemId, providerLabel, type Goal, type Item, type MessageDraft, type ToolKind, type Turn } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
 import { ShownChatContext, usePane, usePaneChatId, usePaneView } from '../pane.ts'
-import { answerQuestion, editQueued, loadOlder, openTurnChanges, peekItem, sendNow, togglePlan, useApp, useItem } from '../store.ts'
+import { answerQuestion, editQueued, loadOlder, loadOutput, openTurnChanges, peekItem, sendNow, togglePlan, useApp, useItem } from '../store.ts'
 import { Bar, Counts } from './ChangesView.tsx'
 
 /** Markdown is the expensive part of a row; text that has not changed parses once and never again. */
-const Block = memo(function Block({ text }: { text: string }) {
-  return <ChatMarkdown text={text} />
+const Block = memo(function Block({ text, settled }: { text: string; settled: boolean }) {
+  return <ChatMarkdown text={text} settled={settled} />
 })
 
 /**
@@ -23,7 +23,8 @@ const Prose = memo(function Prose({ text, streaming }: { text: string; streaming
   const blocks = streaming ? splitBlocks(arriving) : [text]
   return (
     <div className="prose">
-      {blocks.map((block, index) => <Block key={index} text={block} />)}
+      {/* While it streams, only the last block can still change. */}
+      {blocks.map((block, index) => <Block key={index} text={block} settled={!streaming || index < blocks.length - 1} />)}
     </div>
   )
 })
@@ -58,15 +59,21 @@ function ToolLine({ item }: { item: ToolItem }) {
  */
 const Step = memo(function Step({ id }: { id: string }) {
   const item = useItem(id)
+  const chatId = usePaneChatId()
   const [open, setOpen] = useState(false)
   if (!item) return null
   if (item.type === 'reasoning') return item.text.trim() ? <div className="reasoning-text">{item.text}</div> : null
   if (item.type === 'assistant') return item.text.trim() ? <Prose text={item.text} streaming={false} /> : null
   if (item.type !== 'tool') return null
-  const expandable = item.output.trim().length > 0
+  // A finished call's output comes when the step is first opened (`outputLength`).
+  const expandable = item.output.trim().length > 0 || (item.outputLength ?? 0) > 0
+  const toggle = (): void => {
+    if (!open && chatId) void loadOutput(chatId, item.id)
+    setOpen(!open)
+  }
   return (
     <>
-      <button type="button" className="tool-line" disabled={!expandable} aria-expanded={expandable ? open : undefined} onClick={() => setOpen(!open)}>
+      <button type="button" className="tool-line" disabled={!expandable} aria-expanded={expandable ? open : undefined} onClick={toggle}>
         <ToolLine item={item} />
         {expandable && <ChevronRight size={12} className={`tool-chevron${open ? ' is-open' : ''}`} />}
       </button>

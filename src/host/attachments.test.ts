@@ -102,6 +102,11 @@ test('PDFs and text files are stored by content, previewed, and given to provide
     assert.match(budgeted.text, /Truncated at 60000 of 70000[\s\S]*Truncated at 60000 of 70000/)
     assert.match(budgeted.text, /"invite\.ts".*read this file if needed/)
 
+    // Save as copies the stored original byte for byte; a relative or unwritable path is refused.
+    await reopened.export(pdf.id, join(root, 'saved.pdf'))
+    assert.deepEqual(await readFile(join(root, 'saved.pdf')), pdfBytes('Invite your team'))
+    await assert.rejects(reopened.export(pdf.id, 'saved.pdf'), /Choose where to save/)
+    await assert.rejects(reopened.export(pdf.id, join(root, 'missing-folder', 'saved.pdf')), /could not be saved there/)
     // Failed imports leave nothing behind; a PDF keeps its extracted text and rendered pages beside it.
     const stored = await readdir(join(root, 'attachments'))
     const ids = new Set([code.id, pdf.id, scanned.id, big.id])
