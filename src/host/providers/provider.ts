@@ -67,6 +67,15 @@ export type RunResult = {
   sessionLost?: boolean
 }
 
+/**
+ * A turn the provider started by itself, with no message from the app: Claude Code does this
+ * when a background task it launched finishes. The hub records it like any turn.
+ */
+export type UnpromptedTurn = { turnId: string; sink: TurnSink; finish: (result: RunResult) => void }
+
+/** Opens an unprompted turn in a chat; null when the chat cannot take one (it is gone, or busy). */
+export type OpenUnprompted = (chatId: string, reason: string) => UnpromptedTurn | null
+
 export interface ProviderAdapter {
   readonly id: ProviderId
   run(request: RunRequest, sink: TurnSink): Promise<RunResult>
@@ -82,6 +91,8 @@ export interface ProviderAdapter {
   /** The models this account can use, read live from the provider, never hardcoded. */
   models(): Promise<ModelInfo[]>
   shutdown(): void
+  /** For a provider that can start turns by itself: how to open one. */
+  onUnprompted?(open: OpenUnprompted): void
 }
 
 export function unavailableUsage(provider: ProviderId, reason: string): UsageSnapshot {

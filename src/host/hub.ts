@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { Chat, ChatSnapshot, GoalRole, HostEvent, Item, ModelInfo, ProviderId, Turn, UsageSnapshot } from '../shared/types.ts'
 import { buildHandoff, type Handoff, type MissedTurn } from './handoff.ts'
 import { messageOf, oneLine } from './json.ts'
-import type { ProviderAdapter, RunResult, TurnSink } from './providers/provider.ts'
+import type { ProviderAdapter, RunResult, TurnSink, UnpromptedTurn } from './providers/provider.ts'
 import { unavailableUsage } from './providers/provider.ts'
 import type { Store, StoredTurn } from './store.ts'
 import type { Working } from './teamwork.ts'
@@ -64,7 +64,11 @@ export class Hub {
      * `fresh` says the provider's session is new and has been told nothing yet.
      */
     private readonly context: ((chatId: string, provider: ProviderId, fresh: boolean) => Promise<string | null>) | null = null
-  ) {}
+  ) {
+    for (const [provider, adapter] of Object.entries(adapters) as Array<[ProviderId, ProviderAdapter]>) {
+      adapter.onUnprompted?.((chatId, reason) => this.openUnprompted(chatId, provider, reason))
+    }
+  }
 
   /** The chat a provider is answering right now, when it is answering exactly one. */
   runningChat(provider: ProviderId): string | null {
@@ -290,13 +294,78 @@ export class Hub {
   ): Promise<void> {
     const { turn, adapter } = live
     const { chatId, provider } = turn
-    const { clock } = live
+    const session = { id: sessionId }
+    const sink = this.sinkFor(live, session)
+
+    let result: RunResult
+    try {
+      // The provider is sent the message with the app's context ahead of it; the transcript keeps the message as typed.
+      // With nothing to ask, the provider is started in the same tick as the send.
+      const { context } = this
+      const told = async (fresh: boolean): Promise<string> => {
+        const lines = context ? await context(chatId, provider, fresh).catch(() => null) : null
+        return lines ? `${lines}\n\n${text}` : text
+      }
+      const first = context ? await told(session.id === null) : text
+      result = await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: session.id, model, text: first, handoff }, sink)
+      if (result.sessionLost && !live.stopRequested) {
+        // The provider dropped its session: start a new one and hand over the whole chat.
+        this.store.setSession(chatId, provider, { sessionId: null, seenTurnSeq: 0 })
+        session.id = null
+        const full = this.handoffFor(chatId, 0, turn.seq)
+        turn.handoffTurns = full?.turns ?? 0
+        result = await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: null, model, text: await told(true), handoff: full }, sink)
+      }
+    } catch (error) {
+      result = { status: 'failed', error: messageOf(error) }
+    }
+    if (result.sessionLost) result = { status: 'failed', error: `${provider} could not start a session for this chat` }
+    this.endTurn(live, result, session.id)
+  }
+
+  /**
+   * A turn the provider began by itself, such as Claude Code answering when a background task
+   * it started has finished. Without this its reply had nowhere to go and was lost. The turn has
+   * no message of the user's; a notice says what woke it.
+   */
+  private openUnprompted(chatId: string, provider: ProviderId, reason: string): UnpromptedTurn | null {
+    const chat = this.store.chat(chatId)
+    if (!chat || this.live.has(chatId)) return null
+    const adapter = this.adapters[provider]
+    const turn = this.store.createTurn({
+      id: randomUUID(), chatId, provider, model: null, status: 'running', error: null,
+      handoffTurns: 0, goalRole: null, startedAt: Date.now(), endedAt: null
+    })
+    const live: LiveTurn = { turn, adapter, clock: { sent: performance.now(), firstEvent: null, firstText: null }, items: new Map(), stopRequested: false }
+    this.live.set(chatId, live)
+    const updated: Chat = { ...chat, lastProvider: provider, updatedAt: Date.now() }
+    this.store.updateChat(updated)
+    this.emit({ type: 'chat', chat: updated })
+    this.emit({ type: 'turn', turn: publicTurn(turn) })
+    this.putItem(live, { type: 'notice', id: `${turn.id}:woke`, turnId: turn.id, text: reason, tone: 'info' })
+    const session = { id: this.store.session(chatId, provider).sessionId }
+    let ended = false
+    return {
+      turnId: turn.id,
+      sink: this.sinkFor(live, session),
+      finish: (result) => {
+        if (ended) return
+        ended = true
+        this.endTurn(live, result.sessionLost ? { status: 'failed', error: result.error ?? 'The session was lost' } : result, session.id)
+      }
+    }
+  }
+
+  /** Where an adapter sends a turn's stream. The session id it reports is saved at once, so a crash mid-turn can still resume. */
+  private sinkFor(live: LiveTurn, session: { id: string | null }): TurnSink {
+    const { turn, clock } = live
+    const { chatId, provider } = turn
     const mark = (text: boolean): void => {
       clock.firstEvent ??= performance.now()
       if (text) clock.firstText ??= performance.now()
     }
     const readable = (item: Item | undefined): boolean => item?.type === 'assistant' || item?.type === 'reasoning'
-    const sink: TurnSink = {
+    return {
       item: (item) => {
         mark(readable(item) && 'text' in item && item.text.length > 0)
         this.putItem(live, item)
@@ -307,8 +376,8 @@ export class Hub {
       },
       session: (id) => {
         mark(false)
-        // Saved at once so a crash mid-turn can still resume; what it has seen moves at the end.
-        sessionId = id
+        // What the session has seen moves at the end.
+        session.id = id
         this.store.setSession(chatId, provider, { sessionId: id, seenTurnSeq: this.store.session(chatId, provider).seenTurnSeq })
       },
       model: (model) => {
@@ -320,31 +389,12 @@ export class Hub {
       },
       usage: (snapshot) => this.noteUsage(snapshot)
     }
+  }
 
-    let result: RunResult
-    try {
-      // The provider is sent the message with the app's context ahead of it; the transcript keeps the message as typed.
-      // With nothing to ask, the provider is started in the same tick as the send.
-      const { context } = this
-      const told = async (fresh: boolean): Promise<string> => {
-        const lines = context ? await context(chatId, provider, fresh).catch(() => null) : null
-        return lines ? `${lines}\n\n${text}` : text
-      }
-      const first = context ? await told(sessionId === null) : text
-      result = await adapter.run({ chatId, turnId: turn.id, cwd, sessionId, model, text: first, handoff }, sink)
-      if (result.sessionLost && !live.stopRequested) {
-        // The provider dropped its session: start a new one and hand over the whole chat.
-        this.store.setSession(chatId, provider, { sessionId: null, seenTurnSeq: 0 })
-        sessionId = null
-        const full = this.handoffFor(chatId, 0, turn.seq)
-        turn.handoffTurns = full?.turns ?? 0
-        result = await adapter.run({ chatId, turnId: turn.id, cwd, sessionId: null, model, text: await told(true), handoff: full }, sink)
-      }
-    } catch (error) {
-      result = { status: 'failed', error: messageOf(error) }
-    }
-    if (result.sessionLost) result = { status: 'failed', error: `${provider} could not start a session for this chat` }
-
+  /** Settle a turn: final items, status, what the provider's session now holds, and timing. */
+  private endTurn(live: LiveTurn, result: RunResult, sessionId: string | null): void {
+    const { turn, clock } = live
+    const { chatId, provider } = turn
     // Whatever was still streaming is final now.
     for (const item of live.items.values()) {
       if ((item.type === 'assistant' || item.type === 'reasoning') && item.streaming) this.putItem(live, { ...item, streaming: false })

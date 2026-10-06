@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { HostEvent } from '../shared/types.ts'
 import { Hub, type TurnTiming } from './hub.ts'
-import { unavailableUsage, type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type TurnSink } from './providers/provider.ts'
+import { unavailableUsage, type OpenUnprompted, type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type TurnSink } from './providers/provider.ts'
 import { Store } from './store.ts'
 
 /** An adapter that records what it was asked and answers a turn when the test says so. */
@@ -164,4 +164,33 @@ test("a goal's turn does not name the chat after the app's message", async () =>
   adapter.complete()
   await ended()
   assert.equal(hub.openChat(chat.id).turns.find((turn) => turn.id === turnId)!.goalRole, 'draft')
+})
+
+test('a turn the provider starts by itself is recorded, replied in, and settled', async () => {
+  const adapter = new FakeAdapter()
+  const claude = new FakeAdapter()
+  const opener: { open: OpenUnprompted | null } = { open: null }
+  ;(claude as ProviderAdapter).onUnprompted = (open) => { opener.open = open }
+  const events: HostEvent[] = []
+  const adapters = { claude, codex: adapter, cursor: adapter, antigravity: adapter }
+  const store = new Store(':memory:')
+  const hub = new Hub(store, adapters, (event) => events.push(event))
+  const open = opener.open
+  assert.ok(open, 'the hub registers with adapters that can start turns')
+  const chat = hub.createChat('/work')
+
+  const opened = open!(chat.id, 'Finished in the background: research')!
+  assert.equal(hub.isRunning(chat.id), true)
+  assert.equal(open!(chat.id, 'again'), null, 'a busy chat takes no second turn')
+  opened.sink.session('session-9')
+  opened.sink.item({ type: 'assistant', id: `${opened.turnId}:a`, turnId: opened.turnId, text: 'Here is the synthesis.', streaming: false })
+  opened.finish({ status: 'completed' })
+
+  const snapshot = hub.openChat(chat.id)
+  assert.equal(snapshot.turns[0]!.status, 'completed')
+  assert.deepEqual(snapshot.items.map((item) => item.type), ['notice', 'assistant'])
+  assert.equal(hub.isRunning(chat.id), false)
+  assert.equal(store.session(chat.id, 'claude').sessionId, 'session-9')
+  assert.equal(store.session(chat.id, 'claude').seenTurnSeq, store.turns(chat.id)[0]!.seq, 'the session holds its own turn')
+  assert.equal(open!('no-such-chat', 'x'), null)
 })

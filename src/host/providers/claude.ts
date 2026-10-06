@@ -7,7 +7,7 @@ import { claudeRateLimitWindow, claudeUsage, mergeWindow, planName } from '../us
 import { randomUUID } from 'node:crypto'
 import {
   itemId, TOOL_SERVER, unavailableUsage,
-  type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type ToolEndpoint, type TurnSink
+  type OpenUnprompted, type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type ToolEndpoint, type TurnSink
 } from './provider.ts'
 
 // Claude through the Agent SDK, which runs the Claude Code binary as a child process. One
@@ -22,6 +22,10 @@ import {
 //   `stream_event`, then the whole `assistant` message restates them.
 // - `user` messages carry tool_result blocks keyed by tool_use id.
 // - `result` closes the turn.
+// - (SDK 0.3.289, verified 2026-10-05) A background task (a backgrounded subagent or shell) ends
+//   with `system`/`task_notification`, and Claude Code then starts a turn of its own: stream
+//   events through to `result` with no user message. `system`/`background_tasks_changed` carries
+//   the full set of live background tasks each time it changes; `ambient` ones are not activity.
 // The SDK has no supported way to import another model's turns into a session, so missed turns
 // ride at the head of the user's message as a tagged block.
 //
@@ -92,6 +96,10 @@ class Runtime {
   stderrTail = ''
   sessionId: string | null
   turn: RunningTurn | null = null
+  /** Live background tasks (not ambient ones). While there are any, the process is not retired. */
+  background = new Set<string>()
+  /** What finished in the background since the last turn, to say why an unprompted turn began. */
+  woke: string[] = []
   /** The key in this process's tools URL. A process can start before its chat exists, so the chat is tied to it later. */
   toolKey: string | null = null
 
@@ -211,6 +219,7 @@ export class ClaudeAdapter implements ProviderAdapter {
   private lastUsage: UsageSnapshot | null = null
   private probe: Runtime | null = null
   private probeTimer: NodeJS.Timeout | null = null
+  private openUnprompted: OpenUnprompted | null = null
 
   constructor(private readonly onUsage: (snapshot: UsageSnapshot) => void, private readonly tools: ToolEndpoint = null) {}
 
@@ -232,7 +241,7 @@ export class ClaudeAdapter implements ProviderAdapter {
         finish: (result) => {
           if (runtime.turn !== turn) return
           runtime.turn = null
-          if (runtime.alive) runtime.armIdle(() => this.retire(runtime))
+          this.rest(runtime)
           resolve(result)
         }
       }
@@ -245,9 +254,13 @@ export class ClaudeAdapter implements ProviderAdapter {
     })
   }
 
+  onUnprompted(open: OpenUnprompted): void {
+    this.openUnprompted = open
+  }
+
   async prepare(request: PrepareRequest): Promise<void> {
     const runtime = await this.runtimeFor(request.chatId ?? SPARE, request)
-    if (!runtime.turn) runtime.armIdle(() => this.retire(runtime))
+    if (!runtime.turn) this.rest(runtime)
     this.trimIdle(runtime)
     await runtime.ready()
   }
@@ -359,7 +372,7 @@ export class ClaudeAdapter implements ProviderAdapter {
 
   /** Close the longest-waiting idle processes beyond the few worth keeping warm. */
   private trimIdle(keep: Runtime): void {
-    const idle = [...this.runtimes.values()].filter((runtime) => !runtime.turn && runtime !== keep)
+    const idle = [...this.runtimes.values()].filter((runtime) => !runtime.turn && !runtime.background.size && runtime !== keep)
     for (const runtime of idle.slice(0, Math.max(0, idle.length + 1 - MAX_IDLE_RUNTIMES))) this.retire(runtime)
   }
 
@@ -376,7 +389,8 @@ export class ClaudeAdapter implements ProviderAdapter {
   private onMessage(runtime: Runtime, raw: SDKMessage): void {
     const message = recordOf(raw)
     if (message.type === 'rate_limit_event') this.noteRateLimit(recordOf(message.rate_limit_info))
-    const turn = runtime.turn
+    if (message.type === 'system') this.noteBackground(runtime, message)
+    const turn = runtime.turn ?? this.unprompted(runtime, message)
     if (!turn) return
     const out = turn.translator.handle(message)
     if (out.sessionId) {
@@ -389,6 +403,54 @@ export class ClaudeAdapter implements ProviderAdapter {
       else turn.sink.delta(op.itemId, op.delta)
     }
     if (out.end) turn.finish(out.end)
+  }
+
+  /** Idle with nothing running in the background: retire the process after a quiet spell. */
+  private rest(runtime: Runtime): void {
+    if (!runtime.alive || runtime.turn) return
+    if (runtime.background.size) runtime.disarmIdle()
+    else runtime.armIdle(() => this.retire(runtime))
+  }
+
+  private noteBackground(runtime: Runtime, message: Record<string, unknown>): void {
+    if (message.subtype === 'background_tasks_changed') {
+      const tasks = (Array.isArray(message.tasks) ? message.tasks : []).map(recordOf).filter((task) => task.ambient !== true)
+      runtime.background = new Set(tasks.map((task) => stringOf(task.task_id)).filter(Boolean))
+      this.rest(runtime)
+    } else if (message.subtype === 'task_notification' && message.skip_transcript !== true && message.ambient !== true) {
+      const summary = oneLine(stringOf(message.summary), 140)
+      const status = stringOf(message.status)
+      runtime.woke.push(`${status === 'completed' ? 'Finished' : status === 'failed' ? 'Failed' : 'Stopped'} in the background${summary ? `: ${summary}` : ''}`)
+    }
+  }
+
+  /**
+   * Claude Code has started a turn of its own, with none open: it does so when a background task
+   * it launched finishes. Open one in the hub so the reply is kept, and route the stream to it.
+   */
+  private unprompted(runtime: Runtime, message: Record<string, unknown>): RunningTurn | null {
+    if (message.type !== 'stream_event' && message.type !== 'assistant') return null
+    if (typeof message.parent_tool_use_id === 'string' && message.parent_tool_use_id) return null
+    const chatId = [...this.runtimes.entries()].find(([key, held]) => held === runtime && key !== SPARE)?.[0]
+    if (!chatId || !this.openUnprompted) return null
+    const reason = runtime.woke.length ? runtime.woke.join('\n') : 'Claude carried on by itself'
+    const opened = this.openUnprompted(chatId, reason)
+    if (!opened) return null
+    runtime.woke = []
+    runtime.disarmIdle()
+    const turn: RunningTurn = {
+      request: { chatId, turnId: opened.turnId, cwd: runtime.cwd, sessionId: runtime.sessionId, model: runtime.model, text: '', handoff: null },
+      sink: opened.sink,
+      translator: new TurnTranslator(opened.turnId),
+      finish: (result) => {
+        if (runtime.turn !== turn) return
+        runtime.turn = null
+        this.rest(runtime)
+        opened.finish(result)
+      }
+    }
+    runtime.turn = turn
+    return turn
   }
 
   /** The process ended. With a turn open, that turn failed, or its session could not be resumed. */

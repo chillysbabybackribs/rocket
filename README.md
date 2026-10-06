@@ -54,6 +54,14 @@ for them. Codex receives them as real history (`thread/inject_items`); the other
 tagged block in front of the message. If a provider has lost its session, it gets a new one and
 the whole conversation.
 
+### Turns a provider starts by itself
+
+Claude Code can start a turn with no message from the app: when a subagent or shell it ran in
+the background finishes, it answers on its own. The adapter opens such a turn in the hub through
+`onUnprompted` (`provider.ts`). It is kept like any other, with a notice saying what finished in
+place of a user message; before this, those replies were dropped. While background tasks are
+live, the Claude Code process is not retired for idleness, since that would kill them.
+
 ### Browser
 
 The browser panel has Chromium's tab strip and shortcuts (Ctrl+T, W, Shift+T, Tab, 1–9, L) and a
