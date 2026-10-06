@@ -1,6 +1,6 @@
 # Tool failure history — verification record
 
-**Status: built and verified.** In the app: **Eval panel → Configure → Tools** (read-only ledger). This document and MCP tools remain the full audit trail.
+**Status: built and verified.** In the app: **Eval panel → Configure → Tools** (ledger + review actions). This document and MCP tools remain the full audit trail.
 
 Last automated run: **2026-10-06** (ledger unit tests + isolated UI loop specs + live ledger read).
 
@@ -15,8 +15,10 @@ Last automated run: **2026-10-06** (ledger unit tests + isolated UI loop specs +
 | `rocket_ui_snapshot` | Read-only composed window capture for agents |
 | `tests/ui/tool-failure-pane.spec.ts` | Regression: unscoped vs `ui.pane` |
 | `tests/ui/tool-failure-loop.spec.ts` | End-to-end: fail → review → verified |
+| `tests/ui/eval-tools.spec.ts` | Eval **Tools** tab loads ledger; mark verified from UI |
+| `toolLedger.setReview` / `openLocalPath` | Renderer review + artifact open (home paths only) |
 
-Eval panel (Playgrounds / Experiments) is a **separate** project surface.
+Eval panel (Playgrounds / Experiments) is a **separate** project surface; **Tools** is the human ledger view.
 
 ## Acceptance criteria (plan)
 
@@ -37,8 +39,8 @@ Eval panel (Playgrounds / Experiments) is a **separate** project surface.
 # Ledger unit tests (9 tests)
 node --experimental-transform-types --disable-warning=ExperimentalWarning --test src/host/tool-ledger.test.ts
 
-# Isolated desktop proof (both specs, ~30s)
-npm run check:ui -- tool-failure-pane.spec.ts tool-failure-loop.spec.ts
+# Isolated desktop proof (~30–60s)
+npm run check:ui -- tool-failure-pane.spec.ts tool-failure-loop.spec.ts eval-tools.spec.ts
 ```
 
 Latest UI artifact folder (example): `.artifacts/ui/2026-10-06T03-58-12-559Z-mqudXm` — **PASS**.

@@ -1,9 +1,10 @@
 import {
   app, BrowserWindow, dialog, ipcMain, MessageChannelMain, shell, utilityProcess, type UtilityProcess
 } from 'electron'
+import { existsSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join, normalize, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { BrowserAgentReply, BrowserAgentRequest, BrowserCommand } from '../shared/types.ts'
 import { HOST_PORT_MESSAGE } from '../shared/types.ts'
@@ -173,6 +174,14 @@ ipcMain.handle('rocket:chat-link', (event, href: string, cwd: string) => {
 ipcMain.handle('rocket:eval-panel-url', () => {
   const html = join(app.getAppPath(), 'docs/evals/mock-ui/index.html')
   return pathToFileURL(html).href
+})
+ipcMain.handle('rocket:open-local-path', async (event, raw: string) => {
+  if (event.sender !== window?.webContents) throw new Error('This path cannot be opened from this window.')
+  const target = resolve(normalize(String(raw)))
+  if (!existsSync(target)) throw new Error('Path does not exist.')
+  if (!target.startsWith(homedir())) throw new Error('Only paths under your home directory can be opened.')
+  const error = await shell.openPath(target)
+  if (error) throw new Error(error)
 })
 ipcMain.on('rocket:browser', (event, command: BrowserCommand) => {
   browser?.handle(event.sender, command)

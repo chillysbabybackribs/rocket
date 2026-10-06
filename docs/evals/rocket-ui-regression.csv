@@ -8,3 +8,4 @@ input,expected
 "{""scenario"":""UI-run isolated session lifecycle"",""playwright_grep"":""UI scripts reuse isolated sessions"",""spec_file"":""ui-run.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
 "{""scenario"":""Pane index selection when greeting text duplicates"",""playwright_grep"":""ui.pane targets the intended chat"",""spec_file"":""tool-failure-pane.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
 "{""scenario"":""Tool failure ledger review through verified fix"",""playwright_grep"":""tool failure history supports review"",""spec_file"":""tool-failure-loop.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Eval Configure Tools tab loads MCP ledger"",""playwright_grep"":""eval Tools tab loads ledger"",""spec_file"":""eval-tools.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"

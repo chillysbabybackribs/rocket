@@ -1,5 +1,6 @@
 import type { Tool } from './tools/registry.ts'
-import type { ToolLedger } from './tool-ledger.ts'
+import type { ReviewLifecycle, ReviewRecord, ToolLedger } from './tool-ledger.ts'
+import { REVIEW_LIFECYCLES } from './tool-ledger.ts'
 
 export type ToolLedgerPanelScope = {
   scope: string[]
@@ -40,6 +41,7 @@ export type ToolLedgerPanelData = {
   groups?: ToolLedgerPanelGroup[]
   queue?: ToolLedgerPanelQueueRow[]
   registeredTools?: Array<{ name: string; descriptionBytes: number; version: number }>
+  retryCandidates?: Array<{ callId: string; tool: string; at: number }>
 }
 
 export type ToolLedgerCallDetailData = {
@@ -78,11 +80,44 @@ export function loadToolLedgerPanel(ledger: ToolLedger | undefined, registered: 
       name: tool.name,
       descriptionBytes: Buffer.byteLength(tool.description),
       version: tool.version ?? 1
-    })).sort((a, b) => a.name.localeCompare(b.name))
+    })).sort((a, b) => a.name.localeCompare(b.name)),
+    retryCandidates: listToolLedgerRetryCandidates(ledger, 10)
   }
 }
 
 export function loadToolLedgerCallDetail(ledger: ToolLedger | undefined, callId: string): ToolLedgerCallDetailData {
   if (!ledger) return { available: false, message: 'Ledger unavailable.' }
   return ledger.query({ callId, since: 0, limit: 1 }) as ToolLedgerCallDetailData
+}
+
+export type SetReviewParams = {
+  callId: string
+  lifecycle?: ReviewLifecycle
+  retryCallId?: string | null
+  linkRetry?: boolean
+  causeCode?: string | null
+  causeNote?: string | null
+  proposedFix?: string | null
+}
+
+/** Shared by MCP rocket_tool_review and renderer toolLedger.setReview. */
+export function setToolLedgerReview(ledger: ToolLedger, params: SetReviewParams): ReviewRecord {
+  if (params.linkRetry) {
+    if (!params.retryCallId) throw new Error('retryCallId is required for link_retry.')
+    return ledger.linkRetry(params.callId, params.retryCallId)
+  }
+  if (!params.lifecycle || !REVIEW_LIFECYCLES.includes(params.lifecycle)) throw new Error('Unsupported lifecycle.')
+  return ledger.upsertReview(params.callId, {
+    lifecycle: params.lifecycle,
+    ...(params.causeCode !== undefined ? { causeCode: params.causeCode } : {}),
+    ...(params.causeNote !== undefined ? { causeNote: params.causeNote } : {}),
+    ...(params.proposedFix !== undefined ? { proposedFix: params.proposedFix } : {}),
+    ...(params.retryCallId !== undefined ? { retryCallId: params.retryCallId } : {})
+  })
+}
+
+export function listToolLedgerRetryCandidates(ledger: ToolLedger, limit = 10): Array<{ callId: string; tool: string; at: number }> {
+  const rows = ledger.query({ since: 0, outcome: 'success', limit }).calls ?? []
+  return rows.flatMap(row => typeof row.id === 'string' && typeof row.tool === 'string' && typeof row.at === 'number'
+    ? [{ callId: row.id, tool: row.tool, at: row.at }] : [])
 }

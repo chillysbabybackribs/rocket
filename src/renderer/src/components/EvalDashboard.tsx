@@ -347,6 +347,7 @@ export function EvalDashboard() {
 
   const showExpToolbar = view === 'experiments' || view === 'experiment-detail'
   const showPlaygroundChrome = view === 'playgrounds'
+  const showToolsChrome = view === 'tools'
 
   return (
     <div className="eval-bt-root">
@@ -389,11 +390,17 @@ export function EvalDashboard() {
               <button type="button" className="icon-button" aria-label="Close eval panel" onClick={() => setEvalsOpen(false)}>
                 <X size={15} />
               </button>
-              <button type="button" className="eval-bt-btn" onClick={() => void load()}>Sync</button>
-              <button type="button" className="eval-bt-btn eval-bt-btn-primary" onClick={() => openRun()}>
-                <Beaker size={14} aria-hidden />
-                Run cell
-              </button>
+              {showToolsChrome
+                ? <button type="button" className="eval-bt-btn eval-bt-btn-primary" onClick={() => setToolsRefresh((n) => n + 1)}>Refresh ledger</button>
+                : (
+                  <>
+                    <button type="button" className="eval-bt-btn" onClick={() => void load()}>Sync</button>
+                    <button type="button" className="eval-bt-btn eval-bt-btn-primary" onClick={() => openRun()}>
+                      <Beaker size={14} aria-hidden />
+                      Run cell
+                    </button>
+                  </>
+                )}
             </div>
           </header>
         )}

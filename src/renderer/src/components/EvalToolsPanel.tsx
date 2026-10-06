@@ -4,6 +4,14 @@ import { call } from '../host.ts'
 
 type PanelData = HostApi['toolLedger.loadPanel'][1]
 type CallDetail = HostApi['toolLedger.callDetail'][1]
+type CallRow = Record<string, unknown> & {
+  id?: string
+  tool?: string
+  operation?: string
+  outcome?: string
+  finish?: { error?: { code?: string; message?: string }; artifacts?: string[] }
+  review?: { lifecycle?: string; causeCode?: string | null; proposedFix?: string | null; retryCallId?: string | null }
+}
 
 const pct = (n: number | null | undefined): string => (n == null ? '—' : `${Math.round(n * 100)}%`)
 const fmtDate = (ms: number): string => new Date(ms).toLocaleString()
@@ -13,6 +21,8 @@ export function EvalToolsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<CallDetail | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const load = useCallback(async (): Promise<void> => {
     setError(null)
@@ -23,25 +33,51 @@ export function EvalToolsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     }
   }, [])
 
+  const loadDetail = useCallback(async (callId: string): Promise<void> => {
+    setDetail(await call('toolLedger.callDetail', { callId }))
+  }, [])
+
   useEffect(() => { void load() }, [load, refreshKey])
 
   useEffect(() => {
     if (!selectedId) { setDetail(null); return }
-    void call('toolLedger.callDetail', { callId: selectedId }).then(setDetail).catch(() => setDetail(null))
-  }, [selectedId])
+    void loadDetail(selectedId).catch(() => setDetail(null))
+  }, [selectedId, loadDetail, refreshKey])
+
+  const setReview = async (params: HostApi['toolLedger.setReview'][0]): Promise<void> => {
+    setBusy(true)
+    setActionError(null)
+    try {
+      await call('toolLedger.setReview', params)
+      await load()
+      if (selectedId) await loadDetail(selectedId)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const openPath = (path: string): void => {
+    void window.rocket.openLocalPath(path).catch(err => setActionError(err instanceof Error ? err.message : String(err)))
+  }
 
   if (error) return <p className="eval-error">{error}</p>
   if (!data) return <p className="eval-bt-muted">Loading tool ledger…</p>
   if (!data.available) return <p className="eval-bt-muted">{data.message ?? 'Ledger unavailable.'}</p>
 
   const policy = data.contextPolicy ?? {}
+  const selected = (detail?.calls?.[0] ?? null) as CallRow | null
+  const artifacts = selected?.finish?.artifacts ?? []
 
   return (
-    <div className="eval-tools">
+    <div className="eval-tools" aria-label="MCP tool ledger">
       <p className="eval-bt-muted">
-        Rocket MCP tool health for agents — same data as <span className="eval-bt-mono">rocket_tool_history</span>.
-        History is <strong>not</strong> injected into chat prompts.
+        Rocket MCP tool health — same evidence as <span className="eval-bt-mono">rocket_tool_history</span> /
+        <span className="eval-bt-mono"> rocket_tool_review</span>. History is <strong>not</strong> injected into chat prompts.
       </p>
+
+      {actionError && <p className="eval-error">{actionError}</p>}
 
       <div className="eval-bt-summary-cards">
         <div className="eval-bt-metric">
@@ -54,7 +90,7 @@ export function EvalToolsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         </div>
         <div className="eval-bt-metric">
           <div className="eval-bt-metric-label">Review queue</div>
-          <div className="eval-bt-metric-value">{data.queue?.length ?? 0}</div>
+          <div className="eval-bt-metric-value" aria-label="Review queue count">{data.queue?.length ?? 0}</div>
         </div>
         <div className="eval-bt-metric">
           <div className="eval-bt-metric-label">Registered MCP tools</div>
@@ -71,7 +107,7 @@ export function EvalToolsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
       <h2 className="eval-tools-heading">Failure groups</h2>
       {(data.groups?.length ?? 0) === 0
-        ? <p className="eval-bt-muted">No grouped failures in the current window.</p>
+        ? <p className="eval-bt-muted">No grouped failures in the retained ledger.</p>
         : (
           <table className="eval-bt-table">
             <thead>
@@ -147,13 +183,55 @@ export function EvalToolsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         </tbody>
       </table>
 
-      {selectedId && detail?.calls?.[0] && (
+      {selectedId && selected && (
         <section className="eval-tools-detail" aria-label="Call detail">
           <div className="eval-tools-detail-head">
             <h2 className="eval-tools-heading">Call {selectedId.slice(0, 8)}…</h2>
             <button type="button" className="eval-bt-btn eval-bt-btn-ghost" onClick={() => setSelectedId(null)}>Close</button>
           </div>
-          <pre className="eval-bt-mono eval-tools-pre">{JSON.stringify(detail.calls[0], null, 2)}</pre>
+          <dl className="eval-tools-dl">
+            <div><dt>Tool</dt><dd className="eval-bt-mono">{String(selected.tool ?? '—')}</dd></div>
+            <div><dt>Operation</dt><dd>{String(selected.operation ?? '—')}</dd></div>
+            <div><dt>Outcome</dt><dd>{String(selected.outcome ?? '—')}</dd></div>
+            <div><dt>Error</dt><dd className="eval-bt-mono">{selected.finish?.error?.code ?? '—'}</dd></div>
+            <div><dt>Review</dt><dd>{selected.review?.lifecycle ?? 'unreviewed'}</dd></div>
+            {selected.review?.proposedFix && <div><dt>Proposed fix</dt><dd>{selected.review.proposedFix}</dd></div>}
+            {selected.review?.retryCallId && <div><dt>Retry call</dt><dd className="eval-bt-mono">{selected.review.retryCallId}</dd></div>}
+          </dl>
+          {selected.finish?.error?.message && (
+            <p className="eval-bt-mono eval-tools-error-msg">{selected.finish.error.message.slice(0, 500)}{selected.finish.error.message.length > 500 ? '…' : ''}</p>
+          )}
+          {artifacts.length > 0 && (
+            <div className="eval-tools-artifacts">
+              <span className="eval-tools-heading">Artifacts</span>
+              {artifacts.map(path => (
+                <button key={path} type="button" className="eval-bt-btn eval-bt-btn-ghost" onClick={() => openPath(path)}>{path.split('/').slice(-2).join('/')}</button>
+              ))}
+            </div>
+          )}
+          <div className="eval-tools-actions">
+            <button type="button" className="eval-bt-btn" disabled={busy} aria-label="Mark call diagnosed"
+              onClick={() => void setReview({ callId: selectedId, lifecycle: 'diagnosed' })}>Mark diagnosed</button>
+            <button type="button" className="eval-bt-btn" disabled={busy} aria-label="Mark call regression added"
+              onClick={() => void setReview({ callId: selectedId, lifecycle: 'regression_added' })}>Regression added</button>
+            <button type="button" className="eval-bt-btn eval-bt-btn-primary" disabled={busy} aria-label="Mark call verified"
+              onClick={() => void setReview({ callId: selectedId, lifecycle: 'verified' })}>Mark verified</button>
+            {(data.retryCandidates?.length ?? 0) > 0 && (
+              <label className="eval-tools-retry">
+                Link retry
+                <select disabled={busy} defaultValue="" onChange={ev => {
+                  const retryCallId = ev.target.value
+                  if (retryCallId) void setReview({ callId: selectedId, linkRetry: true, retryCallId })
+                }}>
+                  <option value="">Choose success…</option>
+                  {data.retryCandidates!.map(row => (
+                    <option key={row.callId} value={row.callId}>{row.tool} · {row.callId.slice(0, 8)}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+          <p className="eval-bt-muted eval-tools-foot">Full redacted record lives in the ledger database above; open artifacts locally only.</p>
         </section>
       )}
     </div>

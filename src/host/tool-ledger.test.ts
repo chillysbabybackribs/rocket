@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import test from 'node:test'
 import { ToolLedger, safeEvidence, normalizedError } from './tool-ledger.ts'
-import { loadToolLedgerPanel } from './tool-ledger-panel.ts'
+import { loadToolLedgerPanel, setToolLedgerReview } from './tool-ledger-panel.ts'
 import { failureResult, ToolRegistry, type Tool } from './tools/registry.ts'
 import { toolHistoryTools } from './tools/tool-history.ts'
 import { toolReviewTools } from './tools/tool-review.ts'
@@ -167,6 +167,18 @@ test('review annotations stay separate, support retry links and a bounded queue'
     f.advance(31 * 86_400_000)
     f.ledger.prune()
     assert.equal(f.ledger.review(failId), null)
+  } finally { f.ledger.close(); f.cleanup() }
+})
+
+test('setToolLedgerReview rejects invalid lifecycle and annotates like MCP review', () => {
+  const f = fixture()
+  try {
+    const failId = f.ledger.start('probe', tool, {}, context)
+    f.ledger.finish(failId, failureResult('AMBIGUOUS_TARGET', 'Two targets.', 'operation'))
+    assert.throws(() => setToolLedgerReview(f.ledger, { callId: failId, lifecycle: 'bogus' as any }), /Unsupported lifecycle/)
+    const review = setToolLedgerReview(f.ledger, { callId: failId, lifecycle: 'diagnosed', causeCode: 'AMBIGUOUS_TARGET' })
+    assert.equal(review.lifecycle, 'diagnosed')
+    assert.equal(f.ledger.review(failId)?.lifecycle, 'diagnosed')
   } finally { f.ledger.close(); f.cleanup() }
 })
 

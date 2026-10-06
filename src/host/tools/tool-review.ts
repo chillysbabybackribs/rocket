@@ -1,5 +1,6 @@
 import type { ToolLedger } from '../tool-ledger.ts'
 import { REVIEW_LIFECYCLES } from '../tool-ledger.ts'
+import { setToolLedgerReview } from '../tool-ledger-panel.ts'
 import { failureResult, textResult, type Tool } from './registry.ts'
 
 // Review annotations stay outside prompts. They link investigator judgments to immutable call evidence.
@@ -48,12 +49,13 @@ export function toolReviewTools(ledger: ToolLedger): Tool[] {
 
         if (action === 'link_retry') {
           if (!args.retryCallId) return failureResult('INVALID_ARGUMENT', 'retryCallId is required for link_retry.')
-          const review = ledger.linkRetry(String(args.callId), String(args.retryCallId))
+          const review = setToolLedgerReview(ledger, { callId: String(args.callId), linkRetry: true, retryCallId: String(args.retryCallId) })
           return textResult(JSON.stringify({ path: ledger.path, review }))
         }
 
         if (!args.lifecycle) return failureResult('INVALID_ARGUMENT', 'lifecycle is required for annotate.')
-        const review = ledger.upsertReview(String(args.callId), {
+        const review = setToolLedgerReview(ledger, {
+          callId: String(args.callId),
           lifecycle: args.lifecycle as typeof REVIEW_LIFECYCLES[number],
           ...(args.causeCode !== undefined ? { causeCode: String(args.causeCode) } : {}),
           ...(args.causeNote !== undefined ? { causeNote: String(args.causeNote) } : {}),

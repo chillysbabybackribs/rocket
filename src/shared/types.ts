@@ -417,11 +417,30 @@ export type HostApi = {
       at: number
     }>
     registeredTools?: Array<{ name: string; descriptionBytes: number; version: number }>
+    retryCandidates?: Array<{ callId: string; tool: string; at: number }>
   }]
   'toolLedger.callDetail': [{ callId: string }, {
     path?: string
     calls?: Array<Record<string, unknown>>
     matching?: number
+  }]
+  'toolLedger.setReview': [{
+    callId: string
+    lifecycle?: 'diagnosed' | 'regression_added' | 'fixed' | 'verified'
+    retryCallId?: string | null
+    linkRetry?: boolean
+    causeCode?: string | null
+    causeNote?: string | null
+    proposedFix?: string | null
+  }, {
+    path: string
+    review: {
+      callId: string
+      lifecycle: string
+      retryCallId: string | null
+      causeCode: string | null
+      proposedFix: string | null
+    }
   }]
 }
 
@@ -593,6 +612,8 @@ export type RocketBridge = {
   }
   /** file: URL of the bundled eval panel (docs/evals/mock-ui). */
   evalPanelUrl: () => Promise<string>
+  /** Open a file or folder under the user home directory (captures, artifacts). */
+  openLocalPath: (path: string) => Promise<void>
 }
 
 export const HOST_PORT_MESSAGE = 'rocket:host-port'
