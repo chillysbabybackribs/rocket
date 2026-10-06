@@ -134,6 +134,12 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .shimmer { background: linear-gradient(90deg, var(--text-4), var(--text), var(--text-4)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 1.8s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 .turn-head-live { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-4); padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.turn-head-live .left, .turn-head .left { display: inline-flex; align-items: center; gap: 14px; }
+.turn-head { display: flex; justify-content: space-between; }
+.plan-btn { font-size: 12px; color: var(--text-3); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.plan-btn:hover { color: var(--text); }
+.plan-btn.is-open { color: var(--text-2); }
+.plan-btn .n { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
 /* Finished: variant A folds the plan into one line beside the steps summary; B keeps the list. */
 .plan.is-folded .plan-list { display: none; }
 .summary-row { display: flex; align-items: center; gap: 18px; }
@@ -207,7 +213,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   <span id="variants">
     Drawer:
     <button class="mock-tab on" data-state="open">open</button>
-    <button class="mock-tab" data-state="hidden">hidden (chip)</button>
+    <button class="mock-tab" data-state="hidden">hidden</button>
   </span>
 </div>
 
@@ -226,10 +232,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
   <div class="card split">
     <div class="chatcol">
-      <div class="chip-row state only-hidden"><button class="chip"><span class="dot"></span><span>Plan</span><span class="n">2 of 5</span><span>Scope the notes routes to the logged-in user</span><span style="color:var(--text-4)">▸</span></button></div>
       <div class="transcript"><div class="inner">
         <div class="user-bubble">Add login so each person only sees their own notes. Build it.</div>
-        <div class="turn-head-live"><span class="shimmer">Thinking</span><span>Working for 48s</span></div>
+        <div class="turn-head-live"><span class="left"><span class="shimmer">Thinking</span><button class="plan-btn is-open">Plan <span class="n">2 of 5</span></button></span><span>Working for 48s</span></div>
         <div class="prose"><p>Plain Node with no dependencies and in-memory storage. I'll keep that: scrypt-hashed passwords, bearer-token sessions, and notes scoped to the logged-in user, plus a test proving isolation.</p></div>
         <button class="summary"><span>Worked · 4 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
         <div class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>server.js</code></div>
@@ -281,19 +286,15 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
   <div class="card split">
     <div class="chatcol">
-      <div class="chip-row state only-hidden"><button class="chip"><span style="color:var(--ok)">✓</span><span>Plan</span><span class="n">5 of 5</span><span style="color:var(--text-4)">▸</span></button></div>
       <div class="transcript"><div class="inner">
         <div class="user-bubble">Add login so each person only sees their own notes. Build it.</div>
-        <div class="turn-head">Worked for 1m 20s</div>
+        <div class="turn-head"><span class="left"><button class="plan-btn">Plan <span class="n">5 of 5</span></button></span><span>Worked for 1m 20s</span></div>
         <div class="prose">
           <p><strong>Done.</strong> Login is built, tested, and documented. Each user now sees only their own notes.</p>
           <ul><li><code>server.js</code> now has <code>POST /register</code>, <code>POST /login</code> and <code>POST /logout</code>. Every notes route requires a bearer token.</li><li><code>test/auth.test.js</code> covers the isolation guarantee directly.</li></ul>
           <p>All 6 tests pass.</p>
         </div>
-        <div class="summary-row">
-          <button class="summary"><span>Worked · 9 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
-          <button class="summary"><span>Plan · 5 of 5</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
-        </div>
+        <button class="summary"><span>Worked · 9 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button><br>
         <button class="changes-line"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Changed 3 files</span><span class="counts"><span class="a">+184</span> <span class="d">−12</span></span><span class="bar"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></span></button>
       </div></div>
     <div class="dock"><div class="group">
@@ -344,7 +345,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
       <div class="transcript"><div class="inner">
         <div class="user-bubble">Add login so each person only sees their own notes.</div>
         <div class="goal-lead" style="display:flex;align-items:center;gap:10px;margin:14px 0;font-size:12px;color:var(--text-4)"><span style="flex:1;height:1px;background:var(--line)"></span>Round 2 · Claude works<span style="flex:1;height:1px;background:var(--line)"></span></div>
-        <div class="turn-head-live"><span class="shimmer">Thinking</span><span>Working for 48s</span></div>
+        <div class="turn-head-live"><span class="left"><span class="shimmer">Thinking</span><button class="plan-btn is-open">Plan <span class="n">1 of 3</span></button></span><span>Working for 48s</span></div>
         <div class="prose"><p>The checker found the isolation test missing. Adding it, then the README.</p></div>
         <button class="summary"><span>Worked · 2 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
         <div class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>test/auth.test.js</code></div>
