@@ -201,9 +201,13 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 
 ### Phase 2 — Observation parity
 
-- A11y snapshot mode — WS1.1  
-- Find-in-page — WS1.2  
-- `tab.follow` / href goto helper — WS2.3  
+**Status (6 Oct 2026): landed.**
+
+- [x] A11y snapshot — `focus: 'a11y'` via CDP + `pinRef` for clicks — WS1.1 (`browser-a11y.ts`, `browser-agent.ts`)
+- [x] Find-in-page — `query` on `browser_read` / `tab.read` (substring or `/regex/`) — WS1.2
+- [x] `tab.follow(href)` — resolve + goto + default hash settle — WS2.3
+- [x] Harness + unit tests (`browser-a11y.test.ts`, `browser-capabilities.spec.ts`)
+- [ ] Eval scenario for token savings on find (optional LLM matrix)
 
 ### Phase 3 — Host intelligence
 
@@ -263,6 +267,6 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 ## Open decisions (for you)
 
 1. **Default observation:** migrate everyone to a11y-first or keep `all` until Phase 2 evals complete?  
-2. **New tool `browser_find`** vs extending `browser_read` with `query` (fewer tools vs clearer intent).  
+2. **New tool `browser_find`** vs extending `browser_read` with `query` — **decided:** `query` on read for Phase 2; separate tool only if evals show confusion.  
 3. **Espo in CI:** live demo URL vs checked-in mock that mimics hash + XHR.  
 4. **Auto JSON attach:** on by default for `json` responses under N KB?

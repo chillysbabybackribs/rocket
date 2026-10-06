@@ -24,7 +24,7 @@ const DOWNLOAD_SECONDS = { default: 120, max: 600 }
 /** A result longer than this goes to a file, and the model is told where. */
 const RESULT_LIMIT = 12_000
 const RESULT_PREVIEW = 1_500
-const FOCUSES: ReadFocus[] = ['all', 'text', 'elements', 'network']
+const FOCUSES: ReadFocus[] = ['all', 'text', 'elements', 'network', 'a11y']
 
 const here = import.meta.dirname
 /** Built, the worker sits beside the host's bundle; under plain Node it is the source file. */
@@ -45,7 +45,7 @@ Use this rather than fetching a URL yourself when a page needs the user's login 
 
 const RUN_DESCRIPTION = `Run a script in Rocket's built-in browser. One script should do a whole task on a destination page: act, wait, extract, and return the result—not automate search engines or collect sources from SERPs. Use your provider's native web search to pick URLs first. Do as much per call as you can.
 The script is the body of an async function. It has:
-- tab: your tab, or the one named by the tab argument. tab.goto(url) waits for document ready; tab.goto(url, { until: 'hash' | 'title' | 'request', untilValue, timeout }) optionally waits for the hash, a title substring, or a GET URL fragment with status 200 (cap ~5s) — use on hash CRM/SPA routes instead of extra sleep. tab.read({focus, selector, max}) matches browser_read; tab.eval(fn, arg); tab.click(target); tab.fill(target, value); tab.press('Enter') or 'Control+a'; tab.type(text); tab.waitFor(target or fn, {timeout}); tab.requests(match); tab.body(requestId); tab.info(); tab.screenshot(); tab.close().
+- tab: your tab, or the one named by the tab argument. tab.goto(url) waits for document ready; tab.goto(url, { until: 'hash' | 'title' | 'request', untilValue, timeout }) optionally waits for the hash, a title substring, or a GET URL fragment with status 200 (cap ~5s) — use on hash CRM/SPA routes instead of extra sleep. tab.follow(href) resolves a link from the current page (hash or relative) and goes there with hash settle when the URL has a fragment. tab.read({focus, selector, query, max}) matches browser_read — focus a11y for an accessibility snapshot with refs; query filters lines (text or /regex/). tab.eval(fn, arg); tab.click(target); tab.fill(target, value); tab.press('Enter') or 'Control+a'; tab.type(text); tab.waitFor(target or fn, {timeout}); tab.requests(match); tab.body(requestId); tab.info(); tab.screenshot(); tab.close().
 - browser: browser.open(url); browser.tab(id); browser.tabs(); browser.fetch(url, {method, headers, body}) — session cookies, no CORS, {status, body} with json().
 - sleep(ms), console.log.
 A target is a ref from browser_read (e12), text=Visible label, or a CSS selector. Clicks scroll into view only when needed.
@@ -81,9 +81,10 @@ export function browserTools(
         properties: {
           url: { type: 'string', description: 'Go here first.' },
           tab: { type: 'string', description: 'A tab id such as t3. Default: your own tab.' },
-          focus: { type: 'string', enum: FOCUSES, description: 'all (default): text, controls and data requests, each kept short. text: more of the text. elements: every link and control. network: every request.' },
+          focus: { type: 'string', enum: FOCUSES, description: 'all (default): text, controls and data requests, each kept short. text: more of the text. elements: every link and control. a11y: accessibility tree with refs (CDP). network: every request.' },
           selector: { type: 'string', description: 'Read only inside this element: a CSS selector, a ref, or text=…' },
-          max: { type: 'number', description: 'Most characters of text (or most elements or requests) to return.' }
+          query: { type: 'string', description: 'Find-in-page: keep lines matching this text, or /regex/flags.' },
+          max: { type: 'number', description: 'Most characters of text (or most elements, a11y refs, or requests) to return.' }
         },
         additionalProperties: false
       },
@@ -94,6 +95,7 @@ export function browserTools(
         url: stringOf(args.url) || null,
         focus: FOCUSES.find((focus) => focus === args.focus) ?? 'all',
         selector: stringOf(args.selector) || null,
+        query: stringOf(args.query) || null,
         max: typeof args.max === 'number' && args.max > 0 ? Math.round(args.max) : null
       }, context.chatId)))
     },

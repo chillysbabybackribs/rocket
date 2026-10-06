@@ -117,6 +117,52 @@ test.describe('Browser Phase 0 baseline (harness)', () => {
     expect(out.text).not.toMatch(/Loading…/)
   })
 
+  test('Phase 2: query filters a large list to one row', async ({ rocket }) => {
+    const { origin, profile } = rocket
+    const { run } = await browserMcp(profile)
+    const out = await run(`
+      await tab.goto(${JSON.stringify(`${origin}/spa`)});
+      const full = await tab.read({ focus: 'elements', max: 500 });
+      const narrow = await tab.read({ focus: 'elements', query: 'Beta LLC', max: 20 });
+      if (!narrow.includes('Beta LLC')) throw new Error('missing Beta');
+      if (narrow.includes('Decoy row')) throw new Error('query should drop decoys');
+      return { fullLen: full.length, narrowLen: narrow.length };
+    `)
+    expect(out.isError).toBeFalsy()
+    expect(out.text).not.toMatch(/Decoy row/)
+    const fullLen = Number(out.text.match(/"fullLen":\s*(\d+)/)?.[1] ?? 0)
+    const narrowLen = Number(out.text.match(/"narrowLen":\s*(\d+)/)?.[1] ?? 0)
+    expect(narrowLen).toBeGreaterThan(0)
+    expect(narrowLen).toBeLessThan(fullLen / 2)
+  })
+
+  test('Phase 2: a11y snapshot exposes link refs', async ({ rocket }) => {
+    const { origin, profile } = rocket
+    const { run } = await browserMcp(profile)
+    const out = await run(`
+      await tab.goto(${JSON.stringify(`${origin}/spa`)});
+      return await tab.read({ focus: 'a11y', max: 40 });
+    `)
+    expect(out.isError).toBeFalsy()
+    expect(out.text).toMatch(/Accessibility snapshot/)
+    expect(out.text).toMatch(/Beta LLC/)
+    expect(out.text).toMatch(/\[ref=e\d+\]/)
+  })
+
+  test('Phase 2: tab.follow hash link reaches detail', async ({ rocket }) => {
+    const { origin, profile } = rocket
+    const { run } = await browserMcp(profile)
+    const out = await run(`
+      await tab.goto(${JSON.stringify(`${origin}/spa`)});
+      await tab.follow('#/record/beta');
+      await tab.waitFor('text=BETA-99', { timeout: 8000 });
+      return await tab.read({ max: 2000 });
+    `)
+    expect(out.isError).toBeFalsy()
+    expect(out.text).toMatch(/BETA-99/)
+    expect(out.text).toMatch(/hash: #\/record\/beta/)
+  })
+
   test('SPA: network log lists record API on detail navigation', async ({ rocket }) => {
     const { origin, profile } = rocket
     const { run } = await browserMcp(profile)

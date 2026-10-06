@@ -1,6 +1,7 @@
 import { nativeImage, session, type WebContents } from 'electron'
 import type { AgentTab, BrowserAgentOp, GotoUntil } from '../shared/types.ts'
 import { BrowserDownloads } from './browser-downloads.ts'
+import { buildA11ySnapshot, filterReadByQuery, type AxNode } from './browser-a11y.ts'
 import { PAGE_LIB, type DigestOptions } from './browser-page-lib.ts'
 import type { BrowserPane, TabHandle } from './browser-pane.ts'
 import { toUrl } from './browser-url.ts'
@@ -111,6 +112,17 @@ export class BrowserAgent {
         const tab = this.tab(op)
         const problem = await this.navigate(tab, op.url)
         if (op.until && op.until !== 'none') await this.settleAfterGoto(tab, op.url, op.until, op.untilValue ?? null, op.settleTimeout ?? null)
+        return { ...this.info(tab), ...(problem ? { problem } : {}) }
+      }
+      case 'follow': {
+        const tab = this.tab(op)
+        const base = tab.contents.getURL()
+        if (!base || base === 'about:blank') throw new Error('Open a page before following a link from it.')
+        let full: string
+        try { full = new URL(op.href, base).href } catch { throw new Error(`"${op.href}" is not a link this tab can follow.`) }
+        const problem = await this.navigate(tab, full)
+        const until = op.until ?? (new URL(full).hash ? 'hash' : null)
+        if (until && until !== 'none') await this.settleAfterGoto(tab, full, until, op.untilValue ?? null, op.settleTimeout ?? null)
         return { ...this.info(tab), ...(problem ? { problem } : {}) }
       }
       case 'read': {
@@ -437,14 +449,44 @@ export class BrowserAgent {
     return lines.join('\n') + dialogs
   }
 
+  private async readA11y(tab: TabHandle, maxRefs: number, query: string | null): Promise<string> {
+    await this.send(tab, 'Accessibility.enable')
+    await this.send(tab, 'DOM.enable')
+    const { nodes } = await this.send(tab, 'Accessibility.getFullAXTree', {}) as { nodes: AxNode[] }
+    const { text, pins } = buildA11ySnapshot(nodes, maxRefs, query)
+    if (pins.length) await this.evaluate(tab, '0', true)
+    for (const pin of pins) await this.pinA11yRef(tab, pin.ref, pin.backendDOMNodeId)
+    return text
+  }
+
+  private async pinA11yRef(tab: TabHandle, ref: string, backendDOMNodeId: number): Promise<void> {
+    const resolved = await this.send(tab, 'DOM.resolveNode', { backendNodeId: backendDOMNodeId }) as { object?: { objectId: string } }
+    if (!resolved.object?.objectId) return
+    const state = await this.attach(tab)
+    if (state.world === null) await this.evaluate(tab, '1', true)
+    await tab.contents.debugger.sendCommand('Runtime.callFunctionOn', {
+      objectId: resolved.object.objectId,
+      functionDeclaration: 'function(id){ return __rocket.pinRef(id, this); }',
+      arguments: [{ value: ref }],
+      contextId: state.world!,
+      userGesture: true,
+      silent: true
+    })
+  }
+
   private async read(tab: TabHandle, op: Extract<BrowserAgentOp, { op: 'read' }>, problem: string | null): Promise<string> {
     const { id, url, title } = this.info(tab)
     const state = await this.attach(tab)
     const dialogs = state.dialogs.splice(0).map((dialog) => `\n(The page raised a dialog, which was accepted. ${dialog})`).join('')
     const parts = [this.readHeader(url, title, id, problem, dialogs)]
-    if (op.focus !== 'network' && url) {
-      const options: DigestOptions = { focus: op.focus, selector: op.selector, max: op.max }
-      parts.push(String(await this.evaluate(tab, `__rocket.digest(${JSON.stringify(options)})`, true)))
+    if (op.focus === 'a11y' && url) {
+      parts.push(await this.readA11y(tab, op.max ?? 120, op.query ?? null))
+    } else if (op.focus !== 'network' && op.focus !== 'a11y' && url) {
+      const digestMax = op.query ? (op.focus === 'text' ? 20_000 : 250) : op.max
+      const options: DigestOptions = { focus: op.focus, selector: op.selector, max: digestMax }
+      let body = String(await this.evaluate(tab, `__rocket.digest(${JSON.stringify(options)})`, true))
+      if (op.query) body = filterReadByQuery(body, op.query, op.max)
+      parts.push(body)
     }
     if (op.focus === 'all' || op.focus === 'network') {
       const all = op.focus === 'network'

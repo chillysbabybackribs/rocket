@@ -596,7 +596,7 @@ export type AgentTab = {
  * is unknown, and such callers share one.
  */
 type OnTab = { chat: string | null; tab: string | null }
-export type ReadFocus = 'all' | 'text' | 'elements' | 'network'
+export type ReadFocus = 'all' | 'text' | 'elements' | 'network' | 'a11y'
 /** After document-ready, optional bounded wait for SPAs (tab.goto second argument). */
 export type GotoUntil = 'none' | 'title' | 'hash' | 'request'
 
@@ -610,7 +610,8 @@ export type BrowserAgentOp =
   | (OnTab & { op: 'close' })
   | (OnTab & { op: 'goto'; url: string; until?: GotoUntil | null; untilValue?: string | null; settleTimeout?: number | null })
   /** The page as text a model can read. With a `url`, the tab goes there first. */
-  | (OnTab & { op: 'read'; url: string | null; focus: ReadFocus; selector: string | null; max: number | null })
+  | (OnTab & { op: 'read'; url: string | null; focus: ReadFocus; selector: string | null; max: number | null; query?: string | null })
+  | (OnTab & { op: 'follow'; href: string; until?: GotoUntil | null; untilValue?: string | null; settleTimeout?: number | null })
   /** JavaScript in the page's own world; the result must survive JSON. */
   | (OnTab & { op: 'eval'; expression: string })
   | (OnTab & { op: 'click'; target: string })

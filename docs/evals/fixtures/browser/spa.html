@@ -33,10 +33,12 @@
 
     function renderList() {
       recordList.innerHTML = ''
-      for (const row of [
+      const rows = [
         { id: 'alpha', label: 'Alpha Corp' },
         { id: 'beta', label: 'Beta LLC' }
-      ]) {
+      ]
+      for (let i = 0; i < 30; i++) rows.push({ id: 'decoy-' + i, label: 'Decoy row ' + i })
+      for (const row of rows) {
         const li = document.createElement('li')
         const a = document.createElement('a')
         a.href = '#/record/' + row.id

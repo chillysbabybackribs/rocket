@@ -187,6 +187,16 @@ export function pageLib(): void {
   }
 
   scope.__rocket = {
+    /** Pin a ref from an accessibility snapshot onto a live element (main process resolves the node). */
+    pinRef(id: string, el: Element): boolean {
+      if (!/^e\d+$/.test(id) || !el?.isConnected) return false
+      const name = nameOf(el)
+      ids.set(el, id)
+      refs.set(id, { el: new WeakRef(el), tag: el.tagName, name })
+      const n = Number(id.slice(1))
+      if (n > seq) seq = n
+      return true
+    },
     digest(options: DigestOptions): string {
       const chosen = options.selector ? find(options.selector) : null
       // A page's main region, when it has a real one, is what is worth reading first.
