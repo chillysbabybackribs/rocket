@@ -13,6 +13,8 @@ const output = await mkdtemp(join(root, '.artifacts/ui', `${new Date().toISOStri
 const env = { ...process.env, NODE_ENV: 'test', ROCKET_UI_OUTPUT: output }
 const visible = process.argv.includes('--visible')
 const args = process.argv.slice(2).filter(arg => arg !== '--visible')
+const skipBuild = process.env.ROCKET_UI_SKIP_BUILD === '1'
+const skipUnit = process.env.ROCKET_UI_SKIP_UNIT === '1'
 const log = createWriteStream(join(output, 'runner.log'))
 const controller = new AbortController()
 let interrupted = 0
@@ -25,10 +27,10 @@ const run = (command, args) => runCommand(command, args, {
   onOutput: data => { process.stdout.write(data); log.write(data) }
 })
 console.log(`UI check artifacts: ${output}`)
-let status = 1
+let status = skipBuild && skipUnit ? 0 : 1
 try {
-  status = await run('npm', ['run', 'build'])
-  if (!status) status = await run('npm', ['test'])
+  if (!skipBuild) status = await run('npm', ['run', 'build'])
+  if (!status && !skipUnit) status = await run('npm', ['test'])
   if (!status) {
     const command = [process.execPath, join(root, 'node_modules/@playwright/test/cli.js'), 'test', ...args]
     status = visible

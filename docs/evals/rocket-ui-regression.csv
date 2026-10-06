@@ -1,8 +1,8 @@
-input,expected,metadata.layer,metadata.spec_file,metadata.playwright_grep
-"Rail retracts to strip and expands on hover","pass",L1,rail.spec.ts,the rail folds to a strip
-"Plan drawer opens beside chat and remembers closed state","pass",L1,plan.spec.ts,a plan opens beside the chat
-"Mid-turn steer joins or queues by provider","pass",L1,steer.spec.ts,a message sent mid-turn
-"Ask-user card answered in one click","pass",L1,question.spec.ts,a question from the model
-"Host crash reconnects and accepts new message","pass",L1,recovery.spec.ts,host crash interrupts
-"Full desktop self-check smoke","pass",L1,rocket.spec.ts,Rocket desktop self-check
-"UI-run isolated session lifecycle","pass",L1,ui-run.spec.ts,UI scripts reuse isolated sessions
+input,expected
+"{""scenario"":""Rail retracts to strip and expands on hover"",""playwright_grep"":""the rail folds to a strip"",""spec_file"":""rail.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Plan drawer opens beside chat and remembers closed state"",""playwright_grep"":""a plan opens beside the chat"",""spec_file"":""plan.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Mid-turn steer joins or queues by provider"",""playwright_grep"":""a message sent mid-turn"",""spec_file"":""steer.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Ask-user card answered in one click"",""playwright_grep"":""a question from the model"",""spec_file"":""question.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Host crash reconnects and accepts new message"",""playwright_grep"":""host crash interrupts"",""spec_file"":""recovery.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Full desktop self-check smoke"",""playwright_grep"":""Rocket desktop self-check"",""spec_file"":""rocket.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""UI-run isolated session lifecycle"",""playwright_grep"":""UI scripts reuse isolated sessions"",""spec_file"":""ui-run.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"

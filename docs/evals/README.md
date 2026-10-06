@@ -14,7 +14,19 @@ npm run eval:ui:dev         # http://localhost:8300
 
 In Braintrust: **Experiments** → **Task** → **Remote eval** → **http://localhost:8300** → pick the eval → **Create**.
 
-Each dataset row runs `npm run check:ui -- --grep=<playwright_grep>`. Expect several minutes per row (full build + Playwright).
+Each row runs Playwright with `--grep` after **one** shared build + unit test pass (`ROCKET_UI_SKIP_*`).
+
+**Rough duration (this machine):**
+
+| Phase | Time |
+|--------|------|
+| Prepare (build + `npm test`, once) | ~25–40s |
+| Each Playwright case (grep-only) | ~15–25s typical; ui-run / recovery / host-crash up to ~1–2 min |
+| **7 cases total** | **~3–8 minutes** |
+
+Without skip flags (old behavior: full `check:ui` per row), expect **~7× (prepare + case) ≈ 30–45+ minutes**.
+
+Local run (no Braintrust API): `npm run eval:ui:local`
 
 ## CLI (no UI)
 
