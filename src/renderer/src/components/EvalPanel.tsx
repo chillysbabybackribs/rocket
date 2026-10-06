@@ -112,8 +112,8 @@ export function EvalPanel() {
   })()
 
   return (
-    <aside className="browser eval-panel" aria-label="Evals">
-      <div className="browser-frame eval-shell">
+    <aside className="eval-panel" aria-label="Evals">
+      <div className="eval-shell">
         <header className="eval-head">
           <span className="eval-title">Evals</span>
           <span className="eval-head-actions">

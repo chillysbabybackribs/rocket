@@ -191,7 +191,7 @@ export function App() {
     return state.goals.some((goal) => goal.chatId === chatId) ? state.goalPaneOpen : (chatId !== null && state.views[chatId]?.planTurnId != null)
   })
   return (
-    <div className={`app${browserOpen || evalsOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}${railOpen ? '' : ' rail-folded'}`}>
+    <div className={`app${evalsOpen ? ' has-evals' : ''}${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}${railOpen ? '' : ' rail-folded'}`}>
       <Rail />
       <ChatCard />
       {artifact ? <ArtifactPanel /> : evalsOpen ? <EvalPanel /> : browserOpen && <BrowserPanel />}
