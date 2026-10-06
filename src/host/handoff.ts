@@ -91,10 +91,14 @@ function blockOf(turn: MissedTurn, root: string | null): Block {
     ? [`- ${verb}: ${list.slice(0, MAX_FILES_PER_LINE).join(', ')}${list.length > MAX_FILES_PER_LINE ? ` (+${list.length - MAX_FILES_PER_LINE} more)` : ''}`]
     : [])
   const others = tools.filter((tool) => !isFile(tool))
+  // A question the user has not answered is still open; one they have shows up in their next message.
+  const asked = turn.items.filter((item) => item.type === 'question')
+    .map((item) => `- asked the user: ${oneLine(item.text, 160)}${item.answer === null ? ' (no answer yet)' : ''}`)
   const actions = [
     ...files('edited', edited),
     ...files('read', read),
-    ...others.slice(0, MAX_ACTIONS_PER_TURN).map((tool) => `- ${tool.kind}: ${oneLine(tool.label, 160)}${tool.status === 'failed' ? ' (failed)' : ''}`)
+    ...others.slice(0, MAX_ACTIONS_PER_TURN).map((tool) => `- ${tool.kind}: ${oneLine(tool.label, 160)}${tool.status === 'failed' ? ' (failed)' : ''}`),
+    ...asked
   ]
   if (others.length > MAX_ACTIONS_PER_TURN) actions.push(`- …and ${others.length - MAX_ACTIONS_PER_TURN} more`)
   return { head: `### Turn answered by ${name}${ending}`, user, reply, actions }

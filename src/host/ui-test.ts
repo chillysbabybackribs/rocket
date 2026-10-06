@@ -36,6 +36,7 @@ export class UiTestAdapter implements ProviderAdapter {
       }))
       if (command === 'UI check: fail') return { status: 'failed', error: 'Controlled UI test failure.' }
       if (command === 'UI check: work') return this.work(request.turnId, sink, controller.signal)
+      if (command === 'UI check: ask') return this.ask(request.turnId, sink)
       if (!['UI check: stream', 'UI check: stop', 'UI check: recover'].includes(command ?? '')) {
         return { status: 'failed', error: 'This isolated window uses UI test responses only.' }
       }
@@ -62,6 +63,27 @@ export class UiTestAdapter implements ProviderAdapter {
     } finally {
       this.active.delete(request.chatId)
     }
+  }
+
+  /** A turn that asks the user something, as the ask_user tool would, and carries on to a reply. */
+  private ask(turnId: string, sink: TurnSink): RunResult {
+    sink.item({ type: 'tool', id: `${turnId}:tool`, turnId, kind: 'read', label: 'package.json', output: '', status: 'done' })
+    sink.item({
+      type: 'question',
+      id: `${turnId}:question`,
+      turnId,
+      text: 'Which database should the new service use?',
+      options: [
+        { label: 'Postgres', detail: 'What the other two services use, so one set of migrations and backups; one more thing to run locally.' },
+        { label: 'SQLite', detail: 'Nothing to install and a single file to back up; sharing it between machines is harder.' },
+        { label: 'Keep it in memory for now', detail: 'Fastest to build; nothing survives a restart, so the decision comes back later.' }
+      ],
+      recommended: 0,
+      answer: null
+    })
+    const id = `${turnId}:reply`
+    sink.item({ type: 'assistant', id, turnId, text: 'I have scaffolded the service and its tests; the storage layer is behind one interface, so the database can be wired in once you choose. Going with Postgres unless you pick otherwise.', streaming: false })
+    return { status: 'completed' }
   }
 
   /**

@@ -161,6 +161,11 @@ export class Store {
     ).run(chatId, item.id, item.turnId, JSON.stringify(item))
   }
 
+  item(chatId: string, itemId: string): Item | undefined {
+    const row = this.sql('SELECT data FROM items WHERE chat_id = ? AND id = ?').get(chatId, itemId)
+    return row ? itemOf(row) : undefined
+  }
+
   turnItems(chatId: string, turnId: string): Item[] {
     return this.sql('SELECT data FROM items WHERE chat_id = ? AND turn_id = ? ORDER BY seq').all(chatId, turnId).map(itemOf)
   }

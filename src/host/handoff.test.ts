@@ -38,6 +38,15 @@ test('a handoff carries user and assistant text, tool lines, and no reasoning or
   assert.equal(handoff.messages[0]!.text, 'fix the bug')
 })
 
+test('a question the user has not answered is named as still open; an answered one is not flagged', () => {
+  const question = (answer: string | null): Item => ({
+    type: 'question', id: 'q', turnId: 't', text: 'Which database?', answer, recommended: 0,
+    options: [{ label: 'Postgres', detail: 'Shared.' }, { label: 'SQLite', detail: 'Local.' }]
+  })
+  assert.match(buildHandoff([turn('codex', 'build it', 'Scaffolded.', [question(null)])])!.text, /- asked the user: Which database\? \(no answer yet\)/)
+  assert.match(buildHandoff([turn('codex', 'build it', 'Scaffolded.', [question('SQLite')])])!.text, /- asked the user: Which database\?\n/)
+})
+
 test('the user sees their own words when a message went out with a handoff in front', () => {
   const handoff = buildHandoff([turn('claude', 'a', 'b')])
   assert.equal(stripHandoff(withHandoff(handoff, 'what next?')), 'what next?')

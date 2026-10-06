@@ -1,9 +1,9 @@
 import { memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
-import { ChevronRight, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
+import { Check, ChevronRight, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
 import { providerLabel, type Goal, type Item, type ToolKind, type Turn } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
-import { peekItem, useApp, useItem } from '../store.ts'
+import { answerQuestion, peekItem, useApp, useItem } from '../store.ts'
 
 /** Markdown is the expensive part of a row; text that has not changed parses once and never again. */
 const Block = memo(function Block({ text }: { text: string }) {
@@ -180,6 +180,76 @@ const Activity = memo(function Activity({ ids, live, thoughtsOpen }: { ids: stri
   )
 })
 
+type QuestionItem = Extract<Item, { type: 'question' }>
+
+/**
+ * A question the model asked, with its answers as buttons. The model's own pick is marked, so
+ * taking its word is one click; "Something else" opens a line for an answer in the user's words.
+ * It never holds anything up: unanswered, it stays as it is, and the chat goes on around it. Once
+ * answered it shows the choice and nothing to click.
+ */
+function QuestionCard({ item }: { item: QuestionItem }) {
+  const [other, setOther] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (other !== null) input.current?.focus()
+  }, [other])
+  const answer = async (text: string): Promise<void> => {
+    if (sending || !text.trim()) return
+    setSending(true)
+    await answerQuestion(item.id, text.trim())
+    setSending(false)
+  }
+  if (item.answer !== null) {
+    return (
+      <div className="question is-answered">
+        <div className="question-text">{item.text}</div>
+        <div className="question-answer"><Check size={13} /><span>{item.answer}</span></div>
+      </div>
+    )
+  }
+  return (
+    <div className="question" role="group" aria-label="Question from the model">
+      <div className="question-text">{item.text}</div>
+      <div className="question-options">
+        {item.options.map((option, index) => (
+          <button
+            type="button"
+            key={option.label}
+            className={`question-option${index === item.recommended ? ' is-recommended' : ''}`}
+            disabled={sending}
+            onClick={() => void answer(option.label)}
+          >
+            <span className="question-option-label">
+              {option.label}
+              {index === item.recommended && <span className="question-pick">Suggested</span>}
+            </span>
+            <span className="question-option-detail">{option.detail}</span>
+          </button>
+        ))}
+      </div>
+      {other === null
+        ? <button type="button" className="question-other" disabled={sending} onClick={() => setOther('')}>Something else…</button>
+        : (
+          <input
+            ref={input}
+            className="question-input"
+            value={other}
+            placeholder="Your answer, then Enter"
+            aria-label="Your answer"
+            disabled={sending}
+            onChange={(event) => setOther(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.nativeEvent.isComposing) void answer(other)
+              if (event.key === 'Escape') setOther(null)
+            }}
+          />
+        )}
+    </div>
+  )
+}
+
 const ItemRow = memo(function ItemRow({ id }: { id: string }) {
   const item = useItem(id)
   if (!item) return null
@@ -190,6 +260,8 @@ const ItemRow = memo(function ItemRow({ id }: { id: string }) {
       return item.text.trim() ? <Prose text={item.text} streaming={item.streaming} /> : null
     case 'notice':
       return <p className={`notice is-${item.tone}`}>{item.text}</p>
+    case 'question':
+      return <QuestionCard item={item} />
     default:
       return null
   }
@@ -238,11 +310,15 @@ function TurnHead({ turn, thoughts, open, onToggle }: { turn: Turn; thoughts: bo
 /**
  * A turn's response keeps one shape however long it works, each part replacing the last in its
  * place rather than piling up: the model's latest words, a summary of the steps before them, and,
- * while it runs, the thinking and tool call under way. Notices keep to the end.
+ * while it runs, the thinking and tool call under way. Notices and questions keep to the end.
  */
 function stageOf(ids: string[], running: boolean): { reply: string | null; steps: string[]; live: string[]; notices: string[] } {
-  const notices = ids.filter((id) => peekItem(id)?.type === 'notice')
-  const work = ids.filter((id) => peekItem(id)?.type !== 'notice')
+  const trailing = (id: string): boolean => {
+    const type = peekItem(id)?.type
+    return type === 'notice' || type === 'question'
+  }
+  const notices = ids.filter(trailing)
+  const work = ids.filter((id) => !trailing(id))
   const at = work.findLastIndex((id) => peekItem(id)?.type === 'assistant')
   const reply = at === -1 ? null : work[at]
   if (!running) return { reply, steps: work.filter((id) => id !== reply), live: [], notices }

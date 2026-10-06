@@ -315,6 +315,17 @@ export function stop(): void {
   if (state.activeChatId) void call('chat.stop', { chatId: state.activeChatId }).catch(fail)
 }
 
+/** Answer a question a model asked in the open chat; the provider picked in the composer takes the reply. */
+export async function answerQuestion(itemId: string, answer: string): Promise<void> {
+  const chatId = state.activeChatId
+  if (!chatId) return
+  try {
+    await call('question.answer', { chatId, itemId, answer, provider: state.provider, model: state.modelChoice[state.provider]?.id ?? null })
+  } catch (error) {
+    fail(error)
+  }
+}
+
 export function deleteChat(chatId: string): void {
   void call('chat.delete', { chatId }).catch(fail)
 }

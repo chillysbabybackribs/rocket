@@ -15,6 +15,7 @@ import { CodexAdapter } from './providers/codex.ts'
 import { CursorAdapter } from './providers/cursor.ts'
 import type { ProviderAdapter } from './providers/provider.ts'
 import { Store } from './store.ts'
+import { answerMessage, askTools } from './tools/ask.ts'
 import { browserContext, browserTools } from './tools/browser.ts'
 import { ToolChannel } from './tools/channel.ts'
 import { goalTools } from './tools/goal.ts'
@@ -122,6 +123,7 @@ const tools = new ToolChannel(
   new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', message, { provider, chatId }))
     .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
     .add(...memoryTools(store))
+    .add(...askTools(() => hub))
     .add(...goalTools(() => goals))
     .add(...(selfCheck ? selfCheckTools(journal, (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)) : [])),
   join(dataDir, 'tool-channel.json'),
@@ -141,15 +143,31 @@ const adapters: Record<ProviderId, ProviderAdapter> = testProfile ? {
   cursor: new CursorAdapter(tools),
   antigravity: new AntigravityAdapter(tools)
 }
+/** Answers clicked while the turn that asked was still running, sent as soon as it ends. */
+const pendingAnswers = new Map<string, { provider: ProviderId; model: string | null; text: string }>()
+
 /** Events go to the renderer; the ones that end a chat's use of the browser go to main as well. */
 function onEvent(event: HostEvent): void {
   emit(event)
   if (event.type === 'turn' && event.turn.status !== 'running') {
     void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
     goals.turnEnded(event.turn)
-    const { id } = event.turn
+    const { id, chatId } = event.turn
     void teamwork.turnEnded(event.turn).then((files) => goals.noteFiles(id, files))
+    const pending = pendingAnswers.get(chatId)
+    if (pending) {
+      pendingAnswers.delete(chatId)
+      // The hub has let go of the turn by the time it reports the end; a send that still fails goes in the journal.
+      queueMicrotask(() => {
+        try {
+          hub.send(chatId, pending.provider, pending.model, pending.text)
+        } catch (error) {
+          journal.add('host', 'warn', 'question', `The answer to a question could not be sent: ${messageOf(error)}`, { chatId })
+        }
+      })
+    }
   } else if (event.type === 'chatDeleted') {
+    pendingAnswers.delete(event.chatId)
     goals.forget(event.chatId)
     void askBrowser({ op: 'forget', chat: event.chatId }).catch(() => {})
     teamwork.forget(event.chatId)
@@ -192,6 +210,24 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'chat.delete': async ({ chatId }) => { await hub.deleteChat(chatId); return null },
   'chat.send': ({ chatId, provider, model, text }) => { hub.send(chatId, provider, model, text); return null },
   'chat.stop': async ({ chatId }) => { await hub.stop(chatId); return null },
+  'question.answer': ({ chatId, itemId, answer, provider, model }) => {
+    const text = answer.trim()
+    if (!text) throw new Error('Pick an option or type an answer first')
+    // A goal's chat is the goal's to drive: the answer goes to its next round as a note. In an
+    // ordinary chat it is the next message, sent now, or the moment the turn that asked is over.
+    const goal = goals.list().find((entry) => entry.chatId === chatId && entry.status !== 'done' && entry.status !== 'stopped')
+    const question = hub.answerQuestion(chatId, itemId, text)
+    const message = answerMessage(question, text)
+    try {
+      if (goal) goals.steer(goal.id, message)
+      else if (hub.isRunning(chatId)) pendingAnswers.set(chatId, { provider, model, text: message })
+      else hub.send(chatId, provider, model, message)
+    } catch (error) {
+      hub.answerQuestion(chatId, itemId, null)
+      throw error
+    }
+    return null
+  },
   'chat.prepare': ({ chatId, cwd, provider, model }) => { void hub.prepare(chatId, provider, model, cwd); return null },
   'usage.read': ({ provider, force }) => hub.usage(provider, force),
   'models.list': ({ provider }) => hub.models(provider),

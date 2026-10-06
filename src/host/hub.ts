@@ -35,6 +35,8 @@ export function describeTiming(timing: TurnTiming): string {
     + `first event ${ms(timing.firstEventMs)}, first text ${ms(timing.firstTextMs)}, total ${(timing.totalMs / 1000).toFixed(1)}s`
 }
 
+type Question = Extract<Item, { type: 'question' }>
+
 type LiveTurn = {
   turn: StoredTurn
   adapter: ProviderAdapter
@@ -180,6 +182,35 @@ export class Hub {
   turnItems(chatId: string, turnId: string): Item[] {
     const live = this.live.get(chatId)
     return live?.turn.id === turnId ? [...live.items.values()] : this.store.turnItems(chatId, turnId)
+  }
+
+  /**
+   * Add an item of the app's own to the turn in flight, such as a question a tool posted on the
+   * model's behalf. Returns the turn's id, or null when the chat has no turn running.
+   */
+  addItem(chatId: string, make: (turnId: string) => Item): string | null {
+    const live = this.live.get(chatId)
+    if (!live) return null
+    this.putItem(live, make(live.turn.id))
+    return live.turn.id
+  }
+
+  /** The question asked in the chat's turn in flight, if there is one. */
+  liveQuestion(chatId: string): Question | undefined {
+    const live = this.live.get(chatId)
+    return live && [...live.items.values()].find((item): item is Question => item.type === 'question')
+  }
+
+  /** Record the user's answer on a question (null reopens it), whether its turn is still running or long over. */
+  answerQuestion(chatId: string, itemId: string, answer: string | null): Question {
+    const live = this.live.get(chatId)
+    const item = live?.items.get(itemId) ?? this.store.item(chatId, itemId)
+    if (item?.type !== 'question') throw new Error('That question is no longer in the chat')
+    const answered: Question = { ...item, answer }
+    if (live?.items.has(itemId)) live.items.set(itemId, answered)
+    this.store.putItem(chatId, answered)
+    this.emit({ type: 'item', chatId, item: answered })
+    return answered
   }
 
   /**

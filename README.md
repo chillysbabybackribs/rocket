@@ -96,10 +96,25 @@ them costs no call. A page counts as loaded when its document is ready, not when
 While a turn uses a tab, its page runs at full speed out of sight; when the turn ends it goes back
 to being an ordinary background tab, and a deleted chat's own tab is closed.
 
-Besides the browser tools there is `remember` (see Workspace and memory), `goal_report` (see Goals) and, with
-`ROCKET_SELF_CHECK=1`, the three self-check tools. Every tool's schema is in every session's prompt,
-so what a model should simply know goes ahead of the user's message instead (tabs, the file map,
-notes, trouble reports), and a tool is added only for something a model must do.
+Besides the browser tools there is `remember` (see Workspace and memory), `ask_user` (below),
+`goal_report` (see Goals) and, with `ROCKET_SELF_CHECK=1`, the three self-check tools. Every
+tool's schema is in every session's prompt, so what a model should simply know goes ahead of the
+user's message instead (tabs, the file map, notes, trouble reports), and a tool is added only for
+something a model must do.
+
+`ask_user` (`src/host/tools/ask.ts`) is how a model asks the user something, and it never holds
+the chat up. The call posts a card in the transcript and returns at once; the model is told to
+carry on with everything the answer does not change and end its turn as usual, so no CLI is left
+holding a connection open for a human. A question must carry two to four options, each with a
+short label and what picking it means, and the index of the option the model would take itself;
+the card marks that one "Suggested", so taking the model's word is one click, and an unanswered
+question costs nothing. One question per turn; a second call, a question without real options,
+or one without the model's own pick is refused with a message saying what to do instead. An
+answer, clicked or typed under "Something else", is sent as the chat's next message with the
+question quoted above it, to the provider picked in the composer; clicked while the turn that
+asked is still running, it goes the moment that turn ends. In a goal's chat the answer is a note
+for the next round instead. A handoff names a question that is still open, so another provider
+knows what the user has not yet decided.
 
 ### Workspace and memory
 

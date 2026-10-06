@@ -33,6 +33,24 @@ export type Item =
       output: string
     }
   | { type: 'notice'; id: string; turnId: string; text: string; tone: 'info' | 'error' }
+  /**
+   * A question the model asked with `ask_user`. It never holds the turn up: the model carries on
+   * and the answer, if one comes, is the chat's next message. `recommended` indexes the option
+   * the model would take itself.
+   */
+  | {
+      type: 'question'
+      id: string
+      turnId: string
+      text: string
+      options: QuestionOption[]
+      recommended: number
+      /** The option picked or the words typed; null while unanswered. */
+      answer: string | null
+    }
+
+/** One clickable answer: a short label and what picking it means. */
+export type QuestionOption = { label: string; detail: string }
 
 export type TurnStatus = 'running' | 'completed' | 'failed' | 'interrupted'
 
@@ -187,6 +205,11 @@ export type HostApi = {
   /** `model` is one of the provider's `models.list` ids, or null for the provider's default. */
   'chat.send': [{ chatId: string; provider: ProviderId; model: string | null; text: string }, null]
   'chat.stop': [{ chatId: string }, null]
+  /**
+   * Answer a question a model asked. The answer is sent as the chat's next message to `provider`,
+   * or given to the chat's goal as a note when one is running there.
+   */
+  'question.answer': [{ chatId: string; itemId: string; answer: string; provider: ProviderId; model: string | null }, null]
   /** Warm the provider up for the message being typed. A null `chatId` is the next new chat, in `cwd`. */
   'chat.prepare': [{ chatId: string | null; cwd: string; provider: ProviderId; model: string | null }, null]
   'usage.read': [{ provider: ProviderId; force?: boolean }, UsageSnapshot]
