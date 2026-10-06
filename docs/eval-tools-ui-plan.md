@@ -16,7 +16,7 @@ Give humans a reliable **in-app** view of Rocket MCP tool health (same evidence 
 
 - **✅ COMPLETE — 3. Wire review actions in the UI.** `toolLedger.setReview` mirrors `rocket_tool_review` via `setToolLedgerReview`. Buttons: diagnosed, regression_added, verified; retry picker from recent successes.
 
-- **✅ COMPLETE — 4. Wire artifact and evidence links.** `window.rocket.openLocalPath` (home-dir only); structured call detail; DB path hint in footer.
+- **✅ COMPLETE — 4. Wire artifact and evidence links.** artifacts open inside the app through `openChatLink` (browser tab or artifact panel); structured call detail; DB path hint in footer.
 
 - **✅ COMPLETE — 5. Tools-page chrome.** `view === 'tools'` hides **Run cell**; **Refresh ledger** reloads panel.
 

@@ -6,6 +6,12 @@
 .composer-bar .composer-folder { min-width: 0; margin-right: auto; }
 .composer-bar { gap: 5px; }
 .image-attachments { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.user-message { width: fit-content; max-width: 85%; margin: 0 0 24px auto; }
+.user-message > .image-attachments { justify-content: flex-end; margin-bottom: 10px; }
+.user-message > .image-attachments:last-child { margin-bottom: 0; }
+.user-message > .user-bubble { max-width: 100%; margin: 0 0 0 auto; }
+.steer .user-message { max-width: 100%; margin: 0; }
+.steer.is-waiting .image-thumbnail { border-style: dashed; }
 .image-attachments.is-draft { flex-wrap: nowrap; overflow-x: auto; padding: 13px 12px 4px; margin: 0; }
 .image-attachment { position: relative; min-width: 0; width: 120px; flex: 0 0 120px; }
 .is-draft .image-attachment { width: 104px; flex-basis: 104px; }

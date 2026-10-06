@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { HostApi } from '../../../shared/types.ts'
 import { go } from '../app-map.ts'
 import { call } from '../host.ts'
-import { useApp } from '../store.ts'
+import { openChatLink, useApp } from '../store.ts'
 
 type PanelData = HostApi['toolLedger.loadPanel'][1]
 type ScoresData = HostApi['toolEval.scores'][1]
@@ -80,9 +80,8 @@ export function EvalToolsPanel() {
     }
   }
 
-  const openPath = (path: string): void => {
-    void window.rocket.openLocalPath(path).catch(err => setActionError(err instanceof Error ? err.message : String(err)))
-  }
+  // Captures and artifacts open inside the app, as a chat link would, never in a system app.
+  const openPath = (path: string): void => { void openChatLink(path) }
 
   if (error) return <p className="eval-error">{error}</p>
   if (!data) return <p className="eval-bt-muted">Loading tool ledger…</p>

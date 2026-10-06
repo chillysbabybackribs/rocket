@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -19,7 +19,11 @@ test('chat links resolve files, encoded names, line references, and browser docu
     assert.deepEqual(await readChatLink('page.html#section', cwd), { kind: 'browser', url: `${pathToFileURL(join(cwd, 'page.html')).href}#section` })
     assert.deepEqual(await readChatLink('https://example.com/a?q=1#x', cwd), { kind: 'browser', url: 'https://example.com/a?q=1#x' })
     await assert.rejects(readChatLink('missing.txt', cwd), /Check that the file exists/)
-    await assert.rejects(readChatLink('.', cwd), /folder/)
+    await mkdir(join(cwd, 'shots'))
+    await writeFile(join(cwd, 'shots', 'a.png'), '')
+    const folder = await readChatLink('shots', cwd)
+    assert.equal(folder.kind, 'artifact')
+    assert.ok(folder.kind === 'artifact' && folder.markdown && folder.text.includes(`\`${join(cwd, 'shots', 'a.png')}\``))
     await assert.rejects(readChatLink('javascript:alert(1)', cwd), /not supported/)
     await writeFile(join(cwd, 'binary.dat'), Buffer.from([0, 1, 2]))
     await assert.rejects(readChatLink('binary.dat', cwd), /binary file/)

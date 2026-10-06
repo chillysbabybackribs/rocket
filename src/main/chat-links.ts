@@ -1,7 +1,7 @@
 // Resolve chat paths in main, where file URLs and filesystem access are available.
-import { open } from 'node:fs/promises'
+import { open, readdir } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { extname, resolve } from 'node:path'
+import { extname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { ChatLinkTarget } from '../shared/types.ts'
 
@@ -33,7 +33,10 @@ export async function readChatLink(href: string, cwd: string): Promise<ChatLinkT
   }
   try {
     const info = await file.stat()
-    if (!info.isFile()) throw new Error('This link points to a folder. Choose a file to preview.')
+    // A folder opens as a list of its entries, each a link that opens inside the app in turn,
+    // rather than being handed to the system's file manager.
+    if (info.isDirectory()) return { kind: 'artifact', path, text: await folderListing(path), markdown: true, line: null }
+    if (!info.isFile()) throw new Error('This link is not a file or a folder. Choose a file to preview.')
     const extension = extname(path).toLowerCase()
     if (/^\.(html?|pdf|png|jpe?g|gif|webp|svg|avif|ico|mp4|webm|mp3|wav|ogg)$/.test(extension)) {
       return { kind: 'browser', url: pathToFileURL(path).href + fragment }
@@ -46,4 +49,15 @@ export async function readChatLink(href: string, cwd: string): Promise<ChatLinkT
     if (data.includes(0)) throw new Error('This binary file cannot be previewed. Choose a text, image, HTML, or PDF file.')
     return { kind: 'artifact', path, text: data.toString('utf8'), markdown: /\.(md|markdown)$/i.test(path), line }
   } finally { await file.close() }
+}
+
+const LISTING_LIMIT = 500
+
+async function folderListing(path: string): Promise<string> {
+  const entries = (await readdir(path, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory() || entry.isFile())
+    .sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name))
+  const lines = entries.slice(0, LISTING_LIMIT).map((entry) => `- \`${join(path, entry.name)}${entry.isDirectory() ? '/' : ''}\``)
+  if (entries.length > LISTING_LIMIT) lines.push(`- …and ${entries.length - LISTING_LIMIT} more`)
+  return `# ${path}\n\n${lines.join('\n') || 'This folder is empty.'}\n`
 }

@@ -16,7 +16,7 @@ Last automated run: **2026-10-06** (ledger unit tests + isolated UI loop specs +
 | `tests/ui/tool-failure-pane.spec.ts` | Regression: unscoped vs `ui.pane` |
 | `tests/ui/tool-failure-loop.spec.ts` | End-to-end: fail → review → verified |
 | `tests/ui/eval-tools.spec.ts` | Eval **Tools** tab loads ledger; mark verified from UI |
-| `toolLedger.setReview` / `openLocalPath` | Renderer review + artifact open (home paths only) |
+| `toolLedger.setReview` / `openChatLink` | Renderer review + artifact open inside the app |
 
 Eval panel (Playgrounds / Experiments) is a **separate** project surface; **Tools** is the human ledger view.
 

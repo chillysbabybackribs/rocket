@@ -118,7 +118,8 @@ stay a hover away. The button at the strip's foot, or at the peek's, opens the r
 Paste a screenshot into the message field, choose **Attach images**, or drop files anywhere in
 the receiving chat pane. A thumbnail tray keeps images beside the draft; click a thumbnail to
 enlarge it, remove it with its cross, or drag it into another chat to copy it there. Images may
-be sent without text. Attaching never sends automatically. PNG, JPEG, WebP and GIF are accepted,
+be sent without text. In the transcript, attachments sit above a separate prompt bubble;
+image-only messages have no empty text bubble. Attaching never sends automatically. PNG, JPEG, WebP and GIF are accepted,
 up to 5 MB each, 8000 pixels per side, 32 megapixels, and ten images totaling 20 MB per message.
 
 Rocket copies image bytes and thumbnails into its profile's `attachments/` directory and keeps
@@ -186,8 +187,11 @@ Chat links open beside the conversation: HTTP(S) URLs and local HTML, images, PD
 open in a new browser tab. Text and source files open in a closable artifact preview; Markdown
 renders as a document. Relative file links use the chat's working folder (or the containing
 artifact's folder), and `:line` / `#Lline` references highlight the source line. Markdown links,
-bare URLs, and recognizable file paths, including inline-code paths, are clickable. Text previews
-are limited to 2 MB; missing files and unsupported binary formats show an actionable error.
+bare URLs, and recognizable file paths, including inline-code paths, are clickable. A folder opens
+as a list of its entries, each a link in turn. Text previews are limited to 2 MB; missing files
+and unsupported binary formats show an actionable error. Nothing opened from inside the app is
+handed to a system app: the Tools view's capture links and any link that tries to open a new
+window go through the same path as a chat link.
 
 ### Tools
 

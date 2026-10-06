@@ -674,8 +674,6 @@ export type RocketBridge = {
   }
   /** file: URL of the bundled eval panel (docs/evals/mock-ui). */
   evalPanelUrl: () => Promise<string>
-  /** Open a file or folder under the user home directory (captures, artifacts). */
-  openLocalPath: (path: string) => Promise<void>
 }
 
 export const HOST_PORT_MESSAGE = 'rocket:host-port'

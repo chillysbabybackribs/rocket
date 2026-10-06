@@ -35,7 +35,6 @@ const bridge: RocketBridge = {
     onFocusAddress: (listener) => listen<void>('rocket:browser-focus-address', listener)
   },
   evalPanelUrl: () => ipcRenderer.invoke('rocket:eval-panel-url') as Promise<string>,
-  openLocalPath: (path) => ipcRenderer.invoke('rocket:open-local-path', path) as Promise<void>
 }
 
 contextBridge.exposeInMainWorld('rocket', bridge)

@@ -2,7 +2,7 @@ import { Attachments } from './Attachments.tsx'
 import { Fragment, memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
-import { planItemId, providerLabel, type Goal, type Item, type ToolKind, type Turn } from '../../../shared/types.ts'
+import { planItemId, providerLabel, type Goal, type Item, type MessageDraft, type ToolKind, type Turn } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
 import { usePane, usePaneChatId, usePaneView } from '../pane.ts'
 import { answerQuestion, editQueued, openTurnChanges, peekItem, sendNow, togglePlan, useApp, useItem } from '../store.ts'
@@ -254,12 +254,18 @@ function QuestionCard({ item }: { item: QuestionItem }) {
   )
 }
 
+function UserMessage({ text, attachments }: MessageDraft) {
+  const prompt = text.trim() ? <div className="user-bubble"><ChatMarkdown text={text} /></div> : null
+  if (!attachments?.length) return prompt
+  return <div className="user-message"><Attachments images={attachments} />{prompt}</div>
+}
+
 const ItemRow = memo(function ItemRow({ id }: { id: string }) {
   const item = useItem(id)
   if (!item) return null
   switch (item.type) {
     case 'user':
-      return <div className="user-bubble"><Attachments images={item.attachments} /><ChatMarkdown text={item.text} /></div>
+      return <UserMessage text={item.text} attachments={item.attachments} />
     case 'assistant':
       return item.text.trim() ? <Prose text={item.text} streaming={item.streaming} /> : null
     case 'notice':
@@ -475,7 +481,7 @@ function Waiting() {
     <>
       {queued.map((entry) => (
         <div key={entry.id} className="steer is-waiting">
-          <div className="user-bubble"><Attachments images={entry.attachments} /><ChatMarkdown text={entry.text} /></div>
+          <UserMessage text={entry.text} attachments={entry.attachments} />
           {entry.taking ? (
             <div className="steer-status"><span>{providerLabel(entry.provider)} reads this at its next step</span></div>
           ) : (
