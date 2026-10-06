@@ -1,8 +1,8 @@
 <!doctype html>
-<!-- Mockup of the plan a model keeps while it works (Claude Code's TodoWrite, Cursor's todos,
-     Codex's todo list): a checklist that updates in place under the turn's latest words while
-     the turn runs, and what remains of it once the turn is over. Static; the data is invented.
-     Borrows Rocket's palette and card language from src/renderer/src/styles.css. -->
+<!-- Mockup of the work drawer: the plan a model keeps while it works (Claude Code's TodoWrite,
+     Cursor's todos, Codex's todo list) and what it is doing right now, in a pane beside the
+     chat laid out like the goal pane, so it never scrolls out of view during a task. Static; the
+     data is invented. Borrows the goal pane's classes from src/renderer/src/styles.css. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -41,6 +41,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .page.on { display: block; }
 
 .app { height: 100%; display: grid; gap: var(--gap); grid-template-columns: 68px 1fr; padding: 28px var(--gap) var(--gap) 0; }
+.card.split { flex-direction: row; }
+.chatcol { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.divider { width: 1px; background: var(--line-strong); }
+.divider:hover { background: var(--accent); }
 .card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheen), var(--panel); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 
 /* Rail */
@@ -140,24 +144,72 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .cov td:first-child { width: 110px; color: var(--text-2); }
 .cov td:last-child { width: 120px; text-align: right; color: var(--text-4); }
 .ok { color: var(--ok); } .warn { color: var(--warn); }
+
+/* The drawer, in the goal pane's clothes */
+.goal-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; width: 400px; flex: none; background: var(--panel); }
+.gp-bar { flex: none; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 8px 0 16px; border-bottom: 1px solid var(--line); }
+.gp-crumbs { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-4); white-space: nowrap; }
+.gp-crumb-current { color: var(--text-2); font-weight: 510; }
+.gp-icon { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: var(--text-3); }
+.gp-icon:hover { background: var(--hover); color: var(--text); }
+.gp-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 20px 28px; }
+.gp-head { margin-bottom: 14px; }
+.gp-title { margin: 0; font-size: 18px; font-weight: 590; letter-spacing: -0.016em; line-height: 1.35; color: var(--text); }
+.gp-request { margin: 8px 0 0; font-size: 12px; color: var(--text-4); }
+.gp-props { display: grid; gap: 2px; padding: 6px 0 14px; border-bottom: 1px solid var(--line); }
+.gp-prop { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; min-height: 30px; font-size: 12.5px; }
+.gp-prop-label { color: var(--text-4); }
+.gp-prop-value { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--text-2); }
+.gp-faint { color: var(--text-4); }
+.gp-avatar { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--raised); border: 1px solid var(--line-strong); color: var(--text-2); font-size: 10px; }
+.gp-section { padding: 16px 0 4px; }
+.gp-section + .gp-section { border-top: 1px solid var(--line); }
+.gp-section-title { display: flex; align-items: center; margin: 0 0 8px; font-size: 12px; font-weight: 510; color: var(--text-3); }
+.gp-count { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; font-weight: 400; color: var(--text-4); font-variant-numeric: tabular-nums; }
+.gp-lines { list-style: none; margin: 0 -8px; padding: 0; }
+.gp-line { display: flex; align-items: flex-start; gap: 10px; padding: 7px 8px; border-radius: 6px; font-size: 13px; }
+.gp-line:hover { background: var(--hover); }
+.gp-line-text { flex: 1; min-width: 0; color: var(--text); line-height: 1.5; }
+.gp-line.is-done .gp-line-text { color: var(--text-4); }
+.gp-line-meta { flex: none; max-width: 38%; margin-top: 1px; font-size: 11.5px; color: var(--text-4); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gp-line .box { width: 14px; height: 14px; margin-top: 2.5px; border-radius: 4px; border: 1px solid var(--line-focus); flex: none; display: grid; place-items: center; font-size: 9.5px; }
+.gp-line.is-done .box { background: rgba(255,255,255,.06); border-color: transparent; color: var(--text-3); }
+.gp-line.is-now .box { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(113,112,255,.16); }
+.gp-line.is-now .box::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s infinite; }
+.gp-line.is-now .gp-line-text { font-weight: 510; }
+.gp-now { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
+.gp-now .tool-line { height: auto; }
+.gp-now .thought { margin-top: 8px; max-height: 6em; font-size: 12.5px; }
+.gp-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.gp-steps .tool-line { height: 22px; }
+.gp-steps .tool-line.is-failed code { color: var(--danger); }
+.gp-files { display: flex; flex-wrap: wrap; gap: 4px; }
+.gp-file { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 5px; background: var(--raised); border: 1px solid var(--line); color: var(--text-3); }
+.chip-row { flex: none; display: flex; justify-content: flex-end; padding: 10px 14px 0; }
+.chip { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid var(--line-strong); font-size: 12px; color: var(--text-3); }
+.chip:hover { background: var(--hover); color: var(--text); }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s infinite; }
+.chip .n { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
+.state { display: none; } .state.on { display: contents; }
 </style>
 </head>
 <body>
 
 <div class="mock-bar">
   <b>Mockup</b>
-  <button class="mock-tab on" data-page="live">Plan · while the turn runs</button>
-  <button class="mock-tab" data-page="done">Plan · when it is over</button>
+  <button class="mock-tab on" data-page="run">Work drawer · while the turn runs</button>
+  <button class="mock-tab" data-page="done">Work drawer · when it is over</button>
+  <button class="mock-tab" data-page="goal">In a goal's pane</button>
   <span class="spacer"></span>
-  <span id="variants" style="visibility:hidden">
-    Finished plan:
-    <button class="mock-tab on" data-variant="a">A · folded into a line</button>
-    <button class="mock-tab" data-variant="b">B · list stays</button>
+  <span id="variants">
+    Drawer:
+    <button class="mock-tab on" data-state="open">open</button>
+    <button class="mock-tab" data-state="hidden">hidden (chip)</button>
   </span>
 </div>
 
-<!-- ─── Page 1: live ─────────────────────────────────────────────────── -->
-<div class="page on" id="page-live">
+<!-- ─── Page 1: running ──────────────────────────────────────────────── -->
+<div class="page on" id="page-run">
 <div class="app">
   <div class="rail">
     <div class="traffic"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
@@ -169,32 +221,69 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     <div class="bottom"><button class="rail-btn">◎</button><button class="rail-btn">↺</button><button class="rail-btn">◍</button></div>
   </div>
 
-  <div class="card">
-    <div class="transcript"><div class="inner">
-      <div class="user-bubble">Add login so each person only sees their own notes. Build it.</div>
-      <div class="turn-head-live"><span class="shimmer">Thinking</span><span>Working for 48s</span></div>
-      <div class="prose"><p>Plain Node with no dependencies and in-memory storage. I'll keep that: scrypt-hashed passwords, bearer-token sessions, and notes scoped to the logged-in user, plus a test proving isolation.</p></div>
-      <button class="summary"><span>Worked · 4 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
-
-      <div class="plan">
-        <div class="plan-head"><span>Plan</span><span class="n">2 of 5</span></div>
-        <ul class="plan-list">
-          <li class="plan-item is-done"><span class="box">✓</span><span>Read the existing API and its storage</span></li>
-          <li class="plan-item is-done"><span class="box">✓</span><span>Add register and login with scrypt-hashed passwords</span></li>
-          <li class="plan-item is-now"><span class="box"></span><span>Scope the notes routes to the logged-in user <span class="doing">· editing server.js</span></span></li>
-          <li class="plan-item"><span class="box"></span><span>Write an isolation test: two users, each sees only their own</span></li>
-          <li class="plan-item"><span class="box"></span><span>Document the endpoints in the README</span></li>
-        </ul>
-      </div>
-
-      <div class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>server.js</code></div>
-      <div class="thought">The GET and POST notes handlers both need the user id from the session. Rather than repeat the lookup, one authOf(req) at the top of the request handler, returning 401 before the route switch when there is no valid token, keeps the routes themselves unchanged except for the filter and the userId on the created note. The listing filter is a plain Array.filter; with in-memory storage that is fine and the comment in the file already says persistence is a later question.</div>
-    </div></div>
-
+  <div class="card split">
+    <div class="chatcol">
+      <div class="chip-row state only-hidden"><button class="chip"><span class="dot"></span><span>Plan</span><span class="n">2 of 5</span><span>Scope the notes routes to the logged-in user</span><span style="color:var(--text-4)">▸</span></button></div>
+      <div class="transcript"><div class="inner">
+        <div class="user-bubble">Add login so each person only sees their own notes. Build it.</div>
+        <div class="turn-head-live"><span class="shimmer">Thinking</span><span>Working for 48s</span></div>
+        <div class="prose"><p>Plain Node with no dependencies and in-memory storage. I'll keep that: scrypt-hashed passwords, bearer-token sessions, and notes scoped to the logged-in user, plus a test proving isolation.</p></div>
+        <button class="summary"><span>Worked · 4 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
+        <div class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>server.js</code></div>
+        <div class="thought">The GET and POST notes handlers both need the user id from the session. Rather than repeat the lookup, one authOf(req) at the top of the request handler, returning 401 before the route switch when there is no valid token, keeps the routes themselves unchanged except for the filter and the userId on the created note.</div>
+      </div></div>
     <div class="dock"><div class="group">
       <div class="tabs"><span class="tab on">Add login so each person on… <span class="x">×</span></span><span class="plus">+</span></div>
-      <div class="composer"><div class="ph">Reply…</div><div class="cbar"><span class="folder">▭ ~/side/notes-api</span><span class="right"><span class="picker">✳ Claude ▾</span><span class="send" style="background:var(--raised)">■</span></span></div></div>
+      <div class="composer"><div class="ph">Reply…</div><div class="cbar"><span class="folder">▭ ~/side/notes-api</span><span class="right"><span class="picker">✳ Claude ▾</span><span class="send">■</span></span></div></div>
     </div></div>
+    </div>
+    <div class="state only-open">
+    <div class="divider"></div>
+    <aside class="goal-pane" aria-label="Work">
+      <div class="gp-bar">
+        <span class="dot run" style="width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(113,112,255,.18)"></span>
+        <span class="gp-crumbs"><span>Work</span><span>›</span><span class="gp-crumb-current">Working · 48s</span></span>
+        <button class="gp-icon" title="Hide (the work goes on)">⇥</button>
+      </div>
+      <div class="gp-scroll">
+        <header class="gp-head">
+          <h2 class="gp-title">Add login so each person only sees their own notes</h2>
+          <p class="gp-request">Claude · claude-fable-5-1 · ~/side/notes-api</p>
+        </header>
+        <div class="gp-section" style="padding-top:4px">
+          <h3 class="gp-section-title">Plan<span class="gp-count">2 of 5</span></h3>
+
+          <ul class="gp-lines">
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Read the existing API and its storage</span><span class="gp-line-meta">12s</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Add register and login with scrypt-hashed passwords</span><span class="gp-line-meta">31s</span></li>
+            <li class="gp-line is-now"><span class="box"></span><span class="gp-line-text">Scope the notes routes to the logged-in user</span><span class="gp-line-meta">now</span></li>
+            <li class="gp-line"><span class="box"></span><span class="gp-line-text">Write an isolation test: two users, each sees only their own</span></li>
+            <li class="gp-line"><span class="box"></span><span class="gp-line-text">Document the endpoints in the README</span></li>
+          </ul>
+        </div>
+        <div class="gp-section">
+          <h3 class="gp-section-title">Doing now</h3>
+          <div class="gp-now">
+            <div class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Editing <code>server.js</code></span></div>
+            <div class="thought">The GET and POST notes handlers both need the user id from the session. Rather than repeat the lookup, one authOf(req) at the top of the request handler, returning 401 before the route switch…</div>
+          </div>
+        </div>
+        <div class="gp-section">
+          <h3 class="gp-section-title">Steps<span class="gp-count">4</span></h3>
+          <ul class="gp-steps">
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>find . -type f -not -path './.git/*'</code></li>
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>cat server.js package.json</code></li>
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>server.js</code></li>
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>node --check server.js</code></li>
+          </ul>
+        </div>
+        <div class="gp-section">
+          <h3 class="gp-section-title">Files touched<span class="gp-count">1</span></h3>
+          <div class="gp-files"><span class="gp-file">server.js</span></div>
+        </div>
+      </div>
+    </aside>
+    </div>
   </div>
 </div>
 </div>
@@ -212,59 +301,147 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     <div class="bottom"><button class="rail-btn">◎</button><button class="rail-btn">↺</button><button class="rail-btn">◍</button></div>
   </div>
 
-  <div class="card">
-    <div class="transcript"><div class="inner">
-      <div class="user-bubble">Add login so each person only sees their own notes. Build it.</div>
-      <div class="turn-head">Worked for 1m 20s</div>
-      <div class="prose">
-        <p><strong>Done.</strong> Login is built, tested, and documented. Each user now sees only their own notes.</p>
-        <ul>
-          <li><code>server.js</code> now has <code>POST /register</code>, <code>POST /login</code> and <code>POST /logout</code>. Every notes route requires a bearer token.</li>
-          <li><code>test/auth.test.js</code> covers the isolation guarantee directly.</li>
-        </ul>
-        <p>All 6 tests pass.</p>
-      </div>
-
-      <!-- A: one line beside the steps summary, opening the list -->
-      <div class="variant on" data-variant="a">
+  <div class="card split">
+    <div class="chatcol">
+      <div class="chip-row state only-hidden"><button class="chip"><span style="color:var(--ok)">✓</span><span>Plan</span><span class="n">5 of 5</span><span style="color:var(--text-4)">▸</span></button></div>
+      <div class="transcript"><div class="inner">
+        <div class="user-bubble">Add login so each person only sees their own notes. Build it.</div>
+        <div class="turn-head">Worked for 1m 20s</div>
+        <div class="prose">
+          <p><strong>Done.</strong> Login is built, tested, and documented. Each user now sees only their own notes.</p>
+          <ul><li><code>server.js</code> now has <code>POST /register</code>, <code>POST /login</code> and <code>POST /logout</code>. Every notes route requires a bearer token.</li><li><code>test/auth.test.js</code> covers the isolation guarantee directly.</li></ul>
+          <p>All 6 tests pass.</p>
+        </div>
         <div class="summary-row">
           <button class="summary"><span>Worked · 9 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
           <button class="summary"><span>Plan · 5 of 5</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
         </div>
         <button class="changes-line"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Changed 3 files</span><span class="counts"><span class="a">+184</span> <span class="d">−12</span></span><span class="bar"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></span></button>
-      </div>
-
-      <!-- B: the list stays, dimmed, above the summary -->
-      <div class="variant" data-variant="b">
-        <div class="plan">
-          <div class="plan-head"><span>Plan</span><span class="n">5 of 5</span></div>
-          <ul class="plan-list">
-            <li class="plan-item is-done"><span class="box">✓</span><span>Read the existing API and its storage</span></li>
-            <li class="plan-item is-done"><span class="box">✓</span><span>Add register and login with scrypt-hashed passwords</span></li>
-            <li class="plan-item is-done"><span class="box">✓</span><span>Scope the notes routes to the logged-in user</span></li>
-            <li class="plan-item is-done"><span class="box">✓</span><span>Write an isolation test: two users, each sees only their own</span></li>
-            <li class="plan-item is-done"><span class="box">✓</span><span>Document the endpoints in the README</span></li>
-          </ul>
-        </div>
-        <button class="summary"><span>Worked · 9 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button><br>
-        <button class="changes-line"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Changed 3 files</span><span class="counts"><span class="a">+184</span> <span class="d">−12</span></span><span class="bar"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></span></button>
-      </div>
-
-      <div class="cov" style="margin-top:40px">
-        Where the plan comes from, per provider. One shape for all; a provider with no plan shows nothing.
-        <table>
-          <tr><td>Claude Code</td><td>TodoWrite tool calls, the whole list each time (content, status pending / in progress / completed). Today shown as a generic tool row.</td><td class="ok">verified</td></tr>
-          <tr><td>Cursor</td><td>cursor/update_todos and cursor/create_plan requests; the adapter accepts them and drops the content today.</td><td class="ok">verified</td></tr>
-          <tr><td>Codex</td><td>A todo-list item type exists in the app-server protocol; not yet seen in our translator.</td><td class="warn">to verify live</td></tr>
-          <tr><td>Antigravity</td><td>Nothing known.</td><td>none</td></tr>
-        </table>
-      </div>
-    </div></div>
-
+      </div></div>
     <div class="dock"><div class="group">
       <div class="tabs"><span class="tab on">Add login so each person on… <span class="x">×</span></span><span class="plus">+</span></div>
       <div class="composer"><div class="ph">Reply…</div><div class="cbar"><span class="folder">▭ ~/side/notes-api</span><span class="right"><span class="picker">✳ Claude ▾</span><span class="send">↑</span></span></div></div>
     </div></div>
+    </div>
+    <div class="state only-open">
+    <div class="divider"></div>
+    <aside class="goal-pane" aria-label="Work">
+      <div class="gp-bar">
+        <span style="color:var(--ok)">✓</span>
+        <span class="gp-crumbs"><span>Work</span><span>›</span><span class="gp-crumb-current">Done · 1m 20s</span></span>
+        <button class="gp-icon" title="Hide">⇥</button>
+      </div>
+      <div class="gp-scroll">
+        <header class="gp-head">
+          <h2 class="gp-title">Add login so each person only sees their own notes</h2>
+          <p class="gp-request">Claude · claude-fable-5-1 · ~/side/notes-api</p>
+        </header>
+        <div class="gp-section" style="padding-top:4px">
+          <h3 class="gp-section-title">Plan<span class="gp-count">5 of 5</span></h3>
+          <ul class="gp-lines">
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Read the existing API and its storage</span><span class="gp-line-meta">12s</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Add register and login with scrypt-hashed passwords</span><span class="gp-line-meta">31s</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Scope the notes routes to the logged-in user</span><span class="gp-line-meta">14s</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Write an isolation test: two users, each sees only their own</span><span class="gp-line-meta">19s</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Document the endpoints in the README</span><span class="gp-line-meta">4s</span></li>
+          </ul>
+        </div>
+        <div class="gp-section">
+          <h3 class="gp-section-title">Changed<span class="gp-count">3 files · <span class="counts"><span class="a">+184</span> <span class="d">−12</span></span></span></h3>
+          <div class="gp-files"><span class="gp-file">server.js</span><span class="gp-file">test/auth.test.js</span><span class="gp-file">README.md</span></div>
+        </div>
+        <div class="gp-section">
+          <h3 class="gp-section-title">Steps<span class="gp-count">9</span></h3>
+          <ul class="gp-steps">
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>find . -type f -not -path './.git/*'</code></li>
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>cat server.js package.json</code></li>
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>server.js</code></li>
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>node --check server.js</code></li>
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>test/auth.test.js</code></li>
+            <li class="tool-line is-failed"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>npm test</code></li>
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>test/auth.test.js</code></li>
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>npm test</code></li>
+            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>README.md</code></li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ─── Page 3: inside a goal ────────────────────────────────────────── -->
+<div class="page" id="page-goal">
+<div class="app">
+  <div class="rail">
+    <div class="traffic"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div style="height:170px"></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">✳</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">◎</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">➤</span><small>25%</small></div>
+    <div class="ring"><svg viewBox="0 0 38 38" width="38" height="38"><circle cx="19" cy="19" r="17" fill="none" stroke="var(--line-strong)" stroke-width="2"/><circle cx="19" cy="19" r="17" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="107" stroke-dashoffset="80"/></svg><span style="color:var(--text-2);font-size:12px">A</span><small>25%</small></div>
+    <div class="bottom"><button class="rail-btn">◎</button><button class="rail-btn">↺</button><button class="rail-btn">◍</button></div>
+  </div>
+
+  <div class="card split">
+    <div class="chatcol">
+      <div class="transcript"><div class="inner">
+        <div class="user-bubble">Add login so each person only sees their own notes.</div>
+        <div class="goal-lead" style="display:flex;align-items:center;gap:10px;margin:14px 0;font-size:12px;color:var(--text-4)"><span style="flex:1;height:1px;background:var(--line)"></span>Round 2 · Claude works<span style="flex:1;height:1px;background:var(--line)"></span></div>
+        <div class="turn-head-live"><span class="shimmer">Thinking</span><span>Working for 48s</span></div>
+        <div class="prose"><p>The checker found the isolation test missing. Adding it, then the README.</p></div>
+        <button class="summary"><span>Worked · 2 steps</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></button>
+        <div class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>test/auth.test.js</code></div>
+      </div></div>
+    <div class="dock"><div class="group">
+      <div class="tabs"><span class="tab on">Add login so each person on… <span class="x">×</span></span><span class="plus">+</span></div>
+      <div class="composer"><div class="ph">A note for the next round…</div><div class="cbar"><span class="folder">▭ ~/side/notes-api</span><span class="right"><span class="picker">✳ Claude ▾</span><span class="send">■</span></span></div></div>
+    </div></div>
+    </div>
+    <div class="divider"></div>
+    <aside class="goal-pane" aria-label="Goal">
+      <div class="gp-bar">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(113,112,255,.18)"></span>
+        <span class="gp-crumbs"><span>Goal</span><span>›</span><span class="gp-crumb-current">Round 2</span></span>
+        <button class="gp-icon" title="Pause after this turn">⏸</button><button class="gp-icon" title="Stop">■</button><button class="gp-icon" title="Hide">⇥</button>
+      </div>
+      <div class="gp-scroll">
+        <header class="gp-head">
+          <h2 class="gp-title">Per-user login for the notes API</h2>
+          <p class="gp-request">“Add login so each person only sees their own notes.”</p>
+        </header>
+        <div class="gp-props">
+          <div class="gp-prop"><span class="gp-prop-label">Status</span><span class="gp-prop-value">Working <span class="gp-faint">· round 2</span></span></div>
+          <div class="gp-prop"><span class="gp-prop-label">Works</span><span class="gp-prop-value"><span class="gp-avatar">✳</span>Claude</span></div>
+          <div class="gp-prop"><span class="gp-prop-label">Checks</span><span class="gp-prop-value"><span class="gp-avatar">◎</span>Codex</span></div>
+        </div>
+        <div class="gp-section">
+          <h3 class="gp-section-title">Done means<span class="gp-count">2 of 4</span></h3>
+          <ul class="gp-lines">
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Register and login endpoints exist and reject bad input</span><span class="gp-line-meta">round 1</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Notes routes require a token</span><span class="gp-line-meta">round 1</span></li>
+            <li class="gp-line"><span class="box">✗</span><span class="gp-line-text">A test proves two users cannot see each other's notes</span><span class="gp-line-meta">not met</span></li>
+            <li class="gp-line"><span class="box"></span><span class="gp-line-text">README documents the flow</span></li>
+          </ul>
+        </div>
+        <div class="gp-section">
+          <h3 class="gp-section-title">This round's plan<span class="gp-count">1 of 3</span></h3>
+          <ul class="gp-lines">
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Read the checker's findings and the current test file</span><span class="gp-line-meta">9s</span></li>
+            <li class="gp-line is-now"><span class="box"></span><span class="gp-line-text">Write the two-user isolation test</span><span class="gp-line-meta">now</span></li>
+            <li class="gp-line"><span class="box"></span><span class="gp-line-text">Document the endpoints in the README</span></li>
+          </ul>
+          <div class="gp-now" style="margin-top:8px">
+            <div class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Editing <code>test/auth.test.js</code></span></div>
+          </div>
+        </div>
+        <div class="gp-section">
+          <h3 class="gp-section-title">Rounds</h3>
+          <p style="margin:0;font-size:12.5px;color:var(--text-4)">Round 1 · Claude worked 2m 10s · Codex checked: 2 of 4 met, “no isolation test”.</p>
+        </div>
+      </div>
+    </aside>
   </div>
 </div>
 </div>
@@ -274,13 +451,18 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   pages.forEach((tab) => tab.addEventListener('click', () => {
     pages.forEach((t) => t.classList.toggle('on', t === tab))
     document.querySelectorAll('.page').forEach((page) => page.classList.toggle('on', page.id === `page-${tab.dataset.page}`))
-    document.getElementById('variants').style.visibility = tab.dataset.page === 'done' ? 'visible' : 'hidden'
+    document.getElementById('variants').style.visibility = tab.dataset.page === 'goal' ? 'hidden' : 'visible'
   }))
-  const variants = document.querySelectorAll('[data-variant].mock-tab')
-  variants.forEach((tab) => tab.addEventListener('click', () => {
-    variants.forEach((t) => t.classList.toggle('on', t === tab))
-    document.querySelectorAll('.variant').forEach((v) => v.classList.toggle('on', v.dataset.variant === tab.dataset.variant))
+  const states = document.querySelectorAll('[data-state].mock-tab')
+  const apply = (state) => {
+    document.querySelectorAll('.only-open').forEach((e) => e.classList.toggle('on', state === 'open'))
+    document.querySelectorAll('.only-hidden').forEach((e) => e.classList.toggle('on', state === 'hidden'))
+  }
+  states.forEach((tab) => tab.addEventListener('click', () => {
+    states.forEach((t) => t.classList.toggle('on', t === tab))
+    apply(tab.dataset.state)
   }))
+  apply('open')
 </script>
 </body>
 </html>
