@@ -37,6 +37,12 @@ export function describeTiming(timing: TurnTiming): string {
 
 type Question = Extract<Item, { type: 'question' }>
 type Queued = QueuedMessage & { model: string | null }
+/** Words sent into a running turn that its model has not read yet. */
+type Taking = Queued & { turnId: string }
+
+function takenItem(entry: Taking): Item {
+  return { type: 'user', id: entry.id, turnId: entry.turnId, text: entry.text, steer: true }
+}
 
 /**
  * What a provider is told with words the user added mid-turn. Without the second sentence a
@@ -61,6 +67,7 @@ export class Hub {
   private readonly live = new Map<string, LiveTurn>()
   /** chatId → messages waiting for its turn in flight to end, oldest first. */
   private readonly queues = new Map<string, Queued[]>()
+  private readonly taking = new Map<string, Taking[]>()
   private readonly usageCache = new Map<ProviderId, { at: number; snapshot: UsageSnapshot }>()
   private readonly usagePending = new Map<ProviderId, Promise<UsageSnapshot>>()
   private readonly modelCache = new Map<ProviderId, { at: number; models: Promise<ModelInfo[]> }>()
@@ -139,6 +146,7 @@ export class Hub {
 
   async deleteChat(chatId: string): Promise<void> {
     this.queues.delete(chatId)
+    this.taking.delete(chatId)
     await this.stop(chatId)
     for (const adapter of Object.values(this.adapters)) adapter.forget(chatId)
     this.store.deleteChat(chatId)
@@ -206,12 +214,38 @@ export class Hub {
     }
     const steerable = live.turn.provider === provider && live.turn.goalRole === null && !live.stopRequested
       && !this.queues.get(chatId)?.length && live.adapter.steer
-    if (steerable && await live.adapter.steer!(chatId, steerText(message)).catch(() => false)) {
-      // Kept with the turn that took it, even if that turn ended while the words were on their way.
-      this.putItem(live, { type: 'user', id: `${live.turn.id}:steer-${randomUUID()}`, turnId: live.turn.id, text: message, steer: true })
+    if (!steerable) {
+      this.enqueue(chatId, provider, model, message)
       return
     }
+    // Shown as on its way until the provider says the model has read it; it enters the turn there.
+    const entry: Taking = { id: `${live.turn.id}:steer-${randomUUID()}`, provider, model, text: message, turnId: live.turn.id }
+    this.setTaking(chatId, [...this.taking.get(chatId) ?? [], entry])
+    const steered = await live.adapter.steer!(chatId, steerText(message), () => this.taken(chatId, entry.id)).catch(() => false)
+    if (steered || !this.dropTaking(chatId, entry.id)) return
     this.enqueue(chatId, provider, model, message)
+  }
+
+  /** The model has read words sent into its turn: they join the transcript at this point. */
+  private taken(chatId: string, id: string): void {
+    const entry = this.taking.get(chatId)?.find((each) => each.id === id)
+    if (!entry || !this.dropTaking(chatId, id)) return
+    const live = this.live.get(chatId)
+    if (live?.turn.id === entry.turnId) this.putItem(live, takenItem(entry))
+  }
+
+  /** Forget words on their way into a turn; false when they were no longer on their way. */
+  private dropTaking(chatId: string, id: string): boolean {
+    const list = this.taking.get(chatId) ?? []
+    if (!list.some((entry) => entry.id === id)) return false
+    this.setTaking(chatId, list.filter((entry) => entry.id !== id))
+    return true
+  }
+
+  private setTaking(chatId: string, list: Taking[]): void {
+    if (list.length) this.taking.set(chatId, list)
+    else this.taking.delete(chatId)
+    this.emitQueue(chatId)
   }
 
   /** Hold a message until the chat's turn in flight has ended, then send it; sent at once when none is running. */
@@ -233,16 +267,24 @@ export class Hub {
     return found.text
   }
 
-  /** Take every waiting message back, as one text; null when none was waiting. */
+  /**
+   * Take every waiting message back, as one text, with the words sent into the turn that its
+   * model has not read yet (a stop cancels those); null when there were none.
+   */
   withdraw(chatId: string): string | null {
-    const queue = this.queues.get(chatId) ?? []
-    if (!queue.length) return null
+    const all = [...this.taking.get(chatId) ?? [], ...this.queues.get(chatId) ?? []]
+    if (!all.length) return null
+    this.taking.delete(chatId)
     this.setQueue(chatId, [])
-    return queue.map((entry) => entry.text).join('\n\n')
+    return all.map((entry) => entry.text).join('\n\n')
   }
 
+  /** Words on their way into the turn first, then the messages waiting for it to end. */
   queued(chatId: string): QueuedMessage[] {
-    return (this.queues.get(chatId) ?? []).map(({ id, provider, text }) => ({ id, provider, text }))
+    return [
+      ...(this.taking.get(chatId) ?? []).map(({ id, provider, text }) => ({ id, provider, text, taking: true })),
+      ...(this.queues.get(chatId) ?? []).map(({ id, provider, text }) => ({ id, provider, text }))
+    ]
   }
 
   /**
@@ -504,6 +546,16 @@ export class Hub {
       else if (item.type === 'tool' && item.status === 'running') {
         this.putItem(live, { ...item, status: result.status === 'completed' ? 'done' : 'failed' })
       }
+    }
+    // Words the model never said it read: a stopped turn dropped them, so they go first in the
+    // queue; any other end may have taken them unannounced, so they are recorded, not sent twice.
+    const unread = (this.taking.get(chatId) ?? []).filter((entry) => entry.turnId === turn.id)
+    if (unread.length) {
+      this.setTaking(chatId, (this.taking.get(chatId) ?? []).filter((entry) => entry.turnId !== turn.id))
+      if (live.stopRequested && result.status !== 'completed') {
+        this.queues.set(chatId, [...unread.map(({ provider, model, text }) => ({ id: randomUUID(), provider, model, text })), ...this.queues.get(chatId) ?? []])
+        this.emitQueue(chatId)
+      } else for (const entry of unread) this.putItem(live, takenItem(entry))
     }
     turn.status = live.stopRequested && result.status !== 'completed' ? 'interrupted' : result.status
     turn.error = turn.status === 'failed' ? result.error ?? 'The turn failed' : null

@@ -51,8 +51,9 @@ export function Composer({ placeholder }: { placeholder: string }) {
     element.style.height = `${Math.min(element.scrollHeight, MAX_HEIGHT)}px`
   }, [text])
 
-  // The keyboard follows the focused pane, and only that one: four composers must not fight over it.
-  useEffect(() => { if (focused) input.current?.focus() }, [chatId, focused])
+  // On a new chat in the pane the keyboard goes to its composer, but only in the focused pane:
+  // four composers must not fight over it. A pane merely clicked keeps the caret where it was.
+  useEffect(() => { if (focused) input.current?.focus() }, [chatId])
 
   // Whatever would answer the next message starts warming up as soon as it is known, and again
   // once a turn ends.

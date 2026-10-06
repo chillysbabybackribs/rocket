@@ -60,6 +60,25 @@ for them. Codex receives them as real history (`thread/inject_items`); the other
 tagged block in front of the message. If a provider has lost its session, it gets a new one and
 the whole conversation.
 
+### Chat panes
+
+The chat card holds one to four chats at once. The add-chat button in the composer's text line
+(a speech box with a plus, left of where the text starts; the `+` among the tabs is a new tab in
+the same pane) splits the card: two side by side, three as two above one across the bottom, four
+as quadrants, and no more for now. A new pane opens on the new-chat screen and takes the focus.
+Every pane is a whole chat with its own tabs, transcript, composer, folder and model, and a turn
+streams into every pane that shows its chat. The pane last clicked or typed in is the focused one:
+the rail's history and goals open chats there, Ctrl+1–4 picks its provider, and its chat is the
+one marked in the history. Closing a pane's last tab closes the pane (the only pane shows the
+new-chat screen instead); the others take the room in the same order of layouts. The goal pane
+and the plan drawer show only while the chat has the card to itself. The panes and their tabs
+come back after a restart.
+
+In the renderer (`src/renderer/src/store.ts`) `panes` says what each pane shows and `views`,
+keyed by chat, holds what a shown chat has loaded, so two panes on one chat share a copy. The
+components inside a pane read their chat through `PaneContext` (`pane.ts`); every store action
+that means "in this chat" takes the pane it was asked in.
+
 ### Messages sent while a turn runs
 
 The composer stays open while a turn runs; Esc or the Stop button beside Send stops it. A message
@@ -328,7 +347,8 @@ TERM-resistant children are killed after a grace period. Interrupted runs exit w
 
 The checks exercise composer input, folder selection, usage, model selection, streaming,
 completion, tool output, provider handoff, cancellation, failure recovery, chat drafts,
-history, renderer reload, full app restart, recovery from a host crash during a response,
+history, chat panes (splitting to four, a turn streaming into one pane, closing, and the layout
+after a restart), renderer reload, full app restart, recovery from a host crash during a response,
 minimum window size, browser navigation/tabs, the address dropdown, chat links (browser tabs
 and local artifact preview), and model question cards from `ask_user`. The shell, embedded
 page and dropdown are separate Playwright targets. Their

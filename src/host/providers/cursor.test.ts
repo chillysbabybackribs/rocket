@@ -26,3 +26,23 @@ test('a method the app does not know is still refused', () => {
   assert.throws(() => cursorExtensionReply('cursor/generate_image', {}), /does not implement cursor\/generate_image/)
   assert.throws(() => cursorExtensionReply('toString', {}), /does not implement/)
 })
+
+test('the ACP plan update becomes the turn\'s plan item', async () => {
+  const { UpdateTranslator } = await import('./cursor.ts')
+  const translator = new UpdateTranslator('t')
+  const ops = translator.handle({
+    sessionUpdate: 'plan',
+    entries: [
+      { content: 'Read the API', priority: 'high', status: 'completed' },
+      { content: 'Add login', priority: 'high', status: 'in_progress' },
+      { content: 'Write the test', priority: 'medium', status: 'pending' }
+    ]
+  })
+  assert.deepEqual(ops, [{
+    type: 'item',
+    item: { type: 'plan', id: 't:plan', turnId: 't', steps: [
+      { text: 'Read the API', status: 'done' }, { text: 'Add login', status: 'doing' }, { text: 'Write the test', status: 'todo' }
+    ] }
+  }])
+  assert.deepEqual(translator.handle({ sessionUpdate: 'plan', entries: [] }), [])
+})

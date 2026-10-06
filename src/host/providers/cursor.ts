@@ -10,7 +10,7 @@ import { clipOutput, jsonPreview, messageOf, recordOf, stringOf } from '../json.
 import { JsonRpcPeerError, StdioJsonRpcClient, type JsonRpcNotification, type JsonRpcRequest } from '../stdio-json-rpc.ts'
 import { cursorUsage } from '../usage-parsers.ts'
 import {
-  itemId, TOOL_SERVER, unavailableUsage,
+  itemId, planItem, TOOL_SERVER, unavailableUsage,
   type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type ToolEndpoint, type TurnSink
 } from './provider.ts'
 
@@ -32,6 +32,11 @@ import {
 //   `sessionCapabilities.list` and image prompts; not `session/resume` or `session/fork`.
 // - Permission requests are answered with the broadest allow offered: the app has no approval
 //   prompts yet.
+// - (ACP spec, read 2026-10-05; not yet seen live from cursor-agent) The agent's plan is the
+//   `plan` session update, `entries: [{content, priority, status: 'pending'|'in_progress'|
+//   'completed'}]`, the whole list each time; it becomes the turn's plan item. Cursor's own
+//   `cursor/update_todos` request carries no session id, so with several chats on one process it
+//   cannot be placed; it is accepted and its list dropped.
 // - The model list is whatever a session's setup reports in `models.availableModels`; an id is
 //   `<base>[<key>=<value>,…]` and only an id listed there verbatim can be selected.
 // ACP gives the agent ownership of history, so missed turns ride at the head of the prompt.
@@ -359,6 +364,10 @@ export class UpdateTranslator {
       case 'tool_call':
       case 'tool_call_update':
         return this.tool(update)
+      case 'plan': {
+        const item = planItem(this.turnId, update.entries, (entry) => stringOf(entry.content))
+        return item ? [{ type: 'item', item }] : []
+      }
       default:
         return []
     }

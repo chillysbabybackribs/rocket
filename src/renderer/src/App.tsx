@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import { PanelRightOpen, X } from 'lucide-react'
 import type { Goal } from '../../shared/types.ts'
-import { dismissError, setGoalPaneOpen, setGoalWidth, useApp } from './store.ts'
+import { PaneContext, usePane, usePaneChatId, usePaneView } from './pane.ts'
+import { dismissError, focusPane, focusedChatId, setGoalPaneOpen, setGoalWidth, useApp } from './store.ts'
 import { ArtifactPanel } from './components/ArtifactPanel.tsx'
 import { BrowserPanel } from './components/BrowserPanel.tsx'
 import { Composer } from './components/Composer.tsx'
@@ -27,11 +28,14 @@ const CHAT_MIN = 300
 /**
  * A chat with something beside it, split like an artifact: the conversation on the left, `side`
  * on the right, with a divider to drag. The goal pane and the plan drawer both live here and
- * share one width.
+ * share one width. With the card split into panes there is no room for a side, so `side` is
+ * only shown while the chat has the card to itself.
  */
 function Split({ side, children }: { side: React.ReactNode; children: React.ReactNode }) {
   const width = useApp((state) => state.goalWidth)
-  const split = useRef<HTMLElement>(null)
+  const alone = useApp((state) => state.panes.length === 1)
+  const split = useRef<HTMLDivElement>(null)
+  const shown = alone ? side : null
 
   const drag = (event: React.PointerEvent<HTMLDivElement>): void => {
     const handle = event.currentTarget
@@ -54,15 +58,15 @@ function Split({ side, children }: { side: React.ReactNode; children: React.Reac
   }
 
   return (
-    <main ref={split} className={`chat has-goal${side ? ' is-split' : ''}`} style={{ '--goal-width': `${width}px` } as React.CSSProperties}>
+    <div ref={split} className={`pane-split${shown ? ' is-split' : ''}`} style={{ '--goal-width': `${width}px` } as React.CSSProperties}>
       <div className="goal-chat">{children}</div>
-      {side && (
+      {shown && (
         <>
           <div className="goal-divider" role="separator" aria-orientation="vertical" aria-label="Resize the side pane" onPointerDown={drag} />
-          {side}
+          {shown}
         </>
       )}
-    </main>
+    </div>
   )
 }
 
@@ -73,13 +77,20 @@ function Split({ side, children }: { side: React.ReactNode; children: React.Reac
  */
 function GoalChat({ goal }: { goal: Goal }) {
   const open = useApp((state) => state.goalPaneOpen)
-  const chatId = useApp((state) => state.activeChatId)
+  const alone = useApp((state) => state.panes.length === 1)
+  const chatId = usePaneChatId()
   const ended = goal.status === 'done' || goal.status === 'stopped'
   return (
     <Split side={open ? <GoalPane goal={goal} /> : null}>
-      {!open && (
+      {(!open || !alone) && (
         <div className="goal-chat-head">
-          <button type="button" className="goal-chip-toggle" title="Show the goal" onClick={() => setGoalPaneOpen(true)}>
+          <button
+            type="button"
+            className="goal-chip-toggle"
+            title={alone ? 'Show the goal' : 'Close the other chats to see the goal'}
+            disabled={!alone}
+            onClick={() => setGoalPaneOpen(true)}
+          >
             <GoalStatusIcon status={goal.status} size={12} />
             <span>{goal.title}</span>
             <span className="goal-chip-status">{goalStatusText(goal)}</span>
@@ -95,44 +106,72 @@ function GoalChat({ goal }: { goal: Goal }) {
   )
 }
 
+/** One pane of the chat card: a whole chat, or the new-chat screen. */
 function ChatPane() {
-  const chat = useApp((state) => state.chats.find((entry) => entry.id === state.activeChatId) ?? null)
-  const chatId = useApp((state) => state.activeChatId)
-  const hasTurns = useApp((state) => state.turns.length > 0)
-  const goal = useApp((state) => state.goals.find((entry) => entry.chatId === state.activeChatId) ?? null)
+  const pane = usePane()
+  const chatId = usePaneChatId()
+  const chat = useApp((state) => state.chats.find((entry) => entry.id === chatId) ?? null)
+  const hasTurns = usePaneView((view) => view.turns.length > 0)
+  const goal = useApp((state) => state.goals.find((entry) => entry.chatId === chatId) ?? null)
   // The turn whose plan is open beside the chat, with the message that started it for the title.
-  const planTurn = useApp((state) => state.turns.find((turn) => turn.id === state.planTurnId) ?? null)
-  const planUserId = useApp((state) => (state.planTurnId ? state.turnItems[state.planTurnId]?.[0] : undefined))
+  const planTurn = usePaneView((view) => view.turns.find((turn) => turn.id === view.planTurnId) ?? null)
+  const planUserId = usePaneView((view) => (view.planTurnId ? view.turnItems[view.planTurnId]?.[0] : undefined))
+  const focused = useApp((state) => state.focused === pane)
+  const empty = !goal && (!chat || !hasTurns)
+  const focus = (): void => focusPane(pane)
 
-  if (goal) return <GoalChat goal={goal} />
-  if (!chat || !hasTurns) {
-    return (
-      <main className="chat is-empty">
-        <div className="welcome">
-          <h1 className="welcome-title">{greeting()}</h1>
-          <Composer key={chatId ?? 'new'} placeholder="How can I help you today?" />
-          <p className="welcome-hint">Pick a provider and model for each message. They all share the conversation.</p>
-        </div>
-      </main>
+  let body: React.ReactNode
+  if (goal) {
+    body = <GoalChat goal={goal} />
+  } else if (empty) {
+    body = (
+      <div className="welcome">
+        <h1 className="welcome-title">{greeting()}</h1>
+        <Composer key={chatId ?? 'new'} placeholder="How can I help you today?" />
+        <p className="welcome-hint">Pick a provider and model for each message. They all share the conversation.</p>
+      </div>
     )
-  }
-  const composer = (
-    <div className="composer-dock">
-      <Composer key={chatId ?? 'new'} placeholder="Reply…" />
-    </div>
-  )
-  if (planTurn) {
-    return (
-      <Split side={<PlanDrawer turn={planTurn} userItemId={planUserId} />}>
-        <Transcript />
-        {composer}
-      </Split>
+  } else {
+    const composer = (
+      <div className="composer-dock">
+        <Composer key={chatId ?? 'new'} placeholder="Reply…" />
+      </div>
     )
+    body = planTurn
+      ? (
+        <Split side={<PlanDrawer turn={planTurn} userItemId={planUserId} />}>
+          <Transcript />
+          {composer}
+        </Split>
+      )
+      : (
+        <>
+          <Transcript />
+          {composer}
+        </>
+      )
   }
   return (
-    <main className="chat">
-      <Transcript />
-      {composer}
+    <section className={`pane${empty ? ' is-empty' : ''}${focused ? ' is-focused' : ''}`} aria-label={chat?.title ?? 'New chat'} onPointerDownCapture={focus} onFocusCapture={focus}>
+      {body}
+    </section>
+  )
+}
+
+/**
+ * The chat card: one to four panes. Two stand side by side; three are two above one across the
+ * bottom; four are quadrants. Each pane keeps its key, so adding or closing one leaves the others
+ * as they were.
+ */
+function ChatCard() {
+  const panes = useApp((state) => state.panes)
+  return (
+    <main className={`chat panes-${panes.length}`}>
+      {panes.map((pane, index) => (
+        <PaneContext.Provider key={pane.key} value={index}>
+          <ChatPane />
+        </PaneContext.Provider>
+      ))}
     </main>
   )
 }
@@ -142,11 +181,16 @@ export function App() {
   const browserOpen = useApp((state) => state.browserOpen)
   const error = useApp((state) => state.error)
   const newGoal = useApp((state) => state.newGoal !== null)
-  const split = useApp((state) => (state.goals.some((goal) => goal.chatId === state.activeChatId) ? state.goalPaneOpen : state.planTurnId !== null))
+  // The side of the only pane, when it has one: the card then takes the larger share beside the browser.
+  const split = useApp((state) => {
+    if (state.panes.length !== 1) return false
+    const chatId = focusedChatId(state)
+    return state.goals.some((goal) => goal.chatId === chatId) ? state.goalPaneOpen : (chatId !== null && state.views[chatId]?.planTurnId != null)
+  })
   return (
     <div className={`app${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}`}>
       <Rail />
-      <ChatPane />
+      <ChatCard />
       {artifact ? <ArtifactPanel /> : browserOpen && <BrowserPanel />}
       {newGoal && <NewGoal />}
       {error && (

@@ -201,6 +201,15 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s infinite; }
 .chip .n { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
 .state { display: none; } .state.on { display: contents; }
+/* Built page: captures from tests/ui/plan.spec.ts */
+.shipped { height: 100%; overflow: auto; padding: 44px 32px 32px; }
+.shipped .inner { max-width: 1120px; }
+.shipped h2 { font-size: 15px; font-weight: 590; margin: 0 0 4px; }
+.shipped p { color: var(--text-3); margin: 0 0 16px; max-width: 72ch; }
+.shots { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.shot { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); }
+.shot img { display: block; width: 100%; }
+.shot .cap { padding: 8px 12px; font-size: 12px; color: var(--text-3); border-top: 1px solid var(--line); }
 </style>
 </head>
 <body>
@@ -210,6 +219,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   <button class="mock-tab on" data-page="run">Work drawer · while the turn runs</button>
   <button class="mock-tab" data-page="done">Work drawer · when it is over</button>
   <button class="mock-tab" data-page="goal">In a goal's pane</button>
+  <button class="mock-tab" data-page="built">Plan drawer · built</button>
   <span class="spacer"></span>
   <span id="variants">
     Drawer:
@@ -400,12 +410,25 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 </div>
 </div>
 
+<!-- ─── Page 4: as built (captures from tests/ui/plan.spec.ts) ───────────── -->
+<div class="page" id="page-built">
+  <div class="shipped"><div class="inner">
+    <h2>Plan drawer · built</h2>
+    <p>Captured by the isolated UI check (<code>tests/ui/plan.spec.ts</code>). A controlled turn reported a five-step plan the way Claude Code's TodoWrite does, two done and one under way, then finished it. The drawer opened by itself; the test closed it with the arrow, reopened it from the head line, and watched the count move.</p>
+    <div class="shots">
+      <div class="shot"><img src="plan/open.png" alt="The drawer open beside the chat: the request as title, 2 of 5, two ticked lines, one accented, two hollow; the head line reads Planning · 2 of 5"><div class="cap">While the turn runs: the head line reads <code>Planning · 2 of 5</code> and the drawer opened itself.</div></div>
+      <div class="shot"><img src="plan/closed.png" alt="The chat alone after the arrow closed the drawer; the head line still reads Planning · 2 of 5"><div class="cap">Closed with the arrow: nothing is left in the transcript but the head line, which brings it back.</div></div>
+      <div class="shot"><img src="plan/done.png" alt="After the turn: Planned · 5 of 5, no shimmer, the drawer reopened with every line ticked"><div class="cap">The turn over: <code>Planned · 5 of 5</code>, still clickable, every line ticked.</div></div>
+    </div>
+  </div></div>
+</div>
+
 <script>
   const pages = document.querySelectorAll('[data-page]')
   pages.forEach((tab) => tab.addEventListener('click', () => {
     pages.forEach((t) => t.classList.toggle('on', t === tab))
     document.querySelectorAll('.page').forEach((page) => page.classList.toggle('on', page.id === `page-${tab.dataset.page}`))
-    document.getElementById('variants').style.visibility = tab.dataset.page === 'goal' ? 'hidden' : 'visible'
+    document.getElementById('variants').style.visibility = tab.dataset.page === 'run' || tab.dataset.page === 'done' ? 'visible' : 'hidden'
   }))
   const states = document.querySelectorAll('[data-state].mock-tab')
   const apply = (state) => {

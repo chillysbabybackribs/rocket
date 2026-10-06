@@ -80,7 +80,7 @@ export const test = base.extend<{ rocket: Rocket }>({
       await application.context().tracing.start({ screenshots: true, snapshots: true, sources: true })
       tracing = true
       page = await application.firstWindow()
-      await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toBeVisible()
+      await expect(page.getByRole('textbox', { name: 'Message', exact: true }).first()).toBeVisible()
       await application.evaluate(({ BrowserWindow, dialog }, workspace) => {
         BrowserWindow.getAllWindows()[0].setTitle('Rocket — UI check')
         dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [workspace] })

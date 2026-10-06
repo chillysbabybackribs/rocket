@@ -287,7 +287,8 @@ button {
 .app.has-browser.has-goal {
   grid-template-columns: var(--rail-width) minmax(640px, 1.5fr) minmax(360px, 1fr);
 }
-.chat.has-goal.is-split {
+.pane-split { flex: 1; display: flex; min-width: 0; min-height: 0; }
+.pane-split.is-split {
   display: grid;
   grid-template-columns: minmax(300px, 1fr) 1px var(--goal-width, 400px);
 }
@@ -517,7 +518,8 @@ button {
   border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); font-size: 12px; color: var(--text-2);
 }
 .goal-chip-toggle > span:first-of-type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.goal-chip-toggle:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.18); }
+.goal-chip-toggle:not(:disabled):hover { color: var(--text); border-color: rgba(255, 255, 255, 0.18); }
+.goal-chip-toggle:disabled { cursor: default; }
 .goal-chip-status { flex: none; color: var(--text-4); }
 .tab-goal { display: inline-grid; flex: none; margin-right: 6px; }
 .goals-menu .status-icon { margin-right: 2px; }
@@ -663,12 +665,35 @@ a.gd-source:hover { color: var(--text); text-decoration: underline; }
 
 /* ── Chat ──────────────────────────────────────────────────────────── */
 
+/* The chat card holds one to four panes, split by hairlines so it still reads as one card: two
+   side by side, three as two above one across, four as quadrants. */
 .chat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+.chat.panes-2, .chat.panes-3, .chat.panes-4 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.chat.panes-3 .pane:nth-child(3) { grid-column: 1 / -1; }
+.pane {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
 }
+/* The hairlines between panes: a left edge on every pane in the second column, a top edge on
+   every pane in the second row. */
+.pane:nth-child(even) { box-shadow: -1px 0 0 var(--line-strong); }
+.chat.panes-3 .pane:nth-child(3) { box-shadow: 0 -1px 0 var(--line-strong); }
+.chat.panes-4 .pane:nth-child(3) { box-shadow: 0 -1px 0 var(--line-strong); }
+.chat.panes-4 .pane:nth-child(4) { box-shadow: -1px 0 0 var(--line-strong), 0 -1px 0 var(--line-strong); }
+/* Split four ways, each pane is narrow: the composer's dock keeps its shape with less air. */
+.chat.panes-2 .composer-dock, .chat.panes-3 .pane:not(:nth-child(3)) .composer-dock, .chat.panes-4 .composer-dock { padding: 4px 16px 14px; }
+.chat.panes-2 .welcome, .chat.panes-3 .welcome, .chat.panes-4 .welcome { padding: 0 16px 40px; }
+.chat.panes-3 .welcome-title, .chat.panes-4 .welcome-title { font-size: 22px; margin-bottom: 18px; }
+.chat.panes-4 .welcome-hint, .chat.panes-3 .pane:not(:nth-child(3)) .welcome-hint { display: none; }
 .welcome {
   flex: 1;
   display: flex;
@@ -957,6 +982,7 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 }
 .composer-group:focus-within { --edge: var(--composer-line-focus); }
 .composer {
+  position: relative;
   background: var(--composer);
   border: 1px solid var(--edge);
   border-radius: 12px;
@@ -1067,10 +1093,25 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 }
 .tab-new:not(:disabled):hover { background: var(--hover); color: var(--text); }
 .tab-new:disabled { color: var(--text-4); opacity: 0.5; }
+/* The add-chat button sits in the text line, top left; the textarea's left padding leaves it
+   room, so the first line of text starts beside it and never under it. */
+.composer-add-chat {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: var(--text-3);
+}
+.composer-add-chat:not(:disabled):hover { background: var(--hover); color: var(--text); }
+.composer-add-chat:disabled { color: var(--text-4); opacity: 0.45; }
 .composer-input {
   display: block;
   width: 100%;
-  padding: 13px 14px 4px;
+  padding: 13px 14px 4px 44px;
   border: 0;
   outline: 0;
   resize: none;

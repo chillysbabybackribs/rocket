@@ -42,6 +42,9 @@ import {
 //   so that cannot say when words sent mid-turn were read. With `--replay-user-messages` a queued
 //   message is echoed (`isReplay`, its uuid) as it drains into a turn, and `command_lifecycle
 //   {command_uuid, state}` goes queued → started → completed | cancelled. Either marks it read.
+// - (CLI 2.1.289, seen live 2026-10-05) The model's plan is its `TodoWrite` tool_use: `input.todos`
+//   is the whole list each time, `{content, status: 'pending'|'in_progress'|'completed',
+//   activeForm}`. It becomes the turn's plan item, not a tool row; its tool_result is dropped.
 // The SDK has no supported way to import another model's turns into a session, so missed turns
 // ride at the head of the user's message as a tagged block.
 //

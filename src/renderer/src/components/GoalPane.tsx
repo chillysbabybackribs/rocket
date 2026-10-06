@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowUp, ChevronRight, Info, Pause, Play, PanelRightClose, Square } from 'lucide-react'
 import { planItemId, type Goal, type GoalAgent, type GoalRound } from '../../../shared/types.ts'
-import { agentLabel, pauseGoal, resumeGoal, setGoalPaneOpen, steerGoal, stopGoal, useApp, useItem } from '../store.ts'
+import { agentLabel, pauseGoal, resumeGoal, setGoalPaneOpen, steerGoal, stopGoal, useApp, useItem, viewOf } from '../store.ts'
 import { GoalBrief } from './GoalBrief.tsx'
 import { GoalDesignView } from './GoalDesign.tsx'
 import { GoalStatusIcon, LineIcon, ProgressRing } from './GoalIcons.tsx'
@@ -152,7 +152,7 @@ function RoundEvents({ goal, round, now }: { goal: Goal; round: GoalRound; now: 
  * ended the section stays until the next work turn begins.
  */
 function RoundPlan({ goal }: { goal: Goal }) {
-  const workTurnId = useApp((state) => state.turns.findLast((turn) => turn.goalRole === 'work')?.id ?? null)
+  const workTurnId = useApp((state) => viewOf(state, goal.chatId).turns.findLast((turn) => turn.goalRole === 'work')?.id ?? null)
   const plan = useItem(workTurnId ? planItemId(workTurnId) : '')
   if (plan?.type !== 'plan' || goal.status === 'done' || goal.status === 'stopped') return null
   return (

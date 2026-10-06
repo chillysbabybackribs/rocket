@@ -1,6 +1,6 @@
 import { Plus, X } from 'lucide-react'
 import { usePane, usePaneChatId } from '../pane.ts'
-import { closeTab, openChat, paneAt, useApp } from '../store.ts'
+import { closePane, closeTab, openChat, paneAt, useApp } from '../store.ts'
 import { GoalStatusIcon } from './GoalIcons.tsx'
 
 // The open chats, as tabs standing on the composer's top edge. The selected tab is drawn as part
@@ -13,6 +13,7 @@ export function Tabs() {
   const tabs = useApp((state) => paneAt(state, pane).tabs)
   const chats = useApp((state) => state.chats)
   const activeChatId = usePaneChatId()
+  const panes = useApp((state) => state.panes.length)
   const running = useApp((state) => state.running)
   const goals = useApp((state) => state.goals)
 
@@ -49,6 +50,12 @@ export function Tabs() {
           <button type="button" role="tab" aria-selected className="tab-main">
             <span className="tab-title">New chat</span>
           </button>
+          {/* A new chat that is one pane of several closes like a tab, taking its pane with it. */}
+          {panes > 1 && (
+            <button type="button" className="tab-close" aria-label="Close this chat pane" onClick={() => closePane(pane)}>
+              <X size={12} />
+            </button>
+          )}
         </div>
       )}
       <button

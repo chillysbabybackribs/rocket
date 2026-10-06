@@ -69,3 +69,25 @@ test('a reply that ends while background tasks run keeps its turn open for the f
   assert.equal(activity.at(-1), null, 'the follow-up goes back to thinking')
   assert.ok(items.some((item) => item.type === 'assistant' && item.text === 'Here is what it found.'))
 })
+
+test('TodoWrite is the turn\'s plan, replaced whole on each update and never a tool row', () => {
+  const translator = new TurnTranslator('t')
+  const todos = (list: Array<[string, string]>) => ({ todos: list.map(([content, status]) => ({ content, status, activeForm: content })) })
+  const call = (id: string, input: Record<string, unknown>) => [
+    stream({ type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id, name: 'TodoWrite', input: {} } }),
+    stream({ type: 'content_block_delta', index: 0, delta: { partial_json: JSON.stringify(input) } }),
+    stream({ type: 'content_block_stop', index: 0 }),
+    { type: 'assistant', uuid: id, message: { content: [{ type: 'tool_use', id, name: 'TodoWrite', input }] } },
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, content: 'Todos have been modified successfully.' }] } }
+  ]
+  const first = todos([['Read the API', 'in_progress'], ['Add login', 'pending']])
+  const second = todos([['Read the API', 'completed'], ['Add login', 'in_progress']])
+  const items = [...call('w1', first), ...call('w2', second), ...call('w3', second)]
+    .flatMap((message) => translator.handle(message).ops).flatMap((op) => (op.type === 'item' ? [op.item] : []))
+  assert.deepEqual(items.map((item) => item.type), ['plan', 'plan'])
+  assert.deepEqual(items.map((item) => item.id), ['t:plan', 't:plan'])
+  assert.deepEqual(items[1], {
+    type: 'plan', id: 't:plan', turnId: 't',
+    steps: [{ text: 'Read the API', status: 'done' }, { text: 'Add login', status: 'doing' }]
+  })
+})
