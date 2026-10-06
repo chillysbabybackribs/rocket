@@ -148,6 +148,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 /* The drawer, in the goal pane's clothes */
 .goal-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; width: 400px; flex: none; background: var(--panel); }
 .gp-bar { flex: none; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 8px 0 16px; border-bottom: 1px solid var(--line); }
+.gp-bar.is-bare { height: 36px; border-bottom: 0; }
+.gp-scroll.is-bare { padding-top: 4px; }
+.gp-section.is-bare { padding-top: 10px; }
 .gp-crumbs { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-4); white-space: nowrap; }
 .gp-crumb-current { color: var(--text-2); font-weight: 510; }
 .gp-icon { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: var(--text-3); }
@@ -240,46 +243,21 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     <div class="state only-open">
     <div class="divider"></div>
     <aside class="goal-pane" aria-label="Work">
-      <div class="gp-bar">
-        <span class="dot run" style="width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(113,112,255,.18)"></span>
-        <span class="gp-crumbs"><span>Work</span><span>›</span><span class="gp-crumb-current">Working · 48s</span></span>
-        <button class="gp-icon" title="Hide (the work goes on)">⇥</button>
-      </div>
-      <div class="gp-scroll">
+      <div class="gp-bar is-bare"><span class="gp-crumbs"></span><button class="gp-icon" title="Hide">⇥</button></div>
+      <div class="gp-scroll is-bare">
         <header class="gp-head">
           <h2 class="gp-title">Add login so each person only sees their own notes</h2>
-          <p class="gp-request">Claude · claude-fable-5-1 · ~/side/notes-api</p>
         </header>
-        <div class="gp-section" style="padding-top:4px">
-          <h3 class="gp-section-title">Plan<span class="gp-count">2 of 5</span></h3>
+        <div class="gp-section is-bare" style="padding-top:0;border-top:0">
+          <h3 class="gp-section-title"><span class="gp-count" style="margin-left:0">2 of 5</span></h3>
 
           <ul class="gp-lines">
-            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Read the existing API and its storage</span><span class="gp-line-meta">12s</span></li>
-            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Add register and login with scrypt-hashed passwords</span><span class="gp-line-meta">31s</span></li>
-            <li class="gp-line is-now"><span class="box"></span><span class="gp-line-text">Scope the notes routes to the logged-in user</span><span class="gp-line-meta">now</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Read the existing API and its storage</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Add register and login with scrypt-hashed passwords</span></li>
+            <li class="gp-line is-now"><span class="box"></span><span class="gp-line-text">Scope the notes routes to the logged-in user</span></li>
             <li class="gp-line"><span class="box"></span><span class="gp-line-text">Write an isolation test: two users, each sees only their own</span></li>
             <li class="gp-line"><span class="box"></span><span class="gp-line-text">Document the endpoints in the README</span></li>
           </ul>
-        </div>
-        <div class="gp-section">
-          <h3 class="gp-section-title">Doing now</h3>
-          <div class="gp-now">
-            <div class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Editing <code>server.js</code></span></div>
-            <div class="thought">The GET and POST notes handlers both need the user id from the session. Rather than repeat the lookup, one authOf(req) at the top of the request handler, returning 401 before the route switch…</div>
-          </div>
-        </div>
-        <div class="gp-section">
-          <h3 class="gp-section-title">Steps<span class="gp-count">4</span></h3>
-          <ul class="gp-steps">
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>find . -type f -not -path './.git/*'</code></li>
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>cat server.js package.json</code></li>
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>server.js</code></li>
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>node --check server.js</code></li>
-          </ul>
-        </div>
-        <div class="gp-section">
-          <h3 class="gp-section-title">Files touched<span class="gp-count">1</span></h3>
-          <div class="gp-files"><span class="gp-file">server.js</span></div>
         </div>
       </div>
     </aside>
@@ -326,42 +304,19 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     <div class="state only-open">
     <div class="divider"></div>
     <aside class="goal-pane" aria-label="Work">
-      <div class="gp-bar">
-        <span style="color:var(--ok)">✓</span>
-        <span class="gp-crumbs"><span>Work</span><span>›</span><span class="gp-crumb-current">Done · 1m 20s</span></span>
-        <button class="gp-icon" title="Hide">⇥</button>
-      </div>
-      <div class="gp-scroll">
+      <div class="gp-bar is-bare"><span class="gp-crumbs"></span><button class="gp-icon" title="Hide">⇥</button></div>
+      <div class="gp-scroll is-bare">
         <header class="gp-head">
           <h2 class="gp-title">Add login so each person only sees their own notes</h2>
-          <p class="gp-request">Claude · claude-fable-5-1 · ~/side/notes-api</p>
         </header>
-        <div class="gp-section" style="padding-top:4px">
-          <h3 class="gp-section-title">Plan<span class="gp-count">5 of 5</span></h3>
+        <div class="gp-section is-bare" style="padding-top:0;border-top:0">
+          <h3 class="gp-section-title"><span class="gp-count" style="margin-left:0">5 of 5</span></h3>
           <ul class="gp-lines">
-            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Read the existing API and its storage</span><span class="gp-line-meta">12s</span></li>
-            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Add register and login with scrypt-hashed passwords</span><span class="gp-line-meta">31s</span></li>
-            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Scope the notes routes to the logged-in user</span><span class="gp-line-meta">14s</span></li>
-            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Write an isolation test: two users, each sees only their own</span><span class="gp-line-meta">19s</span></li>
-            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Document the endpoints in the README</span><span class="gp-line-meta">4s</span></li>
-          </ul>
-        </div>
-        <div class="gp-section">
-          <h3 class="gp-section-title">Changed<span class="gp-count">3 files · <span class="counts"><span class="a">+184</span> <span class="d">−12</span></span></span></h3>
-          <div class="gp-files"><span class="gp-file">server.js</span><span class="gp-file">test/auth.test.js</span><span class="gp-file">README.md</span></div>
-        </div>
-        <div class="gp-section">
-          <h3 class="gp-section-title">Steps<span class="gp-count">9</span></h3>
-          <ul class="gp-steps">
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>find . -type f -not -path './.git/*'</code></li>
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>cat server.js package.json</code></li>
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>server.js</code></li>
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>node --check server.js</code></li>
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>test/auth.test.js</code></li>
-            <li class="tool-line is-failed"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>npm test</code></li>
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>test/auth.test.js</code></li>
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/></svg><code>npm test</code></li>
-            <li class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><code>README.md</code></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Read the existing API and its storage</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Add register and login with scrypt-hashed passwords</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Scope the notes routes to the logged-in user</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Write an isolation test: two users, each sees only their own</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Document the endpoints in the README</span></li>
           </ul>
         </div>
       </div>
@@ -428,13 +383,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
         <div class="gp-section">
           <h3 class="gp-section-title">This round's plan<span class="gp-count">1 of 3</span></h3>
           <ul class="gp-lines">
-            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Read the checker's findings and the current test file</span><span class="gp-line-meta">9s</span></li>
-            <li class="gp-line is-now"><span class="box"></span><span class="gp-line-text">Write the two-user isolation test</span><span class="gp-line-meta">now</span></li>
+            <li class="gp-line is-done"><span class="box">✓</span><span class="gp-line-text">Read the checker's findings and the current test file</span></li>
+            <li class="gp-line is-now"><span class="box"></span><span class="gp-line-text">Write the two-user isolation test</span></li>
             <li class="gp-line"><span class="box"></span><span class="gp-line-text">Document the endpoints in the README</span></li>
           </ul>
-          <div class="gp-now" style="margin-top:8px">
-            <div class="tool-line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Editing <code>test/auth.test.js</code></span></div>
-          </div>
         </div>
         <div class="gp-section">
           <h3 class="gp-section-title">Rounds</h3>
