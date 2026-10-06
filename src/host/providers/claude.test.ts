@@ -29,3 +29,41 @@ for (const restateFirst of [false, true]) {
     assert.equal(new Set(closed.map((item) => item.id)).size, 2)
   })
 }
+
+test('a reply that ends while background tasks run keeps its turn open for the follow-up', async () => {
+  const { ClaudeAdapter } = await import('./claude.ts')
+  const adapter = new ClaudeAdapter(() => {})
+  const items: Item[] = []
+  const results: unknown[] = []
+  // The adapter's runtime, reduced to what message routing touches; no Claude Code process runs.
+  const runtime = {
+    alive: true, background: new Set<string>(), woke: [] as string[], cwd: '/w', sessionId: 's', model: null,
+    turn: null as unknown, disarmIdle() {}, armIdle() {}
+  }
+  runtime.turn = {
+    request: { chatId: 'c', turnId: 't', cwd: '/w', sessionId: 's', model: null, text: '', handoff: null },
+    sink: { item: (item: Item) => items.push(item), delta() {}, session() {}, model() {}, usage() {} },
+    translator: new TurnTranslator('t'),
+    finish: (result: unknown) => { results.push(result); runtime.turn = null }
+  }
+  const route = (message: Record<string, unknown>): void => (adapter as unknown as { onMessage: (r: unknown, m: unknown) => void }).onMessage(runtime, message)
+  const reply = (text: string): void => {
+    route(stream({ type: 'message_start' }))
+    route(stream({ type: 'content_block_start', index: 0, content_block: { type: 'text' } }))
+    route(stream({ type: 'content_block_delta', index: 0, delta: { text } }))
+    route(stream({ type: 'content_block_stop', index: 0 }))
+    route({ type: 'result', subtype: 'success' })
+  }
+
+  route({ type: 'system', subtype: 'background_tasks_changed', tasks: [{ task_id: 'a1', task_type: 'local_agent', description: 'research' }] })
+  reply('Started the research.')
+  assert.equal(results.length, 0, 'the turn stays open while the task runs')
+  const notice = items.findLast((item) => item.type === 'notice')
+  assert.match(notice?.type === 'notice' ? notice.text : '', /Waiting for 1 background task/)
+
+  route({ type: 'system', subtype: 'task_notification', task_id: 'a1', status: 'completed', summary: 'research done', output_file: '' })
+  route({ type: 'system', subtype: 'background_tasks_changed', tasks: [] })
+  reply('Here is what it found.')
+  assert.deepEqual(results, [{ status: 'completed' }], 'the follow-up lands in the same turn and ends it')
+  assert.ok(items.some((item) => item.type === 'assistant' && item.text === 'Here is what it found.'))
+})

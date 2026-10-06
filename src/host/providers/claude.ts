@@ -26,6 +26,8 @@ import {
 //   with `system`/`task_notification`, and Claude Code then starts a turn of its own: stream
 //   events through to `result` with no user message. `system`/`background_tasks_changed` carries
 //   the full set of live background tasks each time it changes; `ambient` ones are not activity.
+//   A turn whose reply ends while such tasks run is held open and shown as waiting, so the
+//   follow-up continues it; a follow-up with no turn open (after a restart, say) gets one of its own.
 // The SDK has no supported way to import another model's turns into a session, so missed turns
 // ride at the head of the user's message as a tagged block.
 //
@@ -42,6 +44,8 @@ const SPARE = ''
 /** How long the process that answers account questions is kept after its last one. */
 const PROBE_LINGER_MS = 30_000
 const ABORT_REASONS = new Set(['aborted_streaming', 'aborted_tools'])
+/** How long a turn waits for Claude Code's follow-up once its background tasks have all ended. */
+const FOLLOW_UP_WAIT_MS = 20_000
 
 let sdkLoading: Promise<ClaudeSdk> | null = null
 
@@ -84,6 +88,13 @@ type RunningTurn = {
   sink: TurnSink
   translator: TurnTranslator
   finish: (result: RunResult) => void
+  /**
+   * The model ended its reply while background tasks it started were still running. The turn
+   * stays open, shown as waiting, and Claude Code's follow-up when they finish lands in it.
+   */
+  deferred?: RunResult | null
+  /** Ends a deferred turn if no follow-up starts after the background has emptied. */
+  settleTimer?: NodeJS.Timeout | null
 }
 
 /** One live Claude Code process for one chat. */
@@ -268,6 +279,14 @@ export class ClaudeAdapter implements ProviderAdapter {
   async stop(chatId: string): Promise<void> {
     const runtime = this.runtimes.get(chatId)
     if (!runtime?.turn) return
+    // A turn only waiting on background tasks has no model call to interrupt; it simply ends.
+    // Whatever those tasks bring back later arrives as a turn of its own.
+    const waiting = runtime.turn
+    if (waiting.deferred) {
+      clearTimeout(waiting.settleTimer ?? undefined)
+      waiting.finish({ status: 'interrupted' })
+      return
+    }
     await runtime.interrupt().catch(() => {
       // An interrupt the process cannot take is answered by closing it; the session resumes later.
       this.retire(runtime)
@@ -392,6 +411,13 @@ export class ClaudeAdapter implements ProviderAdapter {
     if (message.type === 'system') this.noteBackground(runtime, message)
     const turn = runtime.turn ?? this.unprompted(runtime, message)
     if (!turn) return
+    if (turn.deferred && (message.type === 'stream_event' || message.type === 'assistant')) {
+      // The follow-up has begun; its own result ends the turn.
+      clearTimeout(turn.settleTimer ?? undefined)
+      turn.deferred = null
+      turn.settleTimer = null
+      this.showWaiting(runtime, turn, 'resumed')
+    }
     const out = turn.translator.handle(message)
     if (out.sessionId) {
       runtime.sessionId = out.sessionId
@@ -402,7 +428,7 @@ export class ClaudeAdapter implements ProviderAdapter {
       if (op.type === 'item') turn.sink.item(op.item)
       else turn.sink.delta(op.itemId, op.delta)
     }
-    if (out.end) turn.finish(out.end)
+    if (out.end) this.ended(runtime, turn, out.end)
   }
 
   /** Idle with nothing running in the background: retire the process after a quiet spell. */
@@ -412,10 +438,42 @@ export class ClaudeAdapter implements ProviderAdapter {
     else runtime.armIdle(() => this.retire(runtime))
   }
 
+  /** A reply has ended. With background tasks still running, the turn waits for them instead of ending. */
+  private ended(runtime: Runtime, turn: RunningTurn, result: RunResult): void {
+    if (result.status !== 'completed' || !runtime.background.size) {
+      turn.finish(result)
+      return
+    }
+    turn.deferred = result
+    this.showWaiting(runtime, turn, 'waiting')
+  }
+
+  /** The line in a waiting turn that says what it waits on. One item, updated in place. */
+  private showWaiting(runtime: Runtime, turn: RunningTurn, state: 'waiting' | 'resumed'): void {
+    const count = runtime.background.size
+    const text = state === 'resumed'
+      ? 'Background work finished; Claude is following up.'
+      : count
+        ? `Waiting for ${count} background ${count === 1 ? 'task' : 'tasks'} to finish…`
+        : 'Background work finished; waiting for Claude to follow up…'
+    turn.sink.item({ type: 'notice', id: `${turn.request.turnId}:background`, turnId: turn.request.turnId, text, tone: 'info' })
+  }
+
   private noteBackground(runtime: Runtime, message: Record<string, unknown>): void {
     if (message.subtype === 'background_tasks_changed') {
       const tasks = (Array.isArray(message.tasks) ? message.tasks : []).map(recordOf).filter((task) => task.ambient !== true)
       runtime.background = new Set(tasks.map((task) => stringOf(task.task_id)).filter(Boolean))
+      const turn = runtime.turn
+      if (turn?.deferred) {
+        this.showWaiting(runtime, turn, 'waiting')
+        clearTimeout(turn.settleTimer ?? undefined)
+        // Claude Code follows up after its background work ends; if it does not, the turn ends as it was.
+        if (!runtime.background.size) {
+          turn.settleTimer = setTimeout(() => {
+            if (runtime.turn === turn && turn.deferred) turn.finish(turn.deferred)
+          }, FOLLOW_UP_WAIT_MS)
+        }
+      }
       this.rest(runtime)
     } else if (message.subtype === 'task_notification' && message.skip_transcript !== true && message.ambient !== true) {
       const summary = oneLine(stringOf(message.summary), 140)
@@ -458,6 +516,12 @@ export class ClaudeAdapter implements ProviderAdapter {
     this.release(runtime)
     const turn = runtime.turn
     if (!turn) return
+    // A turn that was only waiting on background tasks had already replied in full.
+    if (turn.deferred) {
+      clearTimeout(turn.settleTimer ?? undefined)
+      turn.finish(turn.deferred)
+      return
+    }
     const detail = `${error ? messageOf(error) : ''}\n${runtime.stderrTail}`
     if (turn.request.sessionId && /no conversation found|session.*not found|could not (find|resume)/i.test(detail)) {
       turn.finish({ status: 'failed', sessionLost: true })

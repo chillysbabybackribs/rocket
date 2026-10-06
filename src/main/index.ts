@@ -3,7 +3,7 @@ import {
 } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import type { BrowserAgentReply, BrowserAgentRequest, BrowserCommand } from '../shared/types.ts'
 import { HOST_PORT_MESSAGE } from '../shared/types.ts'
 import { readChatLink } from './chat-links.ts'
@@ -154,11 +154,38 @@ ipcMain.on('rocket:browser', (event, command: BrowserCommand) => {
   browser?.handle(event.sender, command)
 })
 
-app.whenReady().then(() => {
-  if (testProfile) isolateUiTestNetwork(process.env.ROCKET_UI_TEST_ORIGIN)
-  host = startHost()
-  createWindow()
-})
+// `rocket <path or URL>` opens it inside the app, as a link in the chat would: a page in a
+// browser tab, a text file in the artifact panel. A second launch hands its arguments to the
+// instance already running and exits; the first launch opens its argument once the page is up.
+// The lock is per profile folder, so a test profile never reaches the real window.
+function openTargetOf(argv: string[], cwd: string): { href: string; cwd: string } | null {
+  const own = new Set(['.', app.getAppPath()])
+  const arg = argv.slice(1).findLast((value) => value && !value.startsWith('-') && !own.has(value))
+  if (!arg) return null
+  return { href: /^(https?|file):/i.test(arg) ? arg : resolve(cwd, arg), cwd }
+}
+
+function openInWindow(target: { href: string; cwd: string } | null): void {
+  if (!target || !window || window.isDestroyed()) return
+  if (window.isMinimized()) window.restore()
+  window.focus()
+  window.webContents.send('rocket:open', target)
+}
+
+// A launch that loses the lock quits here and must start nothing: `ready` still fires on the
+// way out, and a second host in the same profile would fight the first over its files.
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv, cwd) => openInWindow(openTargetOf(argv, cwd)))
+  app.whenReady().then(() => {
+    if (testProfile) isolateUiTestNetwork(process.env.ROCKET_UI_TEST_ORIGIN)
+    host = startHost()
+    createWindow()
+    const first = openTargetOf(process.argv, process.cwd())
+    if (first) window?.webContents.once('did-finish-load', () => openInWindow(first))
+  })
+}
 
 app.on('window-all-closed', () => app.quit())
 
