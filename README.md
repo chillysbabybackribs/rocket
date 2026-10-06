@@ -256,7 +256,8 @@ TERM-resistant children are killed after a grace period. Interrupted runs exit w
 The checks exercise composer input, folder selection, usage, model selection, streaming,
 completion, tool output, provider handoff, cancellation, failure recovery, chat drafts,
 history, renderer reload, full app restart, recovery from a host crash during a response,
-minimum window size, browser navigation/tabs, and the address dropdown. The shell, embedded
+minimum window size, browser navigation/tabs, the address dropdown, chat links (browser tabs
+and local artifact preview), and model question cards from `ask_user`. The shell, embedded
 page and dropdown are separate Playwright targets. Their
 screenshots and bounds are retained separately; on X11, a whole-window capture also records
 how the native views overlap. If that optional capture is unavailable, the report says so.
@@ -277,7 +278,8 @@ The safeguards scenarios deliberately remove the browser filter and damage nativ
 layout, then require the same assertions to reject those faults. The subprocess unit test
 checks ordinary and detached descendants, including ones that ignore SIGTERM.
 
-Add scenarios in `tests/ui/` (`rocket.spec.ts`, `safeguards.spec.ts`, `recovery.spec.ts`).
+Add scenarios in `tests/ui/` (`rocket.spec.ts`, `safeguards.spec.ts`, `recovery.spec.ts`,
+`question.spec.ts`, `chat-links.spec.ts`).
 Prefer accessible controls and observable state;
 do not mutate renderer state to manufacture a passing UI. `ROCKET_UI_TEST=1` is reserved for
 this runner and requires the marked profile before either main or host opens the store.

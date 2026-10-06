@@ -54,7 +54,7 @@ function setup() {
   const end = async (args: Record<string, unknown> | null, status: TurnStatus = 'completed', error: string | null = null): Promise<void> => {
     const sent = hub.last()
     if (args) assert.equal(runner.report(sent.chatId, args).ok, true, 'the report is accepted')
-    const turn: Turn = { id: sent.turnId, chatId: sent.chatId, provider: sent.provider, model: null, status, error, handoffTurns: 0, goalRole: sent.role, startedAt: 1, endedAt: 2 }
+    const turn: Turn = { id: sent.turnId, chatId: sent.chatId, provider: sent.provider, model: null, status, error, handoffTurns: 0, goalRole: sent.role, changes: null, startedAt: 1, endedAt: 2 }
     runner.turnEnded(turn)
     await settle()
   }

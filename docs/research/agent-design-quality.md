@@ -89,7 +89,11 @@ workflows. [M] = measured result, [U] = strong user consensus, [O] = opinion or 
 | Critiques with reasons across dimensions, keeps the best | Self-checks for function; the checker runs once at the end |
 | Polish and edge states are most of the work | Stops when the happy path renders |
 
-## Implications for goals (to discuss; not built)
+## Implications for goals (future work)
+
+Rocket already ships direction in the goal brief (design concept, reference screenshots), the
+editable design library, and the goal-preparation skill. The numbered items below are further
+experiments not yet in the product.
 
 1. **Direction step (Google method).** Before building, the worker proposes 3 theme specs (type
    pairing, palette with hex values, layout idea, density, signature element), each with a

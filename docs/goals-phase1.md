@@ -5,7 +5,7 @@ model that will do the work drafts a brief (the goal restated, a checklist of wh
 at most one question); the user confirms it; then the work runs in rounds until a second
 provider agrees every line of the checklist is true.
 
-Mockup: `docs/mockups/missions-phase1.html`.
+Mockup: `docs/mockups/missions-phase1.html` (filename predates the Goals name; layout mock for phase 1).
 
 ## Principles
 
@@ -187,14 +187,14 @@ stores made before it. Deleting the chat deletes its goal (`ON DELETE CASCADE`).
 2. `GoalRunner` with a fake hub: drafting, rounds, every pause, restart recovery, checker choice.
 3. `goal_report`, `goalRole` on turns, wiring in `index.ts`.
 4. Renderer: flyout, dialog, goal view, notifications.
-5. A `check:ui` scenario. `UiTestAdapter` learns to call `goal_report` from a script, so a goal
-   can run draft → work → check (one line failing) → work → check → done with no real model.
-6. README (a Goals section) and CLAUDE.md's "Where things are".
+5. README (a Goals section) and CLAUDE.md's "Where things are".
 
 Later in phase 1, if time allows: **Undo to here**, restoring the folder to a round's end from the
 snapshot teamwork already takes, through a new `restore` in `git.ts`, after a confirm.
 
 ## Left for later phases
 
-Approval gates on irreversible actions, scheduling and triggers, curated memory and skills,
-notifications to the phone.
+- **`check:ui` for goals.** `UiTestAdapter` should learn to call `goal_report` from a script, so a
+  goal can run draft → work → check (one line failing) → work → check → done with no real model.
+- Approval gates on irreversible actions, scheduling and triggers, curated memory and skills,
+  notifications to the phone.
