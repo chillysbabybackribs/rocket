@@ -423,10 +423,10 @@ function render() {
   }
 
   if (state === 'ask') {
-    reply.value = ''
+    // Instructions after a fill work from what is in the field, so it stays.
     reply.classList.add('is-target')
-    chip.innerHTML = `<span class="mark" style="color:var(--accent)">${icon.spark}</span><input id="ask" placeholder="What should it say? e.g. explain why, keep it short" value="Explain why the renamed windows stay tiled"><span class="model">Opus 5.5</span><button class="act" id="go">Fill <kbd>↵</kbd></button><button class="act x" id="close" aria-label="Cancel">${icon.x}</button>`
-    requestAnimationFrame(() => { placeChip(reply); chip.classList.add('is-open'); $('ask').focus(); $('ask').select() })
+    chip.innerHTML = `<span class="mark" style="color:var(--accent)">${icon.spark}</span><input id="ask" placeholder="What should it say? e.g. explain why, keep it short"><span class="model">Opus 5.5</span><button class="act" id="go">Fill <kbd>↵</kbd></button><button class="act x" id="close" aria-label="Cancel">${icon.x}</button>`
+    requestAnimationFrame(() => { placeChip(reply); chip.classList.add('is-open'); $('ask').focus() })
     chip.onclick = (e) => { if (e.target.closest('#go')) set('working'); if (e.target.closest('#close')) set('menu') }
     chip.onkeydown = (e) => { if (e.key === 'Enter') set('working') }
   }
