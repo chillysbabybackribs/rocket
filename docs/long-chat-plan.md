@@ -72,8 +72,33 @@ fails if a chat opens with more than one page, if opening, switching back or any
 window for 250 ms or more, or if a page put in above moves the reader by more than 2 px. The
 paging itself is in the README's Long chats section.
 
-Still to do: step 4 (tool output on demand) and step 5 (keeping open tabs' chats, which would take
-switching back from about 150 ms to near zero).
+## After steps 4 and 5 (6 October 2026)
+
+Step 4: a page leaves finished tool output out (`outputLength`) and opening a step fetches it
+(`item.output`). Reading a page now goes through `items_by_turn`, ordered by turn, instead of
+walking the chat's items. Host, 1,000 turns: open read 225 ms → **3 ms**, sent 39 MB → **184 KB**
+(the same at every length; 786 KB with the output).
+
+Step 5: the window keeps the chat of every open tab, so going back to one asks the host for
+nothing, and a chat read far up goes back to its newest page as it returns. Parsed markdown is
+kept for the last 600 texts, so a chat shown again parses nothing.
+
+| turns | first open | its longest task | open again (median of 3) | switch back | its longest task | switch back after reading all | its longest task |
+|---|---|---|---|---|---|---|---|
+| 45 | 143 ms | 93 ms | 70 ms | 44 ms | 0 | 37 ms | 0 |
+| 250 | 106 ms | 86 ms | 63 ms | 87 ms | 0 | 64 ms | 0 |
+| 1,000 | 132 ms | 108 ms | 69 ms | 34 ms | 0 | 106 ms | 68 ms |
+
+Against the first baseline at 1,000 turns: open 3,023 ms → 132 ms, switch back 2,948 ms → 34 ms,
+and the window never freezes for more than about 110 ms in any of it. Switching back after
+reading the whole chat costs a little more, since its other 980 turns are let go then.
+
+Budgets in the spec: one page on open; the median open under 600 ms with no task of 250 ms or
+more, the first open's longest task under 400 ms; switching back under 300 ms with no task of
+120 ms or more (400 ms after reading everything); no page above freezing for 250 ms or more or
+moving the reader more than 2 px; and an opened step showing its output.
+
+All five steps are done.
 
 ## Findings, worst first
 

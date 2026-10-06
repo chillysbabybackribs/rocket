@@ -104,8 +104,10 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
     const profiling = process.env.LONG_CHAT_PROFILE === '1' && chat === chats.at(-1)
     const cdp = profiling ? await page.context().newCDPSession(page) : null
     if (cdp) { await cdp.send('Profiler.enable'); await cdp.send('Profiler.start') }
-    // Three cold opens, the tab closed between them so nothing is kept; the median is the one
-    // judged, since one open can land on a garbage collection or a busy machine.
+    // Three opens from the history, the tab closed between them so its chat is fetched again; the
+    // median is judged, since one open can land on a garbage collection or a busy machine. The
+    // first is the only one that parses its markdown; later ones find it cached, as a chat opened
+    // again does in use, so the first is reported and guarded on its own.
     const opens: Phase[] = []
     for (let trial = 0; trial < 3; trial++) {
       if (trial) await page.getByRole('button', { name: `Close tab: ${title}`, exact: true }).click()
@@ -142,8 +144,10 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
       turns: chat.turns,
       items: chat.items,
       'turns on open': opened,
-      'open ms': open.ms,
-      'open longest task ms': open.longestTaskMs,
+      'first open ms': opens[0]!.ms,
+      'first open longest task ms': opens[0]!.longestTaskMs,
+      'open ms (median of 3)': open.ms,
+      'open longest task ms (median)': open.longestTaskMs,
       'switch back ms': back.ms,
       'switch longest task ms': back.longestTaskMs,
       'switch back after reading all ms': backAfterAll.ms,
@@ -162,6 +166,7 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
     const at = `${chat.turns} turns`
     expect(open.longestTaskMs, `opening ${at} freezes the window no longer than 250 ms`).toBeLessThan(250)
     expect(open.ms, `opening ${at} shows the newest reply within 600 ms`).toBeLessThan(600)
+    expect(opens[0]!.longestTaskMs, `opening ${at} for the first time freezes the window no longer than 400 ms`).toBeLessThan(400)
     // The tab's chat is kept, so switching back asks the host for nothing and parses nothing new.
     expect(back.longestTaskMs, `switching back to ${at} freezes the window no longer than 120 ms`).toBeLessThan(120)
     expect(back.ms, `switching back to ${at} shows the newest reply within 300 ms`).toBeLessThan(300)

@@ -538,12 +538,25 @@ half of the top, `loadOlder` fetches the 20 before the first loaded (`chat.older
 in above. `Transcript` keeps the reader where they were, by the distance from the bottom it keeps
 up to date on every scroll and resize, and tells a page put in above from a turn just sent by the
 last turn's id. A `turn` event for a turn above the loaded ones is left for when it is fetched.
+Pages read their items through `items_by_turn`, ordered by turn, so a page costs the same in any
+chat.
+
+A page leaves out the output of finished tool calls, most of a chat's bytes, which shows only when
+a step is opened: such a call carries `outputLength`, and opening the step fetches the output
+(`item.output`, `loadOutput`). The turn in flight keeps its output, as it streams.
+
+The window keeps the chat of every open tab, in any pane, not just the ones on screen; live events
+keep it current, so going back to a tab asks the host for nothing (`pruneViews`, `openChat`). A kept
+chat that was read far up goes back to its newest page as it comes back on screen (`newestPage`).
+`ChatMarkdown` keeps what it parsed, by folder and text, for the last 600 texts, so a chat shown
+again parses nothing; a reply's last block is not kept while it streams.
 
 Two benchmarks measure how the transcript copes with a long history, using seeded synthetic
 chats shaped like real ones (`tests/fixtures/long-chat.ts`). `npm run bench:transcript` times
 the host: reading a chat to open it, the payload, the attachment sweep and a full handoff.
-`npm run check:ui -- long-chat` times the isolated app opening a chat, bringing in the page above
-(and checks the reader does not move), reading up to the first turn and switching back to its tab,
+`npm run check:ui -- long-chat` times the isolated app opening a chat (the first open and the
+median of three), opening a step's output, switching back to its tab, bringing in the page above
+(and checks the reader does not move), reading up to the first turn and switching back again,
 with `LONG_CHAT_PROFILE=1` for a CPU profile. Its budgets fail the check when a chat's length shows
 up in its open time again. Both write to `.artifacts/bench/`. The audit, the baseline and the plan are in `docs/long-chat-plan.md`.
 
