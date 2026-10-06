@@ -1,265 +1,344 @@
 <!doctype html>
-<!-- Mockup: Library as a DAM-style gallery (Ranch-inspired layout — filter rail + thumbnail grid).
-     Click a card to open the Nutrient/CM6 viewer. Rocket palette; static thumbnails. -->
+<!-- Library mock · DAM grid + document viewer. Thumbnails: real Rocket UI crops in assets/library/.
+     Tokens aligned with src/renderer/src/styles.css. Interactive states via top nav. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rocket · Library &amp; document viewer</title>
 <style>
-@font-face{font-family:Inter;src:url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')}
-:root{color-scheme:dark;--canvas:#08090a;--panel:#0f1011;--composer:#151617;--line:#2f3031;--text:#f7f8f8;--muted:#8a8f98;--accent:#7170ff;--ok:#4cb782;--dam-bg:#0a0a0b;--dam-side:#0c0c0d;--dam-card:#141416;--clear:#e07070}
-*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--text);font:13px/1.5 Inter,system-ui,sans-serif}
-button,input,select{font:inherit;color:inherit}button{cursor:pointer;background:transparent;border:0;padding:0}
-button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@font-face{font-family:Inter;src:url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap}
+@font-face{font-family:GeistMono;src:url('../../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap}
+:root{
+  color-scheme:dark;
+  --font:'Inter',system-ui,sans-serif;
+  --mono:'GeistMono',ui-monospace,monospace;
+  --canvas:#08090a;--panel:#0f1011;--raised:#17181a;--composer:#151617;--composer-line:#2f3031;
+  --line:rgba(255,255,255,.07);--line-strong:rgba(255,255,255,.11);
+  --text:#f7f8f8;--text-2:#b4b8c0;--text-3:#8a8f98;--text-4:#62666d;
+  --accent:#7170ff;--ok:#4cb782;--clear:#eb5757;
+  --sheen:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0) 140px);
+  --card-radius:12px;--gap:8px;--rail-width:52px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--text);font:13px/1.5 var(--font);letter-spacing:-.006em;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;letter-spacing:inherit;color:inherit}
+button{cursor:default;border:0;background:none;padding:0}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 svg{display:block;flex-shrink:0}
-header{max-width:1280px;margin:auto;padding:28px 28px 18px}
-.eyebrow{color:var(--muted);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
-h1{font-size:25px;letter-spacing:-.7px;font-weight:550;margin:6px 0}
-header p{color:#b4b8c0;margin:0;max-width:760px}
-.nav{display:flex;gap:5px;flex-wrap:wrap;margin-top:20px}
-.nav button{padding:8px 13px;border-radius:7px;color:#a4a8b0;border:1px solid transparent}
-.nav button:hover{background:#ffffff0b}
-.nav button[aria-pressed=true]{background:#1c1d20;border-color:var(--line);color:var(--text)}
-main{max-width:1280px;padding:0 28px 24px;margin:auto}
-.stage{position:relative;width:1220px;height:700px;border-radius:12px;overflow:hidden;border:1px solid #ffffff14}
-.win{display:flex;height:100%;background:#050506;padding:8px 8px 8px 0}
-.rail{width:52px;display:flex;flex-direction:column;align-items:center;gap:16px;padding-top:100px}
-.rail button{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#6a6f78}
-.rail button.is-on{background:#7170ff22;color:#b8b6ff;box-shadow:inset 0 0 0 1px #7170ff55}
-.rail svg{width:18px;height:18px}
-.chat{width:300px;display:flex;flex-direction:column;background:var(--panel);border:1px solid #ffffff12;border-radius:11px;overflow:hidden;margin-right:8px;flex:none}
-.chat-head{padding:11px 14px;border-bottom:1px solid #ffffff09;font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
-.chat-head b{color:#c8cbd0;font-weight:500}
-.chat-body{flex:1;padding:16px 14px;overflow:hidden;font-size:12px}
-.bubble{background:#1c1d20;border-radius:10px;padding:8px 11px;margin:0 0 12px auto;max-width:95%}
-.assistant{color:#d7d9de;line-height:1.5}.meta{font-size:10px;color:#71767f}
-.dock{padding:8px 10px 10px;margin-top:auto}
-.tab{display:inline-block;background:var(--composer);border:1px solid var(--line);border-bottom:0;padding:4px 10px;border-radius:8px 8px 0 0;font-size:10px;color:#d7d9de;margin-left:6px}
-.composer{background:var(--composer);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:#62666d;font-size:11px}
-.library{flex:1;display:flex;min-width:0;background:var(--dam-bg);border:1px solid #ffffff10;border-radius:11px;overflow:hidden}
-.dam{flex:1;display:flex;min-width:0;min-height:0}
-.dam-side{width:196px;flex:none;background:var(--dam-side);border-right:1px solid #ffffff08;padding:16px 14px 14px;display:flex;flex-direction:column;gap:14px;overflow:auto}
-.dam-side h2{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin:0;color:#eceef2}
-.dam-side h2 svg{color:#9aa0a8;width:15px;height:15px}
-.field label{display:block;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#6d7179;margin-bottom:5px}
-.field select{width:100%;appearance:none;background:#161618;border:1px solid #2a2b2e;border-radius:6px;padding:7px 28px 7px 9px;font-size:12px;color:#d2d5dc;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8f98' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
-.clear{font-size:11px;color:var(--clear);text-align:left;padding:0;margin-top:-4px}
-.clear:hover{text-decoration:underline}
-.dam-main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
-.dam-toolbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #ffffff06;font-size:11px;color:#8a8f98}
-.dam-toolbar .count{margin-right:auto;color:#a4a8b0}
-.dam-toolbar .search{flex:1;max-width:220px;display:flex;align-items:center;gap:6px;background:#121214;border:1px solid #28292c;border-radius:7px;padding:5px 9px}
-.dam-toolbar .search input{flex:1;border:0;background:none;outline:none;color:var(--text);font-size:11px;min-width:0}
-.grid-wrap{flex:1;overflow:auto;padding:12px 14px 16px}
-.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-@media(max-width:1180px){.grid{grid-template-columns:repeat(4,1fr)}}
-.asset{display:flex;flex-direction:column;text-align:left;border-radius:8px;overflow:hidden;background:var(--dam-card);border:1px solid transparent;transition:border-color .12s,box-shadow .12s}
-.asset:hover,.asset.is-hover{border-color:#ffffff55;box-shadow:0 0 0 1px #ffffff22}
-.asset.is-on{border-color:#fff;box-shadow:0 0 0 1px #ffffff44}
-.thumb{width:100%;aspect-ratio:4/3;background:#1a1b1e;position:relative;overflow:hidden}
-.thumb.is-tall{aspect-ratio:3/4}
-.thumb-inner{position:absolute;inset:0}
-.thumb-pdf{background:linear-gradient(180deg,#eae8e3,#d8d5cc);display:flex;align-items:flex-start;justify-content:center;padding:12% 18% 0}
-.thumb-pdf .sheet{background:#fff;width:100%;height:92%;box-shadow:0 4px 20px #0003;border-radius:1px;padding:10% 8%;font-size:6px;line-height:1.5;color:#333;overflow:hidden}
-.thumb-md{background:linear-gradient(145deg,#12141a,#0d0f14);padding:10%;font:9px/1.5 ui-monospace,monospace;color:#7a8494}
-.thumb-img{background:linear-gradient(135deg,#2a3548 0%,#4a5568 40%,#1a2332 100%)}
-.thumb-img.l2{background:linear-gradient(160deg,#3d2c4a,#6b4a6a,#1f1528)}
-.thumb-img.l3{background:linear-gradient(120deg,#1e3a2f,#4a7c59,#0f1f18)}
-.thumb-office{background:linear-gradient(180deg,#3a3028,#2a221c);display:grid;place-items:center}
-.thumb-office span{font-size:22px;font-weight:700;color:#e8c4a0;opacity:.85}
-.thumb-badge{position:absolute;top:6px;right:6px;font-size:9px;font-weight:600;padding:2px 5px;border-radius:4px;background:#0009;color:#ddd;letter-spacing:.03em}
-.cap{padding:8px 9px 10px}
-.cap b{display:block;font-size:11.5px;font-weight:600;color:#eceef2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
-.cap span{font-size:10px;color:#72767f;line-height:1.35;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.viewer{flex:1;display:flex;flex-direction:column;min-width:0;background:#0a0b0c}
-.view-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #ffffff08;flex-wrap:wrap}
-.back{display:flex;align-items:center;gap:4px;font-size:12px;color:#b4b8c0;padding:4px 8px;border-radius:6px}
-.back:hover{background:#ffffff0a;color:#fff}
-.back svg{width:16px;height:16px}
-.view-title{flex:1;min-width:0;font-weight:500;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.view-actions{display:flex;gap:4px}
-.text-btn{font-size:10px;padding:4px 9px;border-radius:6px;border:1px solid #38393c;color:#c5c7cd}
-.text-btn.primary{background:#e8e8e8;color:#08090a;border-color:#e8e8e8;font-weight:500}
-.doc-meta{font-size:10px;color:#8a8f98;padding:4px 12px 0;display:flex;gap:8px;flex-wrap:wrap}
-.doc-meta .pill{background:#1a1b1d;border:1px solid #2c2d31;border-radius:5px;padding:1px 7px}
-.view-tabs{display:flex;gap:2px;padding:6px 12px 0}
-.view-tabs button{font-size:10px;padding:4px 10px;border-radius:6px 6px 0 0;color:#8a8f98;border:1px solid transparent}
-.view-tabs button.on{background:#121316;border-color:#333;color:var(--text)}
-.doc-body{flex:1;min-height:0;margin:0 12px 12px;border:1px solid #2c2d31;border-radius:0 8px 8px 8px;background:#080809;overflow:hidden;display:flex;flex-direction:column}
-.toolbar{display:flex;align-items:center;gap:4px;padding:5px 8px;border-bottom:1px solid #252628;background:#101113;font-size:10px}
-.toolbar button{padding:3px 8px;border-radius:5px;color:#b4b8c0}.toolbar button.on{background:#7170ff28;color:#fff}
-.cm{flex:1;overflow:auto;font:11px/1.6 ui-monospace,monospace;padding:10px 0}
-.cm .line{display:flex;padding:0 10px}.cm .ln{width:28px;text-align:right;padding-right:10px;color:#52565e;flex:none}
-.cm .code{flex:1;white-space:pre;color:#c8cdd8}
-.cm .line.hl-agent{background:#4cb78214;box-shadow:inset 2px 0 0 var(--ok)}
-.cm .mark-hl{background:#7170ff40;border-radius:2px}
-.preview{flex:1;overflow:auto;padding:18px 20px;color:#d0d4dc;font-size:12px}
-.preview h2{font-size:17px;margin:0 0 10px}.preview .hl{background:#7170ff35;padding:0 2px;border-radius:2px}
-.pdf-page{flex:1;overflow:auto;display:grid;place-items:start center;padding:14px;background:#141516}
-.paper{width:min(100%,380px);background:#fff;color:#1a1f28;min-height:460px;padding:28px 26px;font-size:10px;line-height:1.45;position:relative}
-.paper h2{font-size:15px;margin:0 0 8px}.paper .hl{background:#ffe566}
-.paper .note-pin{position:absolute;right:20px;top:150px;width:18px;height:18px;background:#7170ff;border-radius:50% 50% 50% 0;transform:rotate(-45deg)}
-.annot-rect{position:absolute;left:8%;top:30%;width:84%;height:11%;border:2px solid #7170ff;background:#7170ff22;border-radius:2px}
-.office-empty{flex:1;display:grid;place-items:center;text-align:center;padding:24px;color:#8a8f98;font-size:12px}
-.agent-toast{margin:6px 12px 0;padding:7px 10px;background:#4cb78218;border:1px solid #4cb78244;border-radius:7px;font-size:10px;color:#b8e6cc}
-.note{display:flex;justify-content:space-between;gap:15px;color:var(--muted);font-size:12px;margin-top:14px;max-width:1220px}
-.note p{margin:0;max-width:900px;line-height:1.55}
-.note strong{color:#c4c7ce;font-weight:500}
-.note button{border:1px solid var(--line);padding:6px 10px;border-radius:6px}
-#status{font-size:11px;color:#a4a8b0;margin-top:8px}
+.page-header{max-width:1320px;margin:0 auto;padding:24px 28px 16px}
+.eyebrow{color:var(--text-3);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.page-header h1{font-size:24px;font-weight:550;letter-spacing:-.65px;margin:6px 0}
+.page-header p{color:var(--text-2);margin:0;max-width:680px;line-height:1.55}
+.nav{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}
+.nav button{padding:7px 12px;border-radius:8px;font-size:12px;color:var(--text-3);border:1px solid transparent}
+.nav button:hover{background:rgba(255,255,255,.04)}
+.nav button[aria-pressed=true]{background:var(--raised);border-color:var(--composer-line);color:var(--text)}
+main{max-width:1320px;margin:0 auto;padding:0 28px 28px}
+.stage-wrap{position:relative;border-radius:14px;padding:var(--gap);background:#030304;box-shadow:0 0 0 1px var(--line-strong),0 24px 80px rgba(0,0,0,.55)}
+.titlebar{height:28px;display:flex;align-items:center;padding:0 10px;gap:8px;color:var(--text-4);font-size:11px}
+.lights{display:flex;gap:6px}.lights i{width:11px;height:11px;border-radius:50%;display:block}
+.lights i:nth-child(1){background:#ff5f57}.lights i:nth-child(2){background:#febc2e}.lights i:nth-child(3){background:#28c840}
+.titlebar span{flex:1;text-align:center;color:var(--text-3);font-weight:500}
+.stage{position:relative;width:1264px;height:720px;border-radius:var(--card-radius);overflow:hidden;background:var(--canvas)}
+.win{display:flex;height:100%;padding:0 var(--gap) var(--gap) 0}
+.rail{width:var(--rail-width);flex:none;display:flex;flex-direction:column;align-items:center;padding:72px 0 16px;gap:12px}
+.rail-btn{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--text-4)}
+.rail-btn:hover{background:rgba(255,255,255,.05);color:var(--text-2)}
+.rail-btn.is-on{color:#b8b6ff;background:rgba(113,112,255,.18);box-shadow:inset 0 0 0 1px rgba(113,112,255,.45)}
+.rail-btn svg{width:19px;height:19px}
+.chat{width:318px;flex:none;display:flex;flex-direction:column;background:var(--sheen),var(--panel);border:1px solid var(--line-strong);border-radius:var(--card-radius);margin-right:var(--gap);overflow:hidden}
+.chat-head{padding:12px 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--text-3);display:flex;justify-content:space-between}
+.chat-head b{color:var(--text-2);font-weight:500}
+.chat-scroll{flex:1;padding:18px 16px;overflow:hidden}
+.user-bubble{margin:0 0 14px auto;max-width:94%;padding:9px 12px;background:var(--bubble,#1c1d20);border-radius:10px;color:var(--text-2);font-size:12.5px;line-height:1.5}
+.turn{color:var(--text-2);font-size:13px;line-height:1.6}
+.turn .meta{font-size:11px;color:var(--text-4);margin-bottom:6px}
+.dock{padding:10px 12px 12px}
+.chat-tab{display:inline-block;margin-left:8px;padding:5px 11px;font-size:11px;color:var(--text-2);background:var(--composer);border:1px solid var(--composer-line);border-bottom:0;border-radius:8px 8px 0 0;transform:translateY(1px)}
+.composer-box{background:var(--composer);border:1px solid var(--composer-line);border-radius:var(--card-radius);padding:8px 10px 6px}
+.composer-box .hint{min-height:42px;color:var(--text-4);font-size:12px;padding:4px 2px}
+.composer-bar{display:flex;align-items:center;gap:6px;padding-top:4px;color:var(--text-4);font-size:10px}
+.composer-bar .send{margin-left:auto;width:26px;height:26px;border-radius:50%;background:var(--button,#e6e6e6);color:#08090a;display:grid;place-items:center}
+.library{flex:1;min-width:0;display:flex;background:var(--sheen),#0b0b0c;border:1px solid var(--line-strong);border-radius:var(--card-radius);overflow:hidden}
+.dam{flex:1;display:flex;min-height:0;min-width:0}
+.dam-side{width:210px;flex:none;padding:18px 16px 16px;background:#0a0a0b;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:16px}
+.dam-side h2{margin:0;font-size:14px;font-weight:600;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;color:var(--text)}
+.dam-side h2 svg{width:16px;height:16px;color:var(--text-3)}
+.field label{display:block;font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-4);margin-bottom:6px}
+.field select{width:100%;appearance:none;border-radius:8px;border:1px solid #2a2b2e;background:#131316;color:var(--text-2);font-size:12px;padding:8px 30px 8px 10px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%238a8f98' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center}
+.field select:hover{border-color:#3a3b3e}
+.clear{align-self:flex-start;font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--clear);padding:2px 0}
+.clear:hover{text-decoration:underline;cursor:pointer}
+.dam-main{flex:1;display:flex;flex-direction:column;min-width:0}
+.dam-toolbar{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);font-size:12px;color:var(--text-3)}
+.dam-toolbar .count{font-weight:500;color:var(--text-2)}
+.dam-toolbar .search{flex:1;max-width:260px;margin-left:auto;display:flex;align-items:center;gap:8px;padding:7px 11px;border-radius:9px;border:1px solid #2a2b2e;background:#101012}
+.dam-toolbar .search input{flex:1;border:0;background:transparent;outline:none;font-size:12px;color:var(--text);min-width:0}
+.dam-toolbar .search input::placeholder{color:var(--text-4)}
+.view-toggle{display:flex;gap:4px;padding:3px;border-radius:8px;background:#101012;border:1px solid #2a2b2e}
+.view-toggle button{padding:4px 10px;border-radius:6px;font-size:11px;color:var(--text-3)}
+.view-toggle button.on{background:#1c1d20;color:var(--text);box-shadow:0 1px 0 #0003}
+.grid-wrap{flex:1;overflow:auto;padding:16px 18px 20px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(min-width:1200px){.grid{grid-template-columns:repeat(5,1fr)}}
+.asset{position:relative;text-align:left;border-radius:10px;overflow:hidden;background:#121214;border:1px solid transparent;transition:border-color .15s,box-shadow .15s,transform .15s}
+.asset:hover{border-color:rgba(255,255,255,.35);box-shadow:0 8px 28px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.12);transform:translateY(-1px)}
+.asset.is-hover{border-color:rgba(255,255,255,.55);box-shadow:0 10px 32px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.2)}
+.asset.is-on{border-color:rgba(113,112,255,.7);box-shadow:0 0 0 1px rgba(113,112,255,.5)}
+.thumb{position:relative;width:100%;background:#0e0e10;overflow:hidden}
+.thumb.ratio-4x3{aspect-ratio:4/3}
+.thumb.ratio-3x4{aspect-ratio:3/4}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(1.02)}
+.thumb-md-preview{position:absolute;inset:0;padding:10% 8%;font:9px/1.45 var(--mono);color:#8b939f;background:linear-gradient(165deg,#14161c,#0a0c10)}
+.thumb-md-preview .kw{color:#c792ea}.thumb-md-preview .hi{color:#82aaff}.thumb-md-preview .cm{color:#69717d}
+.thumb-shade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.55) 100%);pointer-events:none}
+.thumb-badge{position:absolute;top:8px;left:8px;font-size:9px;font-weight:600;letter-spacing:.05em;padding:3px 6px;border-radius:5px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);color:#e8eaef;border:1px solid rgba(255,255,255,.12)}
+.cap{padding:10px 10px 11px}
+.cap b{display:block;font-size:12px;font-weight:550;letter-spacing:-.01em;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cap span{display:block;margin-top:3px;font-size:10.5px;color:var(--text-4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cursor-fake{position:absolute;width:18px;height:22px;right:14px;bottom:38px;pointer-events:none;filter:drop-shadow(0 2px 4px #0008);z-index:2}
+.viewer{flex:1;display:flex;flex-direction:column;min-width:0;background:#09090a}
+.view-head{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.back{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;font-size:12px;color:var(--text-2)}
+.back:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.back svg{width:15px;height:15px}
+.view-title{flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.view-actions{display:flex;gap:6px}
+.btn{font-size:11px;padding:6px 11px;border-radius:8px;border:1px solid #38393c;color:var(--text-2)}
+.btn:hover{background:rgba(255,255,255,.05)}
+.btn.primary{background:#e6e6e6;color:#08090a;border-color:#e6e6e6;font-weight:550}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px;padding:6px 16px 0;font-size:10.5px;color:var(--text-3)}
+.pill{padding:2px 8px;border-radius:6px;border:1px solid #2c2d31;background:#121316}
+.pill.accent{color:#b8b6ff;border-color:#7170ff44;background:#7170ff12}
+.view-tabs{display:flex;gap:3px;padding:8px 16px 0}
+.view-tabs button{font-size:11px;padding:5px 12px;border-radius:8px 8px 0 0;color:var(--text-3);border:1px solid transparent}
+.view-tabs button.on{color:var(--text);background:#101113;border-color:#333;border-bottom-color:#101113}
+.doc-frame{flex:1;min-height:0;margin:0 16px 16px;border:1px solid #333;border-radius:0 10px 10px 10px;background:#080809;overflow:hidden;display:flex;flex-direction:column}
+.nutrient-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:#0f1011;border-bottom:1px solid var(--line);font-size:11px;color:var(--text-3)}
+.nutrient-bar .tool{padding:5px 10px;border-radius:7px;color:var(--text-2);display:inline-flex;align-items:center;gap:5px}
+.nutrient-bar .tool.on{background:rgba(113,112,255,.22);color:#fff}
+.nutrient-bar .spacer{flex:1}
+.nutrient-bar .page-input{display:flex;align-items:center;gap:6px}
+.nutrient-bar input{width:32px;text-align:center;border-radius:6px;border:1px solid #333;background:#151617;color:var(--text);font-size:11px;padding:3px}
+.pdf-layout{flex:1;display:flex;min-height:0;background:#121316}
+.filmstrip{width:88px;flex:none;padding:10px 8px;overflow:auto;border-right:1px solid var(--line);background:#0c0d0e}
+.filmstrip button{display:block;width:100%;border-radius:4px;overflow:hidden;border:2px solid transparent;margin-bottom:8px;padding:0}
+.filmstrip button.on{border-color:var(--accent)}
+.filmstrip img{display:block;width:100%;aspect-ratio:8.5/11;object-fit:cover}
+.pdf-canvas{flex:1;overflow:auto;display:flex;justify-content:center;padding:20px}
+.pdf-sheet{position:relative;width:min(100%,440px);border-radius:2px;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06)}
+.pdf-sheet img{display:block;width:100%;height:auto}
+.pdf-sheet .annot{position:absolute;left:7%;top:34%;width:86%;height:10%;border:2px solid var(--accent);background:rgba(113,112,255,.15);border-radius:2px}
+.pdf-sheet .pin{position:absolute;right:8%;top:42%;width:20px;height:20px;background:var(--accent);border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px #0006}
+.cm-wrap{flex:1;overflow:auto;background:#0a0b0d}
+.cm{font:12px/1.7 var(--mono);tab-size:2}
+.cm .row{display:flex;min-height:1.7em}
+.cm .gutter{width:44px;text-align:right;padding-right:12px;color:var(--text-4);user-select:none;flex:none;border-right:1px solid var(--line);background:#0c0d0f}
+.cm .code{flex:1;padding-left:12px;color:#d7d9de;white-space:pre}
+.cm .row.hl .code{background:rgba(113,112,255,.12)}
+.cm .row.agent .code{background:rgba(76,183,130,.1);box-shadow:inset 3px 0 0 var(--ok)}
+.cm .tok-kw{color:#c792ea}.cm .tok-hi{color:#82aaff}.cm .tok-dim{color:#69717d}
+.preview-pane{flex:1;overflow:auto;padding:22px 24px;font-size:14px;line-height:1.65;color:#d7d9de}
+.preview-pane h2{font-size:17px;font-weight:590;margin:0 0 12px;letter-spacing:-.02em}
+.preview-pane h3{font-size:14px;margin:20px 0 8px}
+.preview-pane ul{padding-left:20px;color:var(--text-2)}
+.preview-pane .hl{background:rgba(113,112,255,.28);border-radius:3px;padding:0 3px}
+.agent-banner{margin:8px 16px 0;padding:9px 12px;border-radius:9px;font-size:11px;color:#b8e6cc;background:rgba(76,183,130,.12);border:1px solid rgba(76,183,130,.35)}
+.office-pane{flex:1;display:grid;place-items:center;padding:32px;text-align:center;color:var(--text-3)}
+.office-pane b{display:block;font-size:15px;color:var(--text-2);margin-bottom:12px;font-weight:550}
+.foot-note{display:flex;justify-content:space-between;gap:16px;margin-top:16px;font-size:12px;color:var(--text-3);max-width:1264px}
+.foot-note p{margin:0;line-height:1.55;max-width:820px}
+.foot-note strong{color:var(--text-2);font-weight:500}
+#status{margin-top:10px;font-size:11px;color:var(--text-3)}
 </style>
 </head>
 <body>
-<header>
-  <div class="eyebrow">Rocket / Library · DAM layout</div>
-  <h1>Browse files like assets, open like documents.</h1>
-  <p>Gallery + filter rail (inspired by production DAM tools such as Ranch), then full viewer on select. Thumbnails respect aspect ratio; agents use the same open/highlight tools after you pick a card.</p>
+<div class="page-header">
+  <div class="eyebrow">Rocket / Library</div>
+  <h1>Document library &amp; viewer</h1>
+  <p>DAM-style index beside chat — real preview crops from UI evals, Rocket tokens, drill-in to CM6 and Nutrient chrome.</p>
   <nav class="nav" aria-label="Mockup states">
-    <button type="button" data-state="browse" aria-pressed="true">01 · All files grid</button>
-    <button type="button" data-state="md" aria-pressed="false">02 · Open plan</button>
-    <button type="button" data-state="pdf" aria-pressed="false">03 · Open PDF</button>
-    <button type="button" data-state="office" aria-pressed="false">04 · Office handoff</button>
-    <button type="button" data-state="agent" aria-pressed="false">05 · Agent highlight</button>
+    <button type="button" data-state="browse" aria-pressed="true">01 · Grid</button>
+    <button type="button" data-state="md" aria-pressed="false">02 · Markdown</button>
+    <button type="button" data-state="pdf" aria-pressed="false">03 · PDF</button>
+    <button type="button" data-state="office" aria-pressed="false">04 · Office</button>
+    <button type="button" data-state="agent" aria-pressed="false">05 · Agent mark</button>
   </nav>
-</header>
+</div>
 <main>
-  <div class="stage" id="stage"></div>
-  <div class="note">
-    <p id="note"><strong>Grid first.</strong> Filter by source, type, and chat; sort by date. Card click → <code>library.document</code> viewer. Sidecar annotations unchanged from research decisions.</p>
-    <button type="button" id="reset">Reset mockup</button>
+  <div class="stage-wrap">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span>Rocket · Library mock</span><span style="flex:0;width:52px"></span></div>
+    <div class="stage" id="stage"></div>
   </div>
-  <div id="status" role="status">Click a thumbnail · hover shows Ranch-style card border</div>
+  <div class="foot-note">
+    <p id="note"><strong>Quality pass:</strong> thumbnails under <code>docs/mockups/assets/library/</code> (ImageMagick crops from UI eval screenshots). Implementation still generates previews on index — this mock shows target density and polish.</p>
+    <button type="button" class="btn" id="reset">Reset</button>
+  </div>
+  <div id="status" role="status"></div>
 </main>
 <script>
+const T='assets/library/'
 const icons={
-  lib:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19.5V4.5h16v15"/><path d="M8 4.5v15M4 9.5h16"/></svg>',
-  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 17a2 2 0 0 1-2 2H6.8a2 2 0 0 0-1.4.6L2 22V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg>',
-  globe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>',
-  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m15 18-6-6 6-6"/></svg>',
-  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11"/><circle cx="12" cy="10" r="2.5"/></svg>',
-  ext:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M15 3h6v6M10 14 21 3"/></svg>'
+  lib:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5V4.5h16v15"/><path d="M8 4.5v15M4 9.5h16"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>',
+  globe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4.5 7 4.5 9S15 21 12 21s-4.5-4-4.5-9S9 6 12 3z"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 6-6 6 6 6"/></svg>',
+  folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>',
+  ext:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 3h6v6M10 14 21 3"/></svg>',
+  cursor:'<svg width="18" height="22" viewBox="0 0 18 22" fill="none"><path d="M1 1l4 18 3-7 7-3L1 1z" fill="#fff" stroke="#111" stroke-width="1.2"/></svg>'
 }
 const assets=[
-  {id:'plan',title:'document-library-viewer-options.md',sub:'Workspace · rocketv1',type:'md',src:'workspace',chat:'Research · Library',tall:false},
-  {id:'plan2',title:'sources-plan.md',sub:'Workspace · docs',type:'md',src:'workspace',chat:'Facts chat',tall:false},
-  {id:'pdf',title:'sales-ai-statistics-2024.pdf',sub:'Download · Salesforce',type:'pdf',src:'download',chat:'Research · Library',tall:true},
-  {id:'pdf2',title:'onboarding-brief.pdf',sub:'Attachment · Review onboarding',type:'pdf',src:'attachment',chat:'Review onboarding',tall:true},
-  {id:'img',title:'capture-regions.png',sub:'Attachment · screen capture',type:'img',src:'attachment',chat:'Capture mock',tall:false,look:1},
-  {id:'img2',title:'source-marks-window.png',sub:'UI eval · screenshot',type:'img',src:'workspace',chat:'Evals',tall:false,look:2},
-  {id:'office',title:'Q3-board-deck.pptx',sub:'Download · 4.8 MB',type:'office',src:'download',chat:'—',tall:false},
-  {id:'code',title:'browser.ts',sub:'Workspace · src/host/tools',type:'md',src:'workspace',chat:'—',tall:false},
-  {id:'pdf3',title:'llmbook-29-2-browser-agents.pdf',sub:'Download · saved page',type:'pdf',src:'download',chat:'Reading',tall:true},
-  {id:'img3',title:'dashboard-failures.png',sub:'Capture · Northstar',type:'img',src:'attachment',chat:'Invite failures',tall:false,look:3},
-  {id:'md3',title:'attachments-roadmap.md',sub:'Workspace · docs',type:'md',src:'workspace',chat:'—',tall:false},
-  {id:'pdf4',title:'protected-brief.pdf',sub:'Attachment · locked',type:'pdf',src:'attachment',chat:'Draft',tall:true},
-  {id:'img4',title:'annotated-map.png',sub:'Attachment · pen layer',type:'img',src:'attachment',chat:'Capture',tall:true,look:1},
-  {id:'md4',title:'browser-agent-capabilities-plan.md',sub:'Workspace · open now',type:'md',src:'workspace',chat:'Browser plan',tall:false},
-  {id:'pdf5',title:'invoice-acme.pdf',sub:'Download · inbox',type:'pdf',src:'download',chat:'—',tall:true}
+  {id:'pdf',title:'sales-ai-statistics-2024.pdf',sub:'Download · Research · Library',type:'pdf',ratio:'3x4',img:T+'thumb-pdf-sales.jpg',hover:true},
+  {id:'img',title:'capture-regions.png',sub:'Attachment · screen capture',type:'img',ratio:'4x3',img:T+'thumb-capture.jpg'},
+  {id:'img2',title:'source-marks-window.png',sub:'Workspace · UI eval',type:'img',ratio:'4x3',img:T+'thumb-source-marks.jpg'},
+  {id:'plan',title:'document-library-viewer-options.md',sub:'Workspace · docs/research',type:'md',ratio:'4x3',img:T+'thumb-plan-panel.jpg'},
+  {id:'pdf2',title:'onboarding-brief.pdf',sub:'Attachment · Review onboarding',type:'pdf',ratio:'3x4',img:T+'thumb-artifact-tall.jpg'},
+  {id:'plan2',title:'sources-plan.md',sub:'Workspace · docs',type:'md',ratio:'4x3'},
+  {id:'md3',title:'attachments-roadmap.md',sub:'Workspace · docs',type:'md',ratio:'4x3',img:T+'thumb-plan-panel.jpg'},
+  {id:'office',title:'Q3-board-deck.pptx',sub:'Download · 4.8 MB',type:'office',ratio:'4x3',img:T+'thumb-office.jpg'},
+  {id:'img3',title:'plan-open-window.png',sub:'Artifact · plan drawer',type:'img',ratio:'4x3',img:T+'thumb-plan-panel.jpg'},
+  {id:'pdf3',title:'llmbook-browser-agents.pdf',sub:'Download · saved page',type:'pdf',ratio:'3x4',img:T+'thumb-pdf-sales.jpg'},
+  {id:'code',title:'browser.ts',sub:'Workspace · host/tools',type:'md',ratio:'4x3'},
+  {id:'img4',title:'annotated-capture.png',sub:'Attachment · pen layer',type:'img',ratio:'3x4',img:T+'thumb-capture.jpg'},
+  {id:'md4',title:'browser-agent-capabilities-plan.md',sub:'Workspace · open in artifact',type:'md',ratio:'4x3',img:T+'thumb-artifact-tall.jpg'},
+  {id:'pdf4',title:'invoice-acme.pdf',sub:'Download · inbox',type:'pdf',ratio:'3x4',img:T+'thumb-pdf-sales.jpg'},
+  {id:'img5',title:'eval-shell.png',sub:'Workspace · .artifacts/ui',type:'img',ratio:'4x3',img:T+'thumb-source-marks.jpg'}
 ]
-const mdLines=['# Document library & viewer','','## Decisions (locked)','','- PDF: Nutrient Web SDK','- Markdown: CodeMirror 6 source-first','- Sidecar persistence','','### Agent tools','','library.list · document.highlight · document.gotoPage']
+const mdRows=[
+  ['# Document library & viewer',''],
+  ['## Decisions (locked)',''],
+  ['',''],
+  ['- PDF: ','Nutrient Web SDK','kw'],
+  ['- Markdown: ','CodeMirror 6 source-first','kw'],
+  ['- Persistence: ','host sidecar','kw'],
+  ['',''],
+  ['### Agent tools','hi'],
+  ['',''],
+  ['library.list · document.highlight','','dim'],
+  ['document.gotoPage · sidecar JSON','','dim']
+]
 let state='browse',selected=null,tab='source',hoverId='pdf'
 const stage=document.getElementById('stage'),statusEl=document.getElementById('status'),noteEl=document.getElementById('note')
 function el(t,c,h){const n=document.createElement(t);if(c)n.className=c;if(h!==undefined)n.innerHTML=h;return n}
-function thumbFor(a){
-  const wrap=el('div','thumb'+(a.tall?' is-tall':''))
-  const inner=el('div','thumb-inner')
-  if(a.type==='pdf'){inner.className+=' thumb-pdf';inner.innerHTML='<div class="sheet"><strong style="font-size:7px">'+a.title.replace('.pdf','').slice(0,28)+'</strong><br><br>Lorem summary lines for thumbnail preview…</div>'}
-  else if(a.type==='md'){inner.className+=' thumb-md';inner.textContent='# '+a.title.replace('.md','').slice(0,20)+'\n\n- Nutrient PDF\n- CM6 source'}
-  else if(a.type==='img'){inner.className+=' thumb-img l'+(a.look||1)}
-  else{inner.className+=' thumb-office';inner.innerHTML='<span>PPT</span>'}
-  wrap.append(inner)
-  wrap.append(el('span','thumb-badge',a.type==='pdf'?'PDF':a.type==='md'?'MD':a.type==='img'?'PNG':'PPTX'))
+function mdThumb(){
+  const d=el('div','thumb-md-preview')
+  d.innerHTML='<span class="kw">#</span> document-library<br><br><span class="hi">##</span> Decisions<br><span class="cm">- Nutrient Web SDK</span><br><span class="cm">- CM6 source-first</span>'
+  return d
+}
+function thumbNode(a){
+  const wrap=el('div','thumb ratio-'+(a.ratio||'4x3'))
+  if(a.img){const img=el('img');img.src=a.img;img.alt='';img.loading='lazy';wrap.append(img)}
+  else if(a.type==='md'||a.type==='code')wrap.append(mdThumb())
+  else wrap.style.background='#1a1b1f'
+  wrap.append(el('div','thumb-shade'))
+  const badge=a.type==='pdf'?'PDF':a.type==='md'||a.type==='code'?'MD':a.type==='office'?'PPTX':'PNG'
+  wrap.append(el('span','thumb-badge',badge))
   return wrap
 }
-function buildGrid(onPick){
+function buildGrid(pick){
   const grid=el('div','grid')
   assets.forEach(a=>{
     const card=el('button','asset'+(hoverId===a.id?' is-hover':'')+(selected===a.id&&state!=='browse'?' is-on':''))
-    card.append(thumbFor(a),el('div','cap',`<b>${a.title}</b><span>${a.sub}</span>`))
-    card.onmouseenter=()=>{hoverId=a.id;statusEl.textContent=a.title;document.querySelectorAll('.asset').forEach(x=>x.classList.toggle('is-hover',x===card))}
-    card.onclick=()=>{selected=a.id;onPick(a)}
+    card.append(thumbNode(a),el('div','cap',`<b>${a.title}</b><span>${a.sub}</span>`))
+    if(a.hover&&state==='browse')card.append(el('div','cursor-fake',icons.cursor))
+    card.onmouseenter=()=>{hoverId=a.id;statusEl.textContent=a.title;document.querySelectorAll('.asset').forEach(n=>n.classList.toggle('is-hover',n===card))}
+    card.onclick=()=>{selected=a.id;pick(a)}
     grid.append(card)
   })
   return grid
 }
-function buildFilters(){
-  const side=el('aside','dam-side')
-  side.innerHTML=`<h2>${icons.pin} All files</h2>`
-  ;[
-    ['Source','All sources',['All sources','Workspace','Downloads','Attachments']],
-    ['Type','All types',['All types','PDF','Markdown & code','Images','Office']],
-    ['Chat','Any chat',['Any chat','This chat','Research · Library','Review onboarding']],
-    ['Sort','By date modified',['By date modified','By name','By type']]
-  ].forEach(([label,val,opts])=>{
-    const f=el('div','field')
-    f.innerHTML=`<label>${label}</label>`
-    const s=el('select');opts.forEach(o=>{const op=el('option','',o);if(o===val)op.selected=true;s.append(op)})
-    f.append(s);side.append(f)
+function filters(){
+  const s=el('aside','dam-side')
+  s.innerHTML=`<h2>${icons.folder} All files</h2>`
+  const opts={
+    Source:['All sources','Workspace','Downloads','Attachments'],
+    Type:['All types','PDF','Markdown & code','Images','Office'],
+    Chat:['Any chat','This chat','Research · Library','Review onboarding'],
+    Sort:['Date modified','Name','Type']
+  }
+  Object.entries(opts).forEach(([label,values])=>{
+    const f=el('div','field');f.innerHTML=`<label>${label}</label>`
+    const sel=el('select');values.forEach(v=>sel.append(el('option','',v)))
+    f.append(sel);s.append(f)
   })
-  const clr=el('button','clear','CLEAR FILTERS');clr.onclick=()=>statusEl.textContent='Filters cleared (mock).'
-  side.append(clr)
-  return side
+  const c=el('button','clear','CLEAR FILTERS');c.onclick=()=>statusEl.textContent='Filters cleared (mock).';s.append(c)
+  return s
 }
-function buildViewer(cur){
+function viewer(cur){
   const v=el('div','viewer')
   const head=el('div','view-head')
   const back=el('button','back',icons.back+' All files')
   back.onclick=()=>{state='browse';render()}
-  head.append(back,el('span','view-title',cur.title))
-  const act=el('div','view-actions')
-  act.innerHTML='<button type="button" class="text-btn">Reveal</button><button type="button" class="text-btn primary">Save annotated copy</button>'
-  head.append(act)
-  v.append(head)
-  v.append(el('div','doc-meta',`<span class="pill">${cur.src}</span><span class="pill">${cur.chat}</span><span>Sidecar on host</span>`))
-  if(state==='agent')v.append(el('div','agent-toast','document.highlight · lines 10–11 (agent)'))
-  const body=el('div','doc-body')
+  head.append(back,el('span','view-title',cur.title),el('div','view-actions',`<button type="button" class="btn">Reveal</button><button type="button" class="btn primary">Save annotated copy</button>`))
+  v.append(head,el('div','meta-row',`<span class="pill">${cur.type}</span><span class="pill accent">Sidecar</span><span class="pill">${cur.sub.split('·')[0].trim()}</span>`))
+  if(state==='agent')v.append(el('div','agent-banner','Agent · document.highlight on lines 10–11 (same dispatcher as rocket_ui_act)'))
+  const frame=el('div','doc-frame')
   if(cur.type==='md'||cur.id==='code'){
+    const tabs=el('div','view-tabs')
+    const b1=el('button',tab==='source'?'on':'','Source')
+    const b2=el('button',tab==='preview'?'on':'','Preview')
+    b1.onclick=()=>{tab='source';render()};b2.onclick=()=>{tab='preview';render()}
+    tabs.append(b1,b2);v.append(tabs)
     if(tab==='preview'){
-      body.innerHTML='<div class="preview"><h2>Document library</h2><p>DAM-style grid, then <span class="hl">Nutrient + CM6</span> viewer.</p></div>'
+      frame.innerHTML='<div class="preview-pane"><h2>Document library & viewer</h2><p>Grid index with <span class="hl">real preview crops</span>, then Nutrient + CM6.</p><h3>Decisions</h3><ul><li>Nutrient Web SDK for PDF</li><li>CM6 source-first for plans</li></ul></div>'
     }else{
-      const cm=el('div','cm')
-      mdLines.forEach((line,i)=>{
-        const row=el('div','line'+(state==='agent'&&(i===9||i===10)?' hl-agent':''))
-        let c=line.replace(/</g,'&lt;')
-        if(line.includes('Nutrient'))c=c.replace('Nutrient','<span class="mark-hl">Nutrient</span>')
-        row.innerHTML=`<span class="ln">${i+1}</span><span class="code">${c||' '}</span>`
-        cm.append(row)
+      const wrap=el('div','cm-wrap');const cm=el('div','cm')
+      let ln=1
+      mdRows.forEach(row=>{
+        const r=el('div','row'+(state==='agent'&&ln>=10&&ln<=11?' agent':ln===4?' hl':''))
+        let html=''
+        if(row.length===1)html=row[0]
+        else if(row[2]==='kw')html=`<span class="tok-dim">${row[0]}</span><span class="tok-kw">${row[1]}</span>`
+        else if(row[2]==='hi')html=`<span class="tok-hi">${row[0]}</span>`
+        else if(row[2]==='dim')html=`<span class="tok-dim">${row[0]}</span>`
+        else html=row[0]
+        r.innerHTML=`<span class="gutter">${ln}</span><span class="code">${html||' '}</span>`;cm.append(r);ln++
       })
-      body.append(cm)
-      const tabs=el('div','view-tabs')
-      const t1=el('button',tab==='source'?'on':'','Source')
-      const t2=el('button',tab==='preview'?'on':'','Preview')
-      t1.onclick=()=>{tab='source';render()}
-      t2.onclick=()=>{tab='preview';render()}
-      v.insertBefore(tabs,body);tabs.append(t1,t2)
+      wrap.append(cm);frame.append(wrap)
     }
   }else if(cur.type==='pdf'){
-    body.innerHTML=`<div class="toolbar"><button type="button" class="on">Highlight</button><button type="button">Note</button><button type="button">Page 2 / 6</button></div>
-      <div class="pdf-page"><article class="paper"><h2>Sales teams using AI…</h2><p>Survey excerpt.</p><p class="hl">1.3× quota attainment.</p><div class="annot-rect"></div><div class="note-pin"></div></article></div>`
+    frame.innerHTML=`<div class="nutrient-bar">
+      <span class="tool on">Highlight</span><span class="tool">Note</span><span class="tool">Ink</span>
+      <span class="spacer"></span><span class="page-input">Page <input value="1" aria-label="Page"> of 6</span></div>
+      <div class="pdf-layout"><div class="filmstrip">
+        <button type="button" class="on"><img src="${T}thumb-pdf-sales.jpg" alt=""></button>
+        <button type="button"><img src="${T}thumb-artifact-tall.jpg" alt=""></button>
+        <button type="button"><img src="${T}thumb-pdf-sales.jpg" alt=""></button>
+      </div><div class="pdf-canvas"><div class="pdf-sheet"><img src="${T}thumb-pdf-sales.jpg" alt="PDF page">
+        <div class="annot"></div><div class="pin"></div></div></div></div>`
   }else if(cur.type==='office'){
-    body.innerHTML=`<div class="office-empty"><div><b>${cur.title}</b><br><br><button type="button" class="text-btn primary">${icons.ext} Open in default app</button><p style="margin-top:12px;font-size:11px">Still listed in the grid with a slide thumbnail.</p></div></div>`
+    frame.innerHTML=`<div class="office-pane"><div><b>${cur.title}</b>Preview ships in a later phase.<br><br><button type="button" class="btn primary">${icons.ext} Open in default app</button></div></div>`
   }else{
-    body.innerHTML='<div class="pdf-page"><div style="width:min(100%,420px);aspect-ratio:16/10;background:linear-gradient(135deg,#2a3548,#4a5568);border-radius:8px"></div></div>'
+    frame.innerHTML=`<div class="pdf-canvas"><img src="${cur.img||T+'thumb-capture.jpg'}" alt="" style="max-width:min(100%,520px);border-radius:8px;box-shadow:0 12px 40px #0008"></div>`
   }
-  v.append(body)
+  v.append(frame)
   return v
+}
+function chatPane(){
+  const c=el('section','chat')
+  c.innerHTML=`<div class="chat-head"><b>Research · Library</b><span>Claude</span></div>
+  <div class="chat-scroll"><div class="user-bubble">Gallery layout like Ranch — but our files.</div>
+  <div class="turn"><div class="meta">Claude</div>Filter rail, real thumbnails, open for Nutrient/CM6. Sidecar annotations unchanged.</div></div>
+  <div class="dock"><span class="chat-tab">Research · Library</span><div class="composer-box"><div class="hint">Reply…</div>
+  <div class="composer-bar"><span>~/Desktop/rocketv1</span><span class="send">↑</span></div></div></div>`
+  return c
 }
 function render(){
   stage.replaceChildren()
   const win=el('div','win')
   const rail=el('div','rail')
-  rail.innerHTML=`<button type="button" aria-label="Chat">${icons.chat}</button><button type="button" aria-label="Browser">${icons.globe}</button><button type="button" class="is-on" aria-label="Library">${icons.lib}</button>`
-  const chat=el('section','chat')
-  chat.innerHTML=`<div class="chat-head"><b>Research · Library</b><span>Claude</span></div>
-    <div class="chat-body"><div class="bubble">More like a DAM gallery — Ranch-style.</div>
-    <div class="assistant"><div class="meta">Claude</div>Filter rail + thumbnails; open card for Nutrient/CM6.</div></div>
-    <div class="dock"><span class="tab">Research · Library</span><div class="composer">Reply…</div></div>`
+  rail.innerHTML=`<button type="button" class="rail-btn" aria-label="Chat">${icons.chat}</button>
+    <button type="button" class="rail-btn" aria-label="Browser">${icons.globe}</button>
+    <button type="button" class="rail-btn is-on" aria-label="Library">${icons.lib}</button>`
   const library=el('section','library')
   const dam=el('div','dam')
   if(state==='browse'){
     const main=el('div','dam-main')
-    main.append(el('div','dam-toolbar',`<span class="count">${assets.length} files</span><div class="search"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8a8f98" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input placeholder="Search library…" aria-label="Search"></div><span>Grid</span>`))
+    main.append(el('div','dam-toolbar',`<span class="count">${assets.length} files</span>
+      <div class="view-toggle"><button type="button" class="on">Grid</button><button type="button">List</button></div>
+      <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8f98" stroke-width="2"><circle cx="10" cy="10" r="6"/><path d="m16 16 4 4"/></svg>
+      <input placeholder="Search library…" aria-label="Search"></div>`))
     const wrap=el('div','grid-wrap')
     wrap.append(buildGrid(a=>{
       selected=a.id
@@ -270,32 +349,23 @@ function render(){
       render()
     }))
     main.append(wrap)
-    dam.append(buildFilters(),main)
+    dam.append(filters(),main)
   }else{
     if(state==='agent'){selected=selected||'plan';tab='source'}
     if(state==='md'){selected=selected||'plan';tab=tab||'source'}
     if(state==='pdf')selected=selected||'pdf'
     if(state==='office')selected=selected||'office'
-    const cur=assets.find(x=>x.id===selected)||assets[0]
-    dam.append(buildViewer(cur))
+    dam.append(viewer(assets.find(x=>x.id===selected)||assets[0]))
   }
   library.append(dam)
-  win.append(rail,chat,library)
+  win.append(rail,chatPane(),library)
   stage.append(win)
-  document.querySelectorAll('[data-state]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.state===state||(state!=='browse'&&b.dataset.state===state))))
-  const notes={browse:'01 · DAM grid: filter rail + thumbnails (Ranch-style).',md:'02 · Plan viewer after card click.',pdf:'03 · PDF viewer with annotation chrome.',office:'04 · Office from grid → external app.',agent:'05 · Agent highlight in source view.'}
-  noteEl.innerHTML=`<strong>${(notes[state]||notes.browse).split('·')[0]}</strong> ${(notes[state]||notes.browse).replace(/^[^·]+·\s*/,'')}`
+  document.querySelectorAll('[data-state]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.state===state)))
+  const notes={browse:'Grid with real thumbnail crops and hover affordance.',md:'CM6 source + preview tabs.',pdf:'Nutrient-style bar + filmstrip.',office:'External open.',agent:'Agent line highlights in editor.'}
+  noteEl.innerHTML=`<strong>${state==='browse'?'01':state}</strong> ${notes[state]||notes.browse}`
+  statusEl.textContent=state==='browse'?'Hover sales PDF card — pointer shows selection affordance.':'Viewer mock · Back returns to grid.'
 }
-function setState(s){
-  state=s
-  if(s==='browse'){selected=null;tab='source'}
-  if(s==='md'){selected='plan';tab='source'}
-  if(s==='pdf')selected='pdf'
-  if(s==='office')selected='office'
-  if(s==='agent'){selected='plan';tab='source'}
-  statusEl.textContent='State: '+s
-  render()
-}
+function setState(s){state=s;if(s==='browse'){selected=null;tab='source'};if(s==='md'){selected='plan';tab='source'};if(s==='pdf')selected='pdf';if(s==='office')selected='office';if(s==='agent'){selected='plan';tab='source'};render()}
 document.querySelectorAll('[data-state]').forEach(b=>b.onclick=()=>setState(b.dataset.state))
 document.getElementById('reset').onclick=()=>setState('browse')
 render()
