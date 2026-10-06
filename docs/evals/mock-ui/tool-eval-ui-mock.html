@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Tool eval UI mock — Rocket Evals</title>
+  <style>
+    :root {
+      --bg: #0f1114;
+      --panel: #161a20;
+      --line: rgba(255,255,255,0.08);
+      --text: #e8eaed;
+      --text-2: #c4c8cc;
+      --text-3: #9aa0a6;
+      --text-4: #6b7280;
+      --accent: #7c9cff;
+      --good: #86efac;
+      --bad: #fca5a5;
+      --mono: ui-monospace, "Geist Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 13px/1.45 system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .proto-bar {
+      position: sticky; top: 0; z-index: 10;
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 16px;
+      background: #1a1f28;
+      border-bottom: 1px solid var(--line);
+    }
+    .proto-bar strong { margin-right: 8px; color: var(--accent); }
+    .proto-bar button {
+      padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04); color: var(--text-2); cursor: pointer;
+    }
+    .proto-bar button.is-on { background: rgba(124,156,255,0.2); color: var(--text); border-color: var(--accent); }
+    .note {
+      padding: 12px 16px; margin: 0;
+      background: rgba(124,156,255,0.08);
+      border-bottom: 1px solid var(--line);
+      color: var(--text-3);
+      max-width: 900px;
+    }
+    .screen { display: none; padding: 0; }
+    .screen.is-on { display: block; }
+    .eval-root { display: flex; min-height: calc(100vh - 100px); }
+    .sidebar {
+      width: 200px; flex-shrink: 0;
+      border-right: 1px solid var(--line);
+      background: rgba(0,0,0,0.25);
+      padding: 10px 8px;
+    }
+    .org { font-weight: 600; font-size: 14px; padding: 4px 8px; }
+    .nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-4); padding: 8px 10px 4px; }
+    .nav { display: block; width: 100%; text-align: left; padding: 7px 10px; margin: 0;
+      border: none; border-radius: 7px; background: none; color: var(--text-3); cursor: default; }
+    .nav.is-active { background: rgba(255,255,255,0.06); color: var(--text); font-weight: 500; }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+    }
+    .title { margin: 0; font-size: 18px; font-weight: 600; }
+    .btn {
+      padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04); color: var(--text); cursor: pointer; font-size: 13px;
+    }
+    .btn-primary { background: var(--accent); border-color: transparent; color: #0f1114; font-weight: 600; }
+    .subtabs { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+    .subtab { padding: 6px 12px; border-radius: 6px; border: none; background: none; color: var(--text-4); cursor: pointer; }
+    .subtab.is-on { background: rgba(255,255,255,0.06); color: var(--text); }
+    .content { padding: 16px; overflow: auto; }
+    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .metric { padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); }
+    .metric-label { font-size: 12px; color: var(--text-4); }
+    .metric-value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+    .metric-sub { font-size: 11px; color: var(--text-4); margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    th { color: var(--text-4); font-weight: 500; }
+    .mono { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px;
+      background: rgba(255,255,255,0.06); color: var(--text-4); }
+    .badge-good { background: rgba(34,197,94,0.15); color: var(--good); }
+    .badge-bad { background: rgba(248,113,113,0.15); color: var(--bad); }
+    .split { display: grid; grid-template-columns: 1fr 380px; gap: 16px; align-items: start; }
+    .sheet {
+      border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+      padding: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .sheet h3 { margin: 0 0 12px; font-size: 15px; }
+    label { display: block; font-size: 12px; color: var(--text-4); margin: 12px 0 4px; }
+    select, textarea {
+      width: 100%; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid var(--line); background: rgba(0,0,0,0.3); color: var(--text); font: inherit;
+    }
+    textarea { min-height: 72px; resize: vertical; font-family: var(--mono); font-size: 11px; }
+    .checkrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .checkrow label { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text-2); }
+    .progress { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06); overflow: hidden; margin: 12px 0; }
+    .progress > div { height: 100%; background: var(--accent); width: 62%; }
+    .chat-col {
+      border-left: 1px solid var(--line);
+      background: rgba(0,0,0,0.15);
+      padding: 12px;
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .chat-col strong { color: var(--text); }
+    .compare-grid { overflow: auto; }
+    .alt-banner {
+      margin: 16px; padding: 12px 16px; border-radius: 10px;
+      border: 1px dashed var(--accent); color: var(--text-3);
+    }
+    h2.section { font-size: 14px; margin: 24px 0 8px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <strong>Prototype screens</strong>
+    <button type="button" class="is-on" data-screen="tools">1 · Tools hub</button>
+    <button type="button" data-screen="run">2 · Run tool eval (sheet)</button>
+    <button type="button" data-screen="live">3 · Running (watch chat)</button>
+    <button type="button" data-screen="results">4 · Experiment results</button>
+    <button type="button" data-screen="alt">Alt · Playground-style</button>
+  </div>
+  <p class="note">
+    This is a <strong>UX mock only</strong> — not shipped UI. Click the tabs above. Screen 1–4 is the default proposal;
+    <strong>Alt</strong> is a different mental model if you wanted provider columns like Playgrounds instead of a batch experiment.
+  </p>
+
+  <!-- Screen 1: Tools hub with Evaluate sub-tab -->
+  <div class="screen is-on" id="screen-tools">
+    <div class="eval-root">
+      <aside class="sidebar">
+        <div class="org">rocketv1</div>
+        <div class="nav-label">Configure</div>
+        <span class="nav is-active">Tools</span>
+        <div class="nav-label">Evaluate</div>
+        <span class="nav">Experiments</span>
+        <span class="nav">Playgrounds</span>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <h1 class="title">Tools</h1>
+          <div>
+            <button type="button" class="btn">Refresh ledger</button>
+            <button type="button" class="btn btn-primary" onclick="showScreen('run')">Run tool eval…</button>
+          </div>
+        </header>
+        <div class="subtabs">
+          <button type="button" class="subtab">Health</button>
+          <button type="button" class="subtab is-on">Evaluate</button>
+          <button type="button" class="subtab">Variants</button>
+        </div>
+        <div class="content">
+          <p class="mono" style="margin-top:0;color:var(--text-3)">
+            Score tools with ledger reliability + scenario graders. Real providers; results become an Experiment.
+          </p>
+          <div class="cards">
+            <div class="metric">
+              <div class="metric-label">rocket_ui_run · TES</div>
+              <div class="metric-value">0.78</div>
+              <div class="metric-sub">R 0.82 · P 0.75 · 41 calls</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">goal_report · TES</div>
+              <div class="metric-value">0.91</div>
+              <div class="metric-sub">R 0.95 · P 0.88 · 10 calls</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Last tool eval</div>
+              <div class="metric-value" style="font-size:14px">Oct 5</div>
+              <div class="metric-sub">6 cells · 2 variants</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Active variant</div>
+              <div class="metric-value" style="font-size:14px">—</div>
+              <div class="metric-sub">Shipped = baseline</div>
+            </div>
+          </div>
+          <h2 class="section">Compare variants (last run)</h2>
+          <table>
+            <thead>
+              <tr><th>Variant</th><th>P (scenarios)</th><th>R (ledger)</th><th>TES</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">baseline (shipped)</td>
+                <td>75%</td><td>0.82</td><td>0.78</td>
+                <td><span class="badge">production</span></td>
+              </tr>
+              <tr>
+                <td class="mono">v2-pane-first</td>
+                <td class="badge-good">92%</td><td>0.82</td><td class="badge-good">0.88</td>
+                <td><button type="button" class="btn" style="padding:4px 10px">Promote…</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <h2 class="section">Scenario pack</h2>
+          <p class="mono">docs/evals/scenarios/tools/rocket_ui_run.jsonl · 4 rows · graders: no_tool_error_codes, tool_called:rocket_ui_run</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen 2: Run sheet -->
+  <div class="screen" id="screen-run">
+    <div class="eval-root">
+      <aside class="sidebar"><div class="org">rocketv1</div><span class="nav is-active">Tools</span></aside>
+      <div class="main" style="position:relative">
+        <header class="topbar"><h1 class="title">Tools</h1></header>
+        <div class="content split">
+          <div style="opacity:0.35;filter:blur(1px)">
+            <div class="cards"><div class="metric"><div class="metric-label">TES</div><div class="metric-value">—</div></div></div>
+          </div>
+          <div class="sheet">
+            <h3>Run tool eval</h3>
+            <p style="margin:0 0 12px;color:var(--text-4);font-size:12px">
+              Same flow as <strong>Run cell</strong>, but runs a <em>bundle</em> of scenarios × providers × tool variants.
+              Creates one Experiment when finished.
+            </p>
+            <label>Tool</label>
+            <select><option>rocket_ui_run</option><option>goal_report</option></select>
+            <label>Scenario pack</label>
+            <select><option>rocket_ui_run.jsonl (4 scenarios)</option></select>
+            <label>Variants to compare</label>
+            <div class="checkrow">
+              <label><input type="checkbox" checked /> baseline (shipped)</label>
+              <label><input type="checkbox" checked /> v2-pane-first</label>
+              <label><input type="checkbox" /> v3-shorter-desc</label>
+            </div>
+            <label>Providers (from scenario matrix)</label>
+            <div class="checkrow">
+              <label><input type="checkbox" checked /> Claude</label>
+              <label><input type="checkbox" checked /> Codex</label>
+              <label><input type="checkbox" /> Cursor</label>
+            </div>
+            <label>Execution</label>
+            <select>
+              <option>Watch in chat — one cell at a time, you see each turn (like Run cell)</option>
+              <option>Batch — run all cells in background, notify when done</option>
+            </select>
+            <label>Estimated cells</label>
+            <p class="mono" style="margin:4px 0">4 scenarios × 2 variants × 2 providers = 16 turns</p>
+            <div style="display:flex;gap:8px;margin-top:16px">
+              <button type="button" class="btn" onclick="showScreen('tools')">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="showScreen('live')">Start</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen 3: Running with chat column -->
+  <div class="screen" id="screen-live">
+    <div class="eval-root">
+      <aside class="sidebar"><span class="nav is-active">Tools</span></aside>
+      <div class="main">
+        <header class="topbar">
+          <h1 class="title">Tool eval · running</h1>
+          <button type="button" class="btn" onclick="showScreen('results')">Skip to results (mock)</button>
+        </header>
+        <div class="content" style="display:grid;grid-template-columns:1fr 320px;gap:0;padding:0;min-height:480px">
+          <div style="padding:16px">
+            <p class="mono">Experiment: tool-eval-2026-10-06 · cell 7/16</p>
+            <div class="progress"><div></div></div>
+            <table>
+              <tr><td>Scenario</td><td class="mono">ui-run-pane-select</td></tr>
+              <tr><td>Variant</td><td class="mono">v2-pane-first</td></tr>
+              <tr><td>Provider</td><td>Codex</td></tr>
+              <tr><td>Graders (live)</td><td><span class="badge-good">tool_called</span> <span class="badge-good">no errors</span></td></tr>
+            </table>
+            <p style="color:var(--text-4);font-size:12px;margin-top:16px">
+              Eval panel stays open; <strong>main chat column</strong> shows the live turn (same as Run cell today).
+              You can Stop or Skip cell.
+            </p>
+            <button type="button" class="btn">Skip cell</button>
+            <button type="button" class="btn">Stop run</button>
+          </div>
+          <div class="chat-col">
+            <strong>← Main Rocket column (not drawn here)</strong>
+            <p style="margin-top:12px">Composer fills scenario message. Turn runs with <em>variant overlay</em> on MCP tools only — normal chat history unchanged.</p>
+            <p>When turn completes, graders run on ledger-slice + transcript, then auto-advance to next cell.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen 4: Results in Experiments -->
+  <div class="screen" id="screen-results">
+    <div class="eval-root">
+      <aside class="sidebar">
+        <div class="nav-label">Evaluate</div>
+        <span class="nav is-active">Experiments</span>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <div>
+            <p class="mono" style="margin:0">Experiments / tool-eval-2026-10-06</p>
+            <h1 class="title">rocket_ui_run variants</h1>
+          </div>
+          <button type="button" class="btn btn-primary">Promote v2-pane-first…</button>
+        </header>
+        <div class="content">
+          <div class="cards">
+            <div class="metric"><div class="metric-label">Pass rate</div><div class="metric-value badge-good">84%</div></div>
+            <div class="metric"><div class="metric-label">Best variant</div><div class="metric-value" style="font-size:14px">v2-pane-first</div></div>
+            <div class="metric"><div class="metric-label">Cells</div><div class="metric-value">16</div></div>
+            <div class="metric"><div class="metric-label">Kind</div><div class="metric-value" style="font-size:14px">tool-matrix</div></div>
+          </div>
+          <h2 class="section">Grid: scenario × variant × provider</h2>
+          <table class="compare-grid">
+            <thead>
+              <tr><th>Scenario</th><th>Variant</th><th>Claude</th><th>Codex</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="mono">pane-select</td><td>baseline</td><td><span class="badge-good">pass</span></td><td><span class="badge-bad">fail</span></td></tr>
+              <tr><td class="mono">pane-select</td><td>v2-pane-first</td><td><span class="badge-good">pass</span></td><td><span class="badge-good">pass</span></td></tr>
+              <tr><td class="mono">snapshot-readonly</td><td>baseline</td><td><span class="badge-good">pass</span></td><td><span class="badge-good">pass</span></td></tr>
+            </tbody>
+          </table>
+          <p class="mono" style="margin-top:12px">Click a cell → turn.json + graders.json + ledger-slice (same as matrix artifacts today)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alt: Playground style -->
+  <div class="screen" id="screen-alt">
+    <div class="alt-banner">
+      <strong>Alternative UX</strong> — if you wanted tool eval to feel like <em>Playgrounds</em> (columns = providers or variants)
+      instead of a batch Experiment wizard. Say which is closer to what you imagine.
+    </div>
+    <div class="eval-root">
+      <aside class="sidebar"><span class="nav is-active">Playgrounds</span></aside>
+      <div class="main">
+        <header class="topbar">
+          <h1 class="title">Tool playground · rocket_ui_run</h1>
+          <button type="button" class="btn btn-primary">+ Experiment</button>
+        </header>
+        <div class="content">
+          <p class="mono">Task columns: baseline | v2-pane-first · Rows: scenario inputs · Scorer columns: TES graders</p>
+          <table>
+            <thead>
+              <tr><th>#</th><th>Input (scenario)</th><th>baseline / Claude</th><th>v2 / Claude</th><th>baseline / Codex</th><th>v2 / Codex</th><th>% pass</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td class="mono">Fill pane 1 message…</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+              <tr><td>2</td><td class="mono">Take snapshot…</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+            </tbody>
+          </table>
+          <p style="color:var(--text-4)">Run overwrites grid; diff vs base variant. Heavier UI, better for iterative tweaking.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(el => el.classList.remove('is-on'))
+      document.getElementById('screen-' + id)?.classList.add('is-on')
+      document.querySelectorAll('.proto-bar button').forEach(btn => {
+        btn.classList.toggle('is-on', btn.dataset.screen === id)
+      })
+    }
+    document.querySelectorAll('.proto-bar button').forEach(btn => {
+      btn.addEventListener('click', () => showScreen(btn.dataset.screen))
+    })
+  </script>
+</body>
+</html>
