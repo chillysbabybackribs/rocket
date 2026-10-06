@@ -24,6 +24,7 @@ import { memoryTools } from './tools/memory.ts'
 import { selfCheckTools } from './tools/self-check.ts'
 import { uiSnapshotTools } from './tools/ui-snapshot.ts'
 import { rocketSourceRoot, UiRunManager } from './tools/ui-run.ts'
+import { LiveUiRunner } from './tools/ui-live.ts'
 import { Teamwork } from './teamwork.ts'
 import { workspaceContext } from './workspace.ts'
 import { UiTestAdapter, uiTestProfile } from './ui-test.ts'
@@ -121,7 +122,8 @@ function onBrowserReply(reply: BrowserAgentReply): void {
 }
 
 // The tools are served before any provider starts, so every session is born knowing them.
-const uiRuns = new UiRunManager(rocketSourceRoot())
+const liveUi = new LiveUiRunner(rocketSourceRoot(), join(dataDir, 'ui-runs'), askBrowser)
+const uiRuns = new UiRunManager(rocketSourceRoot(), undefined, (args, chatId) => liveUi.run(args, chatId))
 const tools = new ToolChannel(
   new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', message, { provider, chatId }))
     .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results')))
@@ -276,6 +278,7 @@ async function shutdown(): Promise<void> {
   exiting = true
   goals.shutdown()
   await uiRuns.shutdown()
+  await liveUi.shutdown()
   await Promise.race([hub.shutdown(), new Promise((resolve) => setTimeout(resolve, 1_500))])
   stopAllProcessGroups()
   tools.stop()

@@ -377,8 +377,9 @@ export type BrowserAgentOp =
   | { op: 'rest'; chat: string }
   /** The chat is gone: its own tab is closed. */
   | { op: 'forget'; chat: string }
-/** The existing host-to-main channel also carries read-only app UI captures. */
-export type MainAgentOp = BrowserAgentOp | { op: 'uiSnapshot' }
+/** The host-to-main channel also carries app UI captures and live automation connections. */
+export type MainAgentOp = BrowserAgentOp | { op: 'uiSnapshot' } | { op: 'uiConnection' } | { op: 'uiResize'; width: number; height: number }
+export type LiveUiConnection = { endpoint: string; pid: number; surfaces: Partial<Record<'shell' | 'browser' | 'suggestions', string>> }
 export type UiSnapshot = {
   capturedAt: string
   instance: { pid: number; startedAt: string; version: string; mainBundleSha256: string; rendererUrl: string }

@@ -9,7 +9,7 @@ test('UI scripts reuse isolated sessions, return failure captures and clean up o
   const call = async (args: Record<string, unknown>, chat = 'ui-run-inspector', provider = 'codex') => {
     const response = await fetch(`http://127.0.0.1:${state.port}/mcp/${state.secret}/${provider}/${chat}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'rocket_ui_run', arguments: args } })
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'rocket_ui_run', arguments: { ...args, target: 'isolated' } } })
     })
     const result = (await response.json()).result as { isError?: boolean; content: Array<{ type: string; text?: string; data?: string }> }
     let data: any

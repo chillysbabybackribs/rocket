@@ -24,14 +24,15 @@ type Session = {
   seq: number
 }
 
-const DESCRIPTION = `Interact with an isolated Rocket app using a persistent Playwright-style session for this chat. The first call builds current Rocket source into a private app folder, uses a fresh marked profile and scratch workspace, controlled providers, a local browser fixture and a private Xvfb display. No real model turns are sent. Later calls reuse the session; reset=true closes it and builds fresh source. build=false uses the existing out/ build for a new session. close=true ends the session.
+const DESCRIPTION = `Interact with the LIVE Rocket window the user is using. target defaults to "live": clicks, drafts, new chat panes and browser interactions affect the current app. Await every action. Live calls attach to the existing window, never build or launch another app. Only one live script runs at a time across chats. Timeout stops the script and disconnects the automation client; completed actions remain and Rocket stays open.
+Use target="isolated" explicitly for regression testing: its first call builds current source into a private app folder, with a fresh profile, scratch workspace, controlled providers, local browser fixture and private display. Later isolated calls reuse this chat's session. Only isolated calls accept reset=true, build=false or close=true and support ui.request(), ui.release(), ui.restart().
 code is the body of an async function. Await every action. page is the app shell:
-page.getByRole('button', {name:'Show browser', exact:true}).click(); page.getByRole('textbox', {name:'Message', exact:true}).fill('UI check: plan'); page.locator('.turn').last().innerText().
+For example, when asked to add a chat pane: await page.getByRole('button', {name:'Add a chat beside this one', exact:true}).first().click(); return await page.locator('.pane').count().
 Locators support getByRole, getByText, getByLabel, getByPlaceholder, getByTestId, locator, filter({hasText}), nth, first, last; actions click, dblclick, fill, press, pressSequentially, hover, check, uncheck, selectOption, scrollIntoViewIfNeeded, waitFor({state:'visible'|'hidden'}); reads count, isVisible, isEnabled, textContent, innerText, inputValue, getAttribute, boundingBox. Use string names/text (not RegExp) in locator options.
 page.evaluate(fn,arg) and page.waitForFunction(fn,arg,options) inspect DOM; do not mutate app state to manufacture a passing UI. page.keyboard.press/type, page.title(), page.url() are available.
-ui.surface('browser'|'suggestions') returns the same page API for native views; ui.resize(width,height); ui.read() returns visible shell controls and panels; ui.snapshot() returns capture metadata and includes the images in the tool result; ui.request() reads the latest controlled turn; ui.release() completes a held stream or plan; ui.restart() restarts the same profile and build. sleep(ms) and console.log exist.
-Choose the scratch working folder using the normal folder button before sending UI check: stream, stop, recover, fail, ask, plan, edit or work. Stream/plan wait for ui.release(); ordinary prompts fail because providers are controlled.
-Results include images by default, saved paths, logs, renderer errors and session/build identity. capture=false skips the automatic final image; failures still capture. Timeout closes the session. Idle sessions expire after ten minutes. This operates on the isolated app; rocket_ui_snapshot shows the live app.`
+ui.surface('browser'|'suggestions') returns the same page API for visible native views; ui.resize(width,height); ui.read() returns visible shell controls and panels; ui.snapshot() returns capture metadata and includes the images in the tool result. In isolated mode only: ui.request() reads the latest controlled turn; ui.release() completes a held stream or plan; ui.restart() restarts the same profile and build. sleep(ms) and console.log exist.
+For target="isolated", choose the scratch working folder using the normal folder button before sending UI check: stream, stop, recover, fail, ask, plan, edit or work. Stream/plan wait for ui.release(); ordinary prompts fail because providers are controlled.
+Results include images by default, saved paths, logs and instance identity. capture=false skips the automatic final image; failures still capture. Isolated sessions close on timeout and expire after ten idle minutes. Live scripts use the running app's current build; source edits require restarting Rocket.`
 
 /** Keep tool metadata valid JSON even when several verbose snapshots exceed the text budget. */
 export function uiRunResult(response: Record<string, unknown>, directory: string): ToolResult {
@@ -72,22 +73,28 @@ export class UiRunManager {
   private readonly cancelledStarts = new Set<string>()
   private stopping = false
 
-  constructor(private readonly root: string, private readonly output = join(root, '.artifacts/ui-run')) {}
+  constructor(private readonly root: string, private readonly output = join(root, '.artifacts/ui-run'), private readonly live?: (args: Record<string, unknown>, chatId: string | null) => Promise<ToolResult>) {}
 
   tools(): Tool[] {
     return [{
       name: 'rocket_ui_run', description: DESCRIPTION,
       inputSchema: {
         type: 'object', properties: {
+          target: { type: 'string', enum: ['live', 'isolated'], description: 'Default live: operate on the user’s current Rocket window. Use isolated explicitly for testing.' },
           code: { type: 'string', description: 'Body of an async function using page, ui, sleep and console.' },
-          reset: { type: 'boolean', description: 'Discard the session and start fresh, rebuilding by default.' },
-          build: { type: 'boolean', description: 'Build current source for a new session. Default true; false uses existing out/.' },
-          close: { type: 'boolean', description: 'Close this chat’s isolated session.' },
+          reset: { type: 'boolean', description: 'Isolated only: discard the session and start fresh, rebuilding by default.' },
+          build: { type: 'boolean', description: 'Isolated only: build current source for a new session. Default true; false uses existing out/.' },
+          close: { type: 'boolean', description: 'Isolated only: close this chat’s inspection session.' },
           capture: { type: 'boolean', description: 'Include a final snapshot. Default true; failures always capture.' },
           timeout: { type: 'number', minimum: 1, maximum: 120, description: 'Script timeout in seconds, default 30. Initial build/startup has its own deadline.' }
         }, additionalProperties: false
       },
-      run: (args, context) => this.run(args, context.chatId)
+      run: (args, context) => {
+        if (args.target === 'isolated') return this.run(args, context.chatId)
+        if (args.target !== undefined && args.target !== 'live') return Promise.resolve({ ...textResult('Choose target="live" or target="isolated".'), isError: true })
+        if (!this.live) return Promise.resolve({ ...textResult('Live UI control is unavailable. Restart Rocket to load the live runner.'), isError: true })
+        return this.live(args, context.chatId)
+      }
     }]
   }
 

@@ -13,6 +13,7 @@ import { appendJournal } from '../host/journal.ts'
 import { uiTestProfile } from '../host/ui-test.ts'
 import { isolateUiTestNetwork } from './ui-test-network.ts'
 import { captureUiSnapshot } from './ui-snapshot.ts'
+import { liveUiConnection } from './ui-connection.ts'
 
 // Electron's main process does three things and nothing else: it owns the window, it owns the
 // embedded browser view, and it forks the agent host and introduces it to the renderer over a
@@ -21,6 +22,8 @@ import { captureUiSnapshot } from './ui-snapshot.ts'
 // ROCKET_USER_DATA points the app at another profile folder, so a test run never touches real chats.
 const testProfile = uiTestProfile()
 if (process.env.ROCKET_USER_DATA) app.setPath('userData', process.env.ROCKET_USER_DATA)
+app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1')
+app.commandLine.appendSwitch('remote-debugging-port', '0')
 
 let window: BrowserWindow | null = null
 let host: UtilityProcess | null = null
@@ -42,6 +45,17 @@ function startHost(): UtilityProcess {
     }
     Promise.resolve()
       .then(() => {
+        if (message.op.op === 'uiConnection') {
+          if (!window) throw new Error('Rocket’s window is closed.')
+          return liveUiConnection(window)
+        }
+        if (message.op.op === 'uiResize') {
+          if (!window) throw new Error('Rocket’s window is closed.')
+          const { width, height } = message.op
+          if (!Number.isInteger(width) || !Number.isInteger(height) || width < 880 || height < 560 || width > 4000 || height > 2400) throw new Error('Use a window size between 880×560 and 4000×2400.')
+          window.setSize(width, height)
+          return { width, height }
+        }
         if (message.op.op === 'uiSnapshot') {
           if (!window) throw new Error('Rocket’s window is closed. Open the app and try again.')
           return captureUiSnapshot(window)
