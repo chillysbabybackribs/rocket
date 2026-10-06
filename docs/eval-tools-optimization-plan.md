@@ -21,6 +21,7 @@ You want **evaluate → score (objective) → run with real models in the eval d
 | **Prompts stay clean** | Tool-eval history does not inject into normal chat (`historyInPrompts: false` unchanged). |
 | **Promotion is explicit** | Nothing silently rewrites `src/host/tools/*.ts`; winners produce a **reviewable patch** or version bump. |
 | **Attribution** | Every score is labeled `(tool, toolVersion, provider, model, app_build, scenario_id)`. |
+| **Same chat UI** | Tool eval cells use **`eval.startScenarioCell` → existing `ChatCard` panes** (`openChat`). Pass only from exported turn + ledger-slice for that chat. Tools/Experiments/Playground are control surfaces — no second composer in Evals. |
 
 ## What “non hand-rolled” score means here
 
@@ -124,7 +125,7 @@ Evolve **Configure → Tools** in three layers (same nav, new sections):
 
 Actions:
 
-- **Run tool eval** — picks scenario bundle `docs/evals/scenarios/tools/<tool>.jsonl`, baseline + selected variants, real providers from scenario matrix → creates experiment artifact under `.artifacts/evals/`.
+- **Run tool eval** — queues cells (scenario × variant × provider); each cell is **`runScenarioCell`** with optional `toolVariantId`, chat focused in the center column while running → artifacts under `.artifacts/evals/` and row in Experiments.
 - **Open in Experiments** — same data as Braintrust-style grid (pass rate by provider/model).
 - **Promote** — after pass, apply variant to source (human confirms).
 
