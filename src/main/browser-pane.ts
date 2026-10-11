@@ -75,6 +75,7 @@ export class BrowserPane {
   private saveWanted = false
   /** Per page, the promise that it has been made to present as Chrome (presentAsChrome). */
   private readonly presenting = new WeakMap<WebContents, Promise<void>>()
+  private readonly closing = new WeakSet<WebContents>()
   private saveTimer: NodeJS.Timeout | null = null
   private disposed = false
   private refSeq = 0
@@ -133,9 +134,9 @@ export class BrowserPane {
       case 'muteTab': this.mute(this.find(command.id), command.muted === true); break
       case 'tabMenu': this.tabMenu(this.find(command.id)); break
       case 'navigate': this.navigate(String(command.input ?? '')); break
-      case 'back': this.active?.view?.webContents.navigationHistory.goBack(); break
-      case 'forward': this.active?.view?.webContents.navigationHistory.goForward(); break
-      case 'reload': this.active?.view?.webContents.reload(); break
+      case 'back': this.active?.view?.webContents.navigationHistory.goBack(); this.active?.view?.webContents.focus(); break
+      case 'forward': this.active?.view?.webContents.navigationHistory.goForward(); this.active?.view?.webContents.focus(); break
+      case 'reload': this.active?.view?.webContents.reload(); this.active?.view?.webContents.focus(); break
       case 'stop': this.active?.view?.webContents.stop(); break
       case 'suggest': this.suggestions.query(String(command.text ?? ''), command.anchor); break
       case 'suggestSelect': this.suggestions.select(Number(command.index)); break
@@ -196,8 +197,17 @@ export class BrowserPane {
     this.activate(tab, false)
   }
 
-  agentClose(ref: string): void {
-    this.closeTab(this.tabs.find((entry) => entry.ref === ref) ?? null)
+  async agentClose(ref: string): Promise<void> {
+    this.restore()
+    const tab = this.tabs.find((entry) => entry.ref === ref)
+    if (!tab) throw new Error(`There is no tab ${ref}.`)
+    const contents = tab.view?.webContents
+    // Finish native teardown before a script closes the next tab. A restored tab needs no
+    // renderer, navigation or debugger session just to remove it from the strip.
+    const destroyed = contents && !contents.isDestroyed()
+      ? new Promise<void>(resolve => contents.once('destroyed', resolve)) : Promise.resolve()
+    this.closeTab(tab)
+    await destroyed
   }
 
   // ── Tabs ────────────────────────────────────────────────────────────
@@ -286,8 +296,14 @@ export class BrowserPane {
       this.activate(this.tabs[index] ?? this.tabs[index - 1] ?? this.createTab({}), true)
     }
     if (tab.view) {
-      this.window.contentView.removeChildView(tab.view)
-      tab.view.webContents.close()
+      const view = tab.view, contents = view.webContents
+      this.closing.add(contents)
+      // Stop navigation and protocol traffic before releasing the native view. Closing is
+      // asynchronous in Electron; isDestroyed() alone does not cover this interval.
+      contents.stop()
+      if (contents.debugger.isAttached()) contents.debugger.detach()
+      this.window.contentView.removeChildView(view)
+      contents.close()
     }
     this.publish()
   }
@@ -362,14 +378,16 @@ export class BrowserPane {
     const metadata = userAgentMetadata(userAgent)
     if (!metadata) return Promise.resolve()
     const apply = async (): Promise<void> => {
-      if (contents.isDestroyed() || contents.isDevToolsOpened()) return
+      if (contents.isDestroyed() || this.closing.has(contents) || contents.isDevToolsOpened()) return
       try {
         if (!contents.debugger.isAttached()) contents.debugger.attach('1.3')
         // Scripts for new documents only run while the Page domain is on; the domain itself is not
         // visible to pages. The script fills window.chrome as Chrome has it (chrome-object.ts) in
         // every frame, and `runImmediately` covers a document that already exists.
         await contents.debugger.sendCommand('Page.enable')
+        if (contents.isDestroyed() || this.closing.has(contents)) return
         await contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: CHROME_OBJECT_SCRIPT, runImmediately: true })
+        if (contents.isDestroyed() || this.closing.has(contents)) return
         // acceptLanguage here is what sets navigator.languages, which Electron otherwise reads as
         // ["en-US", "en", "en"]; the Accept-Language header stays the session's, already Chrome's.
         await contents.debugger.sendCommand('Network.setUserAgentOverride', { userAgent, acceptLanguage: ACCEPT_LANGUAGES, userAgentMetadata: metadata })
@@ -390,6 +408,7 @@ export class BrowserPane {
     try {
       await contents.loadURL('about:blank')
       await this.presenting.get(contents)
+      if (contents.isDestroyed() || this.closing.has(contents)) return
       // A tab opened blank (a model's, before its first goto) is already where it should be.
       if (isBlankTabUrl(url)) return
       // Someone (a tool, the user) may have sent the tab elsewhere meanwhile; their page wins.
@@ -428,8 +447,12 @@ export class BrowserPane {
   }
 
   private load(tab: Tab): WebContentsView {
+    // Electron (44.5.1, ReadyToCommitNavigation in electron_api_web_contents.cc) focuses a view's
+    // page on every main-frame navigation while the window is active, unless focusOnNavigation is
+    // off. A page loading, redirecting or navigating itself, even in a hidden tab, would take the
+    // keyboard from the address field mid-word. The navigations the user starts focus the page.
     const view = new WebContentsView({
-      webPreferences: { partition: PARTITION, sandbox: true, contextIsolation: true, nodeIntegration: false }
+      webPreferences: { partition: PARTITION, sandbox: true, contextIsolation: true, nodeIntegration: false, focusOnNavigation: false }
     })
     this.adopt(tab, view)
     void this.loadPresented(view.webContents, tab.url)
@@ -519,6 +542,7 @@ export class BrowserPane {
       if (!/^(https?:|about:blank)/i.test(url)) return { action: 'deny' }
       return {
         action: 'allow',
+        overrideBrowserWindowOptions: { webPreferences: { focusOnNavigation: false } },
         createWindow: (options) => {
           const opened = this.createTab({
             url,

@@ -1,5 +1,6 @@
 import { useImagePreviewOpen } from './Attachments.tsx'
 import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { ArrowLeft, ArrowRight, Lock, RotateCw, Search, X } from 'lucide-react'
 import type { BrowserState, BrowserTab, Suggestion } from '../../../shared/types.ts'
 import { setReadingSpeed, useApp } from '../store.ts'
@@ -35,7 +36,8 @@ function atRest(url: string): { kind: 'secure' | 'insecure' | 'other'; label: st
 
 // The address field, after Safari's. At rest it shows the site's name in the middle; focused, it
 // becomes the whole address, selected, ready to be typed over. A line along its bottom edge follows
-// the page load.
+// the page load. While typing, it fills in the best visited site after the caret, selected, as
+// Chrome does: Enter opens it, typing on replaces it, Backspace or Escape takes it back.
 function AddressField({ tab }: { tab: BrowserTab | null }) {
   const url = tab?.url ?? ''
   const [text, setText] = useState(url)
@@ -46,6 +48,9 @@ function AddressField({ tab }: { tab: BrowserTab | null }) {
   const typed = useRef('')
   /** Set by focus, so the click that gave focus does not undo the select-all. */
   const justFocused = useRef(false)
+  /** The filled-in address on show, or null. Only a keystroke that adds text asks for one. */
+  const inline = useRef<string | null>(null)
+  const completing = useRef(false)
   const field = useRef<HTMLFormElement>(null)
   const input = useRef<HTMLInputElement>(null)
 
@@ -55,9 +60,39 @@ function AddressField({ tab }: { tab: BrowserTab | null }) {
   // Another tab is another address, even mid-edit.
   useEffect(() => setText(url), [tab?.id])
 
+  /**
+   * Show `address` after what was typed, the added part selected, and its row highlighted. The
+   * text is written at once (flushSync): rows arrive outside React's input events, and a render
+   * left for later could land after the next keystroke and select the wrong letters.
+   */
+  const fillIn = (address: string): void => {
+    const value = typed.current + address.slice(typed.current.length)
+    inline.current = value
+    flushSync(() => {
+      setText(value)
+      setSelected(0)
+    })
+    input.current?.setSelectionRange(typed.current.length, value.length)
+    send({ type: 'suggestSelect', index: 0 })
+  }
+
   useEffect(() => window.rocket.browser.onSuggestions((list) => {
     setSuggestions(list.items)
-    setSelected((index) => (index < list.items.length ? index : -1))
+    const field = input.current
+    const current = list.typed === typed.current && field !== null && document.activeElement === field
+    if (current && inline.current && field.value === inline.current) {
+      // Already filled in as the user typed on; the new rows lead with it, or no longer offer it.
+      if (list.inline) {
+        setSelected(0)
+        send({ type: 'suggestSelect', index: 0 })
+      } else {
+        inline.current = null
+        setText(typed.current)
+        setSelected(-1)
+      }
+    } else if (current && list.inline && completing.current && field.value === typed.current && field.selectionEnd === field.value.length) fillIn(list.inline)
+    // Rows for older text, or a caret moved back into the text, leave the field as it is.
+    else setSelected((index) => (index < list.items.length ? index : -1))
   }), [])
   useEffect(() => window.rocket.browser.onFocusAddress(() => {
     input.current?.focus()
@@ -93,21 +128,35 @@ function AddressField({ tab }: { tab: BrowserTab | null }) {
         onBlur={() => {
           setEditing(false)
           setSelected(-1)
+          inline.current = null
           send({ type: 'suggestHide' })
         }}
         onChange={(event) => {
           justFocused.current = false
-          typed.current = event.target.value
-          setText(event.target.value)
-          setSelected(-1)
+          const value = event.target.value
+          const shown = inline.current
+          const atEnd = event.target.selectionEnd === value.length
+          completing.current = atEnd && !(event.nativeEvent as InputEvent).inputType?.startsWith('delete')
+          typed.current = value
+          inline.current = null
           const box = field.current!.getBoundingClientRect()
-          send({ type: 'suggest', text: event.target.value, anchor: { x: box.left, y: box.top, width: box.width, height: box.height } })
+          send({ type: 'suggest', text: value, anchor: { x: box.left, y: box.top, width: box.width, height: box.height } })
+          // A letter that matches the next one filled in keeps the rest on show without waiting
+          // for main's answer, so the field does not flicker with each keystroke.
+          if (completing.current && shown && shown.length > value.length && shown.toLowerCase().startsWith(value.toLowerCase())) fillIn(shown)
+          else {
+            setText(value)
+            setSelected(-1)
+          }
         }}
         onKeyDown={(event) => {
           justFocused.current = false
           if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && suggestions.length) {
             // The selection walks the rows and passes through "none", which is the typed text.
             event.preventDefault()
+            // A row picked by arrow stays picked when later rows (Google's) arrive.
+            inline.current = null
+            completing.current = false
             const places = suggestions.length + 1
             const next = (selected + 1 + (event.key === 'ArrowDown' ? 1 : places - 1)) % places - 1
             setSelected(next)
@@ -115,7 +164,14 @@ function AddressField({ tab }: { tab: BrowserTab | null }) {
             send({ type: 'suggestSelect', index: next })
           } else if (event.key === 'Escape') {
             event.preventDefault()
-            if (suggestions.length) send({ type: 'suggestHide' })
+            if (inline.current && text === inline.current) {
+              // The first Escape takes back what was filled in, the next closes the dropdown.
+              inline.current = null
+              completing.current = false
+              setText(typed.current)
+              setSelected(-1)
+              send({ type: 'suggestSelect', index: -1 })
+            } else if (suggestions.length) send({ type: 'suggestHide' })
             else {
               setText(url)
               requestAnimationFrame(() => input.current?.select())
@@ -155,7 +211,7 @@ export function BrowserPanel() {
   }, [])
 
   // The page is a native view over the window; while a dialog is open it is hidden, not covered.
-  const covered = useApp((state) => state.newGoal !== null) || imagePreview
+  const covered = imagePreview
   useEffect(() => {
     const element = stage.current
     if (!element) return
