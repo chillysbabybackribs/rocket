@@ -63,7 +63,9 @@ function AddressField({ tab }: { tab: BrowserTab | null }) {
   /**
    * Show `address` after what was typed, the added part selected, and its row highlighted. The
    * text is written at once (flushSync): rows arrive outside React's input events, and a render
-   * left for later could land after the next keystroke and select the wrong letters.
+   * left for later could land after the next keystroke and select the wrong letters. The field is
+   * written directly too: when the state already holds this text React renders nothing, and it
+   * would put the text back after the keystroke, moving the caret to the end.
    */
   const fillIn = (address: string): void => {
     const value = typed.current + address.slice(typed.current.length)
@@ -72,7 +74,11 @@ function AddressField({ tab }: { tab: BrowserTab | null }) {
       setText(value)
       setSelected(0)
     })
-    input.current?.setSelectionRange(typed.current.length, value.length)
+    const field = input.current
+    if (field) {
+      if (field.value !== value) field.value = value
+      field.setSelectionRange(typed.current.length, value.length)
+    }
     send({ type: 'suggestSelect', index: 0 })
   }
 

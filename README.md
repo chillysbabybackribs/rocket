@@ -332,8 +332,12 @@ The browser panel has Chromium's tab strip and shortcuts (Ctrl+T, W, Shift+T, Ta
 Safari-style address field. Each tab is a native view owned by main (`src/main/browser-pane.ts`);
 only the active one is on screen. The address field's dropdown is a view of its own
 (`browser-suggest.ts`, `src/renderer/suggest.html`) stacked above the page, so it overlays the
-page and never moves it; so is the chip of Fill with Rocket (below). Tabs, history and the last
-session are kept in the profile folder.
+page and never moves it; so is the chip of Fill with Rocket (below). While typing, the field fills
+in the most visited site that starts with the text (`completeAddress` in `browser-url.ts`), with
+the added part selected, as Chrome does: Enter opens it, Backspace or Escape takes it back. Pages
+are made with `focusOnNavigation: false`, because Electron otherwise focuses a page on each of its
+navigations and would take the keyboard from the address field mid-word. Tabs, history and the
+last session are kept in the profile folder.
 
 Closing tabs keeps Rocket and its chats open; the last browser tab leaves one home tab.
 Agent tab-close calls remove restored tabs without loading them or opening an extra agent tab,
@@ -859,7 +863,7 @@ The checks exercise composer input, folder selection, usage, model selection, st
 completion, tool output, provider handoff, cancellation, failure recovery, chat drafts,
 history, chat panes (splitting to four, a turn streaming into one pane, closing, and the layout
 after a restart), the title strip (no rail, the usage notch centred, its flyout inside the chat card), renderer reload, full app restart, recovery from a host crash during a response,
-minimum window size, browser navigation/tabs, the address dropdown, chat links (browser tabs
+minimum window size, browser navigation/tabs, the address dropdown and its inline completion (focus kept while a page navigates), chat links (browser tabs
 and local artifact preview), and model question cards from `ask_user`. The shell, embedded
 page and dropdown are separate Playwright targets. Their
 screenshots and bounds are retained separately; on X11, a whole-window capture also records
