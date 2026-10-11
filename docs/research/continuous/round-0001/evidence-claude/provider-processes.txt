@@ -1,9 +1,0 @@
-# provider processes under the live host, 2026-10-08 00:07 (ps -eo pid,ppid,pgid,sid,etime,cmd)
-  49088    2045   49088   49088    01:09:07 /home/dp/.codex/packages/app-server-daemon/releases/0.161.0-x86_64-unknown-linux-musl/bin/codex app-server daemon pid-update-l
-  51060   49088   51060   51060    01:03:49 /home/dp/.codex/packages/app-server-daemon/releases/0.161.0-x86_64-unknown-linux-musl/bin/codex app-server --listen unix:// --
-  67947   67893   67947   67947       40:28 node /home/dp/.nvm/versions/node/v24.13.1/bin/codex app-server --listen stdio:// -c plugins.unified-computer-use@openai-bundle
-  67955   67947   67947   67947       40:28 /home/dp/.nvm/versions/node/v24.13.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown
-  68248   67893   68248   68248       40:11 /home/dp/.local/bin/cursor-agent --use-system-ca /home/dp/.local/share/cursor-agent/versions/2026.10.01-14929f9/index.js acp
-  69158   67955   69158   67947       31:13 /home/dp/.nvm/versions/node/v24.13.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown
-  71062   67893   67800   12938       18:15 /home/dp/.local/bin/claude --output-format stream-json --verbose --input-format stream-json --thinking adaptive --thinking-dis
-  72025   67893   72025   72025       13:00 /home/dp/.local/bin/agy --print= --input-format stream-json --output-format stream-json --dangerously-skip-permissions --disab

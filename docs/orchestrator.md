@@ -56,6 +56,5 @@ The first version keeps workers in ordinary chat history; it does not rearrange 
 
 Host changes require restarting Rocket to load the tool. Installing the code does not start a research loop. The previous session's external `scripts/research-loop.mjs` controller is separate and is not started or used by this tool.
 
-Research behind the implementation: [run summary](research/continuous/RUN-SUMMARY-2026-10-08.md).
 
 Latest validation (2026-10-08): build/typecheck and all 256 tests passed (`npm test` on 2026-10-09 ran 257 tests, all passing); the isolated visible desktop run passed both orchestration and chat-link/artifact checks. Reports and captures are in `.artifacts/ui/2026-10-08T05-12-10-610Z-G4fNOd/`. These use controlled providers; a fresh live-provider orchestration has not been started with the new tool because the running host has not been restarted.
