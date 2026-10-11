@@ -170,7 +170,7 @@ Four **tiers** models should be taught (tool copy + optional host helpers):
 | **6.4 Turn budget hints** | Optional soft cap in description: “prefer ≤2 browser tool calls for read-only questions.” | tool copy only |
 | **6.5 Remove?** | Do **not** add granular MCP tools (click, type, …) unless evals prove `browser_run` hurts a specific provider; would increase round-trips. | — |
 
-**Shell (`rocket_ui_*`):** Keep browser for **external** web; shell map for Rocket itself. Cross-surface tasks (capture, chat links) documented in `docs/agent-ui-access.md` — no merge of tool namespaces.
+**Shell (`rocket_ui_*`):** Keep browser for **external** web; shell map for Rocket itself. Cross-surface tasks (capture, chat links) documented in `docs/archive/agent-ui-access.md` — no merge of tool namespaces.
 
 ---
 
@@ -199,7 +199,7 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 
 **Status (6 Oct 2026): harness baseline landed.**
 
-- [x] SPA fixture: `docs/evals/fixtures/browser/spa.html` (+ `/spa/api/records/*` on UI test server).
+- [x] SPA fixture: `tests/fixtures/browser/spa.html` (+ `/spa/api/records/*` on UI test server).
 - [x] Deterministic baseline: `tests/ui/browser-capabilities.spec.ts` (hash gap, waitFor, fetch, stale ref, network log).
 - [x] Report script: `node scripts/browser-phase0-baseline.mjs` → `.artifacts/browser-phase0/*/summary.json`.
 - [x] Optional LLM eval scenarios: `docs/evals/scenarios/browser-phase0-baseline.jsonl` (`runsAlone`, `targetTool: browser_run`).
@@ -244,7 +244,7 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 **Status (6 Oct 2026): landed.**
 
 - [x] SoM screenshot — `browser_screenshot` / `tab.screenshot({ som: true })` — WS4.3 (`browser-som-composite.ts`, `browser-som-svg.ts`; 2026-10-09 correction: not `browser-page-lib`)
-- [x] Observation policy eval matrix — WS1.5 (`docs/evals/browser-observation-policies.md`, scenarios jsonl; written, not yet run)
+- [x] Observation policy eval matrix — WS1.5 (`docs/archive/evals/` (eval matrix, archived), scenarios jsonl; written, not yet run)
 - [x] HAR export — `tab.exportHar({ saveTo })` since script mark — WS3.3 (`browser-har.ts`)
 - [x] Harness: Phase 4 cases in `browser-capabilities.spec.ts`
 
@@ -285,8 +285,8 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 
 - `docs/browser-realism-audit.md` — WS5  
 - `docs/sources-plan.md` — research citations  
-- `docs/agent-ui-access.md` — shell vs browser  
-- `docs/research/agent-evals-rocket.md` — eval philosophy  
+- `docs/archive/agent-ui-access.md` — shell vs browser  
+- `docs/archive/agent-evals-rocket.md` — eval philosophy  
 - `README.md` — browser tools overview  
 
 ---

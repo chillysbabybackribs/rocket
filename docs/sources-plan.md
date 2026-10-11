@@ -13,13 +13,6 @@
 > and HTTP-error pages out of `opened` (`browser.ts`, `hub.ts`), so a blocked page is not a source,
 > it is just not recorded as one.
 
-> **Status, 6 October 2026.** A cut-down Phase 1 is built: the per-turn sources record
-> (`src/shared/sources.ts`, `Turn.sources`), the marks on cited links, the notice ahead of the
-> next message and the rule in the agent block (README, "Sources"). Dropped from it: blocked-page
-> detection, the journal entry (the notice no longer depends on self-check mode) and the turn-head
-> count. Phases 2 to 4 are not started; the eval scenarios should be rewritten to use fixture pages,
-> since live sites make the pass rate drift with the web.
-
 What went wrong with fact-finding on 6 October 2026, how a research turn flows through Rocket
 today, and the changes that make "did the model actually read that page" a thing the app
 checks, shows and measures, instead of something the user has to catch.
