@@ -4,6 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { BrowserDownload, Item, Turn } from '../shared/types.ts'
+import { jpegBase64 } from '../../tests/fixtures/image.ts'
 import { pdfBytes } from '../../tests/fixtures/pdf.ts'
 import { AttachmentStore } from './attachments.ts'
 import { Library } from './library.ts'
@@ -50,6 +51,32 @@ test('sent attachments are on the shelf with their chat; a draft’s and an eval
     assert.equal(preview.type, 'page')
     const view = await library.view(sent.id)
     assert.equal(view.type, 'pdf')
+  } finally {
+    await done()
+  }
+})
+
+test('one entry is looked up by id, and a draft or hidden chat’s id is refused as before', async () => {
+  const { root, store, attachments, library, chat, done } = await setup()
+  try {
+    chat('c1')
+    chat('evals', '/evals/run')
+    const sent = await attachments.importFile('brief.md', Buffer.from('# Brief\n'))
+    const draft = await attachments.importFile('draft.md', Buffer.from('# Draft\n'))
+    const hidden = await attachments.importFile('eval.md', Buffer.from('# Eval\n'))
+    store.createTurn(turn('c1'))
+    store.putItem('c1', { type: 'user', id: 'u1', turnId: 't-c1', text: 'Read this', attachments: [sent] } as Item)
+    store.createTurn(turn('evals'))
+    store.putItem('evals', { type: 'user', id: 'u2', turnId: 't-evals', text: 'Eval', attachments: [hidden] } as Item)
+    assert.equal(library.entry(sent.id).name, 'brief.md')
+    assert.equal(library.entry(sent.id).chatId, 'c1')
+    assert.throws(() => library.entry(draft.id), /There is no library file/)
+    assert.throws(() => library.entry(hidden.id), /There is no library file/)
+    assert.throws(() => library.entry('f999'), /There is no library file/)
+    const path = join(root, 'plan.md')
+    await writeFile(path, '# Plan\n')
+    const plan = await library.add(path, 'plan', 'c1')
+    assert.equal(library.entry(plan!.id).path, path)
   } finally {
     await done()
   }
@@ -152,6 +179,28 @@ test('the first start shelves the Markdown files earlier turns wrote, once, date
     assert.equal(plan!.chatId, 'c2')
     assert.equal(plan!.addedAt, 2_000)
     assert.equal(await library.backfill(), 0)
+  } finally {
+    await done()
+  }
+})
+
+test('a picture a model made is on the shelf as generated, named for its provider, and looked up by id', async () => {
+  const { store, attachments, library, chat, done } = await setup()
+  try {
+    chat('c1')
+    const image = await attachments.keepGenerated({ base64: jpegBase64 }, 'A neon horizon')
+    store.createTurn({ ...turn('c1'), provider: 'codex' })
+    store.putItem('c1', { type: 'image', id: 'g1', turnId: 't-c1', status: 'done', caption: 'A neon horizon', image })
+    const [entry] = library.list()
+    assert.equal(entry!.source, 'generated')
+    assert.equal(entry!.origin, 'Codex')
+    assert.equal(entry!.kind, 'image')
+    assert.equal(entry!.chatId, 'c1')
+    assert.equal(library.entry(image.id).name, 'a-neon-horizon.jpg')
+    assert.equal((await library.view(image.id)).type, 'image')
+    assert.equal((await library.preview(image.id)).type, 'image')
+    const listed = await libraryTools(library, store)[0]!.run({ source: 'generated' }, { provider: 'claude', chatId: 'c1' })
+    assert.match(JSON.stringify(listed), /a-neon-horizon\.jpg/)
   } finally {
     await done()
   }

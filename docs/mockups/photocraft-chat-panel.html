@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mockup: PhotoCraft chat panel</title>
+<style>
+  html, body { margin: 0; background: #1e1e1e; font: 12px/1.4 Inter, 'DejaVu Sans', sans-serif; color: #e6e6e6; }
+  .note { max-width: 1100px; margin: 16px auto 10px; color: #bbb; font-size: 14px; line-height: 1.5; }
+  .note b { color: #fff; }
+  .stage-wrap { width: 100%; overflow: hidden; }
+  /* The capture is 1920x1048; the stage scales to the viewport width. */
+  .stage { position: relative; width: 1920px; height: 1048px; transform-origin: 0 0;
+           background: url(assets/photocraft-chat/base.png) no-repeat; }
+  /* The chat dock column sits left of the existing dock; in the real app the canvas narrows to make room. */
+  .chat { position: absolute; left: 1278px; top: 68px; width: 350px; height: 956px; background: #323232;
+          border-left: 1px solid #1f1f1f; border-right: 1px solid #1f1f1f; display: flex; flex-direction: column; }
+  .tabs { display: flex; background: #2a2a2a; height: 30px; align-items: stretch; border-bottom: 1px solid #1f1f1f; }
+  .tabs div { padding: 7px 12px; color: #9a9a9a; }
+  .tabs .on { color: #fff; background: #323232; box-shadow: inset 0 2px #378ef0; }
+  .tabs .menu { margin-left: auto; color: #9a9a9a; }
+  .bar { display: flex; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid #2a2a2a; }
+  .pick { background: #262626; border: 1px solid #4a4a4a; border-radius: 4px; padding: 4px 8px; display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #d97757; display: inline-block; }
+  .usage { margin-left: auto; font-size: 11px; color: #9a9a9a; text-align: right; }
+  .meter { width: 70px; height: 4px; background: #262626; border-radius: 2px; margin-top: 3px; }
+  .meter i { display: block; width: 23%; height: 100%; background: #378ef0; border-radius: 2px; }
+  .log { flex: 1; overflow: hidden; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+  .user { align-self: flex-end; max-width: 85%; background: #3d4a5c; border-radius: 10px 10px 2px 10px; padding: 7px 10px; }
+  .chip { display: inline-flex; gap: 5px; align-items: center; background: #262626; border: 1px solid #4a4a4a; border-radius: 4px;
+          padding: 2px 6px; font-size: 11px; color: #bbb; margin-bottom: 5px; }
+  .chip img { width: 26px; height: 16px; object-fit: cover; border-radius: 2px; }
+  .bot { max-width: 95%; }
+  .who { font-size: 11px; color: #9a9a9a; margin-bottom: 4px; }
+  .steps { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 6px; margin: 6px 0; }
+  .step { display: flex; gap: 8px; padding: 5px 8px; border-top: 1px solid #333; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #c8c8c8; }
+  .step:first-child { border-top: 0; }
+  .ok { color: #4caf7a; } .run { color: #378ef0; }
+  .step .arg { color: #8a8a8a; margin-left: auto; }
+  .actions { display: flex; gap: 6px; margin-top: 6px; }
+  .btn { border: 1px solid #555; border-radius: 12px; padding: 3px 10px; font-size: 11px; color: #ddd; background: #3a3a3a; }
+  .btn.primary { background: #378ef0; border-color: #378ef0; color: #fff; }
+  .composer { border-top: 1px solid #2a2a2a; padding: 8px 10px 10px; }
+  .box { background: #262626; border: 1px solid #378ef0; border-radius: 6px; padding: 8px; min-height: 52px; color: #8a8a8a; }
+  .row { display: flex; align-items: center; gap: 8px; margin-top: 7px; font-size: 11px; color: #aaa; }
+  .row .send { margin-left: auto; }
+  .check { width: 12px; height: 12px; border-radius: 3px; background: #378ef0; display: inline-block; vertical-align: -2px; }
+  .callout { position: absolute; background: #fffbe6; color: #222; border-radius: 6px; padding: 6px 9px; font-size: 13px;
+             max-width: 230px; box-shadow: 0 2px 8px #0008; }
+  .callout::before { content: attr(data-n); background: #e8590c; color: #fff; border-radius: 50%; display: inline-block;
+                     width: 18px; height: 18px; text-align: center; line-height: 18px; margin-right: 6px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="note">
+  <b>Mockup: a Chat panel in PhotoCraft.</b> This is a real PhotoCraft 0.6.0 capture with the proposed panel drawn over it. In the
+  built version the panel is a dock column (Window › Chat) and the canvas narrows to make room. The model works through
+  PhotoCraft's own command set, the same 851 commands the menus use, and signs in through your Claude, Codex, Cursor or
+  Antigravity subscription. Numbered notes explain each part.
+</div>
+<div class="stage-wrap"><div class="stage" id="stage">
+  <div class="chat">
+    <div class="tabs"><div class="on">Chat</div><div>History</div><div class="menu">≡</div></div>
+    <div class="bar">
+      <div class="pick"><span class="dot"></span>Claude · Opus 5.5 ▾</div>
+      <div class="pick">New chat</div>
+      <div class="usage">5-hour window 23%<div class="meter"><i></i></div></div>
+    </div>
+    <div class="log">
+      <div class="user">
+        <div class="chip"><img src="assets/photocraft-chat/base.png">poster.pcraft · canvas attached</div><br>
+        Make the sun more orange and add a small crescent moon in the top-left corner with a soft cyan glow.
+      </div>
+      <div class="bot">
+        <div class="who">Claude</div>
+        I'll shift the sun's gradient warmer and add a moon as a new shape layer so you can still move it.
+        <div class="steps">
+          <div class="step"><span class="ok">✓</span>document.inspect<span class="arg">11 layers</span></div>
+          <div class="step"><span class="ok">✓</span>shape fill · Sun<span class="arg">#ffb347 → #ff5e3a</span></div>
+          <div class="step"><span class="ok">✓</span>shape.create · Moon<span class="arg">ellipse − ellipse</span></div>
+          <div class="step"><span class="ok">✓</span>layer style · Outer Glow<span class="arg">#7ef9ff, 40 px</span></div>
+          <div class="step"><span class="ok">✓</span>ui.screenshot<span class="arg">checked result</span></div>
+        </div>
+        Done. The sun now runs from amber to deep orange, and "Moon" sits above the sky gradient at 180 × 180 px.
+        <div class="actions"><span class="btn">Undo this reply (4 steps)</span><span class="btn">Show layers</span></div>
+      </div>
+      <div class="user">Make the title glow match the moon.</div>
+      <div class="bot">
+        <div class="who">Claude</div>
+        <div class="steps">
+          <div class="step"><span class="run">●</span>layer style · Title<span class="arg">running…</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="composer">
+      <div class="box">Ask for an edit, or describe what you want…</div>
+      <div class="row"><span class="check"></span>Attach canvas <span>·</span> Layer: Title <span class="btn send primary">Stop</span></div>
+    </div>
+  </div>
+  <div class="callout" data-n="1" style="left:880px; top:120px">Pick the provider and model. The list and the usage meter come live from your signed-in CLI, never an API key.</div>
+  <div class="callout" data-n="2" style="left:880px; top:300px">Each edit the model makes shows as a step: PhotoCraft commands, the same ones the menus run.</div>
+  <div class="callout" data-n="3" style="left:880px; top:470px">A whole reply is one undo group, so a bad answer is one click away from gone.</div>
+  <div class="callout" data-n="4" style="left:880px; top:640px">The canvas goes along as a picture when "Attach canvas" is on, so the model sees what you see.</div>
+  <div class="callout" data-n="5" style="left:880px; top:830px">Stop ends the reply between steps. The chat keeps going on the next message, in the same session.</div>
+</div></div>
+<script>
+  const s = document.getElementById('stage')
+  const fit = () => { const k = Math.min(1, document.body.clientWidth / 1920); s.style.transform = `scale(${k})`; s.parentElement.style.height = 1048 * k + 'px' }
+  addEventListener('resize', fit); fit()
+</script>
+</body>
+</html>

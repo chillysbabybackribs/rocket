@@ -1,0 +1,15 @@
+✔ UI mode requires an explicit marked profile and matching host data directory (3.89019ms)
+✔ a controlled stream remains pending until stopped and emits no final response after stop (3.317205ms)
+✔ controlled worker writes its report only after release, and cancellation delivers none (2.56121ms)
+✔ controlled leader accepts 6 dispatches across the HTTP boundary (94.927416ms)
+✔ controlled leader accepts 40 dispatches across the HTTP boundary (115.900895ms)
+✔ a user reply with quoted orchestration context completes instead of holding a worker stream (1.206031ms)
+✔ stress worker waits for board barrier, streams 100 deltas, and delivers a report (5048.752562ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5627.42435

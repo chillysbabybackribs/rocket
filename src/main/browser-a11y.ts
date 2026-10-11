@@ -60,6 +60,15 @@ export function parseReadQuery(raw: string | null): { text: string; regex: RegEx
   return { text: trimmed, regex: null }
 }
 
+// A query has to see the whole page to find its line, so the page text is not cut short before
+// the filter runs. filterReadByQuery caps what is returned, so this only bounds the scan.
+const QUERY_SCAN_CHARS = 2_000_000
+
+/** How much page text to digest before filtering: everything when a query is set, else the caller's cap. */
+export function digestMaxFor(rawQuery: string | null, max: number | null): number | null {
+  return parseReadQuery(rawQuery) ? QUERY_SCAN_CHARS : max
+}
+
 export function filterReadByQuery(body: string, rawQuery: string | null, maxLines: number | null): string {
   const parsed = parseReadQuery(rawQuery)
   if (!parsed) return body

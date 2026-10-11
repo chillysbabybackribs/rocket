@@ -25,36 +25,21 @@ export type ActionSpec = {
 export const PLACES = {
   chat: { description: 'The chat panes alone, with no side panel.', file: 'src/renderer/src/App.tsx' },
   browser: { description: 'The built-in browser beside the chat.', file: 'src/renderer/src/components/BrowserPanel.tsx' },
+  photocraft: {
+    description: 'PhotoCraft, the image editor, beside the chat: what the photocraft_* tools work in. The tools bring it forward themselves.',
+    file: 'src/renderer/src/components/PhotocraftPanel.tsx'
+  },
   library: {
-    description: 'The library beside the chat: every file the chats attached, downloaded, wrote as plans or opened, as a grid or list. Filters given here replace the shown ones; library_list lists the same files.',
+    description: 'The library beside the chat: every file the chats attached, downloaded, wrote as plans, opened or had a model make, as a grid or list. Filters given here replace the shown ones; library_list lists the same files.',
     file: 'src/renderer/src/components/LibraryPanel.tsx',
     params: {
-      source: 'attachment, download, plan or opened',
+      source: 'attachment, download, plan, opened or generated',
       kind: 'pdf, markdown, text, image, office or other',
       chat: 'chat id',
       added: 'today, yesterday, week or older',
       q: 'words to search for',
       view: '"grid" or "list"'
     }
-  },
-  'evals.scenarios': {
-    description: 'Evals: the scenario list, each with its latest run per provider.',
-    file: 'src/renderer/src/components/EvalPanel.tsx'
-  },
-  'evals.scenario': {
-    description: 'Evals: one scenario: its message (editable before a run), graders, the provider × trial grid of the run shown, and earlier runs.',
-    file: 'src/renderer/src/components/EvalScenario.tsx',
-    params: { id: 'scenario id (required)', run: 'run id to show, default the latest' }
-  },
-  'evals.run': {
-    description: 'Evals: one cell of a run: its grades, the files it changed, and its transcript.',
-    file: 'src/renderer/src/components/EvalRunView.tsx',
-    params: { run: 'run id (required)', provider: 'provider id (required)', trial: 'trial number from 0, default 0' }
-  },
-  'evals.tools': {
-    description: 'Evals: the MCP tool ledger (health) and tool scores (evaluate).',
-    file: 'src/renderer/src/components/EvalToolsPanel.tsx',
-    params: { section: '"health" or "evaluate"' }
   }
 } satisfies Record<string, PlaceSpec>
 
@@ -66,14 +51,6 @@ export const ACTIONS = {
   'pane.close': { description: 'Close a chat pane; the only pane cannot close.', params: { pane: 'pane index' } },
   'chat.open': { description: 'Show a chat in a pane.', params: { chatId: 'chat id (required)', pane: 'pane index, default the focused one' } },
   'chat.new': { description: 'Show the new-chat screen in a pane.', params: { pane: 'pane index, default the focused one' } },
-  'evals.sync': { description: 'Reload the scenario files and saved runs from disk; opens the eval panel when it is closed.' },
-  'evals.run.start': {
-    description: 'Run the scenario shown on every provider in its matrix with real provider turns (spends subscription usage): providers side by side, each provider\'s trials in turn, each in a fresh copy of the scenario\'s folder. Returns the graded run when it ends, or after `wait` seconds with it still running; rocket_ui_where then shows its cells.',
-    params: { scenario: 'scenario id, default the one shown', message: 'message for this run instead of the scenario\'s', wait: 'seconds to wait, default 100, at most 120' },
-    place: 'evals.scenario'
-  },
-  'evals.run.stop': { description: 'Stop the shown scenario\'s running run: running turns stop and queued cells never start.', place: 'evals.scenario' },
-  'evals.tools.refresh': { description: 'Refresh the tool ledger and scores.', place: 'evals.tools' },
   'library.clear': { description: 'Clear the library\'s filters and search.', place: 'library' },
   'library.open': { description: 'Open a library file in the side panel (text, Markdown, PDF pages or a picture); closing it returns to the library.', params: { id: 'file id from library_list (required)' }, place: 'library' }
 } satisfies Record<string, ActionSpec>

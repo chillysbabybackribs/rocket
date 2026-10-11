@@ -96,7 +96,77 @@
 .attachment-chat-dot.is-running { background: #e5b454; }
 .attachment-picker-foot { margin: 5px -5px -5px; padding: 8px 13px; border-top: 1px solid var(--line); font-size: 11px; color: var(--text-3); }
 /* Over the chat card, where the error toast sits, so the native browser view never hides it. */
-.attachment-notice { position: fixed; left: calc(var(--rail-width) + 20px); bottom: 28px; z-index: 70; max-width: min(560px, 60vw); display: flex; align-items: center; gap: 14px; padding: 9px 10px 9px 14px; background: var(--menu); border: 1px solid #38393c; border-radius: 9px; box-shadow: var(--menu-shadow); font-size: 12px; }
+.attachment-notice { position: fixed; left: calc(var(--gap) + 20px); bottom: 28px; z-index: 70; max-width: min(560px, 60vw); display: flex; align-items: center; gap: 14px; padding: 9px 10px 9px 14px; background: var(--menu); border: 1px solid #38393c; border-radius: 9px; box-shadow: var(--menu-shadow); font-size: 12px; }
 .attachment-notice span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attachment-notice button { flex: none; padding: 3px 7px; border-radius: 5px; color: #b9b8ff; }
 .attachment-notice button:hover { background: rgba(255, 255, 255, 0.05); }
+
+/* Phase 3: the camera, the window picker and the review dialog with the pen
+   (docs/mockups/screen-capture.html). */
+.capture-menu { width: 270px; }
+.capture-item > span { display: flex; flex-direction: column; min-width: 0; }
+.capture-item small { color: var(--text-3); font-size: 11px; }
+.capture-dialog { max-width: 92vw; padding: 16px; border: 1px solid var(--line-focus); border-radius: 12px; background: var(--panel); color: var(--text); }
+.capture-dialog::backdrop { background: #000000b8; }
+.capture-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.capture-head b { font-weight: 500; }
+.capture-picker { width: 820px; }
+.capture-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-height: 62vh; overflow: auto; }
+.capture-source { display: flex; flex-direction: column; gap: 7px; padding: 8px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--text); text-align: left; }
+.capture-source:hover, .capture-source:focus-visible { background: rgba(255, 255, 255, 0.04); border-color: var(--line-focus); outline: none; }
+.capture-thumb { height: 140px; display: grid; place-items: center; overflow: hidden; border-radius: 6px; background: #0a0a0b; border: 1px solid var(--line); }
+.capture-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.capture-label { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 12px; }
+.capture-label > img, .capture-label > svg { flex: none; width: 14px; height: 14px; color: var(--text-3); }
+.capture-label > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.capture-empty { color: var(--text-3); padding: 30px 0; text-align: center; }
+.capture-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 11px; color: var(--text-3); }
+.capture-review { width: min(960px, 92vw); }
+.capture-paint { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.capture-tool { height: 30px; padding: 0 10px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--text-2); font-size: 12px; }
+.capture-tool:hover { background: rgba(255, 255, 255, 0.05); }
+.capture-tool[aria-pressed=true] { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: var(--accent); color: var(--text); }
+.capture-swatch { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 2px solid transparent; box-shadow: inset 0 0 0 1px #0006; }
+.capture-swatch[aria-pressed=true] { border-color: #fff; }
+.capture-sep { width: 1px; height: 20px; margin: 0 4px; background: var(--line); }
+.capture-grow { flex: 1; }
+.capture-hint { font-size: 11px; color: var(--text-3); }
+.capture-frame { display: grid; place-items: center; height: min(56vh, 520px); background: #0a0a0b; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.capture-canvas { position: relative; line-height: 0; max-width: 100%; max-height: 100%; }
+.capture-canvas img { display: block; max-width: 100%; max-height: min(56vh, 520px); object-fit: contain; user-select: none; }
+.capture-canvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+.capture-canvas canvas.is-erasing { cursor: cell; }
+.capture-fields { display: grid; grid-template-columns: 70px 1fr; gap: 8px 12px; align-items: center; margin-top: 12px; font-size: 12px; color: var(--text-3); }
+.capture-fields input { padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--canvas); color: var(--text); outline: none; font: inherit; }
+.capture-fields input:focus { border-color: var(--accent); }
+.capture-value { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.capture-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
+.capture-to { font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.capture-buttons { display: flex; gap: 8px; flex: none; }
+
+/* A picture a model made, in the reply where it was made (docs/mockups/generated-images.html). */
+.gen { position: relative; margin: 14px 0 16px; max-width: 520px; }
+.gen-frame { display: block; border-radius: 10px; overflow: hidden; background: #131416; border: 1px solid rgba(255, 255, 255, 0.06); }
+.gen-image { padding: 0; width: fit-content; max-width: 100%; cursor: zoom-in; }
+.gen-image:hover { border-color: rgba(255, 255, 255, 0.14); }
+.gen-image:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gen-image img { display: block; max-width: 100%; max-height: 520px; width: auto; height: auto; }
+.gen-loading { display: block; width: 520px; max-width: 100%; }
+.gen-made { position: relative; width: fit-content; max-width: 100%; }
+.attachment-more.is-generated { right: 8px; top: 8px; background: #0b0c0dcc; }
+.gen-made:hover .attachment-more, .gen-made:focus-within .attachment-more { opacity: 1; }
+/* While it is made: only a field of dots with a slow wave out from the centre, no frame or label. */
+.gen-pending { position: relative; aspect-ratio: 16 / 10; border: 0; background: none; }
+.gen-field { position: absolute; inset: 14px; display: grid; grid-template-columns: repeat(32, 1fr); grid-template-rows: repeat(20, 1fr); place-items: center; }
+.gen-field i { width: 3px; height: 3px; border-radius: 50%; background: #2e2f33; animation: gen-ripple 2.4s ease-in-out infinite; }
+@keyframes gen-ripple { 0%, 100% { transform: scale(1); background: #2e2f33; } 30% { transform: scale(1.9); background: #8d8cff; } }
+/* When it arrives, the picture comes into focus where the dots were. */
+.gen-image img.is-arriving { animation: gen-focus 0.9s ease both; }
+@keyframes gen-focus { from { opacity: 0; filter: blur(22px); transform: scale(1.03); } to { opacity: 1; filter: none; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .gen-field i, .gen-image img.is-arriving { animation: none; } }
+.gen-caption { margin-top: 7px; color: var(--text-3); font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.gen-caption.is-open { display: block; }
+.gen-more { padding: 0; margin-top: 2px; font-size: 11px; color: var(--text-2); }
+.gen-more:hover { color: var(--text); }
+.gen-failed { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid #553134; background: #1d1517; border-radius: 10px; color: #edaca5; font-size: 13px; }
+.gen-failed svg { flex-shrink: 0; margin-top: 3px; }

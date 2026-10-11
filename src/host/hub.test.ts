@@ -4,6 +4,11 @@ import type { HostEvent } from '../shared/types.ts'
 import { Hub, type TurnTiming } from './hub.ts'
 import { unavailableUsage, type OpenUnprompted, type PrepareRequest, type ProviderAdapter, type RunRequest, type RunResult, type TurnSink } from './providers/provider.ts'
 import { Store } from './store.ts'
+import { AttachmentStore } from './attachments.ts'
+import { jpegBase64 } from '../../tests/fixtures/image.ts'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import type { FileAttachment, ImageAttachment } from '../shared/types.ts'
 
 test('image-only messages, queues, restart restoration and provider handoffs retain image references', async () => {
@@ -440,4 +445,109 @@ test('a page leaves finished tool output out and serves it on request; the turn 
   const live = hub.openChat(chat.id).items.find((item) => item.id === 'live-call')
   assert.deepEqual(live?.type === 'tool' && [live.output, live.outputLength], ['streamed so far', undefined])
   adapter.complete()
+})
+
+test('a turn records the pages it opened against the pages its reply cites, and the next message is told of the unopened ones', async () => {
+  const { adapter, hub, ended } = setup()
+  const chat = hub.createChat('/work')
+  adapter.answer = (sink) => {
+    sink.item({ type: 'tool', id: 'w1', turnId: 't', kind: 'web', label: 'linux desktop app', status: 'done', output: '' })
+    sink.item({ type: 'tool', id: 'w2', turnId: 't', kind: 'web', label: 'https://developers.example.com/docs/', status: 'done', output: 'The official release documentation.' })
+    hub.noteOpened(chat.id, 'https://help.example.com/article#top')
+    hub.noteOpened('no-such-chat', 'https://nowhere.example.com/')
+    sink.item({ type: 'assistant', id: 'a1', turnId: 't', text: 'Per [the docs](https://developers.example.com/docs) and https://help.example.com/article, yes. News: https://news.example.org/story.', streaming: false })
+  }
+  hub.send(chat.id, 'claude', null, 'Is it out?')
+  adapter.complete()
+  await ended()
+  const turn = hub.openChat(chat.id).turns.at(-1)!
+  assert.deepEqual(turn.sources, {
+    opened: [{ url: 'https://developers.example.com/docs/', via: 'provider' }, { url: 'https://help.example.com/article#top', via: 'browser' }],
+    cited: [
+      { url: 'https://developers.example.com/docs', opened: true },
+      { url: 'https://help.example.com/article', opened: true },
+      { url: 'https://news.example.org/story', opened: false }
+    ]
+  })
+  adapter.answer = null
+  hub.send(chat.id, 'codex', null, 'And the price?')
+  assert.match(adapter.ran[1]!.text, /^<sources>\nThe last reply in this chat cited a page its turn never opened: https:\/\/news\.example\.org\/story\./)
+  assert.ok(adapter.ran[1]!.text.endsWith('\n\nAnd the price?'))
+  adapter.complete()
+  await hub.waitForTurn(chat.id)
+  assert.equal(hub.openChat(chat.id).turns.at(-1)!.sources, null, 'a reply that cites nothing has no record')
+  hub.send(chat.id, 'claude', null, 'Thanks')
+  assert.equal(adapter.ran[2]!.text, 'Thanks', 'the notice is for the message right after the reply')
+  adapter.complete()
+})
+
+test('all providers reject textual fetch failures and search URLs as citation evidence', async () => {
+  const { adapter, hub, ended } = setup()
+  const chat = hub.createChat('/work')
+  adapter.answer = sink => {
+    for (const [id, label, output] of [
+      ['blocked', 'https://example.org/blocked', 'The server returned HTTP 403 Forbidden.'],
+      ['pdf', 'https://example.org/paper.pdf', 'The content is a raw PDF file dump: compressed binary streams.'],
+      ['empty', 'https://example.org/empty', ''],
+      ['search', 'https://www.google.com/search?q=research', 'Search leads and snippets']
+    ]) sink.item({ type: 'tool', id: id!, turnId: adapter.ran.at(-1)!.turnId, kind: 'web', label: label!, status: 'done', output: output! })
+    sink.item({ type: 'assistant', id: 'a', turnId: adapter.ran.at(-1)!.turnId, streaming: false, text: 'https://example.org/blocked https://example.org/paper.pdf https://example.org/empty' })
+  }
+  hub.send(chat.id, 'claude', null, 'Research')
+  adapter.complete()
+  await ended()
+  const result = hub.openChat(chat.id)
+  assert.deepEqual(result.turns.at(-1)!.sources!.opened, [])
+  assert.ok(result.turns.at(-1)!.sources!.cited.every(c => !c.opened))
+  const blocked = result.items.find(i => i.type === 'tool' && i.label === 'https://example.org/blocked')
+  assert.equal(blocked?.type === 'tool' && blocked.status, 'failed')
+})
+
+test('a picture a provider made is shown from Rocket\'s own copy, ends its turn saved, and is named in the next handoff', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'rocket-hub-images-'))
+  const store = new Store(':memory:')
+  try {
+    const attachments = new AttachmentStore(store, join(root, 'attachments'))
+    const adapter = new FakeAdapter()
+    const events: HostEvent[] = []
+    const hub = new Hub(store, { claude: adapter, codex: adapter, cursor: adapter, antigravity: adapter }, (event) => events.push(event),
+      () => {}, null, (ids) => attachments.resolve(ids), (source, caption) => attachments.keepGenerated(source, caption))
+    const made = join(root, 'made.jpg')
+    await writeFile(made, Buffer.from(jpegBase64, 'base64'))
+    adapter.answer = (sink) => {
+      const turnId = adapter.ran.at(-1)!.turnId
+      sink.item({ type: 'image', id: `${turnId}:g1`, turnId, status: 'generating', caption: 'A neon horizon' })
+      sink.item({ type: 'image', id: `${turnId}:g1`, turnId, status: 'done', caption: 'A neon horizon', source: { path: made, base64: jpegBase64 } })
+      sink.item({ type: 'image', id: `${turnId}:g2`, turnId, status: 'generating', caption: 'A second one' })
+      sink.item({ type: 'assistant', id: `${turnId}:a`, turnId, text: 'Here it is.', streaming: false })
+    }
+    const chat = hub.createChat(root)
+    const turnId = hub.send(chat.id, 'codex', null, 'make a neon horizon')
+    const ended = hub.waitForTurn(chat.id, { turnId, timeoutMs: 5_000 })
+    adapter.complete()
+    await ended
+
+    const items = hub.openChat(chat.id).items
+    const [kept, unfinished] = items.filter((item) => item.type === 'image')
+    assert.equal(kept?.type === 'image' && kept.status, 'done')
+    assert.equal(typeof (kept?.type === 'image' && kept.startedAt), 'number', 'stamped when first reported, for the placeholder\'s clock')
+    const image = kept?.type === 'image' ? kept.image : undefined
+    assert.ok(image, 'the item shows Rocket\'s copy')
+    assert.equal(unfinished?.type === 'image' && unfinished.error, 'The turn ended before the image was finished. Ask for it again.')
+    assert.deepEqual(items.map((item) => item.type), ['user', 'image', 'image', 'assistant'], 'the picture keeps its place in the reply')
+    assert.ok(!JSON.stringify(events).includes(jpegBase64.slice(0, 40)), 'the provider\'s bytes never leave the hub')
+    assert.ok(!JSON.stringify(store.turnItems(chat.id, turnId)).includes('"source"'))
+
+    adapter.answer = null
+    const next = hub.send(chat.id, 'claude', null, 'now describe it')
+    const nextEnded = hub.waitForTurn(chat.id, { turnId: next, timeoutMs: 5_000 })
+    await new Promise((resolve) => setImmediate(resolve))
+    const handoff = adapter.ran.at(-1)!.handoff
+    assert.ok(handoff?.text.includes(`made an image from the prompt "A neon horizon": ${attachments.resolve([image!.id])[0]!.path} (2×2;`), handoff?.text)
+    adapter.complete()
+    await nextEnded
+  } finally {
+    store.close()
+    await rm(root, { recursive: true, force: true })
+  }
 })

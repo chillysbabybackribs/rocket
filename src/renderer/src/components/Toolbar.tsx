@@ -1,34 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, FlaskConical, Globe, GripVertical, History as HistoryIcon, LayoutGrid, LibraryBig, SlidersHorizontal, Target, type LucideIcon } from 'lucide-react'
-import { providerLabel } from '../../../shared/types.ts'
+import { Check, ChevronDown, Globe, GripVertical, History as HistoryIcon, LayoutGrid, LibraryBig, Palette, SlidersHorizontal, type LucideIcon } from 'lucide-react'
 import { go } from '../app-map.ts'
-import { focusedChatId, paneAt, patchToolbar, resetToolbar, setBrowserOpen, setEvalsOpen, setLibraryOpen, sideShown, useApp } from '../store.ts'
+import { patchToolbar, resetToolbar, setBrowserOpen, setLibraryOpen, setPhotocraftOpen, sideShown, useApp } from '../store.ts'
 import { accessibleName, arrange, labelOf, moveSection, rename, SECTIONS, setKept, type SectionId } from '../toolbar.ts'
-import { GoalsMenu, UNDER_WAY } from './Goals.tsx'
 import { HistoryMenu } from './History.tsx'
 
-// The strip above the cards, as a Mac unified toolbar: the Sections icon, the drawer of section
-// names it slides out to the right, the sections the user keeps in the toolbar for good, and the
-// focused chat's title (docs/mockups/titlebar-nav-drawer-mac.html). These are the only buttons
-// for the five sections; the rail keeps the usage notch and its fold.
-//
-// The browser's page is a native view that paints over anything drawn across it, so every menu
-// and popover here is pulled left until it ends inside the chat card (`useInsideChat`).
+const ICONS: Record<SectionId, LucideIcon> = { chats: HistoryIcon, library: LibraryBig, browser: Globe, photocraft: Palette }
 
-const ICONS: Record<SectionId, LucideIcon> = { goals: Target, chats: HistoryIcon, library: LibraryBig, evals: FlaskConical, browser: Globe }
-
-// Popups are drawn by the toolbar, not inside the drawer, whose clipping would cut them off; `left`
-// is where the button that opened one starts, from the toolbar's left edge.
 type Popup = { kind: 'menu'; id: SectionId; left: number } | { kind: 'customize'; left: number } | { kind: 'context'; left: number } | null
 type Opener = (popup: Popup) => void
 
-/** Where a popup opened from `element` starts, from the toolbar's left edge. */
 function leftOf(element: HTMLElement): number {
   const toolbar = element.closest('.toolbar')!.getBoundingClientRect()
   return element.getBoundingClientRect().left - toolbar.left
 }
 
-/** Shift a popup left, after it lays out, so its right edge stays inside the chat card. */
 function useInsideChat(ref: React.RefObject<HTMLElement | null>): void {
   useLayoutEffect(() => {
     const element = ref.current
@@ -45,17 +31,9 @@ function InsideChat({ left, className, children, ...rest }: React.HTMLAttributes
   return <div ref={ref} className={`tb-popup ${className ?? ''}`} style={{ left }} {...rest}>{children}</div>
 }
 
-function useGoalCount(): { waiting: number; asking: boolean } {
-  const waiting = useApp((state) => state.goals.filter((goal) => UNDER_WAY.includes(goal.status)).length)
-  const asking = useApp((state) => state.goals.some((goal) => goal.status === 'needs_you' || goal.status === 'confirming'))
-  return { waiting, asking }
-}
-
 function Section({ id, popup, setPopup, tabbable = true }: { id: SectionId; popup: Popup; setPopup: Opener; tabbable?: boolean }) {
   const toolbar = useApp((state) => state.toolbar)
   const side = useApp(sideShown)
-  const { waiting, asking } = useGoalCount()
-  const Icon = ICONS[id]
   const label = labelOf(toolbar, id)
   const name = accessibleName(toolbar, id)
   const tabIndex = tabbable ? undefined : -1
@@ -67,15 +45,13 @@ function Section({ id, popup, setPopup, tabbable = true }: { id: SectionId; popu
         type="button"
         className={`tb-item${open ? ' is-on' : ''}`}
         data-section={id}
-        aria-label={id === 'goals' && waiting ? `${name}, ${waiting} under way` : name}
+        aria-label={name}
         aria-haspopup="menu"
         aria-expanded={open}
         tabIndex={tabIndex}
         onClick={(event) => setPopup(open ? null : { kind: 'menu', id, left: leftOf(event.currentTarget) })}
       >
-        <Icon size={15} aria-hidden />
         <span>{label}</span>
-        {id === 'goals' && waiting > 0 && <span className={`tb-count${asking ? ' is-asking' : ''}`}>{waiting}</span>}
         <ChevronDown size={12} className="tb-chev" aria-hidden />
       </button>
     )
@@ -85,7 +61,7 @@ function Section({ id, popup, setPopup, tabbable = true }: { id: SectionId; popu
   const toggle = (): void => {
     setPopup(null)
     if (id === 'library') on ? setLibraryOpen(false) : void go('library')
-    else if (id === 'evals') setEvalsOpen(!on)
+    else if (id === 'photocraft') on ? setPhotocraftOpen(false) : void go('photocraft')
     else on ? setBrowserOpen(false) : void go('browser')
   }
   return (
@@ -99,13 +75,11 @@ function Section({ id, popup, setPopup, tabbable = true }: { id: SectionId; popu
       tabIndex={tabIndex}
       onClick={toggle}
     >
-      <Icon size={15} aria-hidden />
       <span>{label}</span>
     </button>
   )
 }
 
-/** One section's row in Customize: drag handle, rename field, and Keep or Consolidate. */
 function CustomizeRow({ id, dragging, setDragging, dropBefore, setDropBefore }: {
   id: SectionId
   dragging: SectionId | null
@@ -115,7 +89,6 @@ function CustomizeRow({ id, dragging, setDragging, dropBefore, setDropBefore }: 
 }) {
   const toolbar = useApp((state) => state.toolbar)
   const label = labelOf(toolbar, id)
-  // The field keeps what is typed, spaces and all; the store keeps the cleaned name.
   const [draft, setDraft] = useState<string | null>(null)
   const kept = toolbar.kept.includes(id)
   const Icon = ICONS[id]
@@ -208,7 +181,6 @@ function Customize({ left, close }: { left: number; close: () => void }) {
   )
 }
 
-/** Right-click on the Sections icon: keep any section in one click, or open Customize. */
 function ContextMenu({ left, setPopup }: { left: number; setPopup: Opener }) {
   const toolbar = useApp((state) => state.toolbar)
   return (
@@ -231,24 +203,8 @@ function ContextMenu({ left, setPopup }: { left: number; setPopup: Opener }) {
   )
 }
 
-/** The focused chat's title, with its provider and folder under it, as Mail and Notes title a window. */
-function Title() {
-  const title = useApp((state) => state.chats.find((chat) => chat.id === focusedChatId(state))?.title ?? 'New chat')
-  const provider = useApp((state) => paneAt(state, state.focused).provider)
-  const cwd = useApp((state) => state.chats.find((chat) => chat.id === focusedChatId(state))?.cwd ?? state.defaultCwd)
-  const home = window.rocket.homeDir
-  const folder = home && cwd.startsWith(home) ? `~${cwd.slice(home.length)}` : cwd
-  return (
-    <div className="tb-title">
-      <strong>{title}</strong>
-      <span>{providerLabel(provider)} · {folder}</span>
-    </div>
-  )
-}
-
 export function Toolbar() {
   const toolbar = useApp((state) => state.toolbar)
-  const { waiting, asking } = useGoalCount()
   const [popup, setPopup] = useState<Popup>(null)
   const root = useRef<HTMLDivElement>(null)
   const drawer = useRef<HTMLDivElement>(null)
@@ -256,11 +212,9 @@ export function Toolbar() {
   const { kept, drawer: tucked } = arrange(toolbar)
   const open = toolbar.open
 
-  // The drawer's width follows its contents, so it slides to the right size and back to nothing.
-  // Measuring forces a layout, so it runs only when what is in the drawer changes.
   useLayoutEffect(() => {
     if (drawer.current && inner.current) drawer.current.style.width = open ? `${inner.current.scrollWidth}px` : '0px'
-  }, [open, toolbar, waiting])
+  }, [open, toolbar])
 
   useEffect(() => {
     const onPointer = (event: PointerEvent): void => {
@@ -283,7 +237,6 @@ export function Toolbar() {
     }
   }, [popup, open])
 
-  const badge = !open && tucked.includes('goals') && waiting > 0
   const close = (): void => setPopup(null)
   return (
     <div className="toolbar" ref={root}>
@@ -292,14 +245,12 @@ export function Toolbar() {
             type="button"
             className="tb-toggle"
             aria-label="Sections"
-            aria-description={badge ? `${waiting} ${waiting === 1 ? 'goal' : 'goals'} under way` : undefined}
-            title={`${open ? 'Hide' : 'Show'} sections${badge ? ` · ${waiting} ${waiting === 1 ? 'goal' : 'goals'} under way` : ''}`}
+            title={`${open ? 'Hide' : 'Show'} sections`}
             aria-expanded={open}
             onClick={() => { setPopup(null); patchToolbar({ open: !open }) }}
             onContextMenu={(event) => { event.preventDefault(); setPopup({ kind: 'context', left: leftOf(event.currentTarget) }) }}
           >
             <LayoutGrid size={16} aria-hidden />
-            {badge && <span className={`tb-count tb-toggle-count${asking ? ' is-asking' : ''}`}>{waiting}</span>}
           </button>
           <div className="tb-drawer" ref={drawer} inert={!open} aria-hidden={!open}>
             <div className="tb-drawer-inner" ref={inner}>
@@ -328,10 +279,9 @@ export function Toolbar() {
           {kept.map((id) => <Section key={id} id={id} popup={popup} setPopup={setPopup} />)}
         </div>
       )}
-      <Title />
-      {popup?.kind === 'menu' && (
+      {popup?.kind === 'menu' && popup.id === 'chats' && (
         <InsideChat key={popup.id} left={popup.left}>
-          {popup.id === 'goals' ? <GoalsMenu onPick={close} /> : <HistoryMenu onPick={close} />}
+          <HistoryMenu onPick={close} />
         </InsideChat>
       )}
       {popup?.kind === 'customize' && <Customize left={popup.left} close={close} />}

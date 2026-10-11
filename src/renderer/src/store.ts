@@ -1,6 +1,7 @@
+import type { Orchestration } from '../../shared/orchestrator.ts'
 import { collectAttachments, restoreDraft, updateDraft } from './drafts.ts'
 import { useSyncExternalStore } from 'react'
-import type { ChatLinkTarget, Chat, EvalRun, EvalScenarioInfo, Goal, GoalEdit, Attachment, AttachmentPreview, FileAttachment, MessageDraft, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
+import type { ChatLinkTarget, Chat, Attachment, AttachmentPreview, FileAttachment, MessageDraft, HostEvent, Item, ModelInfo, ProviderId, QueuedMessage, Turn, TurnPatch, UsageSnapshot } from '../../shared/types.ts'
 
 export type ArtifactView =
   | Extract<ChatLinkTarget, { kind: 'artifact' }>
@@ -9,7 +10,7 @@ export type ArtifactView =
   | { kind: 'attachment'; attachment: FileAttachment; preview: AttachmentPreview | null; error: string | null }
   /** A file opened from the library; `view` is null while it loads. */
   | { kind: 'library'; entry: LibraryEntry; view: LibraryView | null; error: string | null }
-import { PROVIDERS, TURN_PAGE, planItemId, providerLabel } from '../../shared/types.ts'
+import { PROVIDERS, TURN_PAGE, planItemId } from '../../shared/types.ts'
 import type { LibraryEntry, LibraryFilters, LibraryPreview, LibraryView } from '../../shared/library.ts'
 import { call, connectHost } from './host.ts'
 import { clampSpeed } from '../../shared/reading.ts'
@@ -23,7 +24,7 @@ import { DEFAULT_TOOLBAR, normalizeToolbar, type ToolbarPrefs } from './toolbar.
 // The chat card holds one to four panes, each a whole chat with its own tabs and composer. What
 // a pane shows is in `panes`; what a shown chat holds (its turns, their items, what is waiting)
 // is in `views`, keyed by chat, so two panes on the same chat share one copy. Every action that
-// means "in this chat" takes the pane it was asked in; the rail acts on the focused pane.
+// means "in this chat" takes the pane it was asked in; the toolbar acts on the focused pane.
 
 /** The most panes the card splits into: side by side, two over one, then quadrants. */
 export const MAX_PANES = 4
@@ -60,53 +61,17 @@ export type ChatView = {
 
 const EMPTY_VIEW: ChatView = { turns: [], turnItems: {}, queued: [], planTurnId: null, hasOlder: false }
 
-// The eval panel's navigation and its runs live here rather than in its components, so the app
-// map (`app-map.ts`) can read and set them by name: a model opens a scenario and runs it the same
-// way a click does. Runs arrive whole from the host's `evalRun` events.
-export type EvalView = 'scenarios' | 'scenario' | 'run' | 'tools'
-export type EvalsState = {
-  view: EvalView
-  scenarioId: string | null
-  /** The run the scenario page shows; null shows the latest. */
-  runId: string | null
-  /** The cell the run view shows. */
-  cell: { runId: string; provider: ProviderId; trial: number } | null
-  scenarios: EvalScenarioInfo[]
-  /** Every saved run, newest first. */
-  runs: EvalRun[]
-  /** Messages edited on a scenario page and not yet run, by scenario. */
-  drafts: Record<string, string>
-  loaded: boolean
-  error: string | null
-  /** Bumped by Refresh; the tools panel reloads when it changes. */
-  refresh: number
-  tools: { section: 'health' | 'scores' }
-}
-
-const INITIAL_EVALS: EvalsState = {
-  view: 'scenarios',
-  scenarioId: null,
-  runId: null,
-  cell: null,
-  scenarios: [],
-  runs: [],
-  drafts: {},
-  loaded: false,
-  error: null,
-  refresh: 0,
-  tools: { section: 'health' }
-}
-
 export type AppState = {
   ready: boolean
   chats: Chat[]
   panes: Pane[]
-  /** The pane the user last worked in: where the rail opens chats, and whose chat the rail marks. */
+  /** The pane the user last worked in: where the toolbar opens chats, and whose chat it marks. */
   focused: number
   /** Each chat on screen, keyed by chat id. */
   views: Record<string, ChatView>
   /** Chats with a turn in flight, including ones not on screen. */
   running: ReadonlySet<string>
+  orchestrations: Record<string, Orchestration>
   usage: Partial<Record<ProviderId, UsageSnapshot>>
   /** Each provider's models, once read. A provider absent here has not been asked yet. */
   models: Partial<Record<ProviderId, ModelInfo[]>>
@@ -115,25 +80,15 @@ export type AppState = {
   /** Hands-free reading's speed, one for web pages and files alike (shared/reading.ts). */
   readingSpeed: number
   browserOpen: boolean
-  /** Local eval dashboard (Braintrust-style mock UI) beside the chat. */
-  evalsOpen: boolean
   /** The library beside the chat: every file the chats touched (docs/library-plan.md). */
   libraryOpen: boolean
   library: LibraryState
-  /** What the eval dashboard shows and what it is running; see `EvalsState`. */
-  evals: EvalsState
-  /** Whether the rail stands open at its full width, or is folded to a strip that peeks on hover. */
-  railOpen: boolean
+  /** PhotoCraft beside the chat (docs/photocraft-in-rocket-plan.md). */
+  photocraftOpen: boolean
   /** The toolbar's sections: the drawer open or not, and what the user kept, renamed and reordered. */
   toolbar: ToolbarPrefs
-  /** Every goal, newest first. A goal's chat is an ordinary chat with the goal beside it. */
-  goals: Goal[]
-  /** Whether the goal shows beside its chat; hiding it does not stop the goal. */
-  goalPaneOpen: boolean
-  /** The goal side's width, in pixels. */
-  goalWidth: number
-  /** The new-goal dialog: closed, describing, or following the goal it drafted. */
-  newGoal: { goalId: string | null } | null
+  /** Width of the plan drawer beside the chat, in pixels. */
+  sideWidth: number
   /** The folder a new chat starts in: the last one the user chose, or their home folder. */
   defaultCwd: string
   error: string | null
@@ -166,13 +121,13 @@ type Prefs = {
   /** chatId → that chat's choice. */
   selections?: Record<string, Selection>
   browserOpen?: boolean
-  evalsOpen?: boolean
   readingSpeed?: number
   libraryOpen?: boolean
   libraryView?: 'grid' | 'list'
-  railOpen?: boolean
+  photocraftOpen?: boolean
   toolbar?: ToolbarPrefs
-  goalPaneOpen?: boolean
+  sideWidth?: number
+  /** @deprecated migrated to sideWidth */
   goalWidth?: number
   /** Chats whose plan drawer the user closed; it no longer opens by itself there. */
   planClosed?: Record<string, true>
@@ -243,20 +198,16 @@ let state: AppState = {
   focused: 0,
   views: {},
   running: new Set(),
+  orchestrations: {},
   usage: {},
   models: {},
   readingSpeed: clampSpeed(prefs.readingSpeed ?? 1),
   browserOpen: prefs.browserOpen === true,
-  evalsOpen: prefs.evalsOpen === true,
-  evals: INITIAL_EVALS,
   libraryOpen: prefs.libraryOpen === true,
   library: { entries: [], loaded: false, error: null, filters: {}, view: prefs.libraryView === 'list' ? 'list' : 'grid', selected: null, previews: {} },
-  railOpen: prefs.railOpen !== false,
+  photocraftOpen: prefs.photocraftOpen === true,
   toolbar: normalizeToolbar(prefs.toolbar),
-  goals: [],
-  goalPaneOpen: prefs.goalPaneOpen !== false,
-  goalWidth: prefs.goalWidth ?? 400,
-  newGoal: null,
+  sideWidth: prefs.sideWidth ?? prefs.goalWidth ?? 400,
   defaultCwd: prefs.cwd || window.rocket.homeDir,
   error: null
 }
@@ -315,7 +266,7 @@ export function chatIdOf(state: AppState, pane: number): string | null {
   return paneAt(state, pane).chatId
 }
 
-/** The chat the focused pane shows: what the rail means by "the open chat". */
+/** The chat the focused pane shows: what the toolbar means by "the open chat". */
 export function focusedChatId(state: AppState): string | null {
   return chatIdOf(state, state.focused)
 }
@@ -364,6 +315,10 @@ function putItem(chatId: string, item: Item): void {
 function applyEvents(events: HostEvent[]): void {
   for (const event of events) {
     switch (event.type) {
+      case 'orchestrator':
+        setState({ orchestrations: { ...state.orchestrations, [event.run.chatId]: event.run } })
+        void refreshOrchestratorArtifact(event.run.progressFile)
+        break
       case 'item':
         if (!state.views[event.chatId]) break
         putItem(event.chatId, event.item)
@@ -402,7 +357,7 @@ function applyEvents(events: HostEvent[]): void {
       }
       case 'chatDeleted':
         updateDraft(event.chatId, { text: '', attachments: [] })
-        setState({ chats: state.chats.filter((chat) => chat.id !== event.chatId), goals: state.goals.filter((goal) => goal.chatId !== event.chatId) })
+        setState({ chats: state.chats.filter((chat) => chat.id !== event.chatId) })
         forgetSelection(event.chatId)
         // Closing a pane shifts the ones after it, so the panes are walked from the end.
         for (let index = state.panes.length - 1; index >= 0; index--) {
@@ -412,17 +367,9 @@ function applyEvents(events: HostEvent[]): void {
       case 'usage':
         setState({ usage: { ...state.usage, [event.snapshot.provider]: event.snapshot } })
         break
-      case 'goal':
-        putGoal(event.goal)
-        break
       case 'queue':
         if (state.views[event.chatId]) patchView(event.chatId, { queued: event.queued })
         break
-      case 'evalRun': {
-        const rest = state.evals.runs.filter((run) => run.id !== event.run.id)
-        patchEvals({ runs: [event.run, ...rest].sort((a, b) => b.startedAt - a.startedAt) })
-        break
-      }
       case 'library':
         if (state.library.loaded) scheduleLibraryLoad()
         break
@@ -438,7 +385,7 @@ function applyEvents(events: HostEvent[]): void {
  * nothing.
  */
 function pruneViews(panes: Pane[]): Record<string, ChatView> {
-  const open = new Set([...panes.flatMap((pane) => [pane.chatId, ...pane.tabs]), evalChatId(state)])
+  const open = new Set(panes.flatMap((pane) => [pane.chatId, ...pane.tabs]))
   const views: Record<string, ChatView> = {}
   for (const [chatId, view] of Object.entries(state.views)) {
     if (open.has(chatId)) views[chatId] = view
@@ -502,7 +449,6 @@ function showChat(pane: number, chatId: string | null, page?: Page): void {
 function openPlanIfNew(chatId: string, turnId: string): void {
   const view = state.views[chatId]
   if (!view || view.planTurnId !== null || readPrefs().planClosed?.[chatId]) return
-  if (goalOf(chatId)) return
   if (view.turns.find((turn) => turn.id === turnId)?.status !== 'running') return
   patchView(chatId, { planTurnId: turnId })
 }
@@ -714,93 +660,9 @@ export function loadModels(provider: ProviderId): Promise<void> {
   return load
 }
 
-// ── Goals ─────────────────────────────────────────────────────────────
-
-/** A goal changed. When it finishes or needs the user, the desktop says so if the window is not in front. */
-function putGoal(goal: Goal): void {
-  const before = state.goals.find((entry) => entry.id === goal.id)
-  setState({ goals: [goal, ...state.goals.filter((entry) => entry.id !== goal.id)].sort((a, b) => b.createdAt - a.createdAt) })
-  if (!before || before.status === goal.status || !document.hidden && document.hasFocus()) return
-  const body = goal.status === 'done' ? `Done: ${goal.title}`
-    : goal.status === 'needs_you' ? `${goal.title}: ${goal.reason ?? 'needs you'}`
-    : goal.status === 'confirming' ? `Check the plan for: ${goal.title}`
-    : null
-  if (!body) return
-  try {
-    const notice = new Notification('Rocket', { body, silent: false })
-    notice.onclick = () => {
-      window.focus()
-      void openChat(goal.chatId)
-    }
-  } catch {
-    // Notifications are a courtesy.
-  }
-}
-
-export function goalOf(chatId: string | null): Goal | null {
-  return chatId ? state.goals.find((goal) => goal.chatId === chatId) ?? null : null
-}
-
-export function openNewGoal(): void {
-  setState({ newGoal: { goalId: null } })
-}
-
-export function closeNewGoal(): void {
-  setState({ newGoal: null })
-}
-
-/** Have the focused pane's provider draft a goal from what the user wrote, in a chat of its own. */
-export async function draftGoal(text: string, cwd: string): Promise<void> {
-  try {
-    const { provider, modelChoice } = paneAt(state, state.focused)
-    const goal = await call('goal.draft', { cwd, text, provider, model: modelChoice[provider]?.id ?? null })
-    putGoal(goal)
-    saveSelection(goal.chatId, { provider, modelChoice })
-    writePrefs({ cwd })
-    setState({ defaultCwd: cwd, newGoal: { goalId: goal.id }, goalPaneOpen: true })
-    void openChat(goal.chatId)
-  } catch (error) {
-    fail(error)
-  }
-}
-
-async function goalCall(run: () => Promise<Goal>): Promise<boolean> {
-  try {
-    putGoal(await run())
-    return true
-  } catch (error) {
-    fail(error)
-    return false
-  }
-}
-
-export function updateGoal(goalId: string, edit: GoalEdit): Promise<boolean> {
-  return goalCall(() => call('goal.update', { goalId, edit }))
-}
-
-/** Save the brief as confirmed, then start the work. */
-export async function startGoal(goalId: string, edit: GoalEdit): Promise<void> {
-  if (!await updateGoal(goalId, edit)) return
-  if (await goalCall(() => call('goal.start', { goalId }))) closeNewGoal()
-}
-
-export function pauseGoal(goalId: string): void { void goalCall(() => call('goal.pause', { goalId })) }
-export function resumeGoal(goalId: string): void { void goalCall(() => call('goal.resume', { goalId })) }
-export function stopGoal(goalId: string): void { void goalCall(() => call('goal.stop', { goalId })) }
-export function steerGoal(goalId: string, text: string): Promise<boolean> { return goalCall(() => call('goal.steer', { goalId, text })) }
-
-export function setGoalPaneOpen(goalPaneOpen: boolean): void {
-  setState({ goalPaneOpen })
-  writePrefs({ goalPaneOpen })
-}
-
-export function setGoalWidth(goalWidth: number, save: boolean): void {
-  setState({ goalWidth })
-  if (save) writePrefs({ goalWidth })
-}
-
-export function agentLabel(agent: { provider: ProviderId }): string {
-  return providerLabel(agent.provider)
+export function setSideWidth(sideWidth: number, save: boolean): void {
+  setState({ sideWidth })
+  if (save) writePrefs({ sideWidth })
 }
 
 /**
@@ -815,11 +677,6 @@ export function setReadingSpeed(speed: number, fromBrowser = false): void {
   if (!fromBrowser) window.rocket.browser.send({ type: 'readingSpeed', speed: readingSpeed })
 }
 
-export function setRailOpen(railOpen: boolean): void {
-  setState({ railOpen })
-  writePrefs({ railOpen })
-}
-
 export function patchToolbar(patch: Partial<ToolbarPrefs>): void {
   const toolbar = { ...state.toolbar, ...patch }
   setState({ toolbar })
@@ -831,34 +688,36 @@ export function resetToolbar(): void {
   patchToolbar({ ...DEFAULT_TOOLBAR, open: state.toolbar.open })
 }
 
-/** The side panel the rail and the toolbar show as on: an artifact covers them all. */
-export function sideShown(state: AppState): 'library' | 'evals' | 'browser' | null {
+/** The side panel the toolbar shows as on: an artifact covers them all. */
+export function sideShown(state: AppState): 'library' | 'photocraft' | 'browser' | null {
   if (state.artifact) return null
   if (state.libraryOpen) return 'library'
-  if (state.evalsOpen) return 'evals'
+  if (state.photocraftOpen) return 'photocraft'
   return state.browserOpen ? 'browser' : null
 }
 
 export function setBrowserOpen(browserOpen: boolean): void {
   linkRequest++
-  const evalsOpen = browserOpen ? false : state.evalsOpen
   const libraryOpen = browserOpen ? false : state.libraryOpen
-  setState({ browserOpen, evalsOpen, libraryOpen, artifact: null })
-  writePrefs({ browserOpen, evalsOpen, libraryOpen })
+  const photocraftOpen = browserOpen ? false : state.photocraftOpen
+  setState({ browserOpen, libraryOpen, photocraftOpen, artifact: null })
+  writePrefs({ browserOpen, libraryOpen, photocraftOpen })
 }
 
-export function setEvalsOpen(evalsOpen: boolean): void {
-  const libraryOpen = evalsOpen ? false : state.libraryOpen
-  setState({ evalsOpen, libraryOpen, browserOpen: evalsOpen ? false : state.browserOpen, artifact: null })
-  writePrefs({ evalsOpen, libraryOpen, browserOpen: evalsOpen ? false : state.browserOpen })
+/** Show or hide PhotoCraft beside the chat; like the others, it takes the side column alone. */
+export function setPhotocraftOpen(photocraftOpen: boolean): void {
+  linkRequest++
+  const others = photocraftOpen ? { browserOpen: false, libraryOpen: false } : {}
+  setState({ photocraftOpen, ...others, artifact: null })
+  writePrefs({ photocraftOpen, ...others })
 }
 
 // ── Library ───────────────────────────────────────────────────────────
 
-/** Show or hide the library beside the chat; it takes the side from the browser and the evals. */
+/** Show or hide the library beside the chat; it takes the side from the browser. */
 export function setLibraryOpen(libraryOpen: boolean): void {
   linkRequest++
-  const others = libraryOpen ? { browserOpen: false, evalsOpen: false } : {}
+  const others = libraryOpen ? { browserOpen: false, photocraftOpen: false } : {}
   setState({ libraryOpen, ...others, artifact: null })
   writePrefs({ libraryOpen, ...others })
   if (libraryOpen && !state.library.loaded) void loadLibrary()
@@ -917,33 +776,6 @@ export async function openLibraryEntry(id: string): Promise<void> {
   }
 }
 
-// ── Evals ─────────────────────────────────────────────────────────────
-
-export function patchEvals(patch: Partial<EvalsState>): void {
-  setState({ evals: { ...state.evals, ...patch } })
-}
-
-/** Read the scenario files and saved runs; the panel calls this when it opens and on Refresh. */
-export async function loadEvals(): Promise<void> {
-  try {
-    const [{ scenarios }, runs] = await Promise.all([call('eval.listScenarios', {}), call('evalRuns.list', {})])
-    patchEvals({ scenarios, runs, loaded: true, error: null })
-  } catch (error) {
-    patchEvals({ loaded: true, error: error instanceof Error ? error.message : String(error) })
-  }
-}
-
-/** Show an eval view. Opening a scenario or a cell names it; the list forgets what was open. */
-export function showEvalView(view: EvalView, ids: Partial<Pick<EvalsState, 'scenarioId' | 'runId' | 'cell'>> = {}): void {
-  patchEvals({
-    view,
-    scenarioId: view === 'scenarios' || view === 'tools' ? state.evals.scenarioId : ids.scenarioId ?? state.evals.scenarioId,
-    runId: view === 'scenario' ? ids.runId ?? null : state.evals.runId,
-    cell: view === 'run' ? ids.cell ?? state.evals.cell : null
-  })
-  if (!state.evalsOpen) setEvalsOpen(true)
-}
-
 /**
  * Fetch the output a page left out of a finished tool call (`outputLength`), when its step is
  * opened. The row re-renders with it; a call that has since gone keeps showing none.
@@ -993,25 +825,6 @@ export async function loadOlder(chatId: string): Promise<void> {
   }
 }
 
-/** The chat of the cell the run view shows, kept loaded while it is on screen. */
-export function evalChatId(current: AppState): string | null {
-  const { cell, runs } = current.evals
-  if (!current.evalsOpen || current.evals.view !== 'run' || !cell) return null
-  return runs.find((run) => run.id === cell.runId)?.cells.find((entry) => entry.provider === cell.provider && entry.trial === cell.trial)?.chatId ?? null
-}
-
-/** Load an eval chat for the run view's transcript, outside every pane. Live events then keep it current. */
-export async function loadEvalChat(chatId: string): Promise<void> {
-  if (state.views[chatId]) return
-  const snapshot = await call('chat.open', { chatId })
-  const turnItems: Record<string, string[]> = {}
-  for (const item of snapshot.items) {
-    items.set(item.id, item)
-    ;(turnItems[item.turnId] ??= []).push(item.id)
-  }
-  setState({ views: { ...state.views, [chatId]: { turns: snapshot.turns, turnItems, queued: snapshot.queued ?? [], planTurnId: null, hasOlder: snapshot.hasOlder } } })
-}
-
 /** The current state without subscribing, for the dispatcher. */
 export function peekState(): AppState {
   return state
@@ -1049,8 +862,8 @@ function savedPanes(saved: Prefs, chats: Chat[]): { panes: Pane[]; focused: numb
 
 async function load(): Promise<void> {
   try {
-    const [chats, goals] = await Promise.all([call('chats.list', {}), call('goals.list', {})])
-    setState({ goals })
+    const [chats, orchestrations] = await Promise.all([call('chats.list', {}), call('orchestrator.list', {})])
+    setState({ orchestrations: Object.fromEntries(orchestrations.map(run => [run.chatId, run])) })
     const saved = readPrefs()
     setState({ ready: true, chats: sortChats(chats) })
     const { panes, focused } = savedPanes(saved, chats)
@@ -1146,8 +959,8 @@ export async function openChatLink(href: string, cwd?: string): Promise<void> {
     const target = await window.rocket.openChatLink(href, folder)
     if (request !== linkRequest) return
     if (target.kind === 'browser') {
-      setState({ artifact: null, browserOpen: true })
-      writePrefs({ browserOpen: true })
+      setState({ artifact: null, browserOpen: true, photocraftOpen: false })
+      writePrefs({ browserOpen: true, photocraftOpen: false })
       window.rocket.browser.send({ type: 'newTab', url: target.url })
     } else {
       setState({ artifact: target })
@@ -1156,4 +969,21 @@ export async function openChatLink(href: string, cwd?: string): Promise<void> {
   } catch (error) {
     if (request === linkRequest) fail(error)
   }
+}
+
+/** Refresh a visible progress file without navigating away from the user's current panel. */
+async function refreshOrchestratorArtifact(path: string): Promise<void> {
+  const current = state.artifact
+  if (current?.kind === 'library' && current.entry.path === path) {
+    try {
+      const view = await call('library.view', { id: current.entry.id })
+      if (state.artifact === current) setState({ artifact: { ...current, view } })
+    } catch { /* Reopening retries a failed preview. */ }
+    return
+  }
+  if (current?.kind !== 'artifact' || current.path !== path) return
+  try {
+    const target = await window.rocket.openChatLink(path, path.slice(0, path.lastIndexOf('/')))
+    if (target.kind === 'artifact' && state.artifact === current) setState({ artifact: target })
+  } catch { /* The next progress event or reopening retries the preview. */ }
 }

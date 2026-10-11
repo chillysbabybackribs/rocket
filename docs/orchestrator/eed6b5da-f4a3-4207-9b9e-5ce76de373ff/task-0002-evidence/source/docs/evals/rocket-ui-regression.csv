@@ -1,0 +1,12 @@
+input,expected
+"{""scenario"":""Rail retracts to strip and expands on hover"",""playwright_grep"":""the rail folds to a strip"",""spec_file"":""rail.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Plan drawer opens beside chat and remembers closed state"",""playwright_grep"":""a plan opens beside the chat"",""spec_file"":""plan.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Mid-turn steer joins or queues by provider"",""playwright_grep"":""a message sent mid-turn"",""spec_file"":""steer.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Ask-user card answered in one click"",""playwright_grep"":""a question from the model"",""spec_file"":""question.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Host crash reconnects and accepts new message"",""playwright_grep"":""host crash interrupts"",""spec_file"":""recovery.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Full desktop self-check smoke"",""playwright_grep"":""Rocket desktop self-check"",""spec_file"":""rocket.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""UI-run isolated session lifecycle"",""playwright_grep"":""UI scripts reuse isolated sessions"",""spec_file"":""ui-run.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Pane index selection when greeting text duplicates"",""playwright_grep"":""ui.pane targets the intended chat"",""spec_file"":""tool-failure-pane.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Tool failure ledger review through verified fix"",""playwright_grep"":""tool failure history supports review"",""spec_file"":""tool-failure-loop.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"":""Eval Configure Tools tab loads MCP ledger"",""playwright_grep"":""eval Tools tab loads ledger"",""spec_file"":""eval-tools.spec.ts"",""layer"":""L1""}","{""status"":""pass""}"
+"{""scenario"": ""Orchestrator shell controlled worker lifecycle and layout"", ""playwright_grep"": ""orchestra-shell"", ""spec_file"": ""orchestra-shell.spec.ts"", ""layer"": ""L1""}","{""status"": ""pass""}"

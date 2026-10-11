@@ -1,0 +1,121 @@
+{
+ "events": [
+  {
+   "name": "javascriptDialogClosed",
+   "description": "Fired when a JavaScript initiated dialog (alert, confirm, prompt, or onbeforeunload) has been\nclosed.",
+   "parameters": [
+    {
+     "name": "frameId",
+     "description": "Frame id.",
+     "experimental": true,
+     "$ref": "FrameId"
+    },
+    {
+     "name": "result",
+     "description": "Whether dialog was confirmed.",
+     "type": "boolean"
+    },
+    {
+     "name": "userInput",
+     "description": "User input in case of prompt.",
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "name": "javascriptDialogOpening",
+   "description": "Fired when a JavaScript initiated dialog (alert, confirm, prompt, or onbeforeunload) is about to\nopen.",
+   "parameters": [
+    {
+     "name": "url",
+     "description": "Frame url.",
+     "type": "string"
+    },
+    {
+     "name": "frameId",
+     "description": "Frame id.",
+     "experimental": true,
+     "$ref": "FrameId"
+    },
+    {
+     "name": "message",
+     "description": "Message that will be displayed by the dialog.",
+     "type": "string"
+    },
+    {
+     "name": "type",
+     "description": "Dialog type.",
+     "$ref": "DialogType"
+    },
+    {
+     "name": "hasBrowserHandler",
+     "description": "True iff browser is capable showing or acting on the given dialog. When browser has no\ndialog handler for given target, calling alert while Page domain is engaged will stall\nthe page execution. Execution can be resumed via calling Page.handleJavaScriptDialog.",
+     "type": "boolean"
+    },
+    {
+     "name": "defaultPrompt",
+     "description": "Default dialog prompt.",
+     "optional": true,
+     "type": "string"
+    }
+   ]
+  }
+ ],
+ "commands": [
+  {
+   "name": "addScriptToEvaluateOnNewDocument",
+   "description": "Evaluates given script in every frame upon creation (before loading frame's scripts).",
+   "parameters": [
+    {
+     "name": "source",
+     "type": "string"
+    },
+    {
+     "name": "worldName",
+     "description": "If specified, creates an isolated world with the given name and evaluates given script in it.\nThis world name will be used as the ExecutionContextDescription::name when the corresponding\nevent is emitted.",
+     "experimental": true,
+     "optional": true,
+     "type": "string"
+    },
+    {
+     "name": "includeCommandLineAPI",
+     "description": "Specifies whether command line API should be available to the script, defaults\nto false.",
+     "experimental": true,
+     "optional": true,
+     "type": "boolean"
+    },
+    {
+     "name": "runImmediately",
+     "description": "If true, runs the script immediately on existing execution contexts or worlds.\nDefault: false.",
+     "experimental": true,
+     "optional": true,
+     "type": "boolean"
+    }
+   ],
+   "returns": [
+    {
+     "name": "identifier",
+     "description": "Identifier of the added script.",
+     "$ref": "ScriptIdentifier"
+    }
+   ]
+  },
+  {
+   "name": "handleJavaScriptDialog",
+   "description": "Accepts or dismisses a JavaScript initiated dialog (alert, confirm, prompt, or onbeforeunload).",
+   "parameters": [
+    {
+     "name": "accept",
+     "description": "Whether to accept or dismiss the dialog.",
+     "type": "boolean"
+    },
+    {
+     "name": "promptText",
+     "description": "The text to enter into the dialog prompt before accepting. Used only if this is a prompt\ndialog.",
+     "optional": true,
+     "type": "string"
+    }
+   ]
+  }
+ ]
+}

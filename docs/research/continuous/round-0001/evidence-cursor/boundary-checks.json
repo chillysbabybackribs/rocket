@@ -1,0 +1,28 @@
+{
+  "urls": {
+    "filePasswd": "file:///etc/passwd",
+    "fileHome": "file:///home/dp/.ssh/config",
+    "aboutBlank": "about:blank",
+    "javascript": "https://www.google.com/search?q=javascript%3Aalert(1)",
+    "chromeUrl": "https://www.google.com/search?q=chrome%3A%2F%2Fsettings",
+    "dataUrl": "https://www.google.com/search?q=data%3Atext%2Fhtml%2Chi",
+    "https": "https://example.com/"
+  },
+  "hosts": {
+    "suffixAi": true,
+    "suffixCom": true,
+    "suffixCoUk": true,
+    "parentDomain": true,
+    "subdomainCookie": true,
+    "unrelated": false,
+    "notclaude": false
+  },
+  "hostEval": {
+    "returnedType": "function",
+    "hostSide": true
+  },
+  "workerResult": {
+    "node": "24.5.0",
+    "hasFs": true
+  }
+}

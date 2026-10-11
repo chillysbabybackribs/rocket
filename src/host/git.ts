@@ -28,11 +28,20 @@ function git(top: string, args: string[], options: { input?: string; env?: Recor
 
 const nul = (text: string): string[] => text.split('\0').filter(Boolean)
 
+// A folder's repository does not move while the app runs, and every message asks for it several
+// times, each a git spawn. Only a found root is kept: a folder outside any repository is asked
+// again, so a `git init` made later is seen.
+const roots = new Map<string, string>()
+
 /** The top of the repository a folder is in, or null when it is in none. A home folder is never treated as a project. */
 export async function repoRoot(cwd: string): Promise<string | null> {
+  const known = roots.get(cwd)
+  if (known) return known
   try {
     const top = (await git(cwd, ['rev-parse', '--show-toplevel'])).trim()
-    return top && top !== homedir() ? top : null
+    if (!top || top === homedir()) return null
+    roots.set(cwd, top)
+    return top
   } catch {
     return null
   }

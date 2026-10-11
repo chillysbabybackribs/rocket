@@ -27,12 +27,12 @@ export function PlanLines({ steps, title }: { steps: PlanStep[]; title?: string 
 }
 
 /** The user's message that started the turn, as the drawer's title: its first line, kept short. */
-function taskOf(turn: Turn, userItemId: string | undefined): string {
+function taskOf(_turn: Turn, userItemId: string | undefined): string {
   const item = userItemId ? peekItem(userItemId) : undefined
   const text = item?.type === 'user' ? item.text : ''
   const line = text.split('\n').map((part) => part.trim()).find(Boolean) ?? ''
   if (line) return line.length > 140 ? `${line.slice(0, 139)}…` : line
-  return turn.goalRole ? 'This round' : 'This turn'
+  return 'This turn'
 }
 
 export function PlanDrawer({ turn, userItemId }: { turn: Turn; userItemId: string | undefined }) {

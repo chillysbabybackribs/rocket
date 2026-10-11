@@ -1,6 +1,7 @@
 // The vocabulary every process shares: the app-owned transcript, the providers that can answer a
 // turn, and the wire protocol between the renderer and the agent host.
 
+import type { Orchestration } from './orchestrator.ts'
 import type { FillChipAction, FillChipState } from './fill.ts'
 import type { LibraryEntry, LibraryFilters, LibraryPreview, LibraryView } from './library.ts'
 
@@ -105,6 +106,31 @@ export type Item =
    * is shown beside the chat, not in the transcript's flow.
    */
   | { type: 'plan'; id: string; turnId: string; steps: PlanStep[] }
+  /**
+   * A picture a model made (Codex's image generation), shown in the reply where it was made.
+   * `image` is Rocket's own copy, stored like an attachment, so it outlives the provider's file.
+   */
+  | {
+      type: 'image'
+      id: string
+      turnId: string
+      status: 'generating' | 'done' | 'failed'
+      /** What the picture was made from (the model's revised prompt), shown as its caption. */
+      caption: string
+      image?: ImageAttachment
+      /** Why there is no picture, as a sentence for the user. */
+      error?: string
+      /** When the host first heard of it, for the elapsed time the placeholder shows. */
+      startedAt?: number
+      /**
+       * From an adapter only: the provider's file and/or its base64 bytes. The hub stores a copy
+       * and drops this before the item is saved or sent anywhere.
+       */
+      source?: GeneratedImageSource
+    }
+
+/** Where a provider put a picture it made; the hub reads the file first and the bytes if that fails. */
+export type GeneratedImageSource = { path?: string; base64?: string }
 
 /** One clickable answer: a short label and what picking it means. */
 export type QuestionOption = { label: string; detail: string }
@@ -146,7 +172,7 @@ export type Turn = {
 
 /**
  * What a turn read on the web against what its reply cited. `opened` is every page the app saw
- * a request leave for, in Rocket's browser (`browser`) or through the provider's own fetch tool
+ * usable content returned for, in Rocket's shared reader/browser (`browser`) or through the provider's own fetch tool
  * (`provider`); a search is not a page. `cited` is every HTTP(S) link in the reply, with whether
  * the turn opened it. Worked out by `src/shared/sources.ts`, with no model judgment.
  */
@@ -177,92 +203,8 @@ export type TurnChanges = { files: number; added: number; removed: number; undon
  */
 export type TurnPatch = { patch: string; truncated: boolean; undo: { offered: boolean; reason: string | null } }
 
-// Goals: something the user wants done end to end. The worker drafts a brief, the user confirms
-// it, then the worker works in ordinary turns and a second provider checks each round against
-// the brief's checklist until every line is met. See docs/goals-phase1.md.
-
+/** Legacy turns from the removed goals feature; always null for new turns. */
 export type GoalRole = 'draft' | 'work' | 'check'
-
-/**
- * drafting and confirming come before the work; working and checking are a round in flight;
- * needs_you is the app asking the user (a question, no progress, usage, a failure); paused is the
- * user's own pause; done and stopped are the ends.
- */
-export type GoalStatus = 'drafting' | 'confirming' | 'working' | 'checking' | 'needs_you' | 'paused' | 'done' | 'stopped'
-
-/** One line of what "done" means. `how` says how it will be checked, in a few words. */
-export type GoalCriterion = { text: string; how: string; met: boolean | null; metInRound: number | null }
-
-export type GoalVerdict = { line: number; met: boolean; evidence: string }
-
-/** A reference the drafting model actually opened, with the screenshot it saved as proof. */
-export type GoalReference = { source: string; screenshot: string; takes: string }
-
-/**
- * For visual work: the one idea that makes this design specific to its product, and the
- * references behind it. The checker holds the result up against the same screenshots.
- */
-export type GoalDesign = { concept: string; references: GoalReference[] }
-
-export type GoalRound = {
-  n: number
-  workTurnId: string
-  checkTurnId: string | null
-  /** What the worker said it did, from its report or its last reply. */
-  summary: string | null
-  /** Files the work turn edited. */
-  files: string[]
-  verdicts: GoalVerdict[]
-  /** What the checker found still wrong; null until it has checked. */
-  findings: string | null
-  startedAt: number
-  endedAt: number | null
-}
-
-export type GoalAgent = { provider: ProviderId; model: string | null }
-
-export type Goal = {
-  id: string
-  chatId: string
-  cwd: string
-  /** What the user asked for, in their own words. */
-  request: string
-  title: string
-  /** The goal as the brief restates it; empty until drafted. */
-  goal: string
-  criteria: GoalCriterion[]
-  /** Present when the deliverable is visual. */
-  design: GoalDesign | null
-  question: { text: string; options: string[]; answer: string | null } | null
-  worker: GoalAgent
-  checker: GoalAgent
-  /** A usage window at or past this percent pauses the goal before its next turn. */
-  pauseAtPercent: number
-  status: GoalStatus
-  /** The turn the goal takes next, when it carries on from a pause or the user. */
-  next: GoalRole
-  /** Why the goal is waiting for the user, as a sentence. */
-  reason: string | null
-  /** When a goal waiting on usage starts again by itself. */
-  resumeAt: number | null
-  /** Notes from the user for the next work round. */
-  steer: string[]
-  rounds: GoalRound[]
-  createdAt: number
-  updatedAt: number
-}
-
-/** What the user can change in a goal's brief before it starts. */
-export type GoalEdit = {
-  goal?: string
-  criteria?: Array<{ text: string; how: string }>
-  /** The design concept as the user edited it. */
-  concept?: string
-  answer?: string | null
-  worker?: GoalAgent
-  checker?: GoalAgent
-  pauseAtPercent?: number
-}
 
 export type Chat = {
   id: string
@@ -305,67 +247,17 @@ export type UsageSnapshot = {
 export type ModelInfo = { id: string; label: string; description: string; isDefault: boolean }
 
 export type HostEvent =
+  | { type: 'orchestrator'; run: Orchestration }
   | { type: 'item'; chatId: string; item: Item }
   | { type: 'delta'; chatId: string; itemId: string; delta: string }
   | { type: 'turn'; turn: Turn }
   | { type: 'chat'; chat: Chat }
   | { type: 'chatDeleted'; chatId: string }
   | { type: 'usage'; snapshot: UsageSnapshot }
-  | { type: 'goal'; goal: Goal }
   /** The chat's waiting messages, all of them, each time they change. */
   | { type: 'queue'; chatId: string; queued: QueuedMessage[] }
-  /** An eval run, whole, each time it changes. */
-  | { type: 'evalRun'; run: EvalRun }
   /** The library's shelf changed; a window showing it lists it again. */
   | { type: 'library' }
-
-/** A scenario as the eval panel shows it; read from `docs/evals/scenarios/*.jsonl`. */
-export type EvalScenarioInfo = {
-  id: string
-  file: string
-  cwd: string
-  message: string
-  openGoal: boolean
-  graders: string[]
-  trials: number
-  runsAlone: boolean
-  matrix: Array<{ provider: ProviderId; model: string | null }>
-  targetTool?: string
-}
-
-/** One provider and trial of an eval run. */
-export type EvalRunCell = {
-  provider: ProviderId
-  model: string | null
-  /** From 0. */
-  trial: number
-  status: 'queued' | 'running' | 'done' | 'error' | 'stopped'
-  /** The run's chat, once it has one. Eval chats are kept out of the chat list. */
-  chatId: string | null
-  startedAt: number | null
-  endedAt: number | null
-  /** Every grader passed; null until graded. */
-  pass: boolean | null
-  grades: Array<{ name: string; pass: boolean; reason?: string }>
-  /** What the turn changed in its copy of the scenario's folder. */
-  files: Array<{ path: string; added: number; removed: number }>
-  patch: string
-  error: string | null
-}
-
-/** A scenario run once across its provider matrix. Saved in the profile under `eval-live/<id>/run.json`. */
-export type EvalRun = {
-  id: string
-  scenarioId: string
-  message: string
-  /** The message was edited in the panel rather than read from the scenario file. */
-  edited: boolean
-  graders: string[]
-  startedAt: number
-  endedAt: number | null
-  status: 'running' | 'done' | 'stopped'
-  cells: EvalRunCell[]
-}
 
 /** Request name → [params, result]. */
 export type HostApi = {
@@ -405,80 +297,16 @@ export type HostApi = {
   'turn.changes': [{ chatId: string; turnId: string }, TurnPatch | null]
   /** Put the turn's files back as they were before it; the reversal is committed like a turn. Returns the turn as it now stands. */
   'turn.undo': [{ chatId: string; turnId: string }, Turn]
-  /**
-   * Answer a question a model asked. The answer is sent as the chat's next message to `provider`,
-   * or given to the chat's goal as a note when one is running there.
-   */
+  /** Answer a question a model asked; the answer is sent as the chat's next message to `provider`. */
   'question.answer': [{ chatId: string; itemId: string; answer: string; provider: ProviderId; model: string | null }, null]
   /** Warm the provider up for the message being typed. A null `chatId` is the next new chat, in `cwd`. */
   'chat.prepare': [{ chatId: string | null; cwd: string; provider: ProviderId; model: string | null }, null]
   'usage.read': [{ provider: ProviderId; force?: boolean }, UsageSnapshot]
   'models.list': [{ provider: ProviderId }, ModelInfo[]]
-  'goals.list': [Record<string, never>, Goal[]]
-  /** Start a goal: a chat in `cwd` whose worker drafts a brief from `text` for the user to confirm. */
-  'goal.draft': [{ cwd: string; text: string; provider: ProviderId; model: string | null }, Goal]
-  /** Change the brief; only while it is being confirmed. */
-  'goal.update': [{ goalId: string; edit: GoalEdit }, Goal]
-  'goal.start': [{ goalId: string }, Goal]
-  /** Pause after the turn in flight. */
-  'goal.pause': [{ goalId: string }, Goal]
-  /** Carry on from a pause, or from waiting on the user. */
-  'goal.resume': [{ goalId: string }, Goal]
-  'goal.stop': [{ goalId: string }, Goal]
-  /** One of a goal's reference screenshots, as a data URL; only images named in the goal's design are served. */
-  'goal.referenceImage': [{ goalId: string; index: number }, string]
-  /** A note for the next work round. A goal waiting on the user takes it as the answer and carries on. */
-  'goal.steer': [{ goalId: string; text: string }, Goal]
+  'orchestrator.list': [Record<string, never>, Orchestration[]]
   /** An error the page caught, for the host's journal. */
   'journal.report': [{ message: string; stack?: string }, null]
-  /** Mark a chat so ended turns export to `.artifacts/evals/` when `ROCKET_EVAL_EXPORT=tagged` (default). */
-  'eval.tagChat': [{ chatId: string }, null]
-  'eval.untagChat': [{ chatId: string }, null]
-  /** List chat ids tagged for eval export. */
-  'eval.listTaggedChats': [Record<string, never>, string[]]
-  /** Write `turn.json` for a finished turn; optional `outDir` overrides `ROCKET_EVAL_CELL`. */
-  'eval.exportTurn': [{ turnId: string; outDir?: string | null }, string | null]
-  /** Directory for automatic export on the next ended turns (matrix cell folder). */
-  'eval.setCellDir': [{ dir: string | null }, null]
-  /** One matrix cell: send (or goal draft), wait, export to `outDir`. Requires a running app host. */
-  'eval.runCell': [{
-    cwd: string
-    message: string
-    provider: ProviderId
-    model: string | null
-    outDir: string
-    openGoal?: boolean
-    scenarioId?: string
-    timeoutMs?: number
-  }, { turnId: string; chatId: string; turnPath: string; cellDir: string }]
-  'eval.listScenarios': [Record<string, never>, { files: string[]; scenarios: EvalScenarioInfo[] }]
-  /** Saved eval runs, newest first; one scenario's when `scenarioId` is given. */
-  'evalRuns.list': [{ scenarioId?: string }, EvalRun[]]
-  /**
-   * Run a scenario on every provider in its matrix with real provider turns, each trial in a fresh
-   * copy of its folder. Returns at once with the run queued; `evalRun` events follow its progress.
-   * `message` replaces the scenario file's message for this run only.
-   */
-  'evalRuns.start': [{ scenarioId: string; message?: string }, EvalRun]
-  /** Stop a run: its running turns are stopped and its queued cells never start. */
-  'evalRuns.stop': [{ runId: string }, null]
-  /** Tool Eval Score (TES = wR·R + wP·P) from ledger + eval-live scenario cells. */
-  'toolEval.scores': [Record<string, never>, {
-    weights: { wR: number; wP: number; description?: string }
-    syncedAt: string
-    note: string
-    tools: Array<{
-      tool: string
-      tes: number | null
-      r: number | null
-      p: number | null
-      ledgerCalls: number
-      scenarioCells: number
-      scenarioPasses: number
-      scenarioIds: string[]
-    }>
-  }]
-  /** MCP tool-call ledger for the eval Tools view (read-only; not injected into agent prompts). */
+  /** MCP tool-call ledger (read-only; not injected into agent prompts). */
   'toolLedger.loadPanel': [Record<string, never>, {
     available: boolean
     message?: string
@@ -660,7 +488,22 @@ export type BrowserAgentOp =
   /** The chat is gone: its own tab is closed. */
   | { op: 'forget'; chat: string }
 /** The host-to-main channel also carries app UI captures, live automation connections and the app map. */
-export type MainAgentOp = BrowserAgentOp | { op: 'uiSnapshot' } | { op: 'uiConnection' } | { op: 'uiResize'; width: number; height: number } | UiMapOp
+export type MainAgentOp = BrowserAgentOp | { op: 'uiSnapshot' } | { op: 'uiConnection' } | { op: 'uiResize'; width: number; height: number } | UiMapOp | PhotocraftOp
+/**
+ * PhotoCraft, which lives in a view of its own in main (src/main/photocraft-pane.ts). `control`
+ * is one request of PhotoCraft's control protocol; `load` puts a file from disk into the page's
+ * file store under `path`, and `save` writes what PhotoCraft saved under `path` to `file`.
+ */
+export type PhotocraftOp =
+  | { op: 'photocraft'; call: 'control'; method: string; params: Record<string, unknown> }
+  | { op: 'photocraft'; call: 'load'; file: string; path: string }
+  | { op: 'photocraft'; call: 'save'; path: string; file: string }
+  /** Bring the PhotoCraft panel beside the chat, so the user sees what the model does there. */
+  | { op: 'photocraft'; call: 'show' }
+  /** A picture of the editor as drawn, taken by Electron (PhotoCraft's own ui.screenshot never answers on the web). */
+  | { op: 'photocraft'; call: 'capture' }
+  /** The view's state, without starting PhotoCraft. */
+  | { op: 'photocraft'; call: 'status' }
 /** Main runs these in the renderer's dispatcher (`window.rocketMap`); see `src/shared/app-map.ts`. */
 export type UiMapOp =
   | { op: 'uiMap'; call: 'where' }
@@ -669,28 +512,13 @@ export type UiMapOp =
 /** Where the shell is, in the app map's words. `place` is the most specific place on screen. */
 export type UiWhere = {
   place: string
-  panes: Array<{ index: number; chatId: string | null; title: string; provider: ProviderId; focused: boolean; running: boolean; goal: string | null; planOpen: boolean }>
+  panes: Array<{ index: number; chatId: string | null; title: string; provider: ProviderId; focused: boolean; running: boolean; planOpen: boolean }>
   focused: number
-  side: 'chat' | 'browser' | 'evals' | 'artifact' | 'library'
+  side: 'chat' | 'browser' | 'artifact' | 'library' | 'photocraft'
   artifact: { kind: string; path: string | null } | null
-  evals: {
-    view: string
-    scenario: string | null
-    /** The run on the scenario page or in the run view, cell by cell. */
-    run: {
-      id: string
-      status: EvalRun['status']
-      edited: boolean
-      cells: Array<{ provider: ProviderId; trial: number; status: EvalRunCell['status']; pass: boolean | null; failed: string[]; error: string | null }>
-    } | null
-    /** The cell the run view shows. */
-    cell: { provider: ProviderId; trial: number } | null
-    tools: { section: 'health' | 'evaluate' }
-  } | null
   /** The library panel: its filters, view and how many files they show; null while it is closed. */
   library: { filters: LibraryFilters; view: 'grid' | 'list'; shown: number; total: number } | null
   dialogs: string[]
-  railOpen: boolean
 }
 /** A dispatcher call's answer: what it returned, or why it failed, and where the shell ended up. */
 export type UiMapResult = { ok: true; value: unknown; where: UiWhere } | { ok: false; error: string; where: UiWhere }
@@ -723,11 +551,33 @@ export type Bounds = { x: number; y: number; width: number; height: number }
 
 /** One row of the address field's dropdown. `value` is what choosing it navigates to. */
 export type Suggestion = { kind: 'search' | 'url' | 'history'; value: string; title: string; detail: string }
-export type SuggestionList = { items: Suggestion[]; selected: number }
+/**
+ * The dropdown's rows for the text in `typed`. `inline` is the address the field fills in after
+ * what was typed (`gi` → `github.com`), or null; when there is one it is also the first row.
+ */
+export type SuggestionList = { items: Suggestion[]; selected: number; typed: string; inline: string | null }
 
 /** The dropdown is a native view sized by main, so both sides share its row metrics. */
 export const SUGGEST_ROW_HEIGHT = 32
 export const SUGGEST_PADDING = 5
+
+/** What the UI asks of the PhotoCraft view. */
+export type PhotocraftCommand =
+  /** Where the editor goes, in window coordinates; null hides it. */
+  | { type: 'setBounds'; bounds: Bounds | null }
+  | { type: 'sync' }
+  | { type: 'reload' }
+
+/**
+ * The PhotoCraft view as the panel shows it. `off` until something first opens it; `missing`
+ * when the web build is not where Rocket looks; `message` says what to do in a full sentence.
+ */
+export type PhotocraftState = {
+  status: 'off' | 'loading' | 'ready' | 'missing' | 'failed'
+  message: string | null
+  /** The active document's title as PhotoCraft shows it, once it reports one. */
+  title: string | null
+}
 
 /** Everything the UI can ask of the browser. Commands without an id act on the active tab. */
 export type BrowserCommand =
@@ -805,8 +655,12 @@ export type RocketBridge = {
     /** Main asks for the address field to take focus (Ctrl+L, a new tab). */
     onFocusAddress: (listener: () => void) => () => void
   }
-  /** file: URL of the bundled eval panel (docs/evals/mock-ui). */
-  evalPanelUrl: () => Promise<string>
+  photocraft: {
+    send: (command: PhotocraftCommand) => void
+    onState: (listener: (state: PhotocraftState) => void) => () => void
+    /** Main asks for the panel to come forward: a model has started working in PhotoCraft. */
+    onShow: (listener: () => void) => () => void
+  }
 }
 
 export const HOST_PORT_MESSAGE = 'rocket:host-port'

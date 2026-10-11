@@ -1,0 +1,194 @@
+<!doctype html>
+<!-- Mockup: the rail goes away. The window lights move into the title strip, the usage notch
+     becomes a tab hanging from the window's top edge at the centre of the strip, and the chat card
+     starts at the window's left edge. Hovering a ring drops its flyout below the tab; with the
+     browser open the flyout is pulled left so it ends inside the chat card, since the page is a
+     native view that paints over anything drawn across it. Static data; the first window is live. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rocket · Usage in the title strip (mockup)</title>
+<style>
+:root {
+  color-scheme: dark;
+  --font: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --canvas: #08090a; --panel: #0f1011; --menu: #1b1c1e; --composer: #151617; --composer-line: #2f3031;
+  --line: rgba(255,255,255,.07); --line-strong: rgba(255,255,255,.11);
+  --text: #f7f8f8; --text-2: #b4b8c0; --text-3: #8a8f98; --text-4: #62666d;
+  --hover: rgba(255,255,255,.06);
+  --ok: #4cb782; --warn: #f2c94c; --high: #eb5757;
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,0) 180px);
+  --menu-shadow: 0 0 0 1px rgba(0,0,0,.5), 0 12px 40px rgba(0,0,0,.6);
+  --gap: 8px; --toolbar: 48px;
+  --glass: rgba(255,255,255,.055);
+  --glass-edge: inset 0 .5px 0 rgba(255,255,255,.16), inset 0 0 0 .5px rgba(255,255,255,.08), 0 1px 3px rgba(0,0,0,.35);
+  --notch-fill: #151618; --flare: 14px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #050506; color: var(--text); font: 13px/1.45 var(--font); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: default; }
+svg.i { display: block; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+.page { max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 30px; }
+.intro h1 { margin: 0 0 6px; font-size: 20px; font-weight: 650; }
+.intro p { margin: 0 0 6px; max-width: 860px; color: var(--text-3); line-height: 1.55; }
+.intro b { color: var(--text-2); font-weight: 600; }
+.cap { margin: 0 0 10px 4px; color: var(--text-3); font-size: 12px; }
+.cap b { color: var(--text); font-weight: 600; margin-right: 6px; }
+
+.win {
+  position: relative; height: 430px; overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  padding: var(--toolbar) var(--gap) var(--gap);
+  background: var(--canvas); border-radius: 14px;
+  box-shadow: 0 0 0 .5px rgba(255,255,255,.14), 0 0 0 1px rgba(0,0,0,.6), 0 30px 80px rgba(0,0,0,.6);
+}
+.win.solo { grid-template-columns: minmax(0, 1fr); }
+.win.before { grid-template-columns: 68px minmax(0, 1fr) minmax(0, 1.1fr); padding-left: 0; }
+
+/* The strip: lights, then the toolbar, with the usage tab at the window's centre. */
+.lights { position: absolute; top: 18px; left: 16px; display: flex; gap: 8px; z-index: 3; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+.lights i:nth-child(1) { background: #ff5f57; } .lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+.toolbar { position: absolute; top: 0; left: 76px; height: var(--toolbar); display: flex; align-items: center; gap: 10px; z-index: 4; }
+.before .toolbar { left: 74px; }
+.glass { display: flex; align-items: center; height: 32px; padding: 2px; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-edge); }
+.tb-toggle { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; color: var(--text-2); }
+.tb-item { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; color: var(--text-3); font-size: 13px; font-weight: 510; }
+.tb-item.on { background: rgba(255,255,255,.14); color: var(--text); }
+
+/* The tab: hangs from the top edge, flared where it meets it, rings side by side. */
+.notch {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 5;
+  height: 40px; padding: 0 12px; display: flex; align-items: center; gap: 4px;
+  background: var(--notch-fill); border-radius: 0 0 16px 16px;
+}
+.notch::before, .notch::after { content: ''; position: absolute; top: 0; width: var(--flare); height: var(--flare); pointer-events: none; }
+.notch::before { left: calc(-1 * var(--flare)); background: radial-gradient(circle at 0 100%, transparent calc(var(--flare) - .5px), var(--notch-fill) var(--flare)); }
+.notch::after { right: calc(-1 * var(--flare)); background: radial-gradient(circle at 100% 100%, transparent calc(var(--flare) - .5px), var(--notch-fill) var(--flare)); }
+.item { display: flex; align-items: center; gap: 5px; height: 32px; padding: 0 7px 0 3px; border-radius: 999px; }
+.item:hover, .item.hover { background: var(--hover); }
+.ring { position: relative; width: 26px; height: 26px; display: grid; place-items: center; color: var(--text-2); }
+.ring svg.r { position: absolute; inset: 0; }
+.ring circle { fill: none; stroke-width: 2.5; }
+.ring .track { stroke: rgba(255,255,255,.09); }
+.ring .val { stroke-linecap: round; }
+.ok { stroke: var(--ok); } .warn { stroke: var(--warn); } .high { stroke: var(--high); }
+.pct { font-size: 11px; font-weight: 510; font-variant-numeric: tabular-nums; color: var(--text-3); min-width: 24px; }
+
+/* The old rail, for the "before" window. */
+.rail { margin: calc(-1 * var(--toolbar)) 0 calc(-1 * var(--gap)); display: flex; flex-direction: column; align-items: flex-start; }
+.rail .mid { flex: 1; display: flex; align-items: center; }
+.rail .tabv { width: 56px; padding: 14px 0 10px; background: var(--notch-fill); border-radius: 0 20px 20px 0; display: flex; flex-direction: column; align-items: center; gap: 11px; }
+.rail .tabv .item { flex-direction: column; height: auto; padding: 0; gap: 2px; }
+.rail .foot { align-self: center; padding-bottom: 12px; color: var(--text-4); outline: 2px dashed var(--high); outline-offset: 3px; border-radius: 6px; }
+.strike { position: absolute; inset: 0; pointer-events: none; }
+
+/* Cards */
+.card { border: 1px solid var(--line); border-radius: 12px; background: var(--sheen), var(--panel); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.card + .card { margin-left: var(--gap); }
+.chat { padding: 18px 0 14px; align-items: center; }
+.chat .msgs { flex: 1; width: min(520px, 88%); display: flex; flex-direction: column; gap: 10px; }
+.bubble { align-self: flex-end; background: #1c1d20; padding: 6px 11px; border-radius: 12px; color: var(--text-2); font-size: 12.5px; }
+.line { height: 9px; border-radius: 4px; background: rgba(255,255,255,.07); }
+.composer { width: min(520px, 88%); height: 62px; border: 1px solid var(--composer-line); border-radius: 12px; background: var(--composer); padding: 10px 12px; color: var(--text-4); font-size: 12.5px; }
+.browser .bar { height: 30px; margin: 34px 10px 0; border-radius: 8px; background: rgba(255,255,255,.05); display: grid; place-items: center; color: var(--text-3); font-size: 11.5px; }
+.browser .page { flex: 1; margin: 10px 0 0; background: #1f2023; display: grid; place-items: center; color: #e8eaed; font-size: 46px; font-weight: 500; letter-spacing: -1px; }
+.native-note { position: absolute; bottom: 14px; right: 18px; font-size: 11px; color: var(--text-4); }
+
+/* Flyout under a ring */
+.flyout { position: absolute; top: 46px; z-index: 6; width: 264px; padding: 13px 14px 12px; background: var(--sheen), var(--menu); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--menu-shadow); }
+.flyout .t { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; font-size: 13px; font-weight: 510; }
+.flyout .row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-2); }
+.flyout .row span:last-child { color: var(--text-4); }
+.flyout .bar { height: 4px; margin: 6px 0 5px; border-radius: 2px; background: rgba(255,255,255,.08); overflow: hidden; }
+.flyout .bar i { display: block; height: 100%; border-radius: 2px; background: var(--ok); }
+.flyout .used { font-size: 12px; color: var(--text-3); }
+.flyout .w + .w { margin-top: 11px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="intro">
+    <h1>Usage in the title strip, no rail</h1>
+    <p><b>Change.</b> The rail is gone: the chat card starts at the window's left edge (8px gap, like the right side). The window lights sit in the title strip with the toolbar after them. The usage notch becomes a tab hanging from the window's top edge, centred on the window, with the four rings side by side and each percentage beside its ring. The fold button, the folded strip and its hover peek are removed.</p>
+    <p><b>Hover.</b> A ring's flyout (limits, resets, refresh) drops below the tab. With the browser open, the centre of the strip sits over the seam between chat and browser, and the browser page paints over anything drawn across it, so the flyout is pulled left to end inside the chat card, as the toolbar's menus already are.</p>
+  </div>
+
+  <section>
+    <p class="cap"><b>After · browser open</b> hovering Codex; the flyout ends inside the chat card</p>
+    <div class="win" id="after">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="toolbar">
+        <div class="glass"><span class="tb-toggle"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg></span>
+          <span class="tb-item">Goals</span><span class="tb-item">Chats</span><span class="tb-item">Library</span><span class="tb-item">Evals</span><span class="tb-item on">Browser</span></div>
+      </div>
+      <div class="notch" data-notch></div>
+      <div class="card chat"><div class="msgs"><span class="bubble">close out the tabs</span><div class="line" style="width:92%"></div><div class="line" style="width:64%"></div></div><div class="composer">Reply…</div></div>
+      <div class="card browser"><div class="bar">google.com</div><div class="page">Google</div></div>
+      <div class="flyout" id="fly" style="display:none"></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="cap"><b>After · chat alone</b> the tab stays at the window's centre</p>
+    <div class="win solo">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="toolbar"><div class="glass"><span class="tb-toggle"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg></span><span class="tb-item">Goals</span><span class="tb-item">Chats</span><span class="tb-item">Library</span><span class="tb-item">Evals</span><span class="tb-item">Browser</span></div></div>
+      <div class="notch" data-notch></div>
+      <div class="card chat"><div class="msgs"><span class="bubble">close out the tabs</span><div class="line" style="width:92%"></div><div class="line" style="width:64%"></div></div><div class="composer">Reply…</div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="cap"><b>Before</b> for comparison: the rail column, its notch, and the fold button (dashed) that goes away</p>
+    <div class="win before">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="toolbar"><div class="glass"><span class="tb-toggle"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg></span><span class="tb-item">Goals</span><span class="tb-item">Chats</span><span class="tb-item">Library</span><span class="tb-item">Evals</span><span class="tb-item on">Browser</span></div></div>
+      <div class="rail"><div style="height:48px"></div><div class="mid"><div class="tabv" data-vnotch></div></div><div class="foot"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M16 15l-3-3 3-3"/></svg></div></div>
+      <div class="card chat"><div class="msgs"><span class="bubble">close out the tabs</span><div class="line" style="width:92%"></div><div class="line" style="width:64%"></div></div><div class="composer">Reply…</div></div>
+      <div class="card browser"><div class="bar">google.com</div><div class="page">Google</div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const P = [
+  { id: 'claude', name: 'Claude', pct: 0, glyph: '<g>' + [0,45,90,135,180,225,270,315].map(a => `<line x1="12" y1="3" x2="12" y2="8.5" transform="rotate(${a} 12 12)"/>`).join('') + '</g>' },
+  { id: 'codex', name: 'Codex', pct: 2, glyph: '<path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z"/><path d="M9.5 10l-2 2 2 2M14.5 10l2 2-2 2"/>' },
+  { id: 'cursor', name: 'Cursor', pct: 29, glyph: '<path d="M5 4l14 7.2-6.1 1.7L11.2 19z"/>' },
+  { id: 'antigravity', name: 'Antigravity', pct: 0, glyph: '<path d="M4.5 19.5C7 9 9.5 4.5 12 4.5s5 4.5 7.5 15"/><path d="M8.5 14.5h7"/>' }
+]
+const lvl = p => p >= 70 ? 'high' : p >= 45 ? 'warn' : 'ok'
+const ring = (p, size, stroke) => {
+  const r = (size - stroke) / 2, c = 2 * Math.PI * r
+  return `<span class="ring" style="width:${size}px;height:${size}px"><svg class="r" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle class="track" cx="${size/2}" cy="${size/2}" r="${r}" style="stroke-width:${stroke}"/><circle class="val ${lvl(p.pct)}" cx="${size/2}" cy="${size/2}" r="${r}" style="stroke-width:${stroke}" stroke-dasharray="${Math.max(p.pct,1.5)/100*c} ${c}" transform="rotate(-90 ${size/2} ${size/2})"/></svg><svg class="i" width="${size*0.5}" height="${size*0.5}" viewBox="0 0 24 24" style="stroke-width:2">${p.glyph}</svg></span>`
+}
+document.querySelectorAll('[data-notch]').forEach(n => {
+  n.innerHTML = P.map(p => `<button class="item" data-id="${p.id}">${ring(p, 26, 2.5)}<span class="pct">${p.pct}%</span></button>`).join('')
+})
+document.querySelectorAll('[data-vnotch]').forEach(n => {
+  n.innerHTML = P.map(p => `<span class="item">${ring(p, 36, 3)}<span class="pct" style="text-align:center">${p.pct}%</span></span>`).join('')
+})
+
+// Live window: hover a ring to drop its flyout, pulled left to end inside the chat card.
+const win = document.getElementById('after'), fly = document.getElementById('fly')
+const show = item => {
+  const p = P.find(x => x.id === item.dataset.id)
+  win.querySelectorAll('.item').forEach(i => i.classList.toggle('hover', i === item))
+  fly.innerHTML = `<div class="t"><svg class="i" width="18" height="18" viewBox="0 0 24 24" style="color:var(--text-3)">${p.glyph}</svg>${p.name} Usage</div>
+    <div class="w"><div class="row"><span>5-hour limit</span><span>Resets in 3 h 12 min</span></div><div class="bar"><i style="width:${Math.max(p.pct,1.5)}%"></i></div><div class="used">${p.pct}% Used</div></div>
+    <div class="w"><div class="row"><span>Weekly</span><span>Resets Mon 9:00 AM</span></div><div class="bar"><i style="width:${Math.max(p.pct/2,1.5)}%"></i></div><div class="used">${Math.round(p.pct/2)}% Used</div></div>`
+  fly.style.display = 'block'
+  const wb = win.getBoundingClientRect(), ib = item.getBoundingClientRect(), chat = win.querySelector('.chat').getBoundingClientRect()
+  let left = ib.left + ib.width / 2 - 132 - wb.left
+  const over = left + 264 - (chat.right - 8 - wb.left)
+  if (over > 0) left -= over
+  fly.style.left = left + 'px'
+}
+win.querySelectorAll('.item').forEach(i => i.addEventListener('mouseenter', () => show(i)))
+show(win.querySelector('[data-id="codex"]'))
+</script>
+</body>
+</html>

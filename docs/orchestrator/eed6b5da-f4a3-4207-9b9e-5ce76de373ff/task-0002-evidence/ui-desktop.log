@@ -1,0 +1,138 @@
+
+> rocket-orchestrator@0.1.0 check:ui
+> node scripts/ui-check.mjs --grep orchestra-shell
+
+UI check artifacts: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn
+(node:101076) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+(node:101105) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/ui/orchestra-shell.spec.ts:9:1 › orchestra-shell fresh profile keeps the leader full height below the title strip (11.6s)
+(node:101327) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 tests/ui/orchestra-shell.spec.ts:69:1 › orchestra-shell controlled dispatch and report harness exercises actual host limits (4.1s)
+  ✘  3 tests/ui/orchestra-shell.spec.ts:102:1 › orchestra-shell streams eight workers and supports expand reply stop reports and scrolling (12.3s)
+
+
+  1) tests/ui/orchestra-shell.spec.ts:9:1 › orchestra-shell fresh profile keeps the leader full height below the title strip 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.orch-shell')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.orch-shell') with timeout 10000ms
+      - waiting for locator('.orch-shell')
+
+
+      10 |   const { page } = rocket
+      11 |   await rocket.capture('01-fresh-profile')
+    > 12 |   await expect(page.locator('.orch-shell')).toBeVisible()
+         |                                             ^
+      13 |   const leader = page.getByTestId('orchestrator-chat')
+      14 |   await expect(leader).toBeVisible()
+      15 |   await expect(page.getByTestId('worker-board-empty')).toBeVisible()
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/orchestra-shell.spec.ts:12:45
+
+    attachment #1: 01-fresh-profile: app shell (image/png) ─────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/attachments/01-fresh-profile-app-shell-b095cda58d09edaa43eb7a4b70ec1e165af4f2cf.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: 01-fresh-profile: full window (image/png) ───────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/attachments/01-fresh-profile-full-window-ce05bac58ec76885adf6d1c35922e1a2c16e5d44.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/attachments/failure-app-shell-e6d0b85291cdaa8c89b3292aa810dd5fc9e52497.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/attachments/failure-full-window-d10426a43d99e7e54ac16f86b9b36fe91ad75b51.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/attachments/Trace-3c2c15c76abf6e5d788b3b710dd5dcaba5f5f98f.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: App log (text/plain) ────────────────────────────────────────────────────────────
+    Debugger ending on ws://127.0.0.1:46591/34dcdb7f-1ccd-4c15-a43c-9c1b7b8d22b6
+    For help, see: https://nodejs.org/learn/getting-started/debugging
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: Journal (text/plain) ────────────────────────────────────────────────────────────
+    (empty)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/error-context.md
+
+  2) tests/ui/orchestra-shell.spec.ts:102:1 › orchestra-shell streams eight workers and supports expand reply stop reports and scrolling 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.orch-shell')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.orch-shell') with timeout 10000ms
+      - waiting for locator('.orch-shell')
+
+
+      105 |   await info.attach('Controlled tool results', { body: JSON.stringify(fixture, null, 2), contentType: 'application/json' })
+      106 |   await rocket.capture('04-workers-dispatched')
+    > 107 |   await expect(page.locator('.orch-shell')).toBeVisible()
+          |                                             ^
+      108 |   const leader = page.getByTestId('orchestrator-chat')
+      109 |   const initialWidth = (await leader.boundingBox())!.width
+      110 |   const windows = page.getByTestId('worker-window')
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/orchestra-shell.spec.ts:107:45
+
+    attachment #2: 04-workers-dispatched: app shell (image/png) ────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/04-workers-dispatched-app-shell-05272b6298ffa225dd9b94bcbef6c3c93f394d8b.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: 04-workers-dispatched: full window (image/png) ──────────────────────────────────
+    .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/04-workers-dispatched-full-window-3493f75ba4edc4273bb921dee64f85fc9684bd44.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/failure-app-shell-6a9abfac5fa1bc7a4a3f35b0224d3872a234d9bf.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/failure-full-window-d3425af9c622b32b66441380b71df96cdc3e746e.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/Trace-733cad4cb011cf0d1d4c4c2269b04d2b0fba3e73.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: App log (text/plain) ────────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #10: Journal (text/plain) ───────────────────────────────────────────────────────────
+    {"at":1791437046704,"source":"tool:orchestrator","severity":"warn","kind":"tool-error","message":"Three workers are already running. Review completed work or wait.","details":{"provider":"claude","chatId":"0684597d-9ea1-4e61-ac14-8ac913e5c0ff"}}
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/error-context.md
+
+  2 failed
+    tests/ui/orchestra-shell.spec.ts:9:1 › orchestra-shell fresh profile keeps the leader full height below the title strip 
+    tests/ui/orchestra-shell.spec.ts:102:1 › orchestra-shell streams eight workers and supports expand reply stop reports and scrolling 
+  1 passed (30.2s)
+
+FAIL — UI check artifacts: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn

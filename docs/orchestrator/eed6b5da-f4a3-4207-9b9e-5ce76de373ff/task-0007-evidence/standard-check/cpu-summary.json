@@ -1,0 +1,445 @@
+{
+  "elapsedMs": 4305.215,
+  "topInclusiveFrames": [
+    {
+      "inclusiveMs": 4304.854,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "(root)",
+        "scriptId": "0",
+        "url": "",
+        "lineNumber": -1,
+        "columnNumber": -1
+      }
+    },
+    {
+      "inclusiveMs": 2776.426,
+      "selfMs": 2776.426,
+      "frame": {
+        "functionName": "(program)",
+        "scriptId": "0",
+        "url": "",
+        "lineNumber": -1,
+        "columnNumber": -1
+      }
+    },
+    {
+      "inclusiveMs": 1092.374,
+      "selfMs": 16.001,
+      "frame": {
+        "functionName": "performWorkUntilDeadline",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 145,
+        "columnNumber": 37
+      }
+    },
+    {
+      "inclusiveMs": 1064.06,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "performWorkOnRootViaSchedulerTask",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 10596,
+        "columnNumber": 44
+      }
+    },
+    {
+      "inclusiveMs": 1062.585,
+      "selfMs": 2.021,
+      "frame": {
+        "functionName": "performWorkOnRoot",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 9543,
+        "columnNumber": 28
+      }
+    },
+    {
+      "inclusiveMs": 1032.188,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "renderRootConcurrent",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 9908,
+        "columnNumber": 31
+      }
+    },
+    {
+      "inclusiveMs": 1031.077,
+      "selfMs": 10.986,
+      "frame": {
+        "functionName": "workLoopConcurrentByScheduler",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 10003,
+        "columnNumber": 40
+      }
+    },
+    {
+      "inclusiveMs": 1014.502,
+      "selfMs": 1.768,
+      "frame": {
+        "functionName": "performUnitOfWork",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 10007,
+        "columnNumber": 28
+      }
+    },
+    {
+      "inclusiveMs": 1000.837,
+      "selfMs": 1.454,
+      "frame": {
+        "functionName": "beginWork",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 6508,
+        "columnNumber": 20
+      }
+    },
+    {
+      "inclusiveMs": 974.66,
+      "selfMs": 7.574,
+      "frame": {
+        "functionName": "renderWithHooks",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 4233,
+        "columnNumber": 26
+      }
+    },
+    {
+      "inclusiveMs": 974.66,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "updateFunctionComponent",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 5873,
+        "columnNumber": 34
+      }
+    },
+    {
+      "inclusiveMs": 965.917,
+      "selfMs": 6.775,
+      "frame": {
+        "functionName": "ChatMarkdown",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 30692,
+        "columnNumber": 21
+      }
+    },
+    {
+      "inclusiveMs": 959.142,
+      "selfMs": 9.058,
+      "frame": {
+        "functionName": "Markdown",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 27630,
+        "columnNumber": 17
+      }
+    },
+    {
+      "inclusiveMs": 849.503,
+      "selfMs": 2.23,
+      "frame": {
+        "functionName": "parse",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 27139,
+        "columnNumber": 7
+      }
+    },
+    {
+      "inclusiveMs": 796.214,
+      "selfMs": 6.153,
+      "frame": {
+        "functionName": "parser",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 24833,
+        "columnNumber": 17
+      }
+    },
+    {
+      "inclusiveMs": 790.061,
+      "selfMs": 8.414,
+      "frame": {
+        "functionName": "fromMarkdown",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 24063,
+        "columnNumber": 21
+      }
+    },
+    {
+      "inclusiveMs": 343.218,
+      "selfMs": 2.9,
+      "frame": {
+        "functionName": "postprocess",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23963,
+        "columnNumber": 20
+      }
+    },
+    {
+      "inclusiveMs": 340.318,
+      "selfMs": 10.964,
+      "frame": {
+        "functionName": "subtokenize",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 21456,
+        "columnNumber": 20
+      }
+    },
+    {
+      "inclusiveMs": 326.894,
+      "selfMs": 20.153,
+      "frame": {
+        "functionName": "subcontent",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 21527,
+        "columnNumber": 19
+      }
+    },
+    {
+      "inclusiveMs": 308.94,
+      "selfMs": 1.108,
+      "frame": {
+        "functionName": "write",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23661,
+        "columnNumber": 16
+      }
+    },
+    {
+      "inclusiveMs": 307.832,
+      "selfMs": 4.337,
+      "frame": {
+        "functionName": "main",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23697,
+        "columnNumber": 15
+      }
+    },
+    {
+      "inclusiveMs": 303.495,
+      "selfMs": 7.229,
+      "frame": {
+        "functionName": "go2",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23713,
+        "columnNumber": 14
+      }
+    },
+    {
+      "inclusiveMs": 262.664,
+      "selfMs": 2.264,
+      "frame": {
+        "functionName": "write",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23661,
+        "columnNumber": 16
+      }
+    },
+    {
+      "inclusiveMs": 244.845,
+      "selfMs": 15.002,
+      "frame": {
+        "functionName": "main",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23697,
+        "columnNumber": 15
+      }
+    },
+    {
+      "inclusiveMs": 229.843,
+      "selfMs": 22.033,
+      "frame": {
+        "functionName": "go2",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23713,
+        "columnNumber": 14
+      }
+    },
+    {
+      "inclusiveMs": 186.198,
+      "selfMs": 3.715,
+      "frame": {
+        "functionName": "flowContinue",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 20433,
+        "columnNumber": 23
+      }
+    },
+    {
+      "inclusiveMs": 177.346,
+      "selfMs": 3.087,
+      "frame": {
+        "functionName": "writeToChild",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 20450,
+        "columnNumber": 23
+      }
+    },
+    {
+      "inclusiveMs": 173.215,
+      "selfMs": 16.022,
+      "frame": {
+        "functionName": "write",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23661,
+        "columnNumber": 16
+      }
+    },
+    {
+      "inclusiveMs": 140.844,
+      "selfMs": 6.947,
+      "frame": {
+        "functionName": "data",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23436,
+        "columnNumber": 17
+      }
+    },
+    {
+      "inclusiveMs": 136.575,
+      "selfMs": 3.633,
+      "frame": {
+        "functionName": "main",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23697,
+        "columnNumber": 15
+      }
+    },
+    {
+      "inclusiveMs": 132.942,
+      "selfMs": 17.197,
+      "frame": {
+        "functionName": "go2",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23713,
+        "columnNumber": 14
+      }
+    },
+    {
+      "inclusiveMs": 112.364,
+      "selfMs": 112.364,
+      "frame": {
+        "functionName": "(garbage collector)",
+        "scriptId": "0",
+        "url": "",
+        "lineNumber": -1,
+        "columnNumber": -1
+      }
+    },
+    {
+      "inclusiveMs": 106.25,
+      "selfMs": 1.605,
+      "frame": {
+        "functionName": "",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 10618,
+        "columnNumber": 30
+      }
+    },
+    {
+      "inclusiveMs": 104.645,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "processRootScheduleInMicrotask",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 10533,
+        "columnNumber": 41
+      }
+    },
+    {
+      "inclusiveMs": 103.088,
+      "selfMs": 1.117,
+      "frame": {
+        "functionName": "flushSyncWorkAcrossRoots_impl",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 10502,
+        "columnNumber": 40
+      }
+    },
+    {
+      "inclusiveMs": 101.971,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "performSyncWorkOnRoot",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 10613,
+        "columnNumber": 32
+      }
+    },
+    {
+      "inclusiveMs": 98.433,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "performWorkOnRoot",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 9543,
+        "columnNumber": 28
+      }
+    },
+    {
+      "inclusiveMs": 86.19,
+      "selfMs": 12.566,
+      "frame": {
+        "functionName": "compile",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 24174,
+        "columnNumber": 18
+      }
+    },
+    {
+      "inclusiveMs": 76.323,
+      "selfMs": 4.048,
+      "frame": {
+        "functionName": "flowStart",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 20416,
+        "columnNumber": 20
+      }
+    },
+    {
+      "inclusiveMs": 76.323,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "thereIsNoNewContainer",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 20402,
+        "columnNumber": 32
+      }
+    }
+  ]
+}

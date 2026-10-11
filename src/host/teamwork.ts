@@ -74,7 +74,7 @@ export class Teamwork {
       lines.push('Working here right now:', ...active.map((other) =>
         `- ${name(other.provider, other.model)}, asked "${oneLine(other.request, 120)}"${list(' and has edited ', [...new Set(other.edited.flatMap(here))])}`))
     }
-    const finished = this.store.turnsEndedInFolder(chat.cwd, chatId, since).slice(-TURNS_SHOWN)
+    const finished = this.store.turnsEndedInFolder(chat.cwd, chatId, since, TURNS_SHOWN)
     const accounted = new Set(active.flatMap((other) => other.edited.flatMap(here)))
     if (finished.length) {
       lines.push('Finished here since your last turn, in other chats:', ...finished.map((turn) => {

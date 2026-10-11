@@ -1,5 +1,25 @@
 # Facts and sources: hardening plan
 
+> **Status, 9 October 2026.** Done: the Phase 1 record and marks. `src/shared/sources.ts` holds the
+> rules (`pageKey`, `urlsIn`, `turnSources`, `citationMarks`, `sourcesNotice`), with tests in
+> `sources.test.ts`; `Hub.endTurn` (`src/host/hub.ts`) records `Turn.sources`; `SourceMark` in
+> `ChatMarkdown.tsx` marks the links; `tests/ui/sources.spec.ts` covers the marks. Done in Phase 2:
+> the rule in `src/host/agent-situation.ts`. Open: the turn-head count and the journal `citation`
+> entry (neither exists); the `blocked` and `failed` states (the record keeps only `opened: boolean`
+> on `cited`, and no `searches`); Phase 2's handoff pass of `cited` (`src/host/handoff.ts` does not
+> read sources); Phase 3 (no `docs/evals/scenarios/sources.jsonl`, no `primaryHosts`, no graders,
+> no `TurnExport.sources`); Phase 4; and Codex's search query question in the open questions. The
+> blocked-page filter is not gone: `webReadProblem` (`src/shared/web-evidence.ts`) keeps challenge
+> and HTTP-error pages out of `opened` (`browser.ts`, `hub.ts`), so a blocked page is not a source,
+> it is just not recorded as one.
+
+> **Status, 6 October 2026.** A cut-down Phase 1 is built: the per-turn sources record
+> (`src/shared/sources.ts`, `Turn.sources`), the marks on cited links, the notice ahead of the
+> next message and the rule in the agent block (README, "Sources"). Dropped from it: blocked-page
+> detection, the journal entry (the notice no longer depends on self-check mode) and the turn-head
+> count. Phases 2 to 4 are not started; the eval scenarios should be rewritten to use fixture pages,
+> since live sites make the pass rate drift with the web.
+
 What went wrong with fact-finding on 6 October 2026, how a research turn flows through Rocket
 today, and the changes that make "did the model actually read that page" a thing the app
 checks, shows and measures, instead of something the user has to catch.
@@ -54,8 +74,10 @@ The fourth uses a model and waits until the third can say whether it helps.
 
 ### Phase 1: a sources record per turn, and a citation check at turn end
 
-**Collect what was opened.** A new `src/host/sources.ts` keeps, per live turn, a list of
-`{ url, via, status, at }`:
+**Collect what was opened.** As built, the rules are in `src/shared/sources.ts` and the per-turn
+list is `LiveTurn.opened` in `src/host/hub.ts`, filled by `noteOpened` (browser, wired in
+`src/host/index.ts`) and `putItem` (provider). Each entry is `{ url, via }`; the plan's `status`
+and `at` are not stored. Plan details:
 
 - `via: 'browser'`: every `BrowserAgentOp` with a URL that passes through the browser tool's
   `BrowserLink.request` (`open`, `goto`, `read` with a url, `fetch`, `download`), plus the tab's
@@ -70,7 +92,7 @@ The fourth uses a model and waits until the third can say whether it helps.
   moment...", "Attention Required", "Access denied") or whose text is under a small threshold.
   The exact list lives in one function with a test beside it.
 
-**Compare with the reply.** In `Hub.endTurn` (`src/host/hub.ts:609`), when the turn completed,
+**Compare with the reply.** In `Hub.endTurn` (`src/host/hub.ts:617`), when the turn completed,
 extract every URL from the final assistant text (markdown links and bare URLs), normalise both
 sides (lowercase host, drop fragment, drop `utm_*` and tracking params, drop a trailing slash,
 treat `.md` and `.html` twins of the same path as one page), and classify each cited URL as
@@ -87,42 +109,46 @@ export type TurnSources = {
 
 stored by `store.ts` with the turn and sent to the window in the turn's snapshot.
 
-**Tell the next turn.** When a completed turn cites an unopened or blocked URL, the hub writes a
-journal entry (`source: 'turn'`, `kind: 'citation'`, `severity: 'warn'`, the URLs in `details`).
-The existing `<self-check>` nudge then carries it ahead of the next message, so the model is told
-in its own words that it cited pages it never read, and `rocket_diagnostics` lists them.
+As built, `TurnSources` is `{ opened: Array<{ url, via }>, cited: Array<{ url, opened: boolean }> }`
+(`src/shared/types.ts`). There is no `status`, no `state` with `blocked`, and no `searches`.
 
-**Show it.** Mockup first (`docs/mockups/sources.html`), then:
+**Tell the next turn.** As built, there is no journal entry and no `citation` kind. Instead
+`sourcesNotice` (`src/shared/sources.ts`) puts a `<sources>` block ahead of the next message when
+the last reply cited unopened pages (`Hub`, `src/host/hub.ts`). That block is not gated on
+self-check mode, and `rocket_diagnostics` does not list these citations. The plan's journal entry
+below is still open if the diagnostics should see them.
 
-- each link in a reply gets a mark: a tick for opened, a warning for blocked, a cross for
-  unopened, with the state in the title attribute;
-- the turn head gets a count, "4 sources, 1 not opened", that opens a small list of what the turn
-  opened, searched and cited.
+**Show it.** Mockup first (the file is `docs/mockups/source-marks.html`), then:
+
+- each link in a reply gets a mark (built): a tick for opened, a warning for unopened, with the
+  state in the title attribute. A cross and a `blocked` mark are not built;
+- the turn head count, "4 sources, 1 not opened", is not built (open). The list of what a turn
+  opened, searched and cited is not built either.
 
 **Rules.** No model judgment anywhere in this phase. A URL counts as opened only when the app saw
 it leave for the page. A search result is never a source. Two pages are the same only by host and
 path, never by content.
 
-**Files.** `src/host/sources.ts` and `sources.test.ts`; `src/host/tools/browser.ts` (observe the
-link); `src/host/hub.ts` (record `web` items, run the check in `endTurn`); `src/host/store.ts`
+**Files.** `src/shared/sources.ts` and `sources.test.ts` (built here, not `src/host/`);
+`src/host/tools/browser.ts` (observe the link: built as a callback passed in `src/host/index.ts`); `src/host/hub.ts` (record `web` items, run the check in `endTurn`); `src/host/store.ts`
 and `src/shared/types.ts` (`TurnSources` on the turn); `src/host/journal.ts` (the `citation`
 kind in the nudge's counts); `src/renderer/src/components/ChatMarkdown.tsx` and `Transcript.tsx`
 (marks and the turn-head count); README's Self-check section.
 
 ### Phase 2: say the rule where the model reads it
 
-- `src/host/agent-situation.ts` gets one short paragraph: a search result is a lead, not a source;
+- Done (`src/host/agent-situation.ts`, line 22): one short paragraph: a search result is a lead, not a source;
   cite only pages opened this turn; when a primary page is blocked, say the fact is unverified
   rather than citing a page that quotes it; state facts in two tiers, verified from an opened
   page or reported by a named outlet and not verified.
-- The handoff (`src/host/handoff.ts`) passes a turn's `cited` list with its states to a provider
-  that takes over a chat, so a second provider does not inherit unverified claims as settled.
+- Open: the handoff (`src/host/handoff.ts`) does not pass a turn's `cited` list to a provider
+  that takes over a chat (no sources reference in that file).
 - Optional, and deferred: a Rocket-owned `web_search` tool that returns titles, URLs and snippets
   only, with no digest, and the Claude adapter's `disallowedTools` set to drop the built-in
   `WebSearch`. Not in scope until Phase 3 shows the prompt line is not enough, since it changes
   what every provider sees and costs a tool schema in every prompt.
 
-### Phase 3: research eval scenarios
+### Phase 3: research eval scenarios (open: nothing of it is built)
 
 A new scenario file `docs/evals/scenarios/sources.jsonl` with `runsAlone: true` (they share the
 one browser) and five rows, each a question whose answer lives on a known primary page:

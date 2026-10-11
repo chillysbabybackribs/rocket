@@ -24,7 +24,7 @@ test('the library shelves a chat’s files, filters them, and opens one beside t
   await expect(page.getByRole('region', { name: 'Artifact preview' })).toBeVisible()
 
   const library = page.getByRole('complementary', { name: 'Library', exact: true })
-  await test.step('The rail opens the shelf: the attachments and the opened plan, with previews', async () => {
+  await test.step('The toolbar opens the shelf: the attachments and the opened plan, with previews', async () => {
     await (await section(page, 'Library')).click()
     await expect(library).toBeVisible()
     await expect(library.locator('.lib-card')).toHaveCount(4)

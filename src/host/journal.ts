@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs'
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, statSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { TurnTokens } from '../shared/types.ts'
 import { recordOf, stringOf } from './json.ts'
@@ -59,6 +59,46 @@ export function appendJournal(path: string, entry: JournalEntry): void {
   }
 }
 
+const TAIL_CHUNK_BYTES = 64 * 1024
+const NEWLINE = 0x0a
+
+/**
+ * Visit a file's entries newest first until `visit` returns false. Returns true when it stopped
+ * early. Reads backwards in chunks and splits on newline bytes before decoding, so a character
+ * cut by a chunk edge is decoded whole.
+ */
+function scanNewestFirst(path: string, visit: (entry: JournalEntry) => boolean): boolean {
+  if (!existsSync(path)) return false
+  const take = (line: Buffer): boolean => {
+    const [entry] = parseEntries(line.toString('utf8'))
+    return entry ? visit(entry) : true
+  }
+  const fd = openSync(path, 'r')
+  try {
+    let position = statSync(path).size
+    let carry = Buffer.alloc(0)
+    while (position > 0) {
+      const length = Math.min(TAIL_CHUNK_BYTES, position)
+      position -= length
+      const chunk = Buffer.alloc(length)
+      readSync(fd, chunk, 0, length, position)
+      const data = Buffer.concat([chunk, carry])
+      let end = data.length
+      let newline = data.lastIndexOf(NEWLINE, end - 1)
+      while (newline >= 0) {
+        if (!take(data.subarray(newline + 1, end))) return true
+        end = newline
+        newline = end > 0 ? data.lastIndexOf(NEWLINE, end - 1) : -1
+      }
+      carry = data.subarray(0, end)
+    }
+    // The first line of the file has no newline before it.
+    return !take(carry)
+  } finally {
+    closeSync(fd)
+  }
+}
+
 export function parseEntries(text: string): JournalEntry[] {
   const entries: JournalEntry[] = []
   for (const line of text.split('\n')) {
@@ -108,6 +148,23 @@ export class Journal {
       && (!query.source || entry.source.startsWith(query.source))
       && (!query.kind || entry.kind === query.kind))
     return matching.slice(-(query.limit ?? 40))
+  }
+
+  /**
+   * The newest `limit` warnings and errors after `since`, oldest first. Read from the end of the
+   * files and stopped at the first older entry, since the nudge runs on every message and the two
+   * files can hold four megabytes between them.
+   */
+  private warningsSince(since: number, limit: number): JournalEntry[] {
+    const found: JournalEntry[] = []
+    const visit = (entry: JournalEntry): boolean => {
+      if (entry.at <= since) return false
+      if (rank(entry.severity) >= rank('warn')) found.push(entry)
+      return found.length < limit
+    }
+    // The older file is only needed when the newer one ran out without reaching `since`.
+    if (!scanNewestFirst(this.path, visit)) scanNewestFirst(`${this.path}.1`, visit)
+    return found.reverse()
   }
 
   /** Record how a turn went. Failures and slow turns are trouble; the rest is kept as timing for the averages. */
@@ -167,7 +224,7 @@ export class Journal {
   nudge(chatId: string): string | null {
     const since = this.told.get(chatId) ?? this.startedAt
     this.told.set(chatId, this.now())
-    const trouble = this.read({ since: since + 1, severity: 'warn', limit: 200 }).filter((entry) => entry.kind !== 'observation')
+    const trouble = this.warningsSince(since, 200).filter((entry) => entry.kind !== 'observation')
     if (!trouble.length) return null
     const errors = trouble.filter((entry) => entry.severity === 'error').length
     const counts = [errors && `${errors} error${errors === 1 ? '' : 's'}`, trouble.length - errors && `${trouble.length - errors} warning${trouble.length - errors === 1 ? '' : 's'}`]

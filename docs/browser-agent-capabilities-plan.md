@@ -1,6 +1,26 @@
 # Browser tools and agent capabilities — optimization plan
 
-**Status:** draft, 6 October 2026  
+> **Status note (2026-10-09), checked against the code.**
+> **Done:** WS1.1 a11y snapshot (`browser-a11y.ts`, `focus: 'a11y'`), WS1.2 find as `query` on read
+> (`browser-agent.ts`, `browser-a11y.ts`), WS1.3 read header (`readHeader`), WS1.4 run delta
+> (`browser-run-delta.ts`), WS2.1 goto settle with `hash`, `title`, `request` (`GotoUntil` in
+> `shared/types.ts`), WS2.2 pushState hook on agent tabs (`browser-spa-hook.ts`), WS2.3
+> `tab.follow` (`script-worker.ts`), WS2.4 stale-ref retry (`browser-agent.ts` `locate`), WS3.1 JSON
+> attach (`browser-json-attach.ts`), WS3.3 HAR (`browser-har.ts`), WS4.1 scroll only if needed
+> (`browser-page-lib.ts` `scrollIfNeeded`), WS4.3 SoM (`browser-som-composite.ts`), WS5.1 client
+> hints and `window.chrome` (`browser-pane.ts`, `browser-url.ts`, `chrome-object.ts`; see
+> `browser-realism-audit.md`), WS6.1 tool copy. Harness cases are in `tests/ui/browser-capabilities.spec.ts`;
+> unit tests exist for a11y, JSON attach, HAR and SoM.
+> **Open:** WS3.2 `tab.waitForRequest` (no such method in `script-worker.ts`); WS2.1 function
+> predicate for `goto` (not in `GotoUntil`); WS5.3 Critical-CH restart; WS6.2 CRM session hint;
+> WS6.4 turn-budget copy (not in `browser.ts`); WS5.2 cookie-import eval and docs (not found in
+> `tests/ui`); Phase 0 Espo matrix and baseline LLM pass rate; Phase 2 find token eval; WS1.5 policy
+> matrix is written but not run; WS4.4 deferred as planned. WS6.3 (sources for SPA partial loads) not confirmed.
+> **Open decisions:** default focus is still `all` (`browser.ts`); JSON attach is on for every JSON
+> response with a fixed truncation limit and no size gate (`browser-agent.ts`, `browser-json-attach.ts`).
+> **Changed:** `browser_find` was not built; `query` on `browser_read` is the find (decision 2).
+
+**Status:** draft, 6 October 2026; status note 9 October 2026 above  
 **Scope:** Everything that affects how models use the web in Rocket — browser tools, main-process browser, observation format, agent prompts, evals, and optional shell integration. Nothing is off the table.
 
 ---
@@ -37,19 +57,19 @@ This plan sequences upgrades so we gain capability **without** turning every ste
 | Tool surface | `src/host/tools/browser.ts` | `browser_read`, `browser_run`, `browser_screenshot`, `browser_download` |
 | Script API | `src/host/tools/script-worker.ts` | Playwright-shaped `tab` / `browser` in a worker thread |
 | Execution | `src/main/browser-agent.ts` | CDP: navigate (dom-ready + grace), click, fill, wait, fetch, network log, body |
-| Page observation | `src/main/browser-page-lib.ts` | Markdown text, links with hrefs, `eN` refs, weak-ref heal, `scrollIntoView` on click/fill |
+| Page observation | `src/main/browser-page-lib.ts` | Markdown text, links with hrefs, `eN` refs, weak-ref heal, `scrollIfNeeded` on locate/click/fill (2026-10-09: was `scrollIntoView` always) |
 | Chrome / session | `src/main/browser-pane.ts`, `browser-url.ts`, `cookie-import.ts` | Tabs, client hints, realism |
 | Agent context | `src/host/agent-situation.ts`, tool descriptions | Research guide, sources rules, tab list in user message |
 | Quality | `tests/ui/*`, `evals/`, tool ledger | Regression and provider matrix |
 
 **Known gaps (from practice + comparison to Playwright MCP):**
 
-- No hierarchical **accessibility snapshot**; no **`find`** (partial tree search).
-- No **automatic re-read** after `goto` / click when same-document routing changes the view.
-- **`goto` does not wait** on SPA-specific signals (title, hash, named XHR).
-- **Network bodies** require the model to write `tab.body(rN)` or `fetch` — not host-assisted “last record JSON.”
-- **Click path always scrolls** (`locate` → `scrollIntoView`) — fine for Tier-3 actions, contrary to “scroll last resort” product wording.
-- **Bot realism** (client hints, `window.chrome`) — in progress elsewhere; affects *reachability*, not observation.
+- ~~No hierarchical **accessibility snapshot**; no **`find`**.~~ Done 2026-10-09 check: `focus: 'a11y'` and `query` on read.
+- No **automatic re-read** after `goto` / click when same-document routing changes the view. Still open: the pushState hook and `waitForNavigation` exist, but nothing re-reads on its own.
+- ~~**`goto` does not wait** on SPA-specific signals.~~ Done: `until` takes `hash`, `title` or `request`.
+- ~~**Network bodies** require the model to write `tab.body(rN)`.~~ Partly done: read attaches truncated JSON from the log; `tab.body` remains for the full body.
+- ~~**Click path always scrolls**.~~ Done: `scrollIfNeeded` scrolls only when the element is outside the viewport.
+- ~~**Bot realism** (client hints, `window.chrome`) — in progress elsewhere.~~ Implemented 2026-10-06; Critical-CH restart still open. See `browser-realism-audit.md`.
 
 ---
 
@@ -93,7 +113,7 @@ Four **tiers** models should be taught (tool copy + optional host helpers):
 | Item | Action | Files |
 |------|--------|-------|
 | **2.1 Opt-in `goto` settle** | `tab.goto(url, { until: 'none' \| 'title' \| 'hash' \| 'request' \| fn })` with **cap timeout** (e.g. 3–5s). `request` matches substring against network log (method GET, status 200). | `BrowserAgentOp`, `browser-agent.ts`, `script-worker.ts`, `types.ts` |
-| **2.2 Same-document navigation hook** | On agent tabs only: inject wrapper on `history.pushState` / `replaceState` (and `popstate`) that sets a flag or fires a custom event main can await. Complements 2.1 when no XHR. | `browser-pane.ts` or `capture-geometry`-style inject module |
+| **2.2 Same-document navigation hook** | On agent tabs only: inject wrapper on `history.pushState` / `replaceState` (and `popstate`) that sets a flag or fires a custom event main can await. Complements 2.1 when no XHR. | Done in `browser-spa-hook.ts` (used by `browser-agent.ts`) |
 | **2.3 `tab.follow(href)`** | Resolve relative/hash href from last read or argument → single `goto` + default settle. | script-worker |
 | **2.4 Stale ref recovery** | On locate failure: one automatic re-digest + retry; error text matches Playwright MCP (“capture new snapshot”). | `browser-page-lib.ts`, `browser-agent.ts` |
 
@@ -207,7 +227,8 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 - [x] Find-in-page — `query` on `browser_read` / `tab.read` (substring or `/regex/`) — WS1.2
 - [x] `tab.follow(href)` — resolve + goto + default hash settle — WS2.3
 - [x] Harness + unit tests (`browser-a11y.test.ts`, `browser-capabilities.spec.ts`)
-- [ ] Eval scenario for token savings on find (optional LLM matrix)
+- [ ] Eval scenario for token savings on find (optional LLM matrix) — still open
+- [ ] WS3.2 `tab.waitForRequest(substring)` — not built (2026-10-09 check)
 
 ### Phase 3 — Host intelligence
 
@@ -222,8 +243,8 @@ Wire into `npm run check:ui` where stable; fixture HTML for CI, live Espo as opt
 
 **Status (6 Oct 2026): landed.**
 
-- [x] SoM screenshot — `browser_screenshot` / `tab.screenshot({ som: true })` — WS4.3 (`browser-page-lib` overlay)
-- [x] Observation policy eval matrix — WS1.5 (`docs/evals/browser-observation-policies.md`, scenarios jsonl)
+- [x] SoM screenshot — `browser_screenshot` / `tab.screenshot({ som: true })` — WS4.3 (`browser-som-composite.ts`, `browser-som-svg.ts`; 2026-10-09 correction: not `browser-page-lib`)
+- [x] Observation policy eval matrix — WS1.5 (`docs/evals/browser-observation-policies.md`, scenarios jsonl; written, not yet run)
 - [x] HAR export — `tab.exportHar({ saveTo })` since script mark — WS3.3 (`browser-har.ts`)
 - [x] Harness: Phase 4 cases in `browser-capabilities.spec.ts`
 

@@ -1,0 +1,28 @@
+{
+  "leader": {
+    "x": 8,
+    "y": 48,
+    "width": 565.109375,
+    "height": 812
+  },
+  "browserBox": {
+    "x": 641.109375,
+    "y": 48,
+    "width": 710.890625,
+    "height": 804
+  },
+  "overlay": {
+    "x": 113.109375,
+    "y": 48,
+    "width": 520,
+    "height": 812
+  },
+  "nativeViews": [
+    {
+      "x": 648,
+      "y": 133,
+      "width": 697,
+      "height": 712
+    }
+  ]
+}

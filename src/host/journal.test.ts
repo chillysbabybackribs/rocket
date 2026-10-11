@@ -48,6 +48,22 @@ test('a chat hears about new trouble once, and not about trouble from before the
   assert.match(j.nudge('c2')!, /boom/)
 })
 
+test('the nudge reads back from the end past a long file of noise, and counts only trouble since the chat last heard', () => {
+  const clock = { now: 1_000 }
+  const j = journal(clock)
+  clock.now = 2_000
+  assert.equal(j.nudge('c1'), null)
+  // Over 64 KB of multi-byte lines, so the backward read crosses chunk edges mid-character.
+  for (let index = 0; index < 3_000; index++) j.add('host', 'info', 'chatter', `routine line ${index} — café`)
+  clock.now = 3_000
+  j.add('host', 'warn', 'slow', 'slow reply — ünïcode')
+  clock.now = 3_500
+  j.add('host', 'error', 'crash', 'boom')
+  clock.now = 4_000
+  assert.match(j.nudge('c1')!, /1 error and 1 warning.*Latest: boom/s)
+  assert.equal(j.nudge('c1'), null)
+})
+
 test('a note a model filed is not announced back to it', () => {
   const clock = { now: 1_000 }
   const j = journal(clock)

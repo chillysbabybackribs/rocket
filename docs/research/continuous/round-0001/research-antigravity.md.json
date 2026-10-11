@@ -1,0 +1,9 @@
+{
+  "marker": "[rocket-research:2026-10-08T04-03-41-819Z:1:research:antigravity:1]",
+  "report": "docs/research/continuous/round-0001/research-antigravity.md",
+  "nextQuestions": [
+    "Does the aggressive truncation of user messages in the handoff block (OLDER_USER_CHARS = 1,500) corrupt attachments passed inside <file> blocks in earlier user prompts, or are attachments completely segregated from this truncation logic?",
+    "How resilient is rocket_ui_run isolated mode (target: 'isolated') to concurrent research runs? The README notes 'Providers in the same chat share this isolated inspection session', but what if multiple chats invoke isolated runs simultaneously?",
+    "Should the strict sourcesNotice validation apply to local library files, and if so, how do we distinguish between general external citations and internal project references?"
+  ]
+}

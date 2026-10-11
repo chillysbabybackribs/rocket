@@ -9,9 +9,10 @@ test('agent situation is always returned for every turn, with the map and where 
   assert.ok(block.includes('rocket_ui_snapshot'))
   assert.ok(block.includes('browser_read'))
   assert.ok(block.includes('this chat is pane 0'))
-  assert.ok(block.includes('- evals.scenario {id'))
-  assert.ok(block.includes('- evals.run.start {scenario'))
+  assert.ok(block.includes('- library {'))
+  assert.ok(block.includes('- library.open {id'))
   assert.ok(block.includes('docs/something-plan.md'))
+  assert.ok(block.includes('unless the user explicitly asks to close or quit the Rocket app'))
 })
 
 test('without a readable window the block says to ask rocket_ui_where', () => {

@@ -6,7 +6,7 @@ import { Store } from './store.ts'
 const chat: Chat = { id: 'c1', title: 'Chat', cwd: '/tmp', lastProvider: null, createdAt: 1, updatedAt: 1 }
 
 function turn(id: string, provider: Turn['provider']): Turn {
-  return { id, chatId: 'c1', provider, model: null, status: 'completed', error: null, handoffTurns: 0, goalRole: null, changes: null, tokens: null, startedAt: 1, endedAt: 2 }
+  return { id, chatId: 'c1', provider, model: null, status: 'completed', error: null, handoffTurns: 0, goalRole: null, changes: null, tokens: null, sources: null, startedAt: 1, endedAt: 2 }
 }
 
 test('an item updated in place keeps its first position', () => {
@@ -63,6 +63,16 @@ test('a store made before goals gains the goal_role column, and turns keep their
   store.close()
 })
 
+test("a turn's sources are saved with it, and a turn without them reads as null", () => {
+  const store = new Store(':memory:')
+  store.createChat(chat)
+  const stored = store.createTurn(turn('t1', 'claude'))
+  assert.equal(store.turn('t1')!.sources, null)
+  const sources = { opened: [{ url: 'https://a.example/x', via: 'browser' as const }], cited: [{ url: 'https://a.example/x', opened: true }, { url: 'https://b.example/', opened: false }] }
+  store.updateTurn({ ...stored, sources })
+  assert.deepEqual(store.turn('t1')!.sources, sources)
+})
+
 test("a turn's tokens are saved with it, and a turn without them reads as null", () => {
   const store = new Store(':memory:')
   store.createChat({ id: 'c1', title: 'chat', cwd: '/work', lastProvider: null, createdAt: 1, updatedAt: 1 })
@@ -71,6 +81,20 @@ test("a turn's tokens are saved with it, and a turn without them reads as null",
   const tokens = { input: 1_200, cached: 1_000, output: 30, context: 1_100, contextWindow: 200_000 }
   store.updateTurn({ ...stored, tokens })
   assert.deepEqual(store.turn('t1')!.tokens, tokens)
+})
+
+test('a folder’s finished turns come oldest first, and a limit keeps only the newest', () => {
+  const store = new Store(':memory:')
+  store.createChat(chat)
+  store.createChat({ ...chat, id: 'c2' })
+  store.createChat({ ...chat, id: 'mine', cwd: '/elsewhere' })
+  for (let index = 1; index <= 5; index++) {
+    store.createTurn({ ...turn(`t${index}`, 'claude'), chatId: index % 2 ? 'c1' : 'c2', endedAt: 10 + index })
+  }
+  store.createTurn({ ...turn('other', 'claude'), chatId: 'mine', endedAt: 99 })
+  assert.deepEqual(store.turnsEndedInFolder('/tmp', 'nobody', 0).map((each) => each.id), ['t1', 't2', 't3', 't4', 't5'])
+  assert.deepEqual(store.turnsEndedInFolder('/tmp', 'nobody', 0, 2).map((each) => each.id), ['t4', 't5'])
+  assert.deepEqual(store.turnsEndedInFolder('/tmp', 'c1', 12).map((each) => each.id), ['t4'])
 })
 
 test('a handoff read returns the turns in a range with their own items, in order', () => {

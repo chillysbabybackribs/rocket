@@ -1,0 +1,347 @@
+
+> rocket-orchestrator@0.1.0 build
+> tsc --noEmit && electron-vite build
+
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 87 modules transformed.
+rendering chunks...
+out/main/script-worker.js              4.88 kB
+out/main/chunks/ui-test-D9H1zUQY.js   49.67 kB
+out/main/index.js                    177.95 kB
+out/main/host.js                     422.60 kB
+✓ built in 1.45s
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.mjs  1.83 kB
+✓ built in 18ms
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2249 modules transformed.
+rendering chunks...
+../../out/renderer/fill.html                                                      0.63 kB
+../../out/renderer/suggest.html                                                   0.75 kB
+../../out/renderer/index.html                                                     0.78 kB
+../../out/renderer/assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2          5.81 kB
+../../out/renderer/assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2      6.18 kB
+../../out/renderer/assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2        7.70 kB
+../../out/renderer/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2            10.25 kB
+../../out/renderer/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2             11.23 kB
+../../out/renderer/assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2         12.94 kB
+../../out/renderer/assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2        14.70 kB
+../../out/renderer/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2              18.75 kB
+../../out/renderer/assets/inter-greek-wght-normal-CkhJZR-_.woff2                 19.00 kB
+../../out/renderer/assets/geist-mono-latin-wght-normal-XN7g48iV.woff2            23.13 kB
+../../out/renderer/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2          25.96 kB
+../../out/renderer/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                 48.26 kB
+../../out/renderer/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2             85.07 kB
+../../out/renderer/assets/suggest-Wwojl-O_.css                                    1.25 kB
+../../out/renderer/assets/index-hA6BJ-kU.css                                      2.44 kB
+../../out/renderer/assets/fill-DVrebo1E.css                                       4.38 kB
+../../out/renderer/assets/index-C_xjTI2b.css                                    120.40 kB
+../../out/renderer/assets/types-7ki8Xw5x.js                                       1.19 kB
+../../out/renderer/assets/suggest-j2x2i565.js                                     1.70 kB
+../../out/renderer/assets/fill-BVFUMawF.js                                        8.35 kB
+../../out/renderer/assets/index-CWcFdj7v.js                                   1,435.09 kB
+✓ built in 4.57s
+
+> rocket-orchestrator@0.1.0 test
+> node --experimental-transform-types --disable-warning=ExperimentalWarning --test "src/**/*.test.ts" "scripts/*.test.mjs"
+
+✔ library add and edit preserve other references and reject invalid writes (15.693175ms)
+✔ each research claim gets another provider and reviewers rotate without self-review (3.528998ms)
+✔ research and review barriers precede synthesis and unbounded deeper rounds (1.575317ms)
+✔ old or empty report receipts cannot complete a new attempt (0.692729ms)
+✔ transcript reconciliation recovers sends and explicit resume clears interrupted attempts (3.06899ms)
+✔ UI cancellation stops wrapper, ordinary children and detached TERM-resistant descendants (1109.138659ms)
+✔ UI command preserves exit status and does not start work after interruption (85.738448ms)
+✔ persistent UI supervisors receive stdin and callback failures clean up the child (603.893466ms)
+✔ an exited UI supervisor cannot leave a detached child behind (2648.267641ms)
+✔ agent situation is always returned for every turn, with the map and where the shell is (8.106359ms)
+✔ without a readable window the block says to ask rocket_ui_where (1.731832ms)
+✔ images are validated by bytes and round-trip through SQLite and files after restart (83.16769ms)
+✔ PDFs and text files are stored by content, previewed, and given to providers as text within a budget (502.239111ms)
+✔ preparation discovers an editable library and tolerates unavailable resources (6.652571ms)
+✔ buildTurnExport includes turn items and timing fallback (161.885141ms)
+✔ EvalExport writes tagged chat turns to inbox (84.669208ms)
+✔ writeTurnExport also writes ledger-slice.json (2.802716ms)
+✔ files_unchanged and only_files_changed read the files the run changed (3.124334ms)
+✔ a file grader on a turn with no record of its files fails with what to do (0.511697ms)
+✔ no_question_asked fails on ask_user or a reply that ends with a question (3.87875ms)
+✔ runEvalCell exports a completed turn (64.945886ms)
+✔ a run puts providers side by side, each provider's trials in turn, and grades each copy (424.804595ms)
+✔ a cell waits while its provider is answering another chat, and a stopped run starts nothing more (2112.901314ms)
+✔ a run copy reports the files the turn changed, added and deleted, with repo-relative paths (38.321205ms)
+✔ a scenario folder that does not exist is refused with what to fix (1.066084ms)
+✔ a fill runs in a chat the window never sees, answers from its fill block, and leaves nothing behind (42.715238ms)
+✔ a reply with no fill block fails with a sentence, and the last model sent with is the one used (20.457668ms)
+✔ Sound like you is given the user's own messages, never a fill's or an eval's (21.193749ms)
+✔ a goal is drafted, confirmed, worked, checked and done (108.130602ms)
+✔ a worker that forgets to report goes to the checker with its last reply (37.189427ms)
+✔ the same gap twice in a row asks the user, and a note carries on (66.101811ms)
+✔ a worker that needs the user waits, and the answer is its next message (37.729426ms)
+✔ a draft without a brief asks the user, and their answer redrafts (23.409987ms)
+✔ a failed turn is tried once more, then the user is asked (37.351002ms)
+✔ a checker with no verdict is asked once more, then the user (59.416358ms)
+✔ usage at the pause level waits, and Resume goes ahead anyway (95.630931ms)
+✔ pause waits for the turn in flight; stop cuts it off (49.587975ms)
+✔ a goal cut off by the app closing waits for the user after a restart (42.717863ms)
+✔ goal_report outside a goal turn, or with the wrong arguments, says what to do (18.629253ms)
+✔ with no other provider signed in, the worker checks its own work (19.042754ms)
+✔ files a work turn changed through the shell are added to its round (44.733071ms)
+✔ a visual brief needs a concept and screenshots that exist, and gains the design line (44.058657ms)
+✔ a brief without a design gets no design line (21.661593ms)
+✔ automatic usage resume reads fresh usage before proceeding (99%) (25.04679ms)
+✔ automatic usage resume reads fresh usage before proceeding (10%) (23.254954ms)
+✔ nothing missed means no handoff (4.832992ms)
+✔ a handoff carries user and assistant text, tool lines, and no reasoning or tool output (3.573553ms)
+✔ a question the user has not answered is named as still open; an answered one is not flagged (1.526645ms)
+✔ the user sees their own words when a message went out with a handoff in front (0.885263ms)
+✔ an oversized handoff is cut to the budget and keeps the newest turn whole (1.176143ms)
+✔ files a turn touched are named once each, relative to the chat folder, edits ahead of reads (0.95789ms)
+✔ a handoff carries what a turn concluded, not what it said between tool calls (1.435773ms)
+✔ older turns keep their files and a shortened request and reply; the newest go whole (7.835006ms)
+✔ a history too long to fit even cut down keeps the newest turns and says how many were left out (100.550438ms)
+✔ image-only messages, queues, restart restoration and provider handoffs retain image references (69.416966ms)
+✔ waitForTurn resolves when the turn ends (5.157977ms)
+✔ prepare hands the provider the chat folder and the session it would resume (11.540698ms)
+✔ prepare for the next new chat passes the folder it will start in, and never throws (3.683731ms)
+✔ a turn reports when it first showed anything and when it first showed text (16.95535ms)
+✔ changing the folder drops every provider's warm session for the chat (10.698136ms)
+✔ a failed turn the provider had started answering is not handed back to it (13.717872ms)
+✔ a session that was lost is told the app's context again (7.84756ms)
+✔ a goal's turn does not name the chat after the app's message (7.477099ms)
+✔ a turn the provider starts by itself is recorded, replied in, and settled (7.044511ms)
+✔ words sent to the provider answering join its turn, told not to acknowledge them (12.380064ms)
+✔ words a turn never said it read are kept when it completes, and sent next when it is stopped (11.378121ms)
+✔ Stop gives back words on their way into the turn with those waiting for it (11.731498ms)
+✔ words for a provider that cannot take them wait, and go out together when the turn ends (13.46258ms)
+✔ a turn that cannot take words leaves them waiting, and later words keep their place behind them (10.304282ms)
+✔ Stop during initial context prevents provider startup (9.733794ms)
+✔ Stop during lost-session retry context prevents provider startup (8.630509ms)
+✔ a turn's tokens are kept on it and reported with its timing; the latest reading wins (9.618546ms)
+✔ a page leaves finished tool output out and serves it on request; the turn in flight keeps its own (12.54203ms)
+✔ a turn records the pages it opened against the pages its reply cites, and the next message is told of the unopened ones (35.838563ms)
+✔ all providers reject textual fetch failures and search URLs as citation evidence (27.376883ms)
+✔ a torn last line does not hide the entries before it (2.649677ms)
+✔ a turn far slower than usual is a warning, and the usual stays unspoiled (3.983318ms)
+✔ a failed turn is an error that carries its reason (1.374878ms)
+✔ a chat hears about new trouble once, and not about trouble from before the host started (3.481919ms)
+✔ a note a model filed is not announced back to it (1.677019ms)
+✔ a turn's tokens are kept with its timing and summed up in the stats (5.148669ms)
+✔ sent attachments are on the shelf with their chat; a draft’s and an eval chat’s are not (377.831009ms)
+✔ files join by path once, keep where they first came from, and show when they go missing (108.288009ms)
+✔ a turn’s finished downloads join the shelf with the site they came from (95.321487ms)
+✔ library_list lists with the panel’s filters, "this" chat included, and refuses unknown values (43.718994ms)
+✔ the first start shelves the Markdown files earlier turns wrote, once, dated by the last turn to write each (127.636101ms)
+✔ continuous review uses defaults, waits for workers, then dispatches fresh deeper chats (35.264889ms)
+✔ user file edits survive checkpoints and wake an idle owner without spurious self-updates (10.044621ms)
+✔ drain refuses new dispatch and produces one final review after all workers finish (10.418387ms)
+✔ Stop requests cancellation only for owned workers, retains unresolved work, and never restarts on late completion (10.03833ms)
+✔ completed-with-error-prose but missing report is not accepted as a successful worker (7.122388ms)
+✔ failed or empty leader turns pause rather than spend usage in automatic retries (11.934994ms)
+✔ restart preserves evidence and pauses; damaged user-note boundary is never overwritten (9.537974ms)
+✔ tool context cannot control another chat and worker concurrency is bounded (12.46259ms)
+✔ a damaged saved state disables orchestration without losing evidence or preventing host startup (4.869693ms)
+✔ Antigravity shared identity is not used concurrently with another active chat (2.620512ms)
+✔ a new conversation is told each tool, its arguments and how to call it (2.876004ms)
+✔ with no tools there is nothing to tell (0.463115ms)
+✔ a step that was only thinking carries no text and shows nothing (1.957069ms)
+✔ claudeCodeExecutable prefers the user install over the SDK bundle (2.297261ms)
+✔ CLAUDE_CODE_EXECUTABLE overrides the default install path (0.522678ms)
+✔ the same text said twice in a turn is two closed rows (restated after the stop) (5.113343ms)
+✔ the same text said twice in a turn is two closed rows (restated before the stop) (0.66166ms)
+✔ a reply that ends while background tasks run keeps its turn open for the follow-up (4.145925ms)
+✔ TodoWrite is the turn's plan, replaced whole on each update and never a tool row (2.174409ms)
+✔ a turn's tokens add up its results, and its context is the last model call's input (1.239532ms)
+✔ early Stop waits for the Codex turn ID from its reply and interrupts remotely once (13.49426ms)
+✔ early Stop waits for the Codex turn ID from its notification and interrupts remotely once (5.544528ms)
+✔ a turn's tokens are the thread's running count less where it stood before the turn (1.702397ms)
+✔ a blocking question is skipped and pointed at ask_user, so the turn never waits on a human (2.752401ms)
+✔ a plan asking for approval is accepted, as in an unattended session (1.659967ms)
+✔ todos and task completions sent as requests are accepted with what they carried (0.686878ms)
+✔ a method the app does not know is still refused (1.199146ms)
+✔ the ACP plan update becomes the turn's plan item (2.362144ms)
+✔ an item updated in place keeps its first position (14.141794ms)
+✔ a provider is owed exactly the turns after the one its session last saw (5.472992ms)
+✔ deleting a chat removes its turns, items and sessions (6.131296ms)
+✔ a store made before goals gains the goal_role column, and turns keep their role (60.837153ms)
+✔ a turn's sources are saved with it, and a turn without them reads as null (14.798364ms)
+✔ a turn's tokens are saved with it, and a turn without them reads as null (7.9114ms)
+✔ a handoff read returns the turns in a range with their own items, in order (7.298642ms)
+✔ the running and the last settled turn are found without reading the chat (4.539559ms)
+✔ the attachment sweep keeps what user messages and queues hold, whatever else mentions attachments (10.318378ms)
+✔ a chat opens with its newest page of turns, and earlier pages come on request until none are left (27.745199ms)
+✔ what a turn changed is kept with it as a patch, with totals on the turn, leaving out another running turn's file (516.706699ms)
+✔ undo puts a turn's files back, removes the ones it made, commits the reversal and marks the turn; a file changed since is named (1574.774321ms)
+✔ a turn's changes are committed alone, under the request, and a stopped turn waits for the one that finishes it (825.070514ms)
+✔ a model is told who is working in the folder, what other chats finished, and what changed under it (231.132875ms)
+✔ a file another running turn has edited is left for that turn to commit (211.130978ms)
+✔ wilson lower bound is conservative for small samples (2.218633ms)
+✔ loadToolEvalScores combines ledger R and eval-live P for targetTool scenarios (72.500773ms)
+✔ ledger records failures and successes, immutable finishes, versions and denominator-safe grouping (107.031494ms)
+✔ restart distinguishes interrupted calls, malformed evidence is skipped and retention preserves active calls (89.363398ms)
+✔ redacted evidence is bounded and fallback grouping removes volatile paths and numeric values (9.286458ms)
+✔ broken recording and diagnostics do not change tool behavior (0.806224ms)
+✔ query tool validates filters and bounds JSON responses without returning arguments in lists (363.463719ms)
+✔ concurrent tool calls record distinct finishes without cross-talk (137.425119ms)
+✔ summary exposes context limits and description bytes beside success rates (54.865548ms)
+✔ review annotations stay separate, support retry links and a bounded queue (84.008289ms)
+✔ setToolLedgerReview rejects invalid lifecycle and annotates like MCP review (48.609456ms)
+✔ panel loader exposes registered tools and summary fields for the eval Tools view (51.855941ms)
+✔ opening an unavailable ledger can be handled without corrupting an existing file (3.462763ms)
+✔ a question needs real options, their consequences and the model's own pick (4.479385ms)
+✔ the answer goes to the model with the question quoted above it (0.715783ms)
+✔ ask_user posts one question into the running turn and refuses a second (33.561921ms)
+✔ closing tabs never marks, loads or inspects a page as a side effect (230.697293ms)
+✔ browser context names the open tabs to a new session, then only when they change (1.790613ms)
+✔ browser context says nothing with no tabs open, and research guidance rides in the tool description only (0.928024ms)
+✔ browser_download sends main an absolute saveTo, and reports where the file went (1.528157ms)
+✔ saveTo paths resolve from the chat folder or home, and downloads in flight say so (1.352866ms)
+✔ the pages a chat asks the browser for are reported with the chat, and a read of the tab as it is reports nothing (3.404133ms)
+✔ browser challenge and rejected navigation never earn evidence; tab-only reads do (1.350001ms)
+✔ network-only and controls-only inspections do not count as reading source content (1.743926ms)
+✔ shared reader returns original article and links, saves pagination, credits only successful sources (167.799868ms)
+✔ 403 falls back to browser, but a challenge is an explicit failure with no source credit (12.854231ms)
+✔ search switches engines after a challenge and never credits result destinations (1.060164ms)
+✔ local PDF is extracted with poppler without requiring a model or network (46.781612ms)
+✔ failure detector recognizes the incident without rejecting articles discussing access failures (0.685957ms)
+✔ a passing project reports each script as passed (910.884486ms)
+✔ a failing script is an error that carries its output (394.63966ms)
+✔ a folder without scripts says what to do instead (3.871236ms)
+✔ the where line names the asking chat’s pane, the other panes and the side panel (2.951398ms)
+✔ go and act pass through the dispatcher, add the pane and the image, and refuse unknown names (6.937129ms)
+✔ the schemas enumerate the map, so a model cannot invent a place or action (0.773031ms)
+✔ multiple verbose UI captures keep parseable metadata, image content and full-result paths (4.944383ms)
+✔ invalid UI requests do not start a supervisor or require a source installation (2.372724ms)
+✔ UI mode requires an explicit marked profile and matching host data directory (5.38192ms)
+✔ a controlled stream remains pending until stopped and emits no final response after stop (4.904248ms)
+✔ controlled worker writes its report only after release, and cancellation delivers none (4.263106ms)
+✔ controlled leader invokes real HTTP tool boundary and retains rejected fourth dispatch (154.741421ms)
+✔ a small project is mapped whole, one line per folder (2.883388ms)
+✔ a large project keeps its upper folders and counts what lies deeper (4.476709ms)
+✔ a note saved by one provider reaches the others: at once in a going session, and at the start of a new one (74.632361ms)
+✔ parseReadQuery treats slash syntax as regex (2.560058ms)
+✔ filterReadByQuery keeps matching control lines (0.83604ms)
+✔ buildA11ySnapshot assigns refs to actionable nodes (2.362424ms)
+✔ buildHar filters by request seq and shapes entries (2.787338ms)
+✔ truncateJsonBody keeps short JSON whole (2.830599ms)
+✔ truncateJsonBody clips long JSON (0.687429ms)
+✔ formatAttachedJson wraps with request id (0.622486ms)
+✔ somSvg places a badge label at scaled coordinates (3.833755ms)
+✔ escapeXml escapes markup in ref labels (0.641222ms)
+✔ the plain user agent is Chrome's, with the app and Electron names gone (2.628336ms)
+✔ an app name with regex characters is matched literally (0.512669ms)
+✔ a user agent already plain is left alone (0.256585ms)
+✔ client hints for Chrome 152 on Linux are what Chrome itself would send (1.885773ms)
+✔ the GREASE brand and the order change with the major version, as in Chrome (0.667852ms)
+✔ a user agent that is not Chrome on Linux gets no client hints (0.230586ms)
+✔ every request carries the three low-entropy hints, serialized as Chrome writes them (1.33363ms)
+✔ an origin that asked with Accept-CH also gets the high-entropy hints it named (0.944154ms)
+✔ Accept-CH given as several header lines is read as one list (1.04783ms)
+✔ a selection in display coordinates maps to image pixels at any device scale, clamped (3.410234ms)
+✔ capture names carry the source and time and are safe file names (1.35992ms)
+✔ chat links resolve files, encoded names, line references, and browser documents (45.264375ms)
+✔ an empty window.chrome gets Chrome's three members, in Chrome's order and with its descriptors (9.958177ms)
+✔ loadTimes() has Chrome's thirteen fields with the right types and values (3.327729ms)
+✔ before any network navigation the values are the zeros and "unknown" Chrome shows (2.470368ms)
+✔ csi() has startE, onloadT (DOMContentLoaded), pageT and tran 15 for an ordinary navigation (1.378034ms)
+✔ a reload and a back/forward navigation are reported as Chrome reports them (3.453296ms)
+✔ app has Chrome's members and enum values (2.098886ms)
+✔ a window.chrome that already has members is left alone, so running twice changes nothing (9.132508ms)
+▶ chromium cookie decryption
+  ✔ recovers a v11 value, dropping the tag and the 32-byte host hash (4.604821ms)
+  ✔ recovers a v10 value the same way (2.172726ms)
+  ✔ returns null for an untagged or empty blob (1.516516ms)
+  ✔ returns null when the key is wrong rather than throwing (1.890282ms)
+✔ chromium cookie decryption (14.357481ms)
+▶ chromium timestamps
+  ✔ converts microseconds since 1601 to Unix seconds (1.86774ms)
+  ✔ treats a zero or negative expiry as a session cookie (0.847862ms)
+✔ chromium timestamps (3.277524ms)
+▶ sameSite mapping
+  ✔ maps Chromium codes to Electron values (0.534901ms)
+  ✔ downgrades insecure SameSite=None to lax so it is not rejected (1.945777ms)
+✔ sameSite mapping (3.369778ms)
+▶ host matching for site-only import
+  ✔ matches host-only and domain cookies for the same site (2.066195ms)
+  ✔ does not match an unrelated site (1.671438ms)
+✔ host matching for site-only import (4.420213ms)
+▶ conversion to an Electron cookie
+  ✔ builds a domain cookie with an https url and expiry (1.135576ms)
+  ✔ builds a host-only cookie without a domain, and an http url when insecure (0.49209ms)
+  ✔ leaves expirationDate unset for a session cookie (4.587719ms)
+✔ conversion to an Electron cookie (7.270619ms)
+✔ a suggested file name cannot climb out of the folder or carry control characters (3.363646ms)
+✔ saveTo names a folder or a file, and defaults to the downloads folder (0.869072ms)
+✔ an existing or arriving file is never overwritten (1.077186ms)
+✔ the page's reading status is kept only while it reads, and rounded for the toolbar (7.241525ms)
+✔ markdown links, bare URLs, and code paths link without altering code blocks (34.067877ms)
+✔ link transform permits local files and rejects executable schemes (0.927262ms)
+✔ paragraphs and headings split at blank lines, and the pieces join back to the text (3.986764ms)
+✔ a blank line inside a code fence is not a boundary (0.694813ms)
+✔ a list stays with the paragraph before it, loose items and indented continuations included (0.489515ms)
+✔ emphasis and rules at the start of a line are not mistaken for list items (0.49222ms)
+✔ text with link definitions is left whole (2.593471ms)
+✔ a table and a short text are single blocks (0.658104ms)
+✔ saved toolbar preferences drop unknown sections and add missing ones (3.211709ms)
+✔ renaming keeps the real name for screen readers, and a blank or default name clears it (0.697287ms)
+✔ keeping and moving sections splits them between the toolbar and the drawer in order (1.553516ms)
+✖ every map name has a control in the renderer, and every name a control uses is in the map (11.645345ms)
+✔ every place names a component file that exists (1.179299ms)
+✔ every action with a place names a place that exists, and names are well formed (1.454879ms)
+✔ the map prints every place and action with its parameters (1.39177ms)
+✔ the prompt says where the field is, what is around it and how to answer (3.578783ms)
+✔ a rework says what to change, and Sound like you carries the user's messages (0.909929ms)
+✔ a form lists every field and the ones Rocket will not touch (0.590586ms)
+✔ the fill block is read from the end of the reply, whatever came before it (2.324453ms)
+✔ a reply without a usable fill says so in a sentence (1.397241ms)
+✔ steps are read from the model's own calls (2.380869ms)
+✔ sources are each page once, the page itself named, and the commands that ran (1.638015ms)
+✔ voice samples skip pasted text, one-word replies and walls of text (0.950546ms)
+✔ the done line says what was filled and what was left (2.403622ms)
+✔ the chip sits above the field's top right corner, below it with no room above, and inside the page (1.874381ms)
+✔ a file’s kind comes from its name (2.913235ms)
+✔ added buckets follow the local calendar (1.06392ms)
+✔ filters combine, and search needs every word somewhere in the name, origin, path or chat title (6.839464ms)
+✔ loose filter input is checked, and an unknown value is refused with the valid ones (1.162247ms)
+✔ a git patch is read into files, kinds, counts and numbered lines (5.259419ms)
+✔ an empty patch is no files (0.615202ms)
+✔ the slider spans the speeds on a log scale (3.414392ms)
+✔ a drag lands on a round speed near it, and anywhere else between (0.463436ms)
+✔ speeds stay in range whatever arrives (0.421888ms)
+✔ labels read as the control shows them (0.509843ms)
+✔ a page key is the host and path, with www, the fragment, a trailing slash and tracking parameters dropped (4.032991ms)
+✔ the urls in a reply are its link targets and bare urls, each once, without trailing punctuation (1.970794ms)
+✔ only requests that go to a page count as opening one (0.7094ms)
+✔ a turn’s sources mark each cited page opened or not, by page, and are null with nothing to record (1.562132ms)
+✔ the next message is told about unopened citations, and nothing when every citation was opened (0.57164ms)
+ℹ tests 258
+ℹ suites 5
+ℹ pass 257
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7922.309078
+
+✖ failing tests:
+
+test at src/shared/app-map.test.ts:26:1
+✖ every map name has a control in the renderer, and every name a control uses is in the map (11.645345ms)
+  AssertionError [ERR_ASSERTION]: the app map names worker.expand, but no renderer control uses it
+      at TestContext.<anonymous> (/home/dp/Desktop/rocket-orchestrator/src/shared/app-map.test.ts:39:12)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1103:25)
+      at Test.start (node:internal/test_runner/test:1000:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

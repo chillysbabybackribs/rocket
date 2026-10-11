@@ -1,0 +1,262 @@
+
+> rocket-orchestrator@0.1.0 check:ui
+> node scripts/ui-check.mjs tests/ui/reading.spec.ts tests/ui/rocket.spec.ts tests/ui/fill.spec.ts tests/ui/sources.spec.ts tests/ui/eval-tools.spec.ts tests/ui/tool-failure-loop.spec.ts
+
+UI check artifacts: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG
+
+> rocket-orchestrator@0.1.0 build
+> tsc --noEmit && electron-vite build
+
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 87 modules transformed.
+rendering chunks...
+out/main/script-worker.js              4.88 kB
+out/main/chunks/ui-test-D9H1zUQY.js   49.67 kB
+out/main/index.js                    177.95 kB
+out/main/host.js                     424.51 kB
+✓ built in 1.48s
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.mjs  1.83 kB
+✓ built in 21ms
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2251 modules transformed.
+rendering chunks...
+../../out/renderer/fill.html                                                      0.63 kB
+../../out/renderer/suggest.html                                                   0.75 kB
+../../out/renderer/index.html                                                     0.78 kB
+../../out/renderer/assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2          5.81 kB
+../../out/renderer/assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2      6.18 kB
+../../out/renderer/assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2        7.70 kB
+../../out/renderer/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2            10.25 kB
+../../out/renderer/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2             11.23 kB
+../../out/renderer/assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2         12.94 kB
+../../out/renderer/assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2        14.70 kB
+../../out/renderer/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2              18.75 kB
+../../out/renderer/assets/inter-greek-wght-normal-CkhJZR-_.woff2                 19.00 kB
+../../out/renderer/assets/geist-mono-latin-wght-normal-XN7g48iV.woff2            23.13 kB
+../../out/renderer/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2          25.96 kB
+../../out/renderer/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                 48.26 kB
+../../out/renderer/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2             85.07 kB
+../../out/renderer/assets/suggest-Wwojl-O_.css                                    1.25 kB
+../../out/renderer/assets/index-hA6BJ-kU.css                                      2.44 kB
+../../out/renderer/assets/fill-DVrebo1E.css                                       4.38 kB
+../../out/renderer/assets/index-kqq3l7Ik.css                                    129.35 kB
+../../out/renderer/assets/types-7ki8Xw5x.js                                       1.19 kB
+../../out/renderer/assets/suggest-j2x2i565.js                                     1.70 kB
+../../out/renderer/assets/fill-BVFUMawF.js                                        8.35 kB
+../../out/renderer/assets/index-DP2zsdUm.js                                   1,452.95 kB
+✓ built in 4.54s
+
+Running 7 tests using 1 worker
+
+  ✘  1 tests/ui/eval-tools.spec.ts:5:1 › eval Tools tab loads ledger and supports mark verified (27.8s)
+  ✘  2 tests/ui/fill.spec.ts:8:1 › Fill with Rocket fills a field, a rich editor and a form, undoes, reworks, and stops on Esc (13.0s)
+  ✓  3 tests/ui/reading.spec.ts:7:1 › hands-free reading scrolls the page, follows the reader’s own scrolling and stops on leaving (14.0s)
+  ✓  4 tests/ui/reading.spec.ts:86:1 › hands-free reading scrolls a file in the panel, follows the reader and keeps one speed (16.5s)
+  ✓  5 tests/ui/rocket.spec.ts:6:1 › Rocket desktop self-check (10.1s)
+  ✘  6 tests/ui/sources.spec.ts:5:1 › each link in a reply is marked opened or not by what the turn fetched (11.6s)
+  ✘  7 tests/ui/tool-failure-loop.spec.ts:6:1 › tool failure history supports review through verified fix (28.0s)
+
+
+  1) tests/ui/eval-tools.spec.ts:5:1 › eval Tools tab loads ledger and supports mark verified ──────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "AMBIGUOUS_TARGET"
+    Received: undefined
+
+      36 |     return 'should not run'
+      37 |   ` })
+    > 38 |   expect(failed.result.structuredContent?.error?.code).toBe('AMBIGUOUS_TARGET')
+         |                                                        ^
+      39 |
+      40 |   const history = await mcp('rocket_tool_history', { mode: 'calls', tool: 'rocket_ui_run', outcome: 'failure', since: 0, limit: 5 })
+      41 |   const failId = history.data.calls.find((row: { finish?: { error?: { code: string } } }) => row.finish?.error?.code === 'AMBIGUOUS_TARGET')?.id
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/eval-tools.spec.ts:38:56
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/eval-tools-eval-Tools-tab--2d474--and-supports-mark-verified/attachments/failure-app-shell-612ad9662dc424f30c2847ea6d2d75d35e4aa74c.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/eval-tools-eval-Tools-tab--2d474--and-supports-mark-verified/attachments/failure-full-window-0b62a00428bb82e9e9996e0f9b2cacade63e3997.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/eval-tools-eval-Tools-tab--2d474--and-supports-mark-verified/attachments/Trace-e907ce0972236ad40ca55595b4750f5eda295f30.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    Debugger ending on ws://127.0.0.1:33737/5550ae99-255e-4086-8bef-4fffdea4e0cb
+    For help, see: https://nodejs.org/learn/getting-started/debugging
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791438116314,"source":"tool:rocket_ui_run","severity":"warn","kind":"tool-error","message":"locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Add a chat beside this one', exact: true }).first()\u001b[22m\n","details":{"provider":"codex"...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/eval-tools-eval-Tools-tab--2d474--and-supports-mark-verified/error-context.md
+
+  2) tests/ui/fill.spec.ts:8:1 › Fill with Rocket fills a field, a rich editor and a form, undoes, reworks, and stops on Esc › A field offers the fill first in its menu, and the chip says what the model is doing 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: locator('.count')
+    Expected: "1"
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" locator('.count') with timeout 10000ms
+      - waiting for locator('.count')
+        6 × locator resolved to <span class="count">0</span>
+          - unexpected value "0"
+
+
+      63 |     const chip = await rocket.surface('fill')
+      64 |     await expect(chip.locator('.chip')).toContainText(/Reading|Opening/)
+    > 65 |     await expect(chip.locator('.count')).toHaveText('1')
+         |                                          ^
+      66 |     // One width from start to finish.
+      67 |     expect(Math.round((await chip.locator('.chip').boundingBox())!.width)).toBe(500)
+      68 |     await expect(page.locator('.btab.is-filling')).toHaveCount(1)
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/fill.spec.ts:65:42
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/fill.spec.ts:57:3
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-app-shell-7dabb4456ecdd466ff76b1974c66cc911d62781a.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: http://127.0.0.1:34597/forum (image/png) ───────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-http-127-0-0-1-34597-forum-1dffe04f13c97508eb3380c4ed5dcbb13e5ecb87.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: failure: file:///home/dp/Desktop/rocket-orchestrator/out/renderer/fill.html (image/png) 
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-file-home-dp-Desktop-rocket-orchestrator-out-renderer-fill-html-e806613ad0843ed0856937852d4b51fab72caa8d.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-full-window-85fc29a43c20afbecdd215206ee62c28454b7fa6.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/Trace-8677b2a68200ad73552f9c962cf26df326d98717.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: App log (text/plain) ────────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791438121546,"source":"turn","severity":"info","kind":"timing","message":"claude (ui-default) completed in 1.6s","details":{"chatId":"053bc861-100e-4b6f-bf6d-c638f0d0de94","provider":"claude","model":"ui-default","firstEventMs":73.23582799999986,"firstTextMs":1601.4580669999998,"totalMs":1614...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/error-context.md
+
+  3) tests/ui/sources.spec.ts:5:1 › each link in a reply is marked opened or not by what the turn fetched 
+
+    Error: expect(locator).toHaveClass(expected) failed
+
+    Locator: locator('.turn .prose').last().locator('a').filter({ hasText: 'the auth docs' }).locator('.source-mark')
+    Expected pattern: /is-opened/
+    Received string:  "source-mark is-unopened"
+    Timeout: 10000ms
+
+    Call log:
+      - Expect "toHaveClass" locator('.turn .prose').last().locator('a').filter({ hasText: 'the auth docs' }).locator('.source-mark') with timeout 10000ms
+      - waiting for locator('.turn .prose').last().locator('a').filter({ hasText: 'the auth docs' }).locator('.source-mark')
+        24 × locator resolved to <span class="source-mark is-unopened" title="Not opened this turn: the model cited this page without reading it">…</span>
+           - unexpected value "source-mark is-unopened"
+
+
+      11 |   await expect(reply).toContainText('not verified')
+      12 |   const opened = reply.locator('a', { hasText: 'the auth docs' }).locator('.source-mark')
+    > 13 |   await expect(opened).toHaveClass(/is-opened/)
+         |                        ^
+      14 |   await expect(opened).toHaveAttribute('title', 'Opened this turn')
+      15 |   const unopened = reply.locator('a', { hasText: 'a blog post' }).locator('.source-mark')
+      16 |   await expect(unopened).toHaveClass(/is-unopened/)
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/sources.spec.ts:13:24
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/attachments/failure-app-shell-7e7abf2630b4ccc0d6e50ceb0956f0e60512f09f.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/attachments/failure-full-window-a06c78d13e3b346c6509343bc58b4e0393a54d5a.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/attachments/Trace-efb56d49f3a7a228fe0fd6fba0527c33e2af11cb.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    [host] turn claude (ui-default) completed: first event 87ms, first text 91ms, total 0.1s
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. ...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791438173595,"source":"turn","severity":"info","kind":"timing","message":"claude (ui-default) completed in 0.1s","details":{"chatId":"dbb9cf82-00cb-43f9-8de0-9c2219cb2a04","provider":"claude","model":"ui-default","firstEventMs":86.63854400000002,"firstTextMs":91.22772300000008,"totalMs":106}}...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/error-context.md
+
+  4) tests/ui/tool-failure-loop.spec.ts:6:1 › tool failure history supports review through verified fix 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "AMBIGUOUS_TARGET"
+    Received: undefined
+
+      35 |     return false
+      36 |   ` })
+    > 37 |   expect(failed.result.structuredContent?.error?.code).toBe('AMBIGUOUS_TARGET')
+         |                                                        ^
+      38 |
+      39 |   const history = await mcp('rocket_tool_history', { mode: 'calls', tool: 'rocket_ui_run', outcome: 'failure', since: 0, limit: 5 })
+      40 |   const failId = history.data.calls.find((row: { finish?: { error?: { code: string } } }) => row.finish?.error?.code === 'AMBIGUOUS_TARGET')?.id
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/tool-failure-loop.spec.ts:37:56
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/tool-failure-loop-tool-fai-3d175-review-through-verified-fix/attachments/failure-app-shell-85c484ca0ddf458e74e79704c2a3e0a27b174d49.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/tool-failure-loop-tool-fai-3d175-review-through-verified-fix/attachments/failure-full-window-1674b466db94bf8089f8e9de9777486bc334ff08.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/tool-failure-loop-tool-fai-3d175-review-through-verified-fix/attachments/Trace-2c7522d1e1a00c3c5074e819f5dfd48dfab4f696.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    Debugger ending on ws://127.0.0.1:34375/59f1b304-4b97-487f-bed5-f5f8924d1fd0
+    For help, see: https://nodejs.org/learn/getting-started/debugging
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791438212050,"source":"tool:rocket_ui_run","severity":"warn","kind":"tool-error","message":"locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Add a chat beside this one', exact: true }).first()\u001b[22m\n","details":{"provider":"codex"...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG/results/tool-failure-loop-tool-fai-3d175-review-through-verified-fix/error-context.md
+
+  4 failed
+    tests/ui/eval-tools.spec.ts:5:1 › eval Tools tab loads ledger and supports mark verified ───────
+    tests/ui/fill.spec.ts:8:1 › Fill with Rocket fills a field, a rich editor and a form, undoes, reworks, and stops on Esc 
+    tests/ui/sources.spec.ts:5:1 › each link in a reply is marked opened or not by what the turn fetched 
+    tests/ui/tool-failure-loop.spec.ts:6:1 › tool failure history supports review through verified fix 
+  3 passed (2.1m)
+
+FAIL — UI check artifacts: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-41-10-547Z-mqn3sG

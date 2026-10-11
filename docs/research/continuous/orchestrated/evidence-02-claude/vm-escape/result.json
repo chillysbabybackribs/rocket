@@ -1,0 +1,12 @@
+{
+  "node": "v24.13.1",
+  "frozenVmContext": {
+    "escapedToOuterRealm": false,
+    "typeofProcess": "undefined"
+  },
+  "workerWithoutParentPortInScope": {
+    "parentPortViaImport": true,
+    "readdirRootWorks": true,
+    "typeofProcess": "object"
+  }
+}

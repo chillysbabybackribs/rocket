@@ -1,7 +1,7 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { TURN_PAGE, type Chat, type ChatSnapshot, type Goal, type GoalRole, type Attachment, type Item, type OlderTurns, type ProviderId, type QueuedMessage, type Turn, type TurnChanges, type TurnStatus, type TurnSources, type TurnTokens } from '../shared/types.ts'
+import { TURN_PAGE, type Chat, type ChatSnapshot, type GoalRole, type Attachment, type Item, type OlderTurns, type ProviderId, type QueuedMessage, type Turn, type TurnChanges, type TurnStatus, type TurnSources, type TurnTokens } from '../shared/types.ts'
 
 // The canonical transcript. The app owns the conversation; a provider's own session is a cache
 // of the part of it that provider has already seen. Each (chat, provider) pair records the
@@ -163,6 +163,8 @@ export class Store {
       if (item.type === 'user') for (const image of item.attachments ?? []) kept.add(image.id)
     }
     for (const queue of this.queues()) for (const message of queue.messages) for (const image of message.attachments ?? []) kept.add(image.id)
+    // Pictures a model made are kept by the reply that shows them.
+    for (const { attachment } of this.generatedImages()) kept.add(attachment.id)
     return this.sql('SELECT id, data FROM attachments WHERE created_at < ?').all(before)
       .filter(row => !kept.has(String(row.id))).map(row => JSON.parse(String(row.data)) as Attachment)
   }
@@ -180,6 +182,29 @@ export class Store {
       if (!seen.has(attachment.id)) seen.set(attachment.id, { attachment, chatId: String(row.chat_id), addedAt: Number(row.created_at) })
     }
     return [...seen.values()]
+  }
+
+  /** One sent attachment by id, as `sentAttachments` would list it; null when no sent message has it. */
+  sentAttachment(id: string): { attachment: Attachment; chatId: string; addedAt: number } | null {
+    // The LIKE only narrows the scan to rows that name the id; the join decides.
+    const row = this.sql(`SELECT i.chat_id, a.created_at, a.data AS stored FROM items i
+      JOIN json_each(i.data, '$.attachments') e
+      JOIN attachments a ON a.id = json_extract(e.value, '$.id')
+      WHERE i.data LIKE ? AND json_extract(i.data, '$.type') = 'user' AND a.id = ?
+      ORDER BY i.seq LIMIT 1`).get(`%"id":"${id}"%`, id)
+    if (!row) return null
+    return { attachment: JSON.parse(String(row.stored)) as Attachment, chatId: String(row.chat_id), addedAt: Number(row.created_at) }
+  }
+
+  /** Pictures models made, with the chat, the provider that made each and when it was stored. */
+  generatedImages(): Array<{ attachment: Attachment; chatId: string; provider: ProviderId | null; addedAt: number }> {
+    return this.sql(`${GENERATED} ORDER BY i.seq`).all().map(generatedRow)
+  }
+
+  /** One generated picture by its attachment id; null when no reply shows it. */
+  generatedImage(id: string): { attachment: Attachment; chatId: string; provider: ProviderId | null; addedAt: number } | null {
+    const row = this.sql(`${GENERATED} AND a.id = ? LIMIT 1`).get(id)
+    return row ? generatedRow(row) : null
   }
 
   /** Put a file on the library's shelf. A path already there keeps where it first came from. */
@@ -214,6 +239,11 @@ export class Store {
 
   libraryFiles(): Array<LibraryFileRow & { seq: number }> {
     return this.sql('SELECT * FROM library_files ORDER BY added_at DESC').all().map(libraryFileOf)
+  }
+
+  libraryFileBySeq(seq: number): (LibraryFileRow & { seq: number }) | null {
+    const row = this.sql('SELECT * FROM library_files WHERE seq = ?').get(seq)
+    return row ? libraryFileOf(row) : null
   }
 
   deleteAttachment(id: string): void {
@@ -414,12 +444,16 @@ export class Store {
     })
   }
 
-  /** Turns that ended after `since` in other chats working in the same folder, oldest first. */
-  turnsEndedInFolder(cwd: string, exceptChatId: string, since: number): StoredTurn[] {
+  /**
+   * Turns that ended after `since` in other chats working in the same folder, oldest first. With a
+   * `limit` only the newest that many are read: a provider unused for months would otherwise read
+   * the whole folder's history to show its last few.
+   */
+  turnsEndedInFolder(cwd: string, exceptChatId: string, since: number, limit = -1): StoredTurn[] {
     return this.sql(
       `SELECT turns.* FROM turns JOIN chats ON chats.id = turns.chat_id
-       WHERE chats.cwd = ? AND turns.chat_id != ? AND turns.ended_at > ? ORDER BY turns.seq`
-    ).all(cwd, exceptChatId, since).map(turnOf)
+       WHERE chats.cwd = ? AND turns.chat_id != ? AND turns.ended_at > ? ORDER BY turns.seq DESC LIMIT ?`
+    ).all(cwd, exceptChatId, since, limit).map(turnOf).reverse()
   }
 
   /** A folder's notes, oldest first. They belong to the folder, not to a chat, and outlive both. */
@@ -444,22 +478,6 @@ export class Store {
   /** Whether there was such a note in that folder to remove. */
   removeNote(cwd: string, seq: number): boolean {
     return Number(this.sql('DELETE FROM notes WHERE cwd = ? AND seq = ?').run(cwd, seq).changes) > 0
-  }
-
-  /** Every goal, newest first. A goal is one row of JSON: it is small, and read and written whole. */
-  goals(): Goal[] {
-    return this.sql('SELECT data FROM goals ORDER BY created_at DESC').all().map(goalOf)
-  }
-
-  goal(goalId: string): Goal | null {
-    const row = this.sql('SELECT data FROM goals WHERE id = ?').get(goalId)
-    return row ? goalOf(row) : null
-  }
-
-  /** Insert or replace. Its chat must exist; deleting the chat deletes the goal. */
-  putGoal(goal: Goal): void {
-    this.sql('INSERT INTO goals (id, chat_id, data, created_at) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET data = excluded.data')
-      .run(goal.id, goal.chatId, JSON.stringify(goal), goal.createdAt)
   }
 
   private sql(text: string): StatementSync {
@@ -507,6 +525,17 @@ function itemOf(row: Row): Item {
   return JSON.parse(String(row.data)) as Item
 }
 
-function goalOf(row: Row): Goal {
-  return JSON.parse(String(row.data)) as Goal
+/** Image items whose picture Rocket kept; the LIKE lets SQLite skip every other row before parsing JSON. */
+const GENERATED = `SELECT i.chat_id, t.provider, a.created_at, a.data AS stored FROM items i
+  JOIN attachments a ON a.id = json_extract(i.data, '$.image.id')
+  LEFT JOIN turns t ON t.id = i.turn_id
+  WHERE i.data LIKE '%"image":{%' AND json_extract(i.data, '$.type') = 'image'`
+
+function generatedRow(row: Row): { attachment: Attachment; chatId: string; provider: ProviderId | null; addedAt: number } {
+  return {
+    attachment: JSON.parse(String(row.stored)) as Attachment,
+    chatId: String(row.chat_id),
+    provider: row.provider ? String(row.provider) as ProviderId : null,
+    addedAt: Number(row.created_at)
+  }
 }

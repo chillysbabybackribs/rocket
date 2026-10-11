@@ -77,8 +77,9 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
 - Model lists and usage are read live from the provider, never hardcoded.
 - Every tool's schema is in every session's prompt. What a model should simply know goes ahead of
   the user's message (tabs, the file map, notes); add a tool only for something a model must do.
-- Browser research: native web search to vet URLs first; Rocket's browser opens a few chosen
-  destinations, not search-engine pages or live source-gathering across the web.
+- Browser research: use native search or Rocket web_search, then web_read for primary sources.
+  Browser search and source gathering are allowed recovery paths. Recover PDFs from their saved
+  paths; try alternate primary sources after blocks. Never count a challenge or failed fetch as read.
 - Provider payloads are `unknown`: read them through `recordOf` / `stringOf` in `src/host/json.ts`.
 - When a CLI's behaviour is learned or re-verified, record it in that adapter's header with the
   CLI version and date. When it changes, fix the header with the code.

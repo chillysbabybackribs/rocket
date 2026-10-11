@@ -9,7 +9,14 @@ const helper = fileURLToPath(new URL('../node_modules/electron/dist/chrome-sandb
 export function ensureElectronSandbox(env = process.env) {
   if (process.platform !== 'linux' || env.ROCKET_NO_SANDBOX === '1' || env.ELECTRON_DISABLE_SANDBOX === '1') return
   const configured = () => {
-    const stat = statSync(helper)
+    let stat
+    try {
+      stat = statSync(helper)
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error
+      throw new Error('Electron is not fully installed. Run npm install --include=dev first. ' +
+        'If the Electron package is present but its binary is missing, run node node_modules/electron/install.js.', { cause: error })
+    }
     return stat.isFile() && stat.uid === 0 && stat.gid === 0 && (stat.mode & 0o7777) === 0o4755
   }
   if (configured()) return

@@ -1,7 +1,9 @@
 // Image input: SDKUserMessage content arrays with base64 image sources (SDK types inspected
 // and official streaming-input docs read 2026-10-06; image turns not yet verified live).
 import { claudeImageContent } from './images.ts'
+import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
+import { join } from 'node:path'
 import type { Options, Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { Item, ModelInfo, ToolKind, TurnTokens, UsageSnapshot } from '../../shared/types.ts'
 import { withHandoff } from '../handoff.ts'
@@ -74,6 +76,19 @@ const FOLLOW_UP_WAIT_MS = 20_000
 
 let sdkLoading: Promise<ClaudeSdk> | null = null
 
+/**
+ * Which `claude` binary Rocket drives. The Agent SDK defaults to its own bundled CLI, which
+ * trails the install users update in a terminal (`claude update`, usually `~/.local/bin/claude`).
+ * That mismatch is why `/model` in a terminal can list models the app never sees.
+ */
+export function claudeCodeExecutable(): string | undefined {
+  const override = process.env.CLAUDE_CODE_EXECUTABLE?.trim()
+  if (override && existsSync(override)) return override
+  const installed = join(homedir(), '.local', 'bin', 'claude')
+  if (existsSync(installed)) return installed
+  return undefined
+}
+
 /** Loaded on first use: the SDK is a large module the app should not pay for at startup. */
 function loadSdk(): Promise<ClaudeSdk> {
   sdkLoading ??= import('@anthropic-ai/claude-agent-sdk').catch((error: unknown) => {
@@ -86,8 +101,10 @@ function loadSdk(): Promise<ClaudeSdk> {
 function queryOptions(
   cwd: string, resume: string | null, model: string | null, toolsUrl: string | null, stderr: (text: string) => void
 ): Options {
+  const claudeExecutable = claudeCodeExecutable()
   return {
     cwd,
+    ...(claudeExecutable ? { pathToClaudeCodeExecutable: claudeExecutable } : {}),
     ...(resume ? { resume } : {}),
     ...(model ? { model } : {}),
     thinking: { type: 'adaptive', display: 'summarized' },

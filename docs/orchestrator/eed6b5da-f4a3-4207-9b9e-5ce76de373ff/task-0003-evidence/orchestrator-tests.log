@@ -1,0 +1,26 @@
+✔ continuous review uses defaults, waits for workers, then dispatches fresh deeper chats (15.370969ms)
+✔ user file edits survive checkpoints and wake an idle owner without spurious self-updates (4.323719ms)
+✔ drain refuses new dispatch and produces one final review after all workers finish (7.09846ms)
+✔ Stop requests cancellation only for owned workers, retains unresolved work, and never restarts on late completion (4.039742ms)
+✔ completed-with-error-prose but missing report is not accepted as a successful worker (3.283773ms)
+✔ failed or empty leader turns pause rather than spend usage in automatic retries (4.508808ms)
+✔ restart preserves evidence and pauses; damaged user-note boundary is never overwritten (5.399441ms)
+✔ tool context cannot control another chat and worker concurrency is bounded (7.566795ms)
+✔ a damaged saved state disables orchestration without losing evidence or preventing host startup (1.708728ms)
+✔ Antigravity shared identity is not used concurrently with another active chat (1.710331ms)
+✔ unlimited dispatch persists queued chats and broadcasts every queue transition (27.73154ms)
+✔ provider queues run FIFO independently and bypass review only for previously approved work (7.70714ms)
+✔ failed and interrupted turns release their provider queue slot (7.729342ms)
+✔ synchronous send failures release slots for already-approved FIFO work (4.094234ms)
+✔ stop and drain cancel queued tasks without starting or stopping their chats (14.278054ms)
+✔ restart leaves queued work paused and resume starts it without reapproval (3.916169ms)
+✔ old state backfills task timing while preserving valid timestamps (7.187098ms)
+✔ queued Antigravity starts only after its shared identity is free (4.179205ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 410.596642

@@ -3,9 +3,10 @@ import { homedir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { Worker } from 'node:worker_threads'
 import type { AgentTab, BrowserAgentOp, BrowserDownload, ProviderId, ReadFocus } from '../../shared/types.ts'
-import { openedUrl } from '../../shared/sources.ts'
+import { isSearchUrl, webReadProblem } from '../../shared/web-evidence.ts'
+import { researchTools, RESEARCH_GUIDE } from './research.ts'
 import { messageOf, stringOf } from '../json.ts'
-import { textResult, type Tool, type ToolContent, type ToolResult } from './registry.ts'
+import { failureResult, textResult, type Tool, type ToolContent, type ToolResult } from './registry.ts'
 
 // The browser tools: four of them. `browser_read` turns a page into text a model can act on;
 // `browser_run` runs a script the model writes, so a whole task (go, act, wait, extract) is one
@@ -34,19 +35,18 @@ const WORKER = [join(here, 'script-worker.js'), join(here, '..', 'script-worker.
  * Part of browser_read's description, which every session has from its start, so it is not also
  * sent ahead of a message: a second copy would sit in each session's history for nothing.
  */
-export const BROWSER_RESEARCH_GUIDE = `For research, use your provider's native web search first to find and vet candidate URLs. Rocket's browser is not for scraping search-result pages, driving Google/DuckDuckGo/Bing UIs, or gathering many live sources by clicking through results.
-Open only a small set of validated, high-quality destinations you chose from search—official docs, primary sources, the user's logged-in sites—not generic search URLs or SEO aggregators. Read those pages here when they need JavaScript, the user's session, or something you must see.`
+export const BROWSER_RESEARCH_GUIDE = RESEARCH_GUIDE
 
 const READ_DESCRIPTION = `Read a web page in Rocket's built-in browser, where the user is signed in to their sites. Returns a header (title, hash, route hint), page text with links, controls with refs (e12) for browser_run, and recent data requests.
 ${BROWSER_RESEARCH_GUIDE}
 Decision tree: (1) browser_read or tab.read — default observe; recent JSON record APIs may be attached inline (truncated). (2) Full URL from read (including #…) or tab.goto/tab.follow. (3) browser.fetch when you only need JSON. (4) tab.waitFor, tab.goto(..., { until }), or start tab.waitForNavigation() before a hash/pushState click. (5) tab.click/fill only when data cannot replace UI. browser_run appends network/page deltas since the script started.
-Pass url to go to a destination you already chose (never a search-engine results page). Use your own tab (never the user's; Rocket switches the view to it). Pass tab (an id such as t3 from the tab list) to read a tab that is already open. Pass neither to read your tab again.
+Pass url to open a source or search page. Search pages only supply leads. Use your own tab (never the user's; Rocket switches the view to it). Pass tab (an id such as t3 from the tab list) to read a tab that is already open. Pass neither to read your tab again.
 Use this rather than fetching a URL yourself when a page needs the user's login or JavaScript to show its content. Stale refs after a big re-render: read again; one automatic retry may heal a single matching control.`
 
-const RUN_DESCRIPTION = `Run a script in Rocket's built-in browser. One script should do a whole task on a destination page: act, wait, extract, and return the result—not automate search engines or collect sources from SERPs. Use your provider's native web search to pick URLs first. Do as much per call as you can.
+const RUN_DESCRIPTION = `Run a script in Rocket's built-in browser. One script should do a whole task on a destination page: act, wait, extract, and return the result. Native search and web_search are starting points; browser search is allowed for recovery. Do as much per call as you can.
 The script is the body of an async function. It has:
 - tab: your tab, or the one named by the tab argument. tab.screenshot({ som: true }) adds Set-of-Marks badges on the saved image (not on the live page); tab.exportHar({ saveTo }) writes a debug HAR of requests since script mark (or page load). tab.goto(url) waits for document ready; tab.goto(url, { until: 'hash' | 'title' | 'request', untilValue, timeout }) optionally waits for the hash, a title substring, or a GET URL fragment with status 200 (cap ~5s) — use on hash CRM/SPA routes instead of extra sleep. tab.follow(href) resolves a link from the current page (hash or relative) and goes there with hash settle when the URL has a fragment. tab.read({focus, selector, query, max}) matches browser_read — focus a11y for an accessibility snapshot with refs; query filters lines (text or /regex/). tab.eval(fn, arg); tab.click(target); tab.fill(target, value); tab.press('Enter') or 'Control+a'; tab.type(text); tab.waitFor(target or fn, {timeout}); tab.requests(match); tab.body(requestId); tab.info(); tab.screenshot(); tab.close().
-- browser: browser.open(url); browser.tab(id); browser.tabs(); browser.fetch(url, {method, headers, body}) — session cookies, no CORS, {status, body} with json().
+- browser: browser.open(url); browser.tab(id); browser.tabs(); browser.fetch(url, {method, headers, body}) — session cookies, no CORS, {status, body} with json(). Every browser and tab call returns a promise, so write (await browser.tabs()).map(...) with the await.
 - sleep(ms), console.log.
 A target is a ref from browser_read (e12), text=Visible label, or a CSS selector. Clicks scroll into view only when needed.
 Prefer data to UI: when read lists a JSON endpoint (typical on Espo-style CRMs), use browser.fetch or in-page fetch before clicking lists.
@@ -61,18 +61,30 @@ Pass tab (an id such as t2 from the tab list) for a tab that is already open; wi
 
 /**
  * `cwdOf` gives a chat's working folder, which a relative saveTo is taken from. `onOpen` hears
- * every page a chat's call asks the browser for, including each one a script goes to, so the
- * turn's sources record (shared/sources.ts) can say what was opened.
+ * pages whose content was read successfully, so navigation and downloads alone do not
+ * become citation evidence.
  */
 export function browserTools(
   link: BrowserLink, resultsDir: string, cwdOf: (chatId: string | null) => string | null = () => null, onOpen: (chatId: string | null, url: string) => void = () => {}
 ): Tool[] {
-  const request = (op: BrowserAgentOp, chatId: string | null): Promise<unknown> => {
-    const url = openedUrl(op)
-    if (url) onOpen(chatId, url)
-    return link.request(op)
+  const request = async (op: BrowserAgentOp, chatId: string | null): Promise<unknown> => {
+    const result = await link.request(op)
+    if (op.op === 'read') {
+      const text = String(result)
+      const problem = webReadProblem(text)
+      if (problem) throw new Error(problem)
+      // The header contains the actual URL even when the caller only supplied a tab ID.
+      const actual = text.match(/^(https?:\/\/\S+)\s+·\s+tab /m)?.[1] || op.url
+      if (actual && !isSearchUrl(actual) && text.trim() && op.focus !== 'network' && op.focus !== 'elements') onOpen(chatId, actual)
+    } else if (op.op === 'fetch' && result && typeof result === 'object') {
+      const fetched = result as { status?: number; body?: unknown }
+      if (fetched.status && fetched.status >= 200 && fetched.status < 300 && typeof fetched.body === 'string'
+        && !webReadProblem(fetched.body) && !isSearchUrl(op.url)) onOpen(chatId, op.url)
+    }
+    return result
   }
   return [
+    ...researchTools(link, resultsDir, cwdOf, onOpen),
     {
       name: 'browser_read',
       description: READ_DESCRIPTION,
@@ -88,7 +100,9 @@ export function browserTools(
         },
         additionalProperties: false
       },
-      run: async (args, context) => textResult(String(await request({
+      run: async (args, context) => {
+        try {
+          return textResult(String(await request({
         op: 'read',
         chat: context.chatId,
         tab: stringOf(args.tab) || null,
@@ -97,7 +111,11 @@ export function browserTools(
         selector: stringOf(args.selector) || null,
         query: stringOf(args.query) || null,
         max: typeof args.max === 'number' && args.max > 0 ? Math.round(args.max) : null
-      }, context.chatId)))
+          }, context.chatId)))
+        } catch (error) {
+          return failureResult('PAGE_UNREADABLE', `${messageOf(error)} Use web_read or another primary source.`, 'operation')
+        }
+      }
     },
     {
       name: 'browser_run',
@@ -221,6 +239,7 @@ async function runScript(
   const logs: string[] = []
   const started = Date.now()
   let touchedTab = false
+  let summarizeTab = false
   let marked = false
   const worker = new Worker(WORKER, { workerData: { code: run.code, tab: run.tab } })
   const outcome = await new Promise<{ ok: true; value: unknown } | { ok: false; error: string }>((resolve) => {
@@ -234,12 +253,15 @@ async function runScript(
       else if (message.type === 'done') settle(message)
       else {
         const forTab = 'tab' in message.op
-        touchedTab ||= forTab || message.op.op === 'open'
+        // Closing tabs is bookkeeping, not page inspection. Marking or summarizing a close
+        // would load a restored tab or create a replacement agent tab after closing them all.
+        if (message.op.op === 'close') summarizeTab = false
+        else if (forTab || message.op.op === 'open') touchedTab = summarizeTab = true
         // The worker names tabs; which chat is asking is added here.
         const op = { ...message.op, ...(forTab || message.op.op === 'open' ? { chat: run.chat } : {}) } as BrowserAgentOp
         if (op.op === 'har' && op.saveTo) op.saveTo = savePath(op.saveTo, cwd) ?? op.saveTo
         const runOp = async (): Promise<void> => {
-          if ((forTab || message.op.op === 'open') && !marked) {
+          if (message.op.op !== 'close' && (forTab || message.op.op === 'open') && !marked) {
             marked = true
             const tab = 'tab' in op ? op.tab : run.tab
             await link.request({ op: 'mark', chat: run.chat, tab: tab ?? run.tab }).catch(() => null)
@@ -281,7 +303,7 @@ async function runScript(
     for (const file of files) text += `\n[download: ${describeDownload(file, Math.round((Date.now() - started) / 1000))}]`
   }
   // Where the script left the tab, so the next step does not need a call to find out.
-  if (touchedTab) {
+  if (summarizeTab) {
     const where = await link.request({ op: 'info', chat: run.chat, tab: run.tab }).catch(() => null) as Pick<AgentTab, 'id' | 'url' | 'title'> | null
     if (where) text += `\n\n[tab ${where.id}: ${where.title || '(untitled)'} · ${where.url || '(blank)'}]`
     const delta = await link.request({ op: 'delta', chat: run.chat, tab: run.tab }).catch(() => null)

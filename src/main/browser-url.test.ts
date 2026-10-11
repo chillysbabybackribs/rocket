@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { clientHintHeaders, parseAcceptCh, plainUserAgent, userAgentMetadata } from './browser-url.ts'
+import { clientHintHeaders, completeAddress, parseAcceptCh, plainUserAgent, userAgentMetadata } from './browser-url.ts'
 
 const DEFAULT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Rocket/0.1.0 Chrome/152.0.7977.130 Electron/44.5.1 Safari/537.36'
 
@@ -88,4 +88,30 @@ test('an origin that asked with Accept-CH also gets the high-entropy hints it na
 test('Accept-CH given as several header lines is read as one list', () => {
   assert.deepEqual(parseAcceptCh(['Sec-CH-UA-Bitness', ' sec-ch-ua-wow64 ']), ['sec-ch-ua-bitness', 'sec-ch-ua-wow64'])
   assert.deepEqual(parseAcceptCh(undefined), [])
+})
+
+test('the address field fills in the most visited site that starts with what is typed', () => {
+  const now = Date.UTC(2026, 9, 10)
+  const pages = [
+    { url: 'https://github.com/anthropics/claude-code', visits: 30, last: now },
+    { url: 'https://github.com/', visits: 5, last: now },
+    { url: 'https://www.gitlab.com/', visits: 2, last: now },
+    { url: 'https://www.google.com/search?q=one', visits: 50, last: now },
+    { url: 'http://localhost:5173/', visits: 3, last: now }
+  ]
+  assert.equal(completeAddress('gi', pages, now), 'github.com')
+  assert.equal(completeAddress('GitL', pages, now), 'gitlab.com')
+  assert.equal(completeAddress('go', pages, now), 'google.com')
+  assert.equal(completeAddress('www.goo', pages, now), 'www.google.com')
+  assert.equal(completeAddress('github.com/an', pages, now), 'github.com/anthropics/claude-code')
+  assert.equal(completeAddress('local', pages, now), 'localhost:5173')
+})
+
+test('nothing is filled in for a search, a scheme, a finished address or an unknown site', () => {
+  const pages = [{ url: 'https://github.com/', visits: 5, last: 0 }]
+  assert.equal(completeAddress('git hub', pages, 0), null)
+  assert.equal(completeAddress('https://gi', pages, 0), null)
+  assert.equal(completeAddress('github.com', pages, 0), null)
+  assert.equal(completeAddress('youtu', pages, 0), null)
+  assert.equal(completeAddress('', pages, 0), null)
 })

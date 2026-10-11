@@ -1,16 +1,23 @@
-import { Attachments } from './Attachments.tsx'
-import { Fragment, memo, useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Attachments, useImagePreview, useMenuRequest } from './Attachments.tsx'
+import { AttachmentMenu } from './AttachmentMenu.tsx'
+import { call } from '../host.ts'
+import { createContext, Fragment, memo, useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
-import { Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
-import { planItemId, providerLabel, type Goal, type Item, type MessageDraft, type ToolKind, type Turn } from '../../../shared/types.ts'
+import { AlertCircle, Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
+import { citationMarks } from '../../../shared/sources.ts'
+import { planItemId, providerLabel, type Item, type MessageDraft, type ToolKind, type Turn, type TurnSources } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
 import { ShownChatContext, usePane, usePaneChatId, usePaneView } from '../pane.ts'
 import { answerQuestion, editQueued, loadOlder, loadOutput, openTurnChanges, peekItem, sendNow, togglePlan, useApp, useItem } from '../store.ts'
 import { Bar, Counts } from './ChangesView.tsx'
+import { attachZoom } from '../transcript-zoom.ts'
+
+/** The turn's sources record, for the marks on the links of its replies; null while it runs. */
+const SourcesContext = createContext<TurnSources | null>(null)
 
 /** Markdown is the expensive part of a row; text that has not changed parses once and never again. */
-const Block = memo(function Block({ text, settled }: { text: string; settled: boolean }) {
-  return <ChatMarkdown text={text} settled={settled} />
+const Block = memo(function Block({ text, settled, marks }: { text: string; settled: boolean; marks?: Record<string, boolean> }) {
+  return <ChatMarkdown text={text} settled={settled} marks={marks} />
 })
 
 /**
@@ -21,10 +28,12 @@ const Block = memo(function Block({ text, settled }: { text: string; settled: bo
 const Prose = memo(function Prose({ text, streaming }: { text: string; streaming: boolean }) {
   const arriving = useDeferredValue(text)
   const blocks = streaming ? splitBlocks(arriving) : [text]
+  const sources = useContext(SourcesContext)
+  const marks = useMemo(() => citationMarks(sources), [sources])
   return (
     <div className="prose">
       {/* While it streams, only the last block can still change. */}
-      {blocks.map((block, index) => <Block key={index} text={block} settled={!streaming || index < blocks.length - 1} />)}
+      {blocks.map((block, index) => <Block key={index} text={block} settled={!streaming || index < blocks.length - 1} marks={marks} />)}
     </div>
   )
 })
@@ -263,6 +272,87 @@ function QuestionCard({ item }: { item: QuestionItem }) {
   )
 }
 
+type ImageItem = Extract<Item, { type: 'image' }>
+
+/** The placeholder's dots, 32 by 20, each delayed by its distance from the centre so a wave spreads out. */
+const DOT_DELAYS = Array.from({ length: 32 * 20 }, (_, index) => {
+  const col = index % 32
+  const row = Math.floor(index / 32)
+  return `${(Math.hypot((col - 15.5) / 1.6, row - 9.5) * 0.09).toFixed(2)}s`
+})
+
+/** The prompt a picture was made from, two lines until the reader asks for the rest. */
+function Caption({ text }: { text: string }) {
+  const box = useRef<HTMLElement>(null)
+  const [open, setOpen] = useState(false)
+  const [long, setLong] = useState(false)
+  useLayoutEffect(() => {
+    const element = box.current
+    if (!element || open) return
+    const measure = (): void => setLong(element.scrollHeight > element.clientHeight + 1)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [text, open])
+  if (!text) return null
+  return (
+    <>
+      <figcaption ref={box} className={`gen-caption${open ? ' is-open' : ''}`}>{text}</figcaption>
+      {(long || open) && <button type="button" className="gen-more" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Less' : 'More'}</button>}
+    </>
+  )
+}
+
+/** A finished picture from Rocket's own copy: click for full size, right-click for the attachment menu. */
+function MadeImage({ image, caption, arriving }: { image: NonNullable<ImageItem['image']>; caption: string; arriving: boolean }) {
+  const [src, setSrc] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const preview = useImagePreview(image)
+  const menu = useMenuRequest()
+  useEffect(() => {
+    let alive = true
+    void call('attachment.read', { id: image.id }).then((value) => { if (alive) setSrc(value) }, (reason: Error) => { if (alive) setError(reason.message) })
+    return () => { alive = false }
+  }, [image.id])
+  if (error) return <div className="gen-failed" role="alert"><AlertCircle size={13} /><span>{error}</span></div>
+  return (
+    <div className="gen-made" {...menu.handlers}>
+      <button type="button" className="gen-frame gen-image" aria-label={`Open ${image.name} full size`} onClick={() => void preview.open()}>
+        {src
+          ? <img className={arriving ? 'is-arriving' : undefined} src={src} alt={caption || image.name} width={image.width} height={image.height} draggable={false} />
+          : <span className="gen-loading" style={{ aspectRatio: `${image.width} / ${image.height}` }} />}
+      </button>
+      <AttachmentMenu attachment={image} onPreview={() => void preview.open()} className="is-generated" request={menu.request} />
+      {preview.dialog}
+    </div>
+  )
+}
+
+/**
+ * A picture a model made, where it was made in the reply (docs/mockups/generated-images.html):
+ * a field of rippling dots while it comes, with no frame or words over it, then the picture coming into
+ * focus, or a sentence saying why there is none. The prompt it was made from is the caption.
+ */
+function GeneratedImage({ item }: { item: ImageItem }) {
+  // Only a picture seen arriving animates in; one already made when the chat opened just shows.
+  const [sawWaiting] = useState(item.status === 'generating')
+  return (
+    <figure className="gen">
+      {item.status === 'generating' && (
+        <div className="gen-frame gen-pending" role="status" aria-label="Generating image">
+          <div className="gen-field" aria-hidden>{DOT_DELAYS.map((delay, index) => <i key={index} style={{ animationDelay: delay }} />)}</div>
+        </div>
+      )}
+      {item.status === 'failed' && (
+        <div className="gen-failed" role="alert"><AlertCircle size={13} /><span>{item.error ?? 'The image could not be made. Ask for it again.'}</span></div>
+      )}
+      {item.status === 'done' && item.image && <MadeImage image={item.image} caption={item.caption} arriving={sawWaiting} />}
+      <Caption text={item.caption} />
+    </figure>
+  )
+}
+
 function UserMessage({ text, attachments }: MessageDraft) {
   const prompt = text.trim() ? <div className="user-bubble"><ChatMarkdown text={text} /></div> : null
   if (!attachments?.length) return prompt
@@ -281,6 +371,8 @@ const ItemRow = memo(function ItemRow({ id }: { id: string }) {
       return <p className={`notice is-${item.tone}`}>{item.text}</p>
     case 'question':
       return <QuestionCard item={item} />
+    case 'image':
+      return <GeneratedImage item={item} />
     default:
       return null
   }
@@ -294,20 +386,32 @@ function duration(ms: number): string {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
+/** The .shimmer animation's length in styles.css. */
+const SHIMMER_MS = 1_400
+
+/**
+ * Shimmering text, its sweep timed from the page's clock rather than from when it mounted. The
+ * head's label remounts as the turn starts (it moves into a button once there is thinking to
+ * open), and without this each remount would throw the sweep back to its start.
+ */
+function Shimmer({ children }: { children: ReactNode }) {
+  const [delay] = useState(() => -(performance.now() % SHIMMER_MS))
+  return <span className="shimmer" style={{ animationDelay: `${delay}ms` }}>{children}</span>
+}
+
 /**
  * The turn's plan, as its head line says it: "Planning · 2 of 5" while the turn runs, the count
  * moving as steps finish, and "Planned · 5 of 5" once it is over. It opens and closes the plan
- * beside the chat. In a goal's chat the plan is a section of the goal pane, so the line is plain.
+ * beside the chat.
  */
 function PlanLabel({ turn, running }: { turn: Turn; running: boolean }) {
   const plan = useItem(planItemId(turn.id))
   const chatId = usePaneChatId()
   const open = usePaneView((view) => view.planTurnId === turn.id)
-  const inGoal = useApp((state) => state.goals.some((goal) => goal.chatId === chatId))
   if (plan?.type !== 'plan') return null
   const done = plan.steps.filter((step) => step.status === 'done').length
-  const text = <span className={running ? 'shimmer' : ''}>{running ? 'Planning' : 'Planned'} · {done} of {plan.steps.length}</span>
-  if (inGoal) return text
+  const words = <>{running ? 'Planning' : 'Planned'} · {done} of {plan.steps.length}</>
+  const text = running ? <Shimmer>{words}</Shimmer> : <span>{words}</span>
   return (
     <button type="button" className={`turn-head-toggle plan-toggle${open ? ' is-open' : ''}`} aria-pressed={open} title={open ? 'Hide the plan' : 'Show the plan'} onClick={() => { if (chatId) togglePlan(chatId, turn.id) }}>
       {text}
@@ -331,7 +435,7 @@ function TurnHead({ turn, thoughts, plan, open, onToggle }: { turn: Turn; though
     return () => clearInterval(timer)
   }, [running])
   // A turn can be waiting rather than thinking, on background tasks it started; its head says so.
-  const label = running ? <span className="shimmer">{turn.activity ?? 'Thinking'}</span> : thoughts && <span>Thought</span>
+  const label = running ? <Shimmer>{turn.activity ?? 'Thinking'}</Shimmer> : thoughts && <span>Thought</span>
   return (
     <div className="turn-head" role={running ? 'status' : undefined}>
       {plan
@@ -356,30 +460,22 @@ function TurnHead({ turn, thoughts, plan, open, onToggle }: { turn: Turn; though
  * place rather than piling up: a summary of the steps so far, then the model's latest words, and,
  * while it runs, the thinking and tool call under way. Notices and questions keep to the end.
  */
-function stageOf(ids: string[], running: boolean): { reply: string | null; steps: string[]; live: string[]; notices: string[] } {
+function stageOf(ids: string[], running: boolean): { reply: string | null; steps: string[]; live: string[]; notices: string[]; before: string[]; after: string[] } {
   const trailing = (id: string): boolean => {
     const type = peekItem(id)?.type
     return type === 'notice' || type === 'question'
   }
+  // Pictures are part of the answer, not its steps: they stand before or after the reply, as made.
+  const picture = (id: string): boolean => peekItem(id)?.type === 'image'
   const notices = ids.filter(trailing)
-  const work = ids.filter((id) => !trailing(id))
+  const work = ids.filter((id) => !trailing(id) && !picture(id))
   const at = work.findLastIndex((id) => peekItem(id)?.type === 'assistant')
   const reply = at === -1 ? null : work[at]
-  if (!running) return { reply, steps: work.filter((id) => id !== reply), live: [], notices }
-  return { reply, steps: at === -1 ? [] : work.slice(0, at), live: work.slice(at + 1), notices }
-}
-
-/**
- * A goal's turns are sent by the app, not typed by the user, so their message is not shown as
- * the user's. The draft turn shows what the user did write; the others, a line naming the round.
- */
-function GoalLead({ turn, goal, round }: { turn: Turn; goal: Goal | null; round: number }) {
-  const name = providerLabel(turn.provider)
-  if (turn.goalRole === 'draft' && goal && round === 0) return <div className="user-bubble"><ChatMarkdown text={goal.request} /></div>
-  const label = turn.goalRole === 'draft' ? `${name} drafts the goal again`
-    : turn.goalRole === 'work' ? `Round ${round} · ${name} works`
-    : `Round ${round} · ${name} checks`
-  return <div className={`goal-lead is-${turn.goalRole}`}>{label}</div>
+  const pictures = ids.filter(picture)
+  const before = reply === null ? pictures : pictures.filter((id) => ids.indexOf(id) < ids.indexOf(reply))
+  const after = pictures.filter((id) => !before.includes(id))
+  if (!running) return { reply, steps: work.filter((id) => id !== reply), live: [], notices, before, after }
+  return { reply, steps: at === -1 ? [] : work.slice(0, at), live: work.slice(at + 1), notices, before, after }
 }
 
 /**
@@ -418,17 +514,23 @@ function partsOf(ids: string[]): Array<{ steer: string | null; ids: string[] }> 
 
 /** One part of a turn's response: the summary of its steps, its latest words, and, if live, the work under way. */
 function Stage({ ids, running, thoughtsOpen }: { ids: string[]; running: boolean; thoughtsOpen: boolean }) {
-  const { reply, steps, live } = stageOf(ids, running)
-  return (
-    <>
-      {steps.length > 0 && <Activity ids={steps} live={false} thoughtsOpen={thoughtsOpen} />}
-      {reply && <ItemRow key={reply} id={reply} />}
-      {live.length > 0 && <Activity key={live[0]} ids={live} live thoughtsOpen={false} />}
-    </>
-  )
+  const { reply, steps, live, before, after } = stageOf(ids, running)
+  // One keyed list, so a picture that moves from after the reply to before it (when the final
+  // reply arrives) is moved rather than mounted again. Pictures after the reply keep their place
+  // around the work under way, in the order they came.
+  const liveAt = live.length ? ids.indexOf(live[0]!) : Infinity
+  const rows = [
+    steps.length > 0 && <Activity key="steps" ids={steps} live={false} thoughtsOpen={thoughtsOpen} />,
+    ...before.map((id) => <ItemRow key={id} id={id} />),
+    reply && <ItemRow key={reply} id={reply} />,
+    ...after.filter((id) => ids.indexOf(id) < liveAt).map((id) => <ItemRow key={id} id={id} />),
+    live.length > 0 && <Activity key={`live:${live[0]}`} ids={live} live thoughtsOpen={false} />,
+    ...after.filter((id) => ids.indexOf(id) > liveAt).map((id) => <ItemRow key={id} id={id} />)
+  ]
+  return <>{rows}</>
 }
 
-const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { turn: Turn; ids: string[]; fill: boolean; goal: Goal | null; round: number }) {
+const TurnBlock = memo(function TurnBlock({ turn, ids, fill }: { turn: Turn; ids: string[]; fill: boolean }) {
   // The plan is not a row of the response; the head line names it and it shows beside the chat.
   const planId = planItemId(turn.id)
   const [userId, ...rest] = ids.filter((id) => id !== planId)
@@ -440,8 +542,9 @@ const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { tu
   const thoughts = hasThought(steps) && steps.every((id) => peekItem(id)?.type !== 'tool')
   return (
     <article className={`turn${fill ? ' is-fill' : ''}`}>
-      {turn.goalRole ? <GoalLead turn={turn} goal={goal} round={round} /> : userId && <ItemRow id={userId} />}
+      {userId && <ItemRow id={userId} />}
       <div className="answer">
+        <SourcesContext.Provider value={turn.sources}>
         <TurnHead turn={turn} thoughts={thoughts} plan={ids.includes(planId)} open={thoughtsOpen} onToggle={() => setThoughtsOpen(!thoughtsOpen)} />
         {parts.map((part, index) => (
           <Fragment key={part.steer ?? 'first'}>
@@ -458,35 +561,13 @@ const TurnBlock = memo(function TurnBlock({ turn, ids, fill, goal, round }: { tu
         {parts.flatMap((part) => stageOf(part.ids, false).notices).map((id) => <ItemRow key={id} id={id} />)}
         {turn.status === 'interrupted' && <p className="notice is-info">Stopped</p>}
         {turn.status === 'failed' && <p className="notice is-error">{turn.error ?? 'This turn failed.'}</p>}
+        </SourcesContext.Provider>
       </div>
     </article>
   )
 })
 
 const NO_ITEMS: string[] = []
-
-/**
- * Each goal turn's round; for a draft, how many drafts came before it. A turn that has been
- * retried belongs to the round it retried. Worked out once for the list, not once per turn.
- */
-function roundsOf(goal: Goal | null, turns: Turn[]): Map<string, number> {
-  const rounds = new Map<string, number>()
-  if (!goal) return rounds
-  const drafts = turns.filter((turn) => turn.goalRole === 'draft').map((turn) => turn.startedAt).sort((a, b) => a - b)
-  for (const turn of turns) {
-    if (turn.goalRole === 'draft') rounds.set(turn.id, drafts.findIndex((at) => at >= turn.startedAt))
-    else if (turn.goalRole) rounds.set(turn.id, roundOf(goal, turn))
-  }
-  return rounds
-}
-
-function roundOf(goal: Goal, turn: Turn): number {
-  const known = goal.rounds.find((round) => round.workTurnId === turn.id || round.checkTurnId === turn.id)
-  if (known) return known.n
-  // A failed work turn was replaced by the next one for the same round; a check asked again checks the round before it.
-  if (turn.goalRole === 'work') return goal.rounds.find((round) => round.startedAt >= turn.startedAt)?.n ?? goal.rounds.length + 1
-  return goal.rounds.filter((round) => round.startedAt <= turn.startedAt).at(-1)?.n ?? goal.rounds.length
-}
 
 /**
  * Messages waiting for the turn in flight to end, under it: dashed until they are sent, with a
@@ -530,8 +611,6 @@ export function Transcript() {
   const turnItems = usePaneView((view) => view.turnItems)
   const hasOlder = usePaneView((view) => view.hasOlder)
   const chatId = usePaneChatId()
-  const goal = useApp((state) => state.goals.find((entry) => entry.chatId === chatId) ?? null)
-  const rounds = useMemo(() => roundsOf(goal, turns), [goal, turns])
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
@@ -559,7 +638,10 @@ export function Transcript() {
     const measure = (): void => {
       const style = content.current ? getComputedStyle(content.current) : null
       const padding = style ? parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) : 0
-      element.style.setProperty('--turn-fill', `${Math.max(0, element.clientHeight - padding)}px`)
+      // The view's height in screen pixels and the padding in the content's own: the CSS divides
+      // the first by the transcript's zoom (transcript-zoom.ts) before taking the second away.
+      element.style.setProperty('--turn-view', `${element.clientHeight}px`)
+      element.style.setProperty('--turn-pad', `${padding}px`)
     }
     measure()
     const onScroll = (): void => {
@@ -577,9 +659,11 @@ export function Transcript() {
     })
     observer.observe(element)
     if (content.current) observer.observe(content.current)
+    const detach = content.current ? attachZoom(element, content.current, () => pinned.current) : null
     return () => {
       element.removeEventListener('scroll', onScroll)
       observer.disconnect()
+      detach?.()
     }
   }, [])
 
@@ -615,7 +699,7 @@ export function Transcript() {
     <div className="transcript" ref={scroller}>
       <div className="transcript-inner" ref={content}>
         {turns.map((turn) => (
-          <TurnBlock key={turn.id} turn={turn} ids={turnItems[turn.id] ?? NO_ITEMS} fill={turn.id === sentId} goal={goal} round={rounds.get(turn.id) ?? 0} />
+          <TurnBlock key={turn.id} turn={turn} ids={turnItems[turn.id] ?? NO_ITEMS} fill={turn.id === sentId} />
         ))}
         <Waiting />
       </div>

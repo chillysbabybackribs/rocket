@@ -1,0 +1,808 @@
+
+> rocket-orchestrator@0.1.0 check:ui
+> node scripts/ui-check.mjs
+
+UI check artifacts: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym
+
+> rocket-orchestrator@0.1.0 build
+> tsc --noEmit && electron-vite build
+
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 87 modules transformed.
+rendering chunks...
+out/main/script-worker.js              4.88 kB
+out/main/chunks/ui-test-D9H1zUQY.js   49.67 kB
+out/main/index.js                    177.95 kB
+out/main/host.js                     424.51 kB
+✓ built in 1.46s
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.mjs  1.83 kB
+✓ built in 20ms
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2251 modules transformed.
+rendering chunks...
+../../out/renderer/fill.html                                                      0.63 kB
+../../out/renderer/suggest.html                                                   0.75 kB
+../../out/renderer/index.html                                                     0.78 kB
+../../out/renderer/assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2          5.81 kB
+../../out/renderer/assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2      6.18 kB
+../../out/renderer/assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2        7.70 kB
+../../out/renderer/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2            10.25 kB
+../../out/renderer/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2             11.23 kB
+../../out/renderer/assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2         12.94 kB
+../../out/renderer/assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2        14.70 kB
+../../out/renderer/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2              18.75 kB
+../../out/renderer/assets/inter-greek-wght-normal-CkhJZR-_.woff2                 19.00 kB
+../../out/renderer/assets/geist-mono-latin-wght-normal-XN7g48iV.woff2            23.13 kB
+../../out/renderer/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2          25.96 kB
+../../out/renderer/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                 48.26 kB
+../../out/renderer/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2             85.07 kB
+../../out/renderer/assets/suggest-Wwojl-O_.css                                    1.25 kB
+../../out/renderer/assets/index-hA6BJ-kU.css                                      2.44 kB
+../../out/renderer/assets/fill-DVrebo1E.css                                       4.38 kB
+../../out/renderer/assets/index-Ct-rB_dp.css                                    129.00 kB
+../../out/renderer/assets/types-7ki8Xw5x.js                                       1.19 kB
+../../out/renderer/assets/suggest-j2x2i565.js                                     1.70 kB
+../../out/renderer/assets/fill-BVFUMawF.js                                        8.35 kB
+../../out/renderer/assets/index-D_O_uzWo.js                                   1,452.95 kB
+✓ built in 4.51s
+(node:109299) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 57 tests using 1 worker
+
+  ✘   1 tests/ui/app-map.spec.ts:9:1 › every place in the app map is reachable by name and reports itself (2.0s)
+  ✓   2 tests/ui/browser-capabilities.spec.ts:23:3 › Browser Phase 0 baseline (harness) › SPA: hash goto before slow detail fetch finishes (read vs route gap) (1.4s)
+  ✓   3 tests/ui/browser-capabilities.spec.ts:36:3 › Browser Phase 0 baseline (harness) › SPA: waitFor after hash goto shows detail (1.3s)
+  ✓   4 tests/ui/browser-capabilities.spec.ts:49:3 › Browser Phase 0 baseline (harness) › SPA: JSON extract via browser.fetch (1.1s)
+  ✓   5 tests/ui/browser-capabilities.spec.ts:61:3 › Browser Phase 0 baseline (harness) › SPA: click link + wait reaches detail (1.4s)
+  ✓   6 tests/ui/browser-capabilities.spec.ts:74:3 › Browser Phase 0 baseline (harness) › SPA: ref heal after list rerender (same label, new node) (1.7s)
+  ✓   7 tests/ui/browser-capabilities.spec.ts:93:3 › Browser Phase 0 baseline (harness) › Phase 1: read header includes hash and route hint on detail (1.3s)
+  ✓   8 tests/ui/browser-capabilities.spec.ts:107:3 › Browser Phase 0 baseline (harness) › Phase 1: goto until request waits for slow SPA detail API (2.1s)
+  ✓   9 tests/ui/browser-capabilities.spec.ts:120:3 › Browser Phase 0 baseline (harness) › Phase 2: query filters a large list to one row (1.4s)
+  ✓  10 tests/ui/browser-capabilities.spec.ts:139:3 › Browser Phase 0 baseline (harness) › Phase 2: a11y snapshot exposes link refs (1.3s)
+  ✓  11 tests/ui/browser-capabilities.spec.ts:152:3 › Browser Phase 0 baseline (harness) › Phase 2: tab.follow hash link reaches detail (1.3s)
+  ✓  12 tests/ui/browser-capabilities.spec.ts:166:3 › Browser Phase 0 baseline (harness) › Phase 3: read attaches truncated JSON from record API (1.3s)
+  ✓  13 tests/ui/browser-capabilities.spec.ts:179:3 › Browser Phase 0 baseline (harness) › Phase 3: browser_run delta lists new network after navigation (1.4s)
+  ✓  14 tests/ui/browser-capabilities.spec.ts:193:3 › Browser Phase 0 baseline (harness) › Phase 3: spa hook and waitForNavigation (call before route change) (1.5s)
+  ✓  15 tests/ui/browser-capabilities.spec.ts:212:3 › Browser Phase 0 baseline (harness) › Phase 4: som screenshot reports marker count (1.3s)
+  ✓  16 tests/ui/browser-capabilities.spec.ts:225:3 › Browser Phase 0 baseline (harness) › Phase 4: exportHar writes entries after navigation (1.4s)
+  ✓  17 tests/ui/browser-capabilities.spec.ts:240:3 › Browser Phase 0 baseline (harness) › SPA: network log lists record API on detail navigation (1.4s)
+  ✓  18 tests/ui/browser-close.spec.ts:5:30 › closing every restored tab with active index 0 keeps Rocket and its draft alive (2.5s)
+  ✓  19 tests/ui/browser-close.spec.ts:5:30 › closing every restored tab with active index 8 keeps Rocket and its draft alive (2.2s)
+  ✓  20 tests/ui/capture.spec.ts:7:1 › captures of the browser page, a window and a region reach the draft with their drawing (10.0s)
+  ✓  21 tests/ui/changes.spec.ts:9:1 › a turn's changes show as one line that opens the diff beside the chat (3.1s)
+  ✓  22 tests/ui/chat-links.spec.ts:6:1 › chat links open browser tabs and local artifacts beside the conversation (2.7s)
+  ✓  23 tests/ui/downloads.spec.ts:7:1 › browser_download and a download click in browser_run save files without a dialog (18.1s)
+  ✘  24 tests/ui/eval-tools.spec.ts:5:1 › eval Tools tab loads ledger and supports mark verified (27.9s)
+  ✓  25 tests/ui/evals.spec.ts:7:1 › a scenario runs on its providers side by side and a cell opens its transcript (3.2s)
+  ✘  26 tests/ui/fill.spec.ts:8:1 › Fill with Rocket fills a field, a rich editor and a form, undoes, reworks, and stops on Esc (12.8s)
+  ✓  27 tests/ui/images.spec.ts:9:1 › image uploads, queue editing, Stop and restart preserve the whole message (7.8s)
+  ✘  28 tests/ui/images.spec.ts:67:1 › paste and drop target the right pane, reject invalid files and retain unsupported drafts (11.3s)
+  ✓  29 tests/ui/images.spec.ts:104:1 › queued images survive shutdown and can be sent after reopening (3.1s)
+  ✓  30 tests/ui/images.spec.ts:122:1 › PDF and code files attach beside images, preview in the side panel, and reach the provider as text after restart (4.0s)
+  ✘  31 tests/ui/images.spec.ts:162:1 › an attachment is copied to another chat by menu or drag, saved, revealed, and outlives its source chat (11.8s)
+  ✓  32 tests/ui/library.spec.ts:10:1 › the library shelves a chat’s files, filters them, and opens one beside the chat (4.7s)
+(node:115567) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+┌─────────┬───────┬───────┬───────────────┬───────────────┬────────────────────────────┬───────────────────────┬───────────────────────────────┬────────────────┬────────────────────────┬──────────────────────────────────┬─────────────────────┬──────────────┬───────────────────────────┬────────────────────┬─────────────────────────┬────────────────────────┬───────────────────────┬──────────────────────┐
+│ (index) │ turns │ items │ turns on open │ first open ms │ first open longest task ms │ open ms (median of 3) │ open longest task ms (median) │ switch back ms │ switch longest task ms │ switch back after reading all ms │ its longest task ms │ next page ms │ next page longest task ms │ next page shift px │ scroll to first turn ms │ scroll longest task ms │ DOM nodes, all loaded │ JS heap MB (approx.) │
+├─────────┼───────┼───────┼───────────────┼───────────────┼────────────────────────────┼───────────────────────┼───────────────────────────────┼────────────────┼────────────────────────┼──────────────────────────────────┼─────────────────────┼──────────────┼───────────────────────────┼────────────────────┼─────────────────────────┼────────────────────────┼───────────────────────┼──────────────────────┤
+│ 0       │ 45    │ 837   │ 20            │ 150           │ 108                        │ 73                    │ 0                             │ 57             │ 0                      │ 54                               │ 0                   │ 161          │ 100                       │ 0                  │ 76                      │ 0                      │ 1408                  │ 18                   │
+│ 1       │ 250   │ 4682  │ 20            │ 146           │ 95                         │ 62                    │ 0                             │ 38             │ 0                      │ 55                               │ 0                   │ 174          │ 97                        │ 0                  │ 1049                    │ 94                     │ 7002                  │ 18                   │
+│ 2       │ 1000  │ 18848 │ 20            │ 129           │ 83                         │ 76                    │ 0                             │ 52             │ 0                      │ 138                              │ 89                  │ 134          │ 82                        │ 0                  │ 4744                    │ 80                     │ 27468                 │ 18                   │
+└─────────┴───────┴───────┴───────────────┴───────────────┴────────────────────────────┴───────────────────────┴───────────────────────────────┴────────────────┴────────────────────────┴──────────────────────────────────┴─────────────────────┴──────────────┴───────────────────────────┴────────────────────┴─────────────────────────┴────────────────────────┴───────────────────────┴──────────────────────┘
+  ✓  33 tests/ui/long-chat.spec.ts:39:1 › long chats open, switch and scroll within budget (1.6m)
+  ✓  34 tests/ui/orchestra-shell.spec.ts:9:1 › orchestra-shell fresh profile keeps the leader full height below the title strip (1.5s)
+  ✘  35 tests/ui/orchestra-shell.spec.ts:69:1 › orchestra-shell controlled dispatch and report harness exercises actual host limits (2.2s)
+  ✘  36 tests/ui/orchestra-shell.spec.ts:102:1 › orchestra-shell streams eight workers and supports expand reply stop reports and scrolling (2.3s)
+  ✓  37 tests/ui/orchestrator.spec.ts:6:1 › orchestrator keeps Stop available while waiting and refreshes its Markdown progress (5.2s)
+  ✘  38 tests/ui/panes.spec.ts:6:1 › the add-chat button splits the card into up to four chats, each its own (11.3s)
+  ✓  39 tests/ui/plan.spec.ts:6:1 › a plan opens beside the chat, is counted in the head line, and remembers being closed (3.3s)
+  ✓  40 tests/ui/question.spec.ts:5:1 › a question from the model is answered with one click and becomes the next message (2.2s)
+  ✘  41 tests/ui/reading.spec.ts:7:1 › hands-free reading scrolls the page, follows the reader’s own scrolling and stops on leaving (12.2s)
+  ✓  42 tests/ui/reading.spec.ts:86:1 › hands-free reading scrolls a file in the panel, follows the reader and keeps one speed (17.1s)
+  ✓  43 tests/ui/recovery.spec.ts:5:1 › full app restart preserves completed chats, chosen model and browser tabs (4.2s)
+  ✓  44 tests/ui/recovery.spec.ts:45:1 › host crash interrupts the active turn, reconnects and accepts another message (2.4s)
+  ✓  45 tests/ui/research.spec.ts:5:1 › all provider MCP endpoints expose research tools and return readable source evidence (1.8s)
+  ✘  46 tests/ui/rocket.spec.ts:6:1 › Rocket desktop self-check (14.3s)
+  ✓  47 tests/ui/safeguards.spec.ts:5:1 › network isolation blocks outside origins and detects a removed browser filter (1.2s)
+  ✓  48 tests/ui/safeguards.spec.ts:24:1 › native overlay checks detect shifted pages, hidden dropdowns and incorrect stacking (2.4s)
+  ✓  49 tests/ui/snapshot.spec.ts:7:1 › the shared snapshot tool captures native views without changing the UI and falls back explicitly (2.8s)
+  ✘  50 tests/ui/sources.spec.ts:5:1 › each link in a reply is marked opened or not by what the turn fetched (11.7s)
+  ✓  51 tests/ui/steer.spec.ts:5:1 › a message sent mid-turn joins the turn, or waits for it when another provider is picked (3.0s)
+  ✓  52 tests/ui/titlebar.spec.ts:6:1 › usage sits at the centre of the title strip and nothing but the chat uses the left edge (3.2s)
+  ✘  53 tests/ui/tool-failure-loop.spec.ts:6:1 › tool failure history supports review through verified fix (28.4s)
+  ✘  54 tests/ui/tool-failure-pane.spec.ts:6:1 › ui.pane targets the intended chat when the same greeting appears elsewhere (28.2s)
+  ✓  55 tests/ui/toolbar.spec.ts:6:1 › the sections drawer opens, customizes, and keeps its choices after a restart (6.6s)
+  ✘  56 tests/ui/ui-live.spec.ts:5:1 › default UI scripts operate on the attached live window and leave it open (12.1s)
+  ✓  57 tests/ui/ui-run.spec.ts:6:1 › UI scripts reuse isolated sessions, return failure captures and clean up on timeout (23.5s)
+
+
+  1) tests/ui/app-map.spec.ts:9:1 › every place in the app map is reachable by name and reports itself › Actions run the same code as the buttons and report the panes 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      39 |   await test.step('Actions run the same code as the buttons and report the panes', async () => {
+      40 |     const added = await act('pane.add')
+    > 41 |     expect(added.ok).toBe(true)
+         |                      ^
+      42 |     expect(added.where.panes).toHaveLength(2)
+      43 |     expect(added.where.focused).toBe(1)
+      44 |     await expect(page.locator('.pane')).toHaveCount(2)
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/app-map.spec.ts:41:22
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/app-map.spec.ts:39:3
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/app-map-every-place-in-the-2e3a6--by-name-and-reports-itself/attachments/failure-app-shell-cca149d2f6a78f22d3efc4eaa84f0fb68107795a.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/app-map-every-place-in-the-2e3a6--by-name-and-reports-itself/attachments/failure-full-window-7ee43741eb42e3aca020863c6044f5e75af265b3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/app-map-every-place-in-the-2e3a6--by-name-and-reports-itself/attachments/Trace-a83c9b02b5a00b960a8dbf19286a9571e479b425.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    (empty)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/app-map-every-place-in-the-2e3a6--by-name-and-reports-itself/error-context.md
+
+  2) tests/ui/eval-tools.spec.ts:5:1 › eval Tools tab loads ledger and supports mark verified ──────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "AMBIGUOUS_TARGET"
+    Received: undefined
+
+      36 |     return 'should not run'
+      37 |   ` })
+    > 38 |   expect(failed.result.structuredContent?.error?.code).toBe('AMBIGUOUS_TARGET')
+         |                                                        ^
+      39 |
+      40 |   const history = await mcp('rocket_tool_history', { mode: 'calls', tool: 'rocket_ui_run', outcome: 'failure', since: 0, limit: 5 })
+      41 |   const failId = history.data.calls.find((row: { finish?: { error?: { code: string } } }) => row.finish?.error?.code === 'AMBIGUOUS_TARGET')?.id
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/eval-tools.spec.ts:38:56
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/eval-tools-eval-Tools-tab--2d474--and-supports-mark-verified/attachments/failure-app-shell-c42d7f93dc4500b5cdada396303178c54a6788ff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/eval-tools-eval-Tools-tab--2d474--and-supports-mark-verified/attachments/failure-full-window-6d71fd6145823339f9de2bc376404a978a953001.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/eval-tools-eval-Tools-tab--2d474--and-supports-mark-verified/attachments/Trace-c70fab3e0be4fbec736df6b6ef9df54ce567bde3.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    Debugger ending on ws://127.0.0.1:45019/06c5239d-4abb-4310-83df-13532cbd358f
+    For help, see: https://nodejs.org/learn/getting-started/debugging
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791437637661,"source":"tool:rocket_ui_run","severity":"warn","kind":"tool-error","message":"locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Add a chat beside this one', exact: true }).first()\u001b[22m\n","details":{"provider":"codex"...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/eval-tools-eval-Tools-tab--2d474--and-supports-mark-verified/error-context.md
+
+  3) tests/ui/fill.spec.ts:8:1 › Fill with Rocket fills a field, a rich editor and a form, undoes, reworks, and stops on Esc › A field offers the fill first in its menu, and the chip says what the model is doing 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: locator('.count')
+    Expected: "1"
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" locator('.count') with timeout 10000ms
+      - waiting for locator('.count')
+        6 × locator resolved to <span class="count">0</span>
+          - unexpected value "0"
+
+
+      63 |     const chip = await rocket.surface('fill')
+      64 |     await expect(chip.locator('.chip')).toContainText(/Reading|Opening/)
+    > 65 |     await expect(chip.locator('.count')).toHaveText('1')
+         |                                          ^
+      66 |     // One width from start to finish.
+      67 |     expect(Math.round((await chip.locator('.chip').boundingBox())!.width)).toBe(500)
+      68 |     await expect(page.locator('.btab.is-filling')).toHaveCount(1)
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/fill.spec.ts:65:42
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/fill.spec.ts:57:3
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-app-shell-9ce3829422a2b3d36d159abc52d99016ab63e7c8.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: http://127.0.0.1:46515/forum (image/png) ───────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-http-127-0-0-1-46515-forum-0aa854b845c44e5af9aeee432c10b6f85c8df92c.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: failure: file:///home/dp/Desktop/rocket-orchestrator/out/renderer/fill.html (image/png) 
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-file-home-dp-Desktop-rocket-orchestrator-out-renderer-fill-html-98d98d55c6cce4e2b3706a0d759571f1accc8aee.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-full-window-56ae398503680120d4eb0148122e38155a117044.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/Trace-d6b4d5d9c5de1104ab70dba7a5284dbaadef7354.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: App log (text/plain) ────────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791437645885,"source":"turn","severity":"info","kind":"timing","message":"claude (ui-default) completed in 1.6s","details":{"chatId":"83d538fb-2b50-49cf-8827-4ecb79182b33","provider":"claude","model":"ui-default","firstEventMs":76.09687299999996,"firstTextMs":1580.765594,"totalMs":1594}}
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/error-context.md
+
+  4) tests/ui/images.spec.ts:67:1 › paste and drop target the right pane, reject invalid files and retain unsupported drafts 
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Add a chat beside this one', exact: true })
+
+
+      68 |   const { page } = rocket
+      69 |   await page.locator('.composer-folder').click()
+    > 70 |   await page.getByRole('button', { name: 'Add a chat beside this one', exact: true }).click()
+         |                                                                                       ^
+      71 |   const first = page.locator('.pane').nth(0)
+      72 |   const second = page.locator('.pane').nth(1)
+      73 |   const data = await page.evaluateHandle(base64 => {
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/images.spec.ts:70:87
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/images-paste-and-drop-targ-1d56c-d-retain-unsupported-drafts/attachments/failure-app-shell-6f48d2e02e83d85e54db29e42c8966cfdc403714.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/images-paste-and-drop-targ-1d56c-d-retain-unsupported-drafts/attachments/failure-full-window-b535f2ce17cd8d57509d2adc8332cb7d807a73aa.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/images-paste-and-drop-targ-1d56c-d-retain-unsupported-drafts/attachments/Trace-020dabcf7ce53bf7734e2a782775f4b43e6937f0.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    Debugger ending on ws://127.0.0.1:44923/33c5af26-aabe-4a89-8765-42cac004dc4f
+    For help, see: https://nodejs.org/learn/getting-started/debugging
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    (empty)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/images-paste-and-drop-targ-1d56c-d-retain-unsupported-drafts/error-context.md
+
+  5) tests/ui/images.spec.ts:162:1 › an attachment is copied to another chat by menu or drag, saved, revealed, and outlives its source chat 
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Add a chat beside this one', exact: true })
+
+
+      168 |   await page.getByRole('button', { name: 'Send', exact: true }).click()
+      169 |   await expect(page.locator('.prose').last()).toHaveText('Received 1 file(s).')
+    > 170 |   await page.getByRole('button', { name: 'Add a chat beside this one', exact: true }).click()
+          |                                                                                       ^
+      171 |   const source = page.locator('.pane').nth(0)
+      172 |   const target = page.locator('.pane').nth(1)
+      173 |   const sent = source.locator('.user-message .file-attachment')
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/images.spec.ts:170:87
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/images-an-attachment-is-co-5b113-nd-outlives-its-source-chat/attachments/failure-app-shell-7e82e95985135dcb48ae0d9c32ffbddcc25a26a7.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/images-an-attachment-is-co-5b113-nd-outlives-its-source-chat/attachments/failure-full-window-7dc12681125d1649d0bc30934cf484147da82b33.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/images-an-attachment-is-co-5b113-nd-outlives-its-source-chat/attachments/Trace-33c47007dff7b7a7b43b8058f95aec216f1155d4.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    [host] turn claude (ui-default) completed: first event 95ms, first text 98ms, total 0.1s
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. ...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791437684488,"source":"turn","severity":"info","kind":"timing","message":"claude (ui-default) completed in 0.1s","details":{"chatId":"aea9ca08-9d29-4f36-8af3-7febb5c6a687","provider":"claude","model":"ui-default","firstEventMs":95.28447800000004,"firstTextMs":98.25998900000002,"totalMs":111}}...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/images-an-attachment-is-co-5b113-nd-outlives-its-source-chat/error-context.md
+
+  6) tests/ui/orchestra-shell.spec.ts:69:1 › orchestra-shell controlled dispatch and report harness exercises actual host limits 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: undefined
+
+      62 |   expect(fixture.results).toHaveLength(5)
+      63 |   expect(fixture.results.slice(0, 4).every(result => !result.isError)).toBe(true)
+    > 64 |   expect(fixture.results[4].isError).toBe(true)
+         |                                      ^
+      65 |   expect(fixture.results[4].content[0].text).toContain('Three workers are already running')
+      66 |   return { fixture, call, callRaw, release, review }
+      67 | }
+        at start (/home/dp/Desktop/rocket-orchestrator/tests/ui/orchestra-shell.spec.ts:64:38)
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/orchestra-shell.spec.ts:70:55
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/attachments/failure-app-shell-df706c8fefe28ce6c22ab40cb46a1f22d5c81b37.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/attachments/failure-full-window-f201def5d36741ee052cc0a0b05c9cc922d8b885.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/attachments/Trace-e532273b13176e080bfcb416ec8324730b08c4ce.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791437797028,"source":"renderer","severity":"error","kind":"crash","message":"ResizeObserver loop completed with undelivered notifications.","details":{"stack":""}}
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/error-context.md
+
+  7) tests/ui/orchestra-shell.spec.ts:102:1 › orchestra-shell streams eight workers and supports expand reply stop reports and scrolling 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: undefined
+
+      62 |   expect(fixture.results).toHaveLength(5)
+      63 |   expect(fixture.results.slice(0, 4).every(result => !result.isError)).toBe(true)
+    > 64 |   expect(fixture.results[4].isError).toBe(true)
+         |                                      ^
+      65 |   expect(fixture.results[4].content[0].text).toContain('Three workers are already running')
+      66 |   return { fixture, call, callRaw, release, review }
+      67 | }
+        at start (/home/dp/Desktop/rocket-orchestrator/tests/ui/orchestra-shell.spec.ts:64:38)
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/orchestra-shell.spec.ts:104:46
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/failure-app-shell-21ac364c2bd304f52f2474f8b7bb0ca073269468.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/failure-full-window-340b0876212ab180bcbc17e0d4a5cc714c41debb.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/Trace-8536caeeb034787d065f9793695e7bd47f332c6b.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791437799966,"source":"renderer","severity":"error","kind":"crash","message":"ResizeObserver loop completed with undelivered notifications.","details":{"stack":""}}
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/error-context.md
+
+  8) tests/ui/panes.spec.ts:6:1 › the add-chat button splits the card into up to four chats, each its own › The button sits beside the text, not under it 
+
+    TimeoutError: locator.boundingBox: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Add a chat beside this one' })
+
+
+      11 |   await test.step('The button sits beside the text, not under it', async () => {
+      12 |     await expect(panes).toHaveCount(1)
+    > 13 |     const button = await add.boundingBox()
+         |                              ^
+      14 |     const message = page.getByRole('textbox', { name: 'Message', exact: true })
+      15 |     const box = await message.boundingBox()
+      16 |     const padding = await message.evaluate((element) => parseFloat(getComputedStyle(element).paddingLeft))
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/panes.spec.ts:13:30
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/panes.spec.ts:11:3
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/panes-the-add-chat-button--59240--to-four-chats-each-its-own/attachments/failure-app-shell-98dad6d61f5c97edd7efa6811891df1f9515c4b9.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/panes-the-add-chat-button--59240--to-four-chats-each-its-own/attachments/failure-full-window-1b65cb11045e02293c7bc78b310fb217e2144d5c.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/panes-the-add-chat-button--59240--to-four-chats-each-its-own/attachments/Trace-e7dd6c7051764da1a74250937aa2a617a95d0653.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    Debugger ending on ws://127.0.0.1:44009/7092a765-c370-49d6-8fde-6e77790c5d51
+    For help, see: https://nodejs.org/learn/getting-started/debugging
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    (empty)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/panes-the-add-chat-button--59240--to-four-chats-each-its-own/error-context.md
+
+  9) tests/ui/reading.spec.ts:7:1 › hands-free reading scrolls the page, follows the reader’s own scrolling and stops on leaving › The button starts the page moving and opens the control 
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Read hands-free', exact: true })
+        - locator resolved to <button type="button" class="icon-button" aria-label="Read hands-free" title="Read hands-free (Alt+S)">…</button>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is visible, enabled and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <input spellcheck="false" aria-label="Address" class="address-input" value="http://127.0.0.1:39233/long"/> from <form class="address">…</form> subtree intercepts pointer events
+        - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is visible, enabled and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <input spellcheck="false" aria-label="Address" class="address-input" value="http://127.0.0.1:39233/long"/> from <form class="address">…</form> subtree intercepts pointer events
+        - retrying click action
+          - waiting 100ms
+        19 × waiting for element to be visible, enabled and stable
+           - element is visible, enabled and stable
+           - scrolling into view if needed
+           - done scrolling
+           - <input spellcheck="false" aria-label="Address" class="address-input" value="http://127.0.0.1:39233/long"/> from <form class="address">…</form> subtree intercepts pointer events
+         - retrying click action
+           - waiting 500ms
+
+
+      22 |
+      23 |   await test.step('The button starts the page moving and opens the control', async () => {
+    > 24 |     await page.getByRole('button', { name: 'Read hands-free', exact: true }).click()
+         |                                                                              ^
+      25 |     await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+      26 |     await expect.poll(scrollY).toBeGreaterThan(20)
+      27 |     await expect(page.locator('.reading-speed')).toHaveText('1×')
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/reading.spec.ts:24:78
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/reading.spec.ts:23:3
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/reading-hands-free-reading-879ce-olling-and-stops-on-leaving/attachments/failure-app-shell-d35528a3e2003da95f855c058d5701a8c5950022.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: http://127.0.0.1:39233/long (image/png) ────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/reading-hands-free-reading-879ce-olling-and-stops-on-leaving/attachments/failure-http-127-0-0-1-39233-long-6bb047cc7013b6d9d0514ba4ee8ba7e29949d139.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/reading-hands-free-reading-879ce-olling-and-stops-on-leaving/attachments/failure-full-window-c93e26030cce7a4f3c904224686f3e750c134306.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/reading-hands-free-reading-879ce-olling-and-stops-on-leaving/attachments/Trace-e1f84c98a069ade53a3db4a88e94d91c165fb54b.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: App log (text/plain) ────────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: Journal (text/plain) ────────────────────────────────────────────────────────────
+    (empty)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/reading-hands-free-reading-879ce-olling-and-stops-on-leaving/error-context.md
+
+  10) tests/ui/rocket.spec.ts:6:1 › Rocket desktop self-check › Embedded page, navigation and browser tabs 
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Back', exact: true })
+        - locator resolved to <button type="button" aria-label="Back" class="icon-button">…</button>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is visible, enabled and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <input spellcheck="false" aria-label="Address" class="address-input" value="http://127.0.0.1:38665/two"/> from <form class="address">…</form> subtree intercepts pointer events
+        - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is visible, enabled and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <input spellcheck="false" aria-label="Address" class="address-input" value="http://127.0.0.1:38665/two"/> from <form class="address">…</form> subtree intercepts pointer events
+        - retrying click action
+          - waiting 100ms
+        19 × waiting for element to be visible, enabled and stable
+           - element is visible, enabled and stable
+           - scrolling into view if needed
+           - done scrolling
+           - <input spellcheck="false" aria-label="Address" class="address-input" value="http://127.0.0.1:38665/two"/> from <form class="address">…</form> subtree intercepts pointer events
+         - retrying click action
+           - waiting 500ms
+
+
+      56 |     await browser.getByRole('link', { name: 'Next page' }).click()
+      57 |     await expect(browser).toHaveTitle('UI page two')
+    > 58 |     await page.getByRole('button', { name: 'Back', exact: true }).click()
+         |                                                                   ^
+      59 |     await expect(browser).toHaveTitle('UI page one')
+      60 |     await page.getByRole('button', { name: 'Forward', exact: true }).click()
+      61 |     await expect(browser).toHaveTitle('UI page two')
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/rocket.spec.ts:58:67
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/rocket.spec.ts:49:3
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/rocket-Rocket-desktop-self-check/attachments/failure-app-shell-51bb03207caa58fbfdb789806a9f5e7891849e84.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: http://127.0.0.1:38665/two (image/png) ─────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/rocket-Rocket-desktop-self-check/attachments/failure-http-127-0-0-1-38665-two-ed09c9809626adebfa25ecb984a21dc7f229eb3d.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/rocket-Rocket-desktop-self-check/attachments/failure-full-window-087653cb8f89b0fedccd6810588b477da5d122db.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/rocket-Rocket-desktop-self-check/attachments/Trace-95f54208677cf70f443a932c24bf0cdcf86dc62f.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: App log (text/plain) ────────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: Journal (text/plain) ────────────────────────────────────────────────────────────
+    (empty)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/rocket-Rocket-desktop-self-check/error-context.md
+
+  11) tests/ui/sources.spec.ts:5:1 › each link in a reply is marked opened or not by what the turn fetched 
+
+    Error: expect(locator).toHaveClass(expected) failed
+
+    Locator: locator('.turn .prose').last().locator('a').filter({ hasText: 'the auth docs' }).locator('.source-mark')
+    Expected pattern: /is-opened/
+    Received string:  "source-mark is-unopened"
+    Timeout: 10000ms
+
+    Call log:
+      - Expect "toHaveClass" locator('.turn .prose').last().locator('a').filter({ hasText: 'the auth docs' }).locator('.source-mark') with timeout 10000ms
+      - waiting for locator('.turn .prose').last().locator('a').filter({ hasText: 'the auth docs' }).locator('.source-mark')
+        24 × locator resolved to <span class="source-mark is-unopened" title="Not opened this turn: the model cited this page without reading it">…</span>
+           - unexpected value "source-mark is-unopened"
+
+
+      11 |   await expect(reply).toContainText('not verified')
+      12 |   const opened = reply.locator('a', { hasText: 'the auth docs' }).locator('.source-mark')
+    > 13 |   await expect(opened).toHaveClass(/is-opened/)
+         |                        ^
+      14 |   await expect(opened).toHaveAttribute('title', 'Opened this turn')
+      15 |   const unopened = reply.locator('a', { hasText: 'a blog post' }).locator('.source-mark')
+      16 |   await expect(unopened).toHaveClass(/is-unopened/)
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/sources.spec.ts:13:24
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/attachments/failure-app-shell-819b09c3902eb5c0075b057d43c86f80c83b796e.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/attachments/failure-full-window-3d801984d32b12882a9d23cc7fee7348bd48de83.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/attachments/Trace-471d5b7e5e7c117a99c2475bc6e6d23faf07a88b.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    [host] turn claude (ui-default) completed: first event 86ms, first text 90ms, total 0.1s
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. ...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791437886109,"source":"turn","severity":"info","kind":"timing","message":"claude (ui-default) completed in 0.1s","details":{"chatId":"4aeb3f4c-7570-4e65-87fc-8fdac1a799cf","provider":"claude","model":"ui-default","firstEventMs":85.78144999999995,"firstTextMs":89.96277899999995,"totalMs":110}}...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/error-context.md
+
+  12) tests/ui/tool-failure-loop.spec.ts:6:1 › tool failure history supports review through verified fix 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "AMBIGUOUS_TARGET"
+    Received: undefined
+
+      35 |     return false
+      36 |   ` })
+    > 37 |   expect(failed.result.structuredContent?.error?.code).toBe('AMBIGUOUS_TARGET')
+         |                                                        ^
+      38 |
+      39 |   const history = await mcp('rocket_tool_history', { mode: 'calls', tool: 'rocket_ui_run', outcome: 'failure', since: 0, limit: 5 })
+      40 |   const failId = history.data.calls.find((row: { finish?: { error?: { code: string } } }) => row.finish?.error?.code === 'AMBIGUOUS_TARGET')?.id
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/tool-failure-loop.spec.ts:37:56
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/tool-failure-loop-tool-fai-3d175-review-through-verified-fix/attachments/failure-app-shell-77767c2e82478a1cc13b3c76065ce41216d4e23c.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/tool-failure-loop-tool-fai-3d175-review-through-verified-fix/attachments/failure-full-window-2116570351299ced5d9ed48937447691841722fa.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/tool-failure-loop-tool-fai-3d175-review-through-verified-fix/attachments/Trace-f3ccd454756757331ff51230fc04afe93d7f8bfa.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    Debugger ending on ws://127.0.0.1:40195/41dc758d-0611-44d6-91de-513d085bdd34
+    For help, see: https://nodejs.org/learn/getting-started/debugging
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791437930998,"source":"tool:rocket_ui_run","severity":"warn","kind":"tool-error","message":"locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Add a chat beside this one', exact: true }).first()\u001b[22m\n","details":{"provider":"codex"...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/tool-failure-loop-tool-fai-3d175-review-through-verified-fix/error-context.md
+
+  13) tests/ui/tool-failure-pane.spec.ts:6:1 › ui.pane targets the intended chat when the same greeting appears elsewhere 
+
+    Error: {"id":1,"ok":false,"error":"locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Add a chat beside this one', exact: true }).first()\u001b[22m\n","errorCode":"OPERATION_TIMEOUT","errorOrigin":"operation","session":{"id":"2026-10-08T05-38-53-978Z-J77r8q","directory":"/home/dp/Desktop/rocket-orchestrator/.artifacts/ui-run/2026-10-08T05-38-53-978Z-J77r8q","profile":"/home/dp/Desktop/rocket-orchestrator/.artifacts/ui-run/2026-10-08T05-38-53-978Z-J77r8q/profile","workspace":"/home/dp/Desktop/rocket-orchestrator/.artifacts/ui-run/2026-10-08T05-38-53-978Z-J77r8q/workspace","build":"session build of current source","origin":"http://127.0.0.1:41105","open":true},"logs":[],"errors":[],"captures":[{"capturedAt":"2026-10-08T05:39:20.142Z","instance":{"pid":120540,"startedAt":"2026-10-08T05:39:08.843Z","version":"0.1.0","mainBundleSha256":"1f18753bc6f28e1198f491add13a9207e6acc42a2f835421c1f94e4fe1c0a100","rendererUrl":"file:///home/dp/Desktop/rocket-orchestrator/.artifacts/ui-run/2026-10-08T05-38-53-978Z-J77r8q/app/out/renderer/index.html"},"window":{"bounds":{"x":600,"y":370,"width":1360,"height":860},"contentBounds":{"x":600,"y":370,"width":1360,"height":860},"focused":true,"minimized":false},"shell":{"panels":[{"name":"UI check: good evening","bounds":{"x":9,"y":49,"width":535.59375,"height":811}}],"controls":[{"role":"button","name":"Close window","disabled":false,"bounds":{"x":13,"y":18,"width":12,"height":12}},{"role":"button","name":"Minimize window","disabled":false,"bounds":{"x":33,"y":18,"width":12,"height":12}},{"role":"button","name":"Zoom window","disabled":false,"bounds":{"x":53,"y":18,"width":12,"height":12}},{"role":"button","name":"Sections","disabled":false,"bounds":{"x":80,"y":10,"width":28,"height":28}},{"role":"button","name":"Claude usage: 25% used","disabled":false,"bounds":{"x":542.09375,"y":4,"width":65.953125,"height":32}},{"role":"button","name":"Codex usage: 25% used","disabled":false,"bounds":{"x":612.046875,"y":4,"width":65.953125,"height":32}},{"role":"button","name":"Cursor usage: 25% used","disabled":false,"bounds":{"x":682,"y":4,"width":65.953125,"height":32}},{"role":"button","name":"Antigravity usage: 25% used","disabled":false,"bounds":{"x":751.953125,"y":4,"width":65.953125,"height":32}},{"role":"tab","name":"UI check: good evening","disabled":false,"bounds":{"x":56,"y":730,"width":156,"height":31}},{"role":"button","name":"Close tab: UI check: good evening","disabled":false,"bounds":{"x":207,"y":736.5,"width":18,"height":18}},{"role":"button","name":"New chat","disabled":false,"bounds":{"x":235,"y":729,"width":26,"height":26}},{"role":"textbox","name":"Message","disabled":false,"bounds":{"x":38,"y":761,"width":477.59375,"height":38}},{"role":"button","name":"Attach files","disabled":false,"bounds":{"x":46,"y":805,"width":28,"height":28}},{"role":"button","name":"Capture","disabled":false,"bounds":{"x":79,"y":805,"width":28,"height":28}},{"role":"button","name":"Working folder: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui-run/2026-10-08T05-38-53-978Z-J77r8q/workspace. Click to change.","disabled":false,"bounds":{"x":112,"y":805,"width":203.09375,"height":28}},{"role":"button","name":"Choose the provider and model for the next message","disabled":false,"bounds":{"x":375,"y":805,"width":98.59375,"height":28}},{"role":"button","name":"Send","disabled":true,"bounds":{"x":479.59375,"y":805,"width":28,"height":28}},{"role":"separator","name":"Resize the orchestrator chat","disabled":false,"bounds":{"x":545.59375,"y":48,"width":8,"height":812}}],"controlsTruncated":false},"views":[],"capture":"window","warnings":[],"directory":"/home/dp/Desktop/rocket-orchestrator/.artifacts/ui-run/2026-10-08T05-38-53-978Z-J77r8q/profile/ui-snapshots/2026-10-08T05-39-20-141Z-uxy5VM","images":[{"label":"Rocket — composed window, including native views","path":"/home/dp/Desktop/rocket-orchestrator/.artifacts/ui-run/2026-10-08T05-38-53-978Z-J77r8q/profile/ui-snapshots/2026-10-08T05-39-20-141Z-uxy5VM/window.png","mimeType":"image/jpeg"}]}]}
+
+    expect(received).toBeUndefined()
+
+    Received: true
+
+      30 |     return await page.getByText('Good evening.').count()
+      31 |   ` })
+    > 32 |   expect(setup.result.isError, JSON.stringify(setup.data)).toBeUndefined()
+         |                                                            ^
+      33 |   expect(setup.data.value).toBe(2)
+      34 |
+      35 |   const ambiguous = await call({ capture: false, code: `
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/tool-failure-pane.spec.ts:32:60
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/tool-failure-pane-ui-pane--45966--greeting-appears-elsewhere/attachments/failure-app-shell-5d1dd42a1f988c9e8166fc0bddeb2d26d23b6f84.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/tool-failure-pane-ui-pane--45966--greeting-appears-elsewhere/attachments/failure-full-window-e874be1661eb100f77a7dd6d572a7183e9f1181d.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/tool-failure-pane-ui-pane--45966--greeting-appears-elsewhere/attachments/Trace-b79b9a66c37ccb08bfd95ea3ad4d44a729b615ab.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    Debugger ending on ws://127.0.0.1:38699/a84cb3e4-634d-4131-a02b-0470022a8fa6
+    For help, see: https://nodejs.org/learn/getting-started/debugging
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791437960352,"source":"tool:rocket_ui_run","severity":"warn","kind":"tool-error","message":"locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Add a chat beside this one', exact: true }).first()\u001b[22m\n","details":{"provider":"codex"...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/tool-failure-pane-ui-pane--45966--greeting-appears-elsewhere/error-context.md
+
+  14) tests/ui/ui-live.spec.ts:5:1 › default UI scripts operate on the attached live window and leave it open 
+
+    Error: {"ok":false,"error":"locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Add a chat beside this one', exact: true }).first()\u001b[22m\n","errorCode":"OPERATION_TIMEOUT","errorOrigin":"operation","id":1,"target":"live","session":{"pid":121074,"open":true,"directory":"/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/ui-live-default-UI-scripts-4664e-ve-window-and-leave-it-open/profile/ui-runs/2026-10-08T05-39-29-719Z-J0aivs"},"logs":[],"captures":[{"capturedAt":"2026-10-08T05:39:40.127Z","instance":{"pid":121074,"startedAt":"2026-10-08T05:39:28.730Z","version":"0.1.0","mainBundleSha256":"1f18753bc6f28e1198f491add13a9207e6acc42a2f835421c1f94e4fe1c0a100","rendererUrl":"file:///home/dp/Desktop/rocket-orchestrator/out/renderer/index.html"},"window":{"bounds":{"x":40,"y":50,"width":1360,"height":860},"contentBounds":{"x":40,"y":50,"width":1360,"height":860},"focused":true,"minimized":false},"shell":{"panels":[{"name":"New chat","bounds":{"x":9,"y":49,"width":535.59375,"height":811}}],"controls":[{"role":"button","name":"Close window","disabled":false,"bounds":{"x":13,"y":18,"width":12,"height":12}},{"role":"button","name":"Minimize window","disabled":false,"bounds":{"x":33,"y":18,"width":12,"height":12}},{"role":"button","name":"Zoom window","disabled":false,"bounds":{"x":53,"y":18,"width":12,"height":12}},{"role":"button","name":"Sections","disabled":false,"bounds":{"x":80,"y":10,"width":28,"height":28}},{"role":"button","name":"Claude usage: 25% used","disabled":false,"bounds":{"x":542.09375,"y":4,"width":65.953125,"height":32}},{"role":"button","name":"Codex usage: 25% used","disabled":false,"bounds":{"x":612.046875,"y":4,"width":65.953125,"height":32}},{"role":"button","name":"Cursor usage: 25% used","disabled":false,"bounds":{"x":682,"y":4,"width":65.953125,"height":32}},{"role":"button","name":"Antigravity usage: 25% used","disabled":false,"bounds":{"x":751.953125,"y":4,"width":65.953125,"height":32}},{"role":"tab","name":"New chat","disabled":false,"bounds":{"x":56,"y":360.875,"width":75.8125,"height":31}},{"role":"button","name":"New chat","disabled":true,"bounds":{"x":136.8125,"y":359.875,"width":26,"height":26}},{"role":"textbox","name":"Message","disabled":false,"bounds":{"x":38,"y":391.875,"width":477.59375,"height":54}},{"role":"button","name":"Attach files","disabled":false,"bounds":{"x":46,"y":451.875,"width":28,"height":28}},{"role":"button","name":"Capture","disabled":false,"bounds":{"x":79,"y":451.875,"width":28,"height":28}},{"role":"button","name":"Working folder: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/ui-live-default-UI-scripts-4664e-ve-window-and-leave-","disabled":false,"bounds":{"x":112,"y":451.875,"width":203.09375,"height":28}},{"role":"button","name":"Choose the provider and model for the next message","disabled":false,"bounds":{"x":375,"y":451.875,"width":98.59375,"height":28}},{"role":"button","name":"Send","disabled":false,"bounds":{"x":479.59375,"y":451.875,"width":28,"height":28}},{"role":"separator","name":"Resize the orchestrator chat","disabled":false,"bounds":{"x":545.59375,"y":48,"width":8,"height":812}}],"controlsTruncated":false},"views":[],"capture":"window","warnings":[],"directory":"/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/ui-live-default-UI-scripts-4664e-ve-window-and-leave-it-open/profile/ui-snapshots/2026-10-08T05-39-40-127Z-YQFyZd","images":[{"label":"Rocket — composed window, including native views","path":"/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/ui-live-default-UI-scripts-4664e-ve-window-and-leave-it-open/profile/ui-snapshots/2026-10-08T05-39-40-127Z-YQFyZd/window.png","mimeType":"image/jpeg"}]}]}
+
+    expect(received).toBeUndefined()
+
+    Received: true
+
+      24 |     return await page.locator('.pane').count()
+      25 |   ` })
+    > 26 |   expect(first.result.isError, JSON.stringify(first.data)).toBeUndefined()
+         |                                                            ^
+      27 |   expect(first.data.target).toBe('live')
+      28 |   expect(first.data.session.pid).toBe(pid)
+      29 |   expect(first.data.value).toBe(2)
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/ui-live.spec.ts:26:60
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/ui-live-default-UI-scripts-4664e-ve-window-and-leave-it-open/attachments/failure-app-shell-5c8d0df5f59e0f60960609688b3c2e135bf7f876.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/ui-live-default-UI-scripts-4664e-ve-window-and-leave-it-open/attachments/failure-full-window-9a8e3f646c4a0f2d50c607ee8b8b59e8970fc9e7.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/ui-live-default-UI-scripts-4664e-ve-window-and-leave-it-open/attachments/Trace-559216bf8597b22d251d6ec376f68146770da07b.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    Debugger ending on ws://127.0.0.1:41831/a2344ebc-51c0-44f6-ac35-61c91a3e503e
+    For help, see: https://nodejs.org/learn/getting-started/debugging
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791437980289,"source":"tool:rocket_ui_run","severity":"warn","kind":"tool-error","message":"locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Add a chat beside this one', exact: true }).first()\u001b[22m\n","details":{"provider":"codex"...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym/results/ui-live-default-UI-scripts-4664e-ve-window-and-leave-it-open/error-context.md
+
+  14 failed
+    tests/ui/app-map.spec.ts:9:1 › every place in the app map is reachable by name and reports itself 
+    tests/ui/eval-tools.spec.ts:5:1 › eval Tools tab loads ledger and supports mark verified ───────
+    tests/ui/fill.spec.ts:8:1 › Fill with Rocket fills a field, a rich editor and a form, undoes, reworks, and stops on Esc 
+    tests/ui/images.spec.ts:67:1 › paste and drop target the right pane, reject invalid files and retain unsupported drafts 
+    tests/ui/images.spec.ts:162:1 › an attachment is copied to another chat by menu or drag, saved, revealed, and outlives its source chat 
+    tests/ui/orchestra-shell.spec.ts:69:1 › orchestra-shell controlled dispatch and report harness exercises actual host limits 
+    tests/ui/orchestra-shell.spec.ts:102:1 › orchestra-shell streams eight workers and supports expand reply stop reports and scrolling 
+    tests/ui/panes.spec.ts:6:1 › the add-chat button splits the card into up to four chats, each its own 
+    tests/ui/reading.spec.ts:7:1 › hands-free reading scrolls the page, follows the reader’s own scrolling and stops on leaving 
+    tests/ui/rocket.spec.ts:6:1 › Rocket desktop self-check ────────────────────────────────────────
+    tests/ui/sources.spec.ts:5:1 › each link in a reply is marked opened or not by what the turn fetched 
+    tests/ui/tool-failure-loop.spec.ts:6:1 › tool failure history supports review through verified fix 
+    tests/ui/tool-failure-pane.spec.ts:6:1 › ui.pane targets the intended chat when the same greeting appears elsewhere 
+    tests/ui/ui-live.spec.ts:5:1 › default UI scripts operate on the attached live window and leave it open 
+  43 passed (7.7m)
+
+FAIL — UI check artifacts: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-32-07-230Z-EI1Cym

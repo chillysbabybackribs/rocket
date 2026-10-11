@@ -41,6 +41,38 @@ export function prettyUrl(url: string): string {
   return url.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '')
 }
 
+/** A visited page, as the address field's completion weighs it. */
+export type VisitedPage = { url: string; visits: number; last: number }
+
+/**
+ * What the address field fills in after the typed text, as Chrome does: the most visited address
+ * that starts with it. Typed without a slash it completes to the site alone (`gi` → `github.com`,
+ * however deep the visits to it were); typed with one, to a page. Null for a search, for text
+ * with a scheme, or when nothing visited starts that way.
+ */
+export function completeAddress(typed: string, pages: Iterable<VisitedPage>, now = Date.now()): string | null {
+  const text = typed.trim().toLowerCase()
+  if (!text || /\s/.test(text) || /^(https?|file|about):/.test(text)) return null
+  const site = !text.includes('/')
+  const candidates = new Map<string, { visits: number; last: number }>()
+  for (const page of pages) {
+    const bare = page.url.replace(/^https?:\/\//i, '').replace(/\/$/, '')
+    // "www." is matched when typed and skipped when not.
+    let address = bare.toLowerCase().startsWith(text) ? bare : prettyUrl(page.url)
+    if (!address.toLowerCase().startsWith(text)) continue
+    if (site) address = address.replace(/[/?#].*$/, '')
+    const known = candidates.get(address)
+    candidates.set(address, { visits: (known?.visits ?? 0) + page.visits, last: Math.max(known?.last ?? 0, page.last) })
+  }
+  let best: { address: string; score: number } | null = null
+  for (const [address, { visits, last }] of candidates) {
+    const days = (now - last) / 86_400_000
+    const score = Math.log2(1 + visits) + Math.max(0, 3 - days / 10)
+    if (!best || score > best.score || (score === best.score && address.length < best.address.length)) best = { address, score }
+  }
+  return best && best.address.length > text.length ? best.address : null
+}
+
 // A browser view is a native surface: it cannot be covered, only hidden or moved. There are two
 // ways to take one off screen:
 // - 'invisible', the default, uses setVisible(false). Chromium then treats the page as a

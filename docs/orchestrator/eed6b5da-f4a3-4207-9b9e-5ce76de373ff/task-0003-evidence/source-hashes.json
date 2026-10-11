@@ -1,0 +1,7 @@
+{
+  "src/host/orchestrator.ts": "5a4f174bc43b6aab7a5c102fadd705ce37b9e0b51fded13891c1b911d091d17a",
+  "src/host/tools/orchestrator.ts": "99fd6a3c6b3fefea3cedbebc97b708aa5c8b7497c51e150ec7145fb4b0bc712d",
+  "src/shared/orchestrator.ts": "1aea3c887367d6896115b989469922dcd020def46c0d5bacc2a7723f623223b2",
+  "src/host/orchestrator.test.ts": "60b218e2e052083b5b212690c19beb6d50bb4546310c0c5e3862f1b0cd6416ab",
+  "docs/orchestrator.md": "d7e0c1737ca21db1677f13a38bf1a2f69dea3ec1ff16f880933d05905578a715"
+}

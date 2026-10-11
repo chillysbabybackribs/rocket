@@ -1,5 +1,7 @@
 # Agent situational awareness in Rocket
 
+**Status (2026-10-09): implemented.** The app map, dispatcher, the three `rocket_ui_*` map tools and the tests below are in the tree.
+
 ## Problem
 
 Models often behave as if they were a generic cloud assistant: they guess UI state, confuse the **built-in browser** with the **Rocket app shell**, and skip live inspection even when the user is staring at the same window. Told "run a tool eval" with the eval panel closed, they searched a 1600px screenshot for a button, clicked through `rocket_ui_run` with guessed locators (two `Message` textboxes, `page.waitForTimeout` that does not exist), and wrote paragraphs about CSS instead of doing the four-step thing.

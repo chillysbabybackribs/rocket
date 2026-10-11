@@ -2,24 +2,18 @@ import { addDraftFiles, ATTACHMENT_DRAG_TYPE, updateDraft } from './drafts.ts'
 import './images.css'
 import './library.css'
 import { useEffect, useRef, useState } from 'react'
-import { Images, PanelRightOpen, X } from 'lucide-react'
-import type { Goal } from '../../shared/types.ts'
-import { PaneContext, usePane, usePaneChatId, usePaneView } from './pane.ts'
+import { Images, X } from 'lucide-react'
 import { act } from './app-map.ts'
-import { dismissError, focusedChatId, paneAt, setGoalPaneOpen, setGoalWidth, useApp } from './store.ts'
+import { PaneContext, usePane, usePaneChatId, usePaneView } from './pane.ts'
+import { dismissError, focusedChatId, paneAt, peekState, setPhotocraftOpen, setSideWidth, useApp } from './store.ts'
 import { ArtifactPanel } from './components/ArtifactPanel.tsx'
 import { AttachmentNotice, copyTo } from './components/AttachmentMenu.tsx'
 import { BrowserPanel } from './components/BrowserPanel.tsx'
-import { EvalPanel } from './components/EvalPanel.tsx'
 import { LibraryPanel } from './components/LibraryPanel.tsx'
+import { PhotocraftPanel } from './components/PhotocraftPanel.tsx'
 import { Composer } from './components/Composer.tsx'
-import { GoalStatusIcon } from './components/GoalIcons.tsx'
-import { goalStatusText } from './components/Goals.tsx'
-import { GoalNote, GoalPane } from './components/GoalPane.tsx'
-import { NewGoal } from './components/NewGoal.tsx'
 import { PlanDrawer } from './components/PlanDrawer.tsx'
-import { Rail } from './components/Rail.tsx'
-import { Toolbar } from './components/Toolbar.tsx'
+import { TitleStrip } from './components/TitleStrip.tsx'
 import { Transcript } from './components/Transcript.tsx'
 
 function greeting(): string {
@@ -30,17 +24,12 @@ function greeting(): string {
   return 'Good evening'
 }
 
-const GOAL_MIN = 320
+const SIDE_MIN = 320
 const CHAT_MIN = 300
 
-/**
- * A chat with something beside it, split like an artifact: the conversation on the left, `side`
- * on the right, with a divider to drag. The goal pane and the plan drawer both live here and
- * share one width. With the card split into panes there is no room for a side, so `side` is
- * only shown while the chat has the card to itself.
- */
+/** The chat with a side panel (plan drawer), split with a draggable divider. */
 function Split({ side, children }: { side: React.ReactNode; children: React.ReactNode }) {
-  const width = useApp((state) => state.goalWidth)
+  const width = useApp((state) => state.sideWidth)
   const alone = useApp((state) => state.panes.length === 1)
   const split = useRef<HTMLDivElement>(null)
   const shown = alone ? side : null
@@ -52,21 +41,21 @@ function Split({ side, children }: { side: React.ReactNode; children: React.Reac
     let last = width
     const move = (moved: PointerEvent): void => {
       const box = split.current!.getBoundingClientRect()
-      last = Math.round(Math.max(GOAL_MIN, Math.min(box.width - CHAT_MIN, box.right - moved.clientX)))
-      setGoalWidth(last, false)
+      last = Math.round(Math.max(SIDE_MIN, Math.min(box.width - CHAT_MIN, box.right - moved.clientX)))
+      setSideWidth(last, false)
     }
     const up = (): void => {
       handle.classList.remove('is-dragging')
       handle.removeEventListener('pointermove', move)
       handle.removeEventListener('pointerup', up)
-      setGoalWidth(last, true)
+      setSideWidth(last, true)
     }
     handle.addEventListener('pointermove', move)
     handle.addEventListener('pointerup', up)
   }
 
   return (
-    <div ref={split} className={`pane-split${shown ? ' is-split' : ''}`} style={{ '--goal-width': `${width}px` } as React.CSSProperties}>
+    <div ref={split} className={`pane-split${shown ? ' is-split' : ''}`} style={{ '--side-width': `${width}px` } as React.CSSProperties}>
       <div className="goal-chat">{children}</div>
       {shown && (
         <>
@@ -78,64 +67,22 @@ function Split({ side, children }: { side: React.ReactNode; children: React.Reac
   )
 }
 
-/**
- * A goal's chat: the goal beside the conversation. The note box stands in for the composer while
- * the goal runs; once it has ended, the chat carries on as any other. A goal's chat has no plan
- * drawer: the round's plan is a section of the goal pane.
- */
-function GoalChat({ goal }: { goal: Goal }) {
-  const open = useApp((state) => state.goalPaneOpen)
-  const alone = useApp((state) => state.panes.length === 1)
-  const chatId = usePaneChatId()
-  const ended = goal.status === 'done' || goal.status === 'stopped'
-  return (
-    <Split side={open ? <GoalPane goal={goal} /> : null}>
-      {(!open || !alone) && (
-        <div className="goal-chat-head">
-          <button
-            type="button"
-            className="goal-chip-toggle"
-            title={alone ? 'Show the goal' : 'Close the other chats to see the goal'}
-            disabled={!alone}
-            onClick={() => setGoalPaneOpen(true)}
-          >
-            <GoalStatusIcon status={goal.status} size={12} />
-            <span>{goal.title}</span>
-            <span className="goal-chip-status">{goalStatusText(goal)}</span>
-            <PanelRightOpen size={13} aria-hidden />
-          </button>
-        </div>
-      )}
-      <Transcript />
-      <div className="composer-dock">
-        {ended ? <Composer key={chatId ?? 'new'} placeholder="Reply…" /> : <GoalNote goal={goal} />}
-      </div>
-    </Split>
-  )
-}
-
-/** One pane of the chat card: a whole chat, or the new-chat screen. */
 function ChatPane() {
   const pane = usePane()
   const chatId = usePaneChatId()
   const paneKey = useApp(state => paneAt(state, pane).key)
   const draftKey = chatId ?? `new:${paneKey}`
-  // 'copy' while an attachment from another chat is dragged in; 'files' for files from outside Rocket.
   const [dropping, setDropping] = useState<false | 'copy' | 'files'>(false)
   const chat = useApp((state) => state.chats.find((entry) => entry.id === chatId) ?? null)
   const hasTurns = usePaneView((view) => view.turns.length > 0)
-  const goal = useApp((state) => state.goals.find((entry) => entry.chatId === chatId) ?? null)
-  // The turn whose plan is open beside the chat, with the message that started it for the title.
   const planTurn = usePaneView((view) => view.turns.find((turn) => turn.id === view.planTurnId) ?? null)
   const planUserId = usePaneView((view) => (view.planTurnId ? view.turnItems[view.planTurnId]?.[0] : undefined))
   const focused = useApp((state) => state.focused === pane)
-  const empty = !goal && (!chat || !hasTurns)
+  const empty = !chat || !hasTurns
   const focus = (): void => { void act('pane.focus', { pane }) }
 
   let body: React.ReactNode
-  if (goal) {
-    body = <GoalChat goal={goal} />
-  } else if (empty) {
+  if (empty) {
     body = (
       <div className="welcome">
         <h1 className="welcome-title">{greeting()}</h1>
@@ -177,7 +124,6 @@ function ChatPane() {
         if (!event.dataTransfer.types.includes('Files') && !event.dataTransfer.types.includes(ATTACHMENT_DRAG_TYPE)) return
         event.preventDefault()
         setDropping(false)
-        if (goal && goal.status !== 'done' && goal.status !== 'stopped') return
         focus()
         const existing = event.dataTransfer.getData(ATTACHMENT_DRAG_TYPE)
         if (existing) {
@@ -188,7 +134,7 @@ function ChatPane() {
       {dropping && (
         <div className="image-drop-target">
           <Images size={30} />
-          <strong>{goal && goal.status !== 'done' && goal.status !== 'stopped' ? 'Use a regular chat for attachments' : dropping === 'copy' ? `Copy to ${chat?.title ?? 'this new chat'}` : 'Add files to this chat'}</strong>
+          <strong>{dropping === 'copy' ? `Copy to ${chat?.title ?? 'this new chat'}` : 'Add files to this chat'}</strong>
           <span>{dropping === 'copy' ? 'Adds the attachment to this chat’s draft' : chat?.title ?? 'New chat'}</span>
           <small>{dropping === 'copy' ? 'Release to copy · nothing is sent' : 'Release to attach · send when you’re ready'}</small>
         </div>
@@ -197,11 +143,6 @@ function ChatPane() {
   )
 }
 
-/**
- * The chat card: one to four panes. Two stand side by side; three are two above one across the
- * bottom; four are quadrants. Each pane keeps its key, so adding or closing one leaves the others
- * as they were.
- */
 function ChatCard() {
   const panes = useApp((state) => state.panes)
   return (
@@ -217,7 +158,6 @@ function ChatCard() {
 
 export function App() {
   useEffect(() => {
-    // Files dropped outside a chat must not navigate the Electron shell away from the app.
     const preventNavigation = (event: DragEvent): void => {
       if (event.dataTransfer?.types.includes('Files') || event.dataTransfer?.types.includes(ATTACHMENT_DRAG_TYPE)) event.preventDefault()
     }
@@ -228,26 +168,24 @@ export function App() {
       window.removeEventListener('drop', preventNavigation)
     }
   }, [])
+  useEffect(() => window.rocket.photocraft.onShow(() => {
+    if (!peekState().photocraftOpen) setPhotocraftOpen(true)
+  }), [])
   const artifact = useApp((state) => state.artifact)
   const browserOpen = useApp((state) => state.browserOpen)
-  const evalsOpen = useApp((state) => state.evalsOpen)
   const libraryOpen = useApp((state) => state.libraryOpen)
-  const railOpen = useApp((state) => state.railOpen)
+  const photocraftOpen = useApp((state) => state.photocraftOpen)
   const error = useApp((state) => state.error)
-  const newGoal = useApp((state) => state.newGoal !== null)
-  // The side of the only pane, when it has one: the card then takes the larger share beside the browser.
   const split = useApp((state) => {
     if (state.panes.length !== 1) return false
     const chatId = focusedChatId(state)
-    return state.goals.some((goal) => goal.chatId === chatId) ? state.goalPaneOpen : (chatId !== null && state.views[chatId]?.planTurnId != null)
+    return chatId !== null && state.views[chatId]?.planTurnId != null
   })
   return (
-    <div className={`app${evalsOpen ? ' has-evals' : ''}${libraryOpen && !artifact ? ' has-library' : ''}${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-goal' : ''}${railOpen ? '' : ' rail-folded'}`}>
-      <Rail />
-      <Toolbar />
+    <div className={`app${libraryOpen && !artifact ? ' has-library' : ''}${photocraftOpen && !libraryOpen && !artifact ? ' has-photocraft' : ''}${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-side' : ''}`}>
+      <TitleStrip />
       <ChatCard />
-      {artifact ? <ArtifactPanel /> : libraryOpen ? <LibraryPanel /> : evalsOpen ? <EvalPanel /> : browserOpen && <BrowserPanel />}
-      {newGoal && <NewGoal />}
+      {artifact ? <ArtifactPanel /> : libraryOpen ? <LibraryPanel /> : photocraftOpen ? <PhotocraftPanel /> : browserOpen && <BrowserPanel />}
       <AttachmentNotice />
       {error && (
         <div className="toast" role="alert">

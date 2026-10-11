@@ -1,7 +1,7 @@
 import { nativeImage, session, type WebContents } from 'electron'
 import type { AgentTab, BrowserAgentOp, GotoUntil } from '../shared/types.ts'
 import { BrowserDownloads } from './browser-downloads.ts'
-import { buildA11ySnapshot, filterReadByQuery, type AxNode } from './browser-a11y.ts'
+import { buildA11ySnapshot, digestMaxFor, filterReadByQuery, type AxNode } from './browser-a11y.ts'
 import { formatAttachedJson } from './browser-json-attach.ts'
 import { formatNetworkDelta, formatReadDelta } from './browser-run-delta.ts'
 import { buildHar, harSummary, type HarRequestRow } from './browser-har.ts'
@@ -88,6 +88,8 @@ export class BrowserAgent {
   /** Chats that work out of sight (a fill), and the tabs they opened, which never take the view. */
   private readonly quiet = new Set<string>()
   private readonly quietTabs = new Set<string>()
+  /** The last JSON body attached to a read, by tab and request, so the next read need not fetch it again. */
+  private jsonMemo: { key: string; text: string } | null = null
 
   private readonly downloads: BrowserDownloads
 
@@ -137,9 +139,14 @@ export class BrowserAgent {
         return this.fetch(op)
       case 'info':
         return this.info(this.tab(op))
-      case 'close':
-        this.pane.agentClose(this.tab(op).id)
+      case 'close': {
+        const key = op.chat ?? ''
+        const ref = op.tab ?? this.workTabs.get(key)
+        if (!ref) return null
+        await this.pane.agentClose(ref)
+        for (const [chat, id] of this.workTabs) if (id === ref) this.workTabs.delete(chat)
         return null
+      }
       case 'goto': {
         const tab = this.tab(op)
         const problem = await this.navigate(tab, op.url)
@@ -559,12 +566,18 @@ export class BrowserAgent {
   private async read(tab: TabHandle, op: Extract<BrowserAgentOp, { op: 'read' }>, problem: string | null): Promise<string> {
     const { id, url, title } = this.info(tab)
     const state = await this.attach(tab)
+    const documentResponse = state.requests.findLast(request => request.kind === 'Document'
+      && request.url.split('#')[0] === url.split('#')[0])
+    if (problem) throw new Error(problem)
+    if (documentResponse?.status && documentResponse.status >= 400) {
+      throw new Error(`HTTP ${documentResponse.status} reading ${url}. Try another primary source or web_read.`)
+    }
     const dialogs = state.dialogs.splice(0).map((dialog) => `\n(The page raised a dialog, which was accepted. ${dialog})`).join('')
     const parts = [this.readHeader(url, title, id, problem, dialogs)]
     if (op.focus === 'a11y' && url) {
       parts.push(await this.readA11y(tab, op.max ?? 120, op.query ?? null))
     } else if (op.focus !== 'network' && op.focus !== 'a11y' && url) {
-      const digestMax = op.query ? (op.focus === 'text' ? 20_000 : 250) : op.max
+      const digestMax = digestMaxFor(op.query ?? null, op.max)
       const options: DigestOptions = { focus: op.focus, selector: op.selector, max: digestMax }
       let body = String(await this.evaluate(tab, `__rocket.digest(${JSON.stringify(options)})`, true))
       if (op.query) body = filterReadByQuery(body, op.query, op.max)
@@ -617,10 +630,16 @@ export class BrowserAgent {
       request.method === 'GET' && request.status === 200 && /json/i.test(request.mime) && request.cdpId
     )
     if (!candidate) return null
+    // A read repeats the same page's latest JSON until the page makes another request, so the
+    // last body is kept. One entry is enough and bounds the memory.
+    const key = `${tab.id}:${candidate.cdpId}`
+    if (this.jsonMemo?.key === key) return this.jsonMemo.text
     try {
       const { body, base64Encoded } = await this.send(tab, 'Network.getResponseBody', { requestId: candidate.cdpId }) as { body: string; base64Encoded: boolean }
       if (base64Encoded) return null
-      return formatAttachedJson(candidate.id, body)
+      const text = formatAttachedJson(candidate.id, body)
+      this.jsonMemo = { key, text }
+      return text
     } catch {
       return null
     }

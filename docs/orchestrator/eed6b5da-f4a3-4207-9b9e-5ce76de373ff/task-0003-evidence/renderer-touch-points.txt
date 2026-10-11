@@ -1,0 +1,36 @@
+src/renderer/src/components/OrchestratorShell.tsx:8:  boardRun, loadWorkerChat, openChatLink, openWorkerReport, replyToWorker, setOrchWidth, setWorkerFilter, stopWorker, useApp, workerStatus,
+src/renderer/src/components/OrchestratorShell.tsx:9:  type WorkerFilter, type WorkerStatus
+src/renderer/src/components/OrchestratorShell.tsx:25:const STATUS_TEXT: Record<WorkerStatus, string> = {
+src/renderer/src/components/OrchestratorShell.tsx:58:function Elapsed({ task, live }: { task: OrchestratorTask; live: boolean }) {
+src/renderer/src/components/OrchestratorShell.tsx:67:function StatusDot({ status }: { status: WorkerStatus | Orchestration['status'] }) {
+src/renderer/src/components/OrchestratorShell.tsx:72:function WorkerActions({ run, task, status, expanded }: { run: Orchestration; task: OrchestratorTask; status: WorkerStatus; expanded: boolean }) {
+src/renderer/src/components/OrchestratorShell.tsx:81:      <button type="button" className="worker-action is-stop" aria-label="Stop worker" title={stopping ? 'Stop requested; the worker ends when its provider does' : 'Stop this worker’s turn'} disabled={status !== 'running' || stopping} onClick={() => stopWorker(task.chatId)}>
+src/renderer/src/components/OrchestratorShell.tsx:84:      <button type="button" className="worker-action" aria-label="Open report" title={status === 'running' || status === 'queued' ? 'The report opens once the worker finishes' : task.report} disabled={status === 'running' || status === 'queued'} onClick={() => void openWorkerReport(run, task)}>
+src/renderer/src/components/OrchestratorShell.tsx:108:function WorkerWindow({ run, task, status }: { run: Orchestration; task: OrchestratorTask; status: WorkerStatus }) {
+src/renderer/src/components/OrchestratorShell.tsx:115:        <Elapsed task={task} live={status === 'running'} />
+src/renderer/src/components/OrchestratorShell.tsx:122:        <span className="worker-state">{STATUS_TEXT[status]}</span>
+src/renderer/src/components/OrchestratorShell.tsx:124:        <WorkerActions run={run} task={task} status={status} expanded={false} />
+src/renderer/src/components/OrchestratorShell.tsx:131:function WorkerReply({ task }: { task: OrchestratorTask }) {
+src/renderer/src/components/OrchestratorShell.tsx:140:    if (await replyToWorker(task.chatId, task.provider, message)) setText('')
+src/renderer/src/components/OrchestratorShell.tsx:177:function WorkerExpanded({ run, task, status }: { run: Orchestration; task: OrchestratorTask; status: WorkerStatus }) {
+src/renderer/src/components/OrchestratorShell.tsx:189:        <span className="worker-state">{providerLabel(task.provider)} · {STATUS_TEXT[status]}</span>
+src/renderer/src/components/OrchestratorShell.tsx:190:        <Elapsed task={task} live={status === 'running'} />
+src/renderer/src/components/OrchestratorShell.tsx:191:        <WorkerActions run={run} task={task} status={status} expanded />
+src/renderer/src/components/OrchestratorShell.tsx:199:      <WorkerReply task={task} />
+src/renderer/src/components/OrchestratorShell.tsx:205:const RANK: Record<WorkerStatus, number> = { running: 0, queued: 1, done: 2, failed: 2, interrupted: 2, cancelled: 2 }
+src/renderer/src/components/OrchestratorShell.tsx:214:  const statuses = useApp((state) => run ? run.tasks.map((task) => workerStatus(state, run, task)).join(',') : '')
+src/renderer/src/components/OrchestratorShell.tsx:218:    const all = run.tasks.map((task, index) => ({ task, status: list[index] as WorkerStatus, index }))
+src/renderer/src/components/OrchestratorShell.tsx:219:    return all.sort((a, b) => RANK[a.status] - RANK[b.status] || b.index - a.index)
+src/renderer/src/components/OrchestratorShell.tsx:221:  const count = (status: WorkerStatus): number => workers.filter((worker) => worker.status === status).length
+src/renderer/src/components/OrchestratorShell.tsx:222:  const shown = workers.filter((worker) => filter === 'all' || (filter === 'running') === (RANK[worker.status] < 2))
+src/renderer/src/components/OrchestratorShell.tsx:223:  const stopped = count('interrupted') + count('cancelled')
+src/renderer/src/components/OrchestratorShell.tsx:233:              <span><StatusDot status="running" />{count('running')} running</span>
+src/renderer/src/components/OrchestratorShell.tsx:234:              {count('queued') > 0 && <span><StatusDot status="queued" />{count('queued')} queued</span>}
+src/renderer/src/components/OrchestratorShell.tsx:235:              <span><StatusDot status="done" />{count('done')} done</span>
+src/renderer/src/components/OrchestratorShell.tsx:236:              {count('failed') > 0 && <span><StatusDot status="failed" />{count('failed')} failed</span>}
+src/renderer/src/components/OrchestratorShell.tsx:287:  const expandedStatus = useApp((state) => (run && expanded ? workerStatus(state, run, expanded) : 'running'))
+src/renderer/src/store.ts:168:export type WorkerStatus = 'queued' | 'running' | 'done' | 'failed' | 'interrupted' | 'cancelled'
+src/renderer/src/store.ts:1239:export function workerStatus(current: AppState, run: Orchestration, task: OrchestratorTask): WorkerStatus {
+src/renderer/src/store.ts:1268:export function stopWorker(chatId: string): void {
+src/renderer/src/store.ts:1274:export async function replyToWorker(chatId: string, provider: ProviderId, text: string): Promise<boolean> {
+src/renderer/src/store.ts:1285:export function openWorkerReport(run: Orchestration, task: OrchestratorTask): Promise<void> {

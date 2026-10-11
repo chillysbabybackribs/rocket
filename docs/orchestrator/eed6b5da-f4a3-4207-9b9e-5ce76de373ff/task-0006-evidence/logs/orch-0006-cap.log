@@ -1,0 +1,6 @@
+
+Running 1 test using 1 worker
+
+  ✓  1 .artifacts/board-capture/board-capture-0006.spec.ts:9:1 › board 0006: strips, queue notes, expanded nav, queued reply, rail beside the browser (15.9s)
+
+  1 passed (17.3s)

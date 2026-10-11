@@ -1,0 +1,7 @@
+{
+  "tests/ui/orchestra-shell.spec.ts": "87025ead1dfc3c92467bfc48125247d4205ff4434b3bd143a70c66eed86ed1e8",
+  "src/host/ui-test.ts": "df93f9f346c60d47cda897e95272ffbb661f30ad39a277a9ecacf7e9a7027a87",
+  "src/host/ui-test.test.ts": "8e193ce70d7c352c7e02607638636329df556a05bfb5c49a26c5a1a84afef7cd",
+  "docs/evals/rocket-ui-regression.csv": "5490a4919bc985505984f35ef6db1b930d02ebc2309bc47f2ea436ce2f6da1d2",
+  "README.md": "9f210b8f4b87471b5fc4157a0956a520ec083a1febf1f0d7d929718e90f98a27"
+}

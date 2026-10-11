@@ -8,7 +8,9 @@ import type {
   HostApi, HostEvent, HostMethod, HostRequestMessage, HostToRenderer, ProviderId, UsageSnapshot
 } from '../shared/types.ts'
 import { FillRunner } from './fill.ts'
-import { GoalRunner } from './goals.ts'
+import { ImageRunner } from './image.ts'
+import { Orchestrator } from './orchestrator.ts'
+import { orchestratorTools } from './tools/orchestrator.ts'
 import { Library } from './library.ts'
 import { describeTiming, Hub } from './hub.ts'
 import { messageOf, oneLine } from './json.ts'
@@ -24,28 +26,24 @@ import { answerMessage, askTools } from './tools/ask.ts'
 import { agentSituationContext } from './agent-situation.ts'
 import { browserContext, browserTools } from './tools/browser.ts'
 import { ToolChannel } from './tools/channel.ts'
-import { goalTools } from './tools/goal.ts'
+import { imageTools } from './tools/image.ts'
 import { libraryTools } from './tools/library.ts'
 import { ToolRegistry } from './tools/registry.ts'
 import { memoryTools } from './tools/memory.ts'
 import { selfCheckTools } from './tools/self-check.ts'
 import { uiSnapshotTools } from './tools/ui-snapshot.ts'
 import { askWhere, describeWhere, uiMapTools } from './tools/ui-map.ts'
+import { photocraftBrief, photocraftTools } from './tools/photocraft.ts'
 import { rocketSourceRoot, UiRunManager } from './tools/ui-run.ts'
 import { LiveUiRunner } from './tools/ui-live.ts'
 import { redactText, ToolLedger } from './tool-ledger.ts'
 import { loadToolLedgerCallDetail, loadToolLedgerPanel, setToolLedgerReview } from './tool-ledger-panel.ts'
-import { loadToolEvalScores } from './tool-eval-scores.ts'
 import type { ReviewLifecycle } from './tool-ledger.ts'
 import { toolHistoryTools } from './tools/tool-history.ts'
 import { toolReviewTools } from './tools/tool-review.ts'
 import { Teamwork } from './teamwork.ts'
 import { workspaceContext } from './workspace.ts'
 import { UiTestAdapter, uiTestProfile } from './ui-test.ts'
-import { EvalExport } from './eval-export.ts'
-import { EvalRuns, evalRunsRoot } from './eval-runs.ts'
-import { listScenarios } from './eval-scenarios.ts'
-import { runEvalCell } from './eval-run-cell.ts'
 import type { TurnTiming } from './hub.ts'
 import type { MainToHostFill } from '../shared/fill.ts'
 
@@ -68,9 +66,6 @@ const EVENT_FLUSH_MS = 16
 const testProfile = uiTestProfile()
 const dataDir = process.env.ROCKET_DATA_DIR || join(homedir(), '.config', 'rocket')
 const store = new Store(join(dataDir, 'rocket.db'))
-// Eval runs work in copies under here; their chats and goals stay out of the chat list and goals.
-const evalRoot = evalRunsRoot(dataDir)
-const inEvalFolder = (cwd: string): boolean => cwd.startsWith(evalRoot + '/')
 const attachments = new AttachmentStore(store, join(dataDir, 'attachments'))
 // The journal records always, since a crash is worth keeping; the tools and nudges that surface it are opt-in.
 const journal = new Journal(join(dataDir, 'journal.jsonl'))
@@ -119,18 +114,19 @@ function post(message: HostToRenderer): void {
 
 // Longer than anything main waits for on a page, so main's own, clearer error arrives first.
 const BROWSER_TIMEOUT_MS = 150_000
+const PHOTOCRAFT_TIMEOUT_MS = 20 * 60_000
 let browserSeq = 0
 const browserPending = new Map<number, { resolve: (result: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>()
 
 /** Ask main to do something in the browser, which lives there. */
-function askBrowser(op: MainAgentOp): Promise<unknown> {
+function askBrowser(op: MainAgentOp, timeoutMs = BROWSER_TIMEOUT_MS): Promise<unknown> {
   return new Promise((resolve, reject) => {
     if (!parentPort) return reject(new Error('The browser is only available inside the app'))
     const id = ++browserSeq
     const timer = setTimeout(() => {
       browserPending.delete(id)
       reject(new Error('The browser did not answer in time'))
-    }, BROWSER_TIMEOUT_MS)
+    }, timeoutMs)
     browserPending.set(id, { resolve, reject, timer })
     parentPort.postMessage({ type: 'browser', id, op } satisfies BrowserAgentRequest)
   })
@@ -147,7 +143,7 @@ function onBrowserReply(reply: BrowserAgentReply): void {
 
 // The library's shelf: attachments, downloads, plans and opened files (docs/library-plan.md).
 const library = new Library(store, attachments, join(dataDir, 'library-previews'), {
-  hidden: (chatId) => { const chat = store.chat(chatId); return chat !== null && (inEvalFolder(chat.cwd) || fills.owns(chat.cwd)) },
+  hidden: (chatId) => { const chat = store.chat(chatId); return chat !== null && (fills.owns(chat.cwd) || images.owns(chat.cwd)) },
   changed: () => emit({ type: 'library' }),
   downloads: async (chat, since) => await askBrowser({ op: 'downloads', chat, since }) as BrowserDownload[]
 })
@@ -156,6 +152,7 @@ void library.backfill().catch((error) => journal.add('host', 'warn', 'library', 
 // The tools are served before any provider starts, so every session is born knowing them.
 const liveUi = new LiveUiRunner(rocketSourceRoot(), join(dataDir, 'ui-runs'), askBrowser)
 const uiRuns = new UiRunManager(rocketSourceRoot(), undefined, (args, chatId) => liveUi.run(args, chatId))
+let orchestration: Orchestrator | undefined
 let ledger: ToolLedger | undefined
 try {
   const build = createHash('sha256').update(readFileSync(import.meta.filename)).digest('hex')
@@ -164,18 +161,24 @@ try {
     return { model: turn?.model ?? null, turnId: turn?.id ?? null }
   })
 } catch (error) { journal.add('host', 'warn', 'ledger-unavailable', messageOf(error)) }
-const evalExport = new EvalExport(dataDir, rocketSourceRoot(), () => store, () => ledger)
 const turnTiming = new Map<string, TurnTiming>()
 const toolRegistry = new ToolRegistry((name, message, { provider, chatId }) => journal.add(`tool:${name}`, 'warn', 'tool-error', redactText(message).slice(0, 500), { provider, chatId }), ledger)
   .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results'), (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null), (chatId, url) => hub.noteOpened(chatId, url)))
   .add(...uiSnapshotTools(async () => await askBrowser({ op: 'uiSnapshot' }) as UiSnapshot))
   .add(...uiMapTools(askBrowser))
+  // PhotoCraft runs a long filter in its page's one thread and answers when it is done: a lens blur on
+  // a 24-megapixel image outlasts the browser's 150 s, so its requests wait longer.
+  .add(...photocraftTools((op) => askBrowser(op, PHOTOCRAFT_TIMEOUT_MS), (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)))
   .add(...uiRuns.tools())
   .add(...(ledger ? [...toolHistoryTools(ledger), ...toolReviewTools(ledger)] : []))
   .add(...memoryTools(store))
   .add(...libraryTools(library, store))
+  .add(...imageTools(() => images))
   .add(...askTools(() => hub))
-  .add(...goalTools(() => goals))
+  .add(...orchestratorTools(() => {
+    if (!orchestration) throw new Error('The orchestrator is still starting.')
+    return orchestration
+  }))
   .add(...(selfCheck ? selfCheckTools(journal, (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)) : []))
 const tools = new ToolChannel(
   toolRegistry,
@@ -198,29 +201,19 @@ const adapters: Record<ProviderId, ProviderAdapter> = testProfile ? {
 }
 /** Events go to the renderer; the ones that end a chat's use of the browser go to main as well. */
 function onEvent(event: HostEvent): void {
-  // Eval runs' chats work in folders under the profile's eval root; the panel shows them, the
-  // chat list does not. Their turns and items still go out, for the panel's live transcript.
   // A fill's chat goes nowhere near the window: its steps go to main for the chip beside the page.
-  const fill = fills.observe(event)
-  if (!fill && !(event.type === 'chat' && inEvalFolder(event.chat.cwd))) emit(event)
+  // A picture's chat (generate_image) is as hidden, and says nothing at all.
+  const hidden = fills.observe(event) || images.observe(event)
+  if (!hidden) emit(event)
   if (event.type === 'turn' && event.turn.status !== 'running') {
     void askBrowser({ op: 'rest', chat: event.turn.chatId }).catch(() => {})
-    goals.turnEnded(event.turn)
+    try { orchestration?.turnEnded(event.turn) } catch (error) { journal.add('host', 'warn', 'orchestrator', messageOf(error)) }
     const { id } = event.turn
     const ended = event.turn
-    void teamwork.turnEnded(ended).then((files) => {
-      goals.noteFiles(id, files)
-      return library.turnEnded(ended, files)
-    }).catch((error) => journal.add('host', 'warn', 'library', messageOf(error), { turnId: id }))
-    try {
-      const path = evalExport.onTurnEnded(event.turn, turnTiming.get(event.turn.chatId))
-      if (path) journal.add('host', 'info', 'eval-export', `Wrote ${path}`, { turnId: id, chatId: event.turn.chatId })
-    } catch (error) {
-      journal.add('host', 'warn', 'eval-export', messageOf(error), { turnId: id })
-    }
+    void teamwork.turnEnded(ended).then((files) => library.turnEnded(ended, files))
+      .catch((error) => journal.add('host', 'warn', 'library', messageOf(error), { turnId: id }))
     turnTiming.delete(event.turn.chatId)
   } else if (event.type === 'chatDeleted') {
-    goals.forget(event.chatId)
     void askBrowser({ op: 'forget', chat: event.chatId }).catch(() => {})
     teamwork.forget(event.chatId)
   }
@@ -249,34 +242,44 @@ const hub: Hub = new Hub(
         teamwork.context(chatId, provider, fresh),
         browserTabs(chatId, provider, fresh),
         // The window may be closed or still loading; the block then says to ask rocket_ui_where.
-        askWhere(askBrowser, chatId).then((where) => agentSituationContext(describeWhere(where)), () => agentSituationContext())
+        askWhere(askBrowser, chatId).then(async (where) => {
+          const photocraft = await photocraftBrief(askBrowser, where.side === 'photocraft')
+          return [agentSituationContext(describeWhere(where)), photocraft].filter(Boolean).join('\n\n')
+        }, () => agentSituationContext())
       ])
     ]
     return parts.filter(Boolean).join('\n\n') || null
   },
-  ids => attachments.resolve(ids)
+  ids => attachments.resolve(ids),
+  // A picture a model made joins the library as soon as Rocket has its copy.
+  async (source, caption) => {
+    const image = await attachments.keepGenerated(source, caption)
+    emit({ type: 'library' })
+    return image
+  }
 )
 
 // Fill with Rocket: one hidden turn per fill, its chat and folder deleted when it ends (fill.ts).
 const fills: FillRunner = new FillRunner(
   store, hub, join(dataDir, 'fill'),
   (message) => parentPort?.postMessage(message),
-  inEvalFolder,
+  undefined,
   (message) => journal.add('host', 'warn', 'fill', message)
 )
 void fills.recover().catch((error) => journal.add('host', 'warn', 'fill', `Fills left by the last exit could not be cleared: ${messageOf(error)}`))
   .then(() => fills.announce())
 
-// Built after the hub, which it drives; goals cut off by the last exit wait for the user.
-const goals: GoalRunner = new GoalRunner(store, hub, (goal) => { if (!inEvalFolder(goal.cwd)) emit({ type: 'goal', goal }) })
+// generate_image: one hidden Codex turn per picture, for every provider (image.ts).
+const images: ImageRunner = new ImageRunner(
+  store, hub, join(dataDir, 'image-chats'), join(dataDir, 'generated-images'),
+  (id) => attachments.resolve([id])[0]!.path,
+  (message) => journal.add('host', 'warn', 'image', message)
+)
+void images.recover().catch((error) => journal.add('host', 'warn', 'image', `Pictures left by the last exit could not be cleared: ${messageOf(error)}`))
 
-const evalRuns: EvalRuns = new EvalRuns({
-  ...evalDeps(),
-  root: evalRoot,
-  scenarios: () => listScenarios(rocketSourceRoot()).scenarios,
-  emit: (run) => emit({ type: 'evalRun', run }),
-  providerBusy: (provider) => hub.working().some((turn) => turn.provider === provider)
-})
+orchestration = new Orchestrator(join(dataDir, 'orchestrator.json'), store, hub, run => emit({ type: 'orchestrator', run }))
+if (orchestration.stateError) journal.add('host', 'warn', 'orchestrator', orchestration.stateError)
+orchestration.startMonitoring()
 
 const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | Promise<HostApi[M][1]> } = {
   'attachment.import': ({ name, bytes, thumbnail }) => attachments.import(name, bytes, thumbnail),
@@ -286,7 +289,7 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'attachment.export': async ({ id, path }) => { await attachments.export(id, path); return null },
   'attachment.locate': ({ id }) => attachments.resolve([id])[0].path,
   'attachment.collect': async ({ keepIds }) => { await attachments.collect(keepIds); return null },
-  'chats.list': () => hub.listChats().filter((chat) => !inEvalFolder(chat.cwd) && !fills.owns(chat.cwd)),
+  'chats.list': () => hub.listChats().filter((chat) => !fills.owns(chat.cwd) && !images.owns(chat.cwd)),
   'chat.create': ({ cwd }) => hub.createChat(cwd),
   'chat.open': ({ chatId }) => {
     // What is queued goes out ahead of the snapshot, which already holds it; sent after, it would be applied twice.
@@ -296,16 +299,18 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'chat.older': ({ chatId, before }) => hub.olderTurns(chatId, before),
   'item.output': ({ chatId, itemId }) => hub.itemOutput(chatId, itemId),
   'chat.setCwd': ({ chatId, cwd }) => hub.setCwd(chatId, cwd),
-  'chat.delete': async ({ chatId }) => { await uiRuns.close(chatId); await hub.deleteChat(chatId); return null },
+  'chat.delete': async ({ chatId }) => { orchestration?.stop(chatId); await uiRuns.close(chatId); await hub.deleteChat(chatId); return null },
   'chat.send': async ({ chatId, provider, model, text, attachmentIds = [] }) => {
     const attached = attachments.resolve(attachmentIds).map(({ path: _path, textPath: _text, ...attachment }) => attachment)
     validateAttachments(attached)
+    orchestration?.userMessage(chatId, text)
     await hub.post(chatId, provider, model, text, attached)
     fills.noteSent(provider, model)
     if (attached.length) emit({ type: 'library' })
     return null
   },
   'chat.stop': async ({ chatId, sendQueued }) => {
+    orchestration?.stop(chatId)
     const withdrawn = sendQueued ? null : hub.withdraw(chatId)
     await hub.stop(chatId)
     return withdrawn
@@ -323,14 +328,10 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'question.answer': ({ chatId, itemId, answer, provider, model }) => {
     const text = answer.trim()
     if (!text) throw new Error('Pick an option or type an answer first')
-    // A goal's chat is the goal's to drive: the answer goes to its next round as a note. In an
-    // ordinary chat it is the next message, sent now, or the moment the turn that asked is over.
-    const goal = goals.list().find((entry) => entry.chatId === chatId && entry.status !== 'done' && entry.status !== 'stopped')
     const question = hub.answerQuestion(chatId, itemId, text)
     const message = answerMessage(question, text)
     try {
-      if (goal) goals.steer(goal.id, message)
-      else hub.enqueue(chatId, provider, model, message)
+      hub.enqueue(chatId, provider, model, message)
     } catch (error) {
       hub.answerQuestion(chatId, itemId, null)
       throw error
@@ -340,42 +341,17 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
   'chat.prepare': ({ chatId, cwd, provider, model }) => { void hub.prepare(chatId, provider, model, cwd); return null },
   'usage.read': ({ provider, force }) => hub.usage(provider, force),
   'models.list': ({ provider }) => hub.models(provider),
-  'goals.list': () => goals.list().filter((goal) => !inEvalFolder(goal.cwd)),
-  'goal.draft': (input) => goals.draft(input),
-  'goal.update': ({ goalId, edit }) => goals.update(goalId, edit),
-  'goal.start': ({ goalId }) => goals.start(goalId),
-  'goal.pause': ({ goalId }) => goals.pause(goalId),
-  'goal.resume': ({ goalId }) => goals.resume(goalId),
-  'goal.stop': ({ goalId }) => goals.stop(goalId),
-  'goal.steer': ({ goalId, text }) => goals.steer(goalId, text),
-  'goal.referenceImage': ({ goalId, index }) => goals.referenceImage(goalId, index),
+  'orchestrator.list': () => orchestration?.list() ?? [],
   'journal.report': ({ message, stack }) => {
     journal.add('renderer', 'error', 'crash', oneLine(String(message), 300), { stack: String(stack ?? '').split('\n').slice(0, 6).join('\n') })
     return null
   },
-  'eval.tagChat': ({ chatId }) => { evalExport.tagChat(chatId); return null },
-  'eval.untagChat': ({ chatId }) => { evalExport.untagChat(chatId); return null },
-  'eval.listTaggedChats': () => evalExport.listTaggedChats(),
-  'eval.exportTurn': ({ turnId, outDir }) => {
-    const ended = store.turn(turnId)
-    return evalExport.exportTurn(turnId, ended ? turnTiming.get(ended.chatId) : null, outDir ?? null)
-  },
-  'eval.setCellDir': ({ dir }) => { evalExport.setCellDir(dir); return null },
-  'eval.runCell': (input) => runEvalCell(
-    evalDeps(),
-    input
-  ),
-  'eval.listScenarios': () => listScenarios(rocketSourceRoot()),
-  'evalRuns.list': ({ scenarioId }) => evalRuns.list(scenarioId),
-  'evalRuns.start': (input) => evalRuns.start(input),
-  'evalRuns.stop': async ({ runId }) => { await evalRuns.stop(runId); return null },
   'library.list': () => library.list(),
   'library.preview': ({ id }) => library.preview(id),
   'library.view': ({ id }) => library.view(id),
   'library.add': ({ path, chatId }) => library.add(path, 'opened', chatId),
   'toolLedger.loadPanel': () => loadToolLedgerPanel(ledger, toolRegistry.list()),
   'toolLedger.callDetail': ({ callId }: { callId: string }) => loadToolLedgerCallDetail(ledger, callId),
-  'toolEval.scores': () => loadToolEvalScores(ledger, toolRegistry.list(), rocketSourceRoot(), dataDir),
   'toolLedger.setReview': (params: {
     callId: string; lifecycle?: ReviewLifecycle; retryCallId?: string | null; linkRetry?: boolean
     causeCode?: string | null; causeNote?: string | null; proposedFix?: string | null
@@ -384,10 +360,6 @@ const handlers: { [M in HostMethod]: (params: HostApi[M][0]) => HostApi[M][1] | 
     const review = setToolLedgerReview(ledger, params)
     return { path: ledger.path, review }
   }
-}
-
-function evalDeps() {
-  return { hub, goals, store, evalExport, timingForChat: (chatId: string) => turnTiming.get(chatId) }
 }
 
 async function handleRequest(message: HostRequestMessage): Promise<void> {
@@ -414,8 +386,9 @@ let exiting = false
 async function shutdown(): Promise<void> {
   if (exiting) return
   exiting = true
-  goals.shutdown()
+  orchestration?.shutdown()
   await fills.shutdown()
+  await images.shutdown()
   await uiRuns.shutdown()
   await liveUi.shutdown()
   await Promise.race([hub.shutdown(), new Promise((resolve) => setTimeout(resolve, 1_500))])

@@ -1,5 +1,6 @@
 import { addDraftFiles, draftOf, updateDraft, useDraft } from '../drafts.ts'
 import { Attachments } from './Attachments.tsx'
+import { CaptureButton } from './Capture.tsx'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { ArrowUp, Folder, MessageSquarePlus, Paperclip, Square } from 'lucide-react'
 import { PROVIDERS, isFileAttachment, providerLabel } from '../../../shared/types.ts'
@@ -22,7 +23,7 @@ export function Composer({ placeholder }: { placeholder: string }) {
   const paneKey = useApp((state) => paneAt(state, pane).key)
   const focused = useApp((state) => state.focused === pane)
   const paneCount = useApp((state) => state.panes.length)
-  const busy = useApp((state) => (chatId ? state.running.has(chatId) : false))
+  const busy = useApp((state) => chatId ? state.running.has(chatId) || ['running', 'draining'].includes(state.orchestrations[chatId]?.status ?? '') : false)
   const cwd = useApp((state) => cwdOf(state, pane))
   const ready = useApp((state) => state.ready)
   const provider = useApp((state) => paneAt(state, pane).provider)
@@ -30,6 +31,7 @@ export function Composer({ placeholder }: { placeholder: string }) {
   const answering = usePaneView((view) => view.turns.findLast((turn) => turn.status === 'running')?.provider ?? null)
   const restored = useApp((state) => paneAt(state, pane).restored)
   const draftKey = chatId ?? `new:${paneKey}`
+  const chatTitle = useApp((state) => state.chats.find((chat) => chat.id === chatId)?.title ?? 'the new chat')
   const draft = useDraft(draftKey)
   const { text, attachments } = draft
   const setText = (text: string): void => updateDraft(draftKey, { text })
@@ -148,6 +150,7 @@ export function Composer({ placeholder }: { placeholder: string }) {
         }} />
         <div className="composer-bar">
           <button type="button" className="composer-attach" aria-label="Attach files" title="Attach images, PDFs or text files" disabled={draft.sending} onClick={() => picker.current?.click()}><Paperclip size={16} /></button>
+          <CaptureButton draftKey={draftKey} title={chatTitle} disabled={draft.sending} />
           <button
             type="button"
             className="composer-folder"

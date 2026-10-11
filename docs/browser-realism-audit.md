@@ -1,5 +1,15 @@
 # Embedded browser realism audit
 
+> **Status note (2026-10-09), checked against the code.** Done in code: client hints on the page
+> side (`presentAsChrome` in `src/main/browser-pane.ts`, `userAgentMetadata` in `browser-url.ts`)
+> and on the header side (`sendClientHints` in `browser-pane.ts`, `clientHintHeaders` in
+> `browser-url.ts`); `window.chrome` fill (`src/main/chrome-object.ts`); `navigator.languages`
+> via `acceptLanguage` (`presentAsChrome`). Open: the Critical-CH restart (not emulated, per the
+> comment in `sendClientHints`), and the synchronous first-tick iframe `chrome` read. Items 4 and 5
+> stay as decided. The live openai.com result below is from 2026-10-06; it was not re-run for this note.
+> Corrected: the header code is an `askedFor` map inside `sendClientHints`, not a `hintsAskedFor`
+> function, and the `setUserAgent` call is at `browser-pane.ts` line 86.
+
 **Date:** 2026-10-06 · **Electron:** 44.5.1 · **Chromium:** 152.0.7977.130
 **Method:** in-page fingerprint (`navigator`, WebGL, codecs, permissions) plus a live header echo
 (`httpbin.org/headers`) from the `persist:browser` session, compared against stock desktop Chrome.
@@ -72,6 +82,7 @@ await contents.debugger.sendCommand('Network.setUserAgentOverride', {
 // 2. Header side, once per session (browser-pane.ts, sendClientHints): webRequest adds
 //    clientHintHeaders(metadata, hintsAskedFor(origin)) to every HTTPS request, where the
 //    high-entropy set per origin is learned from Accept-CH response headers.
+//    (In code: sendClientHints keeps an askedFor Map by origin, filled from onHeadersReceived.)
 ```
 
 Verified by echo: the server then receives `Sec-CH-UA`, `Sec-CH-UA-Mobile` and `Sec-CH-UA-Platform`
@@ -150,7 +161,7 @@ with a wide side panel open. Faking it would be a lie about layout; not done.
    challenge; re-test `openai.com` after a restart.
 2. `window.chrome` fill (done) and `navigator.languages` (done), both on the same debugger session.
 3. Left as is, with reasons above: notification permission state, window geometry, and the
-   synchronous first-tick read of a new iframe's `chrome`.
+   synchronous first-tick read of a new iframe's `chrome`. Critical-CH stays open (not emulated).
 
 **Live result after (1):** openai.com moved from a silent block to Cloudflare's interactive
 "Verify you are human" checkbox, which then looped on a human click while the user's own Chrome

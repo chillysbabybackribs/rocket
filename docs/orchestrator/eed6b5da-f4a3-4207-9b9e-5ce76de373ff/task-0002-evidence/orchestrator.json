@@ -1,0 +1,153 @@
+[
+  {
+    "id": "ec7d86d9-33c4-4774-8d1b-7e9f2c413127",
+    "chatId": "02744b3f-8690-4d41-9921-33f85054eec4",
+    "provider": "claude",
+    "cwd": "/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/workspace",
+    "task": "UI shell fixture: observe eight controlled workers.",
+    "progressFile": "/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/workspace/docs/orchestrator/ec7d86d9-33c4-4774-8d1b-7e9f2c413127/progress.md",
+    "status": "stopped",
+    "reason": "Stopped by the user. No further work will be dispatched.",
+    "summary": "Controlled fixture inspected.",
+    "next": "Continue isolated board checks.",
+    "notes": "\n## User notes\n\nEdit this section to steer the next review, or message the orchestrator chat.\n",
+    "updates": [],
+    "history": [
+      {
+        "at": 1791437043631,
+        "summary": "Controlled fixture inspected.",
+        "next": "Continue isolated board checks."
+      },
+      {
+        "at": 1791437043780,
+        "summary": "Controlled fixture inspected.",
+        "next": "Continue isolated board checks."
+      },
+      {
+        "at": 1791437043933,
+        "summary": "Controlled fixture inspected.",
+        "next": "Continue isolated board checks."
+      },
+      {
+        "at": 1791437044108,
+        "summary": "Controlled fixture inspected.",
+        "next": "Continue isolated board checks."
+      },
+      {
+        "at": 1791437044295,
+        "summary": "Controlled fixture inspected.",
+        "next": "Continue isolated board checks."
+      },
+      {
+        "at": 1791437044462,
+        "summary": "Controlled fixture inspected.",
+        "next": "Continue isolated board checks."
+      },
+      {
+        "at": 1791437044629,
+        "summary": "Controlled fixture inspected.",
+        "next": "Continue isolated board checks."
+      },
+      {
+        "at": 1791437044794,
+        "summary": "Controlled fixture inspected.",
+        "next": "Continue isolated board checks."
+      }
+    ],
+    "tasks": [
+      {
+        "id": "0001",
+        "chatId": "e6593011-2c24-4a11-be14-7a0b20a838ed",
+        "turnId": "cc851cfd-f538-4d11-9a70-aa0f857c509c",
+        "provider": "claude",
+        "task": "UI shell worker claude",
+        "report": "/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/workspace/docs/orchestrator/ec7d86d9-33c4-4774-8d1b-7e9f2c413127/task-0001-claude.md",
+        "status": "completed",
+        "result": "Streaming from claude.\n\n**Complete.** The controlled response finished.",
+        "review": "Accepted fixture report and observed stream; external provider behavior is outside this check."
+      },
+      {
+        "id": "0002",
+        "chatId": "3bbafe32-aee6-4f85-9688-9b9080786790",
+        "turnId": "c0f9089e-f374-44f5-bbfc-864d3857b85e",
+        "provider": "cursor",
+        "task": "UI shell worker cursor",
+        "report": "/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/workspace/docs/orchestrator/ec7d86d9-33c4-4774-8d1b-7e9f2c413127/task-0002-cursor.md",
+        "status": "completed",
+        "result": "Streaming from cursor.\n\n**Complete.** The controlled response finished.",
+        "review": "Accepted fixture report and observed stream; external provider behavior is outside this check."
+      },
+      {
+        "id": "0003",
+        "chatId": "962bcb98-b3c7-41d5-89f1-911d2096cd65",
+        "turnId": "e9c5f8aa-b6a0-45e5-bd9a-51bb75310f17",
+        "provider": "antigravity",
+        "task": "UI shell worker antigravity",
+        "report": "/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/workspace/docs/orchestrator/ec7d86d9-33c4-4774-8d1b-7e9f2c413127/task-0003-antigravity.md",
+        "status": "completed",
+        "result": "Streaming from antigravity.\n\n**Complete.** The controlled response finished.",
+        "review": "Accepted fixture report and observed stream; external provider behavior is outside this check."
+      },
+      {
+        "id": "0004",
+        "chatId": "145bb7af-faed-4ba7-902a-85932c2cf61e",
+        "turnId": "900bc3ba-562b-4455-869d-2626afd8876d",
+        "provider": "claude",
+        "task": "UI shell worker 4",
+        "report": "/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/workspace/docs/orchestrator/ec7d86d9-33c4-4774-8d1b-7e9f2c413127/task-0004-claude.md",
+        "status": "completed",
+        "result": "Streaming from claude.\n\n**Complete.** The controlled response finished.",
+        "review": "Accepted fixture report and observed stream; external provider behavior is outside this check."
+      },
+      {
+        "id": "0005",
+        "chatId": "ef70f2df-c1e7-4ec4-8a6a-60ac94141143",
+        "turnId": "c10cdc90-9900-44d2-8f3c-b012b6bf3380",
+        "provider": "claude",
+        "task": "UI shell worker 5",
+        "report": "/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/workspace/docs/orchestrator/ec7d86d9-33c4-4774-8d1b-7e9f2c413127/task-0005-claude.md",
+        "status": "completed",
+        "result": "Streaming from claude.\n\n**Complete.** The controlled response finished.",
+        "review": "Accepted fixture report and observed stream; external provider behavior is outside this check."
+      },
+      {
+        "id": "0006",
+        "chatId": "78ae6347-4537-4182-a031-655102dbd02f",
+        "turnId": "62aaa41d-5393-423d-9fa4-718074b8d6c3",
+        "provider": "claude",
+        "task": "UI shell worker 6",
+        "report": "/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/workspace/docs/orchestrator/ec7d86d9-33c4-4774-8d1b-7e9f2c413127/task-0006-claude.md",
+        "status": "completed",
+        "result": "Streaming from claude.\n\n**Complete.** The controlled response finished.",
+        "review": "Accepted fixture report and observed stream; external provider behavior is outside this check."
+      },
+      {
+        "id": "0007",
+        "chatId": "6df51c12-2b47-40a5-8c40-89f4d1555b30",
+        "turnId": "919b9727-ec12-42c4-a892-95aea3513477",
+        "provider": "claude",
+        "task": "UI shell worker 7",
+        "report": "/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/workspace/docs/orchestrator/ec7d86d9-33c4-4774-8d1b-7e9f2c413127/task-0007-claude.md",
+        "status": "completed",
+        "result": "Streaming from claude.\n\n**Complete.** The controlled response finished.",
+        "review": "Accepted fixture report and observed stream; external provider behavior is outside this check."
+      },
+      {
+        "id": "0008",
+        "chatId": "c2c95364-95a2-461c-93b0-3c79f1a04d1d",
+        "turnId": "93995817-4504-4f12-a5de-87f1d5959736",
+        "provider": "claude",
+        "task": "UI shell worker 8",
+        "report": "/home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T05-23-46-702Z-OTx2kn/results/orchestra-shell-orchestra--30d9b-xercises-actual-host-limits/workspace/docs/orchestrator/ec7d86d9-33c4-4774-8d1b-7e9f2c413127/task-0008-claude.md",
+        "status": "completed",
+        "result": "Streaming from claude.\n\n**Complete.** The controlled response finished.",
+        "review": "Accepted fixture report and observed stream; external provider behavior is outside this check."
+      }
+    ],
+    "checkpointCycle": 0,
+    "cycle": 0,
+    "leaderTurnId": null,
+    "createdAt": 1791437042526,
+    "updatedAt": 1791437045104
+  }
+]

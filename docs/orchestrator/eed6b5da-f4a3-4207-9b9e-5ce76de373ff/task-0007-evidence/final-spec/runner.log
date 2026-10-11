@@ -1,0 +1,76 @@
+(node:147189) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:147202) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/ui/orchestra-stress.spec.ts:12:1 › orchestra-stress forty workers stream within frame and interaction budgets (1.4m)
+
+
+  1) tests/ui/orchestra-stress.spec.ts:12:1 › orchestra-stress forty workers stream within frame and interaction budgets 
+
+    Error: p95 frame interval <50ms
+
+    expect(received).toBeLessThan(expected)
+
+    Expected: < 50
+    Received:   50
+
+      148 |   expect(states.some(state => state.done > 0 && state.queued > 0 && state.running === 3)).toBe(true)
+      149 |   expect(Number(stream.frameCount)).toBeGreaterThan(30)
+    > 150 |   expect.soft(Number(stream.p95FrameMs), 'p95 frame interval <50ms').toBeLessThan(50)
+          |                                                                      ^
+      151 |   expect.soft(Number(stream.maxLongTaskMs), 'No main-thread long task >=200ms').toBeLessThan(200)
+      152 |   expect.soft(expandMs, 'Expand click event to visible worker <500ms').toBeLessThan(500)
+      153 | })
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/orchestra-stress.spec.ts:150:70
+
+    attachment #2: stress-start-40-cards (image/png) ───────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-09-37-506Z-ri0jXn/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/stress-start-40-cards-e87960cdcb6fa7ff12670677aede927b03d1b1c3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: Streaming CPU profile (application/json) ────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-09-37-506Z-ri0jXn/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/Streaming-CPU-profile-7a6a7a53fe2dee5fbdd5e0e64fa6be30a615dc64.cpuprofile
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: stress-mid-streaming (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-09-37-506Z-ri0jXn/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/stress-mid-streaming-10e4f127a4f4c45fb6993bb6a3f52b4cf640cef4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: stress-end-40-reports (image/png) ───────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-09-37-506Z-ri0jXn/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/stress-end-40-reports-cbf7b8869f61c8917542532db57a80d2659a7844.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Worker board performance metrics (application/json) ─────────────────────────────
+    .artifacts/ui/2026-10-08T06-09-37-506Z-ri0jXn/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/Worker-board-performance-metrics-6fa1baa581d369497ef7a6b9774162e278d734f0.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-09-37-506Z-ri0jXn/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/failure-app-shell-175ee2512a8667808328a3415de6fd26154d9235.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-09-37-506Z-ri0jXn/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/failure-full-window-7e78b4c204a161f7a9518ad6cfb9a4f27ca20b66.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #10: Trace (application/zip) ────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-09-37-506Z-ri0jXn/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/Trace-c1ff95de82632d011450b39ce4ac77166489d8d5.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #11: App log (text/plain) ───────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #12: Journal (text/plain) ───────────────────────────────────────────────────────────
+    {"at":1791439789598,"source":"turn","severity":"info","kind":"timing","message":"cursor (ui-default) completed in 7.4s","details":{"chatId":"d28d63c4-9c48-462d-b348-d4c2fcf0595b","provider":"cursor","model":"ui-default","firstEventMs":356.79013499999996,"firstTextMs":358.14038700000015,"totalMs":740...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T06-09-37-506Z-ri0jXn/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/error-context.md
+
+  1 failed
+    tests/ui/orchestra-stress.spec.ts:12:1 › orchestra-stress forty workers stream within frame and interaction budgets 

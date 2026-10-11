@@ -6,7 +6,6 @@ import { ACTIONS, PLACES, describeMap, isAction, isPlace } from './app-map.ts'
 
 const root = resolve(import.meta.dirname, '../..')
 
-/** Every renderer source file, read whole. */
 function rendererSources(): Array<{ path: string; text: string }> {
   const out: Array<{ path: string; text: string }> = []
   const walk = (dir: string): void => {
@@ -20,9 +19,6 @@ function rendererSources(): Array<{ path: string; text: string }> {
   return out
 }
 
-// The map and the UI must name the same things. A button that calls go/act with a name the map
-// lacks, or a map entry no control uses, is drift in one direction or the other; the dispatcher
-// itself is excluded, since it implements every name by construction.
 test('every map name has a control in the renderer, and every name a control uses is in the map', () => {
   const sources = rendererSources().filter((file) => !file.path.endsWith('/app-map.ts'))
   const used = new Map<string, string>()
@@ -32,10 +28,10 @@ test('every map name has a control in the renderer, and every name a control use
     for (const match of text.matchAll(/place:\s*'([^']+)'/g)) used.set(match[1]!, path)
   }
   for (const [name, path] of used) {
-    if (name === 'evals' || name === 'browser') continue // A side panel's name, not a place.
     assert.ok(isPlace(name) || isAction(name), `${path} uses "${name}", which is not in the app map`)
   }
   for (const name of [...Object.keys(PLACES), ...Object.keys(ACTIONS)]) {
+    if (name === 'chat') continue // default when no side panel is open; closing panels returns here without a dedicated button
     assert.ok(used.has(name), `the app map names ${name}, but no renderer control uses it`)
   }
 })
@@ -53,9 +49,9 @@ test('every action with a place names a place that exists, and names are well fo
     assert.match(name, /^[a-z]+(\.[a-zA-Z]+)*$/, `place ${name}`)
     assert.match(spec.file, /^src\/renderer\//, `place ${name} names its component`)
   }
-  assert.ok(isPlace('evals.scenario'))
-  assert.ok(!isPlace('evals.nowhere'))
-  assert.ok(isAction('evals.run.start'))
+  assert.ok(isPlace('library'))
+  assert.ok(!isPlace('library.nowhere'))
+  assert.ok(isAction('library.open'))
   assert.ok(!isAction('toString'))
 })
 
@@ -63,6 +59,6 @@ test('the map prints every place and action with its parameters', () => {
   const text = describeMap()
   for (const name of Object.keys(PLACES)) assert.ok(text.includes(`- ${name}`), name)
   for (const name of Object.keys(ACTIONS)) assert.ok(text.includes(`- ${name}`), name)
-  assert.ok(text.includes('id: scenario id (required)'))
+  assert.ok(text.includes('id: file id from library_list (required)'))
   assert.ok(text.indexOf('Places (rocket_ui_go)') < text.indexOf('Actions (rocket_ui_act)'))
 })

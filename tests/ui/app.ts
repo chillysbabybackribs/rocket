@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 
-const SPA_HTML = readFileSync(resolve('docs/evals/fixtures/browser/spa.html'), 'utf8')
+const SPA_HTML = readFileSync(resolve('tests/fixtures/browser/spa.html'), 'utf8')
 const SPA_RECORDS: Record<string, { name: string; note: string }> = {
   alpha: { name: 'Alpha Corp', note: 'ALPHA-42' },
   beta: { name: 'Beta LLC', note: 'BETA-99' }
@@ -26,10 +26,12 @@ type Rocket = {
   release: () => Promise<void>
   capture: (name: string) => Promise<void>
   restart: () => Promise<void>
+  allowConsoleError: (pattern: RegExp) => void
 }
 
 export const test = base.extend<{ rocket: Rocket }>({
   rocket: async ({}, use, info) => {
+    const allowedConsoleErrors: RegExp[] = []
     const profile = info.outputPath('profile')
     const workspace = info.outputPath('workspace')
     await mkdir(profile, { recursive: true })
@@ -142,7 +144,10 @@ export const test = base.extend<{ rocket: Rocket }>({
         page.on('crash', () => errors.push(`Renderer crashed: ${page.url()}`))
         page.on('console', message => {
           logs.push(`[${message.type()}] ${page.url()}: ${message.text()}\n`)
-          if (message.type() === 'error') errors.push(`${page.url()}: ${message.text()}`)
+          if (message.type() === 'error') {
+            const detail = `${page.url()}: ${message.text()}`
+            if (!allowedConsoleErrors.some(pattern => pattern.test(detail))) errors.push(detail)
+          }
         })
       }
       for (const page of application.context().pages()) watch(page)
@@ -207,6 +212,7 @@ export const test = base.extend<{ rocket: Rocket }>({
       }
       try {
         await use({ get app() { return app! }, get page() { return page }, profile, workspace, origin, surface, request,
+          allowConsoleError: pattern => { allowedConsoleErrors.push(pattern) },
           restart: async () => { await close(); await launch() },
           release: async () => { await writeFile(join(profile, `ui-release-${(await request()).turnId}`), '') }, capture })
       } finally {
@@ -228,11 +234,11 @@ export const test = base.extend<{ rocket: Rocket }>({
 
 export { expect }
 
-export type SectionName = 'Goals' | 'Chats' | 'Library' | 'Evals' | 'Browser'
+export type SectionName = 'Chats' | 'Library' | 'Browser' | 'PhotoCraft'
 
 /**
- * A toolbar section's button: the only way to Goals, Chats, Library, Evals and Browser, since the
- * rail has none. A section in the closed Sections drawer is reached by opening the drawer first.
+ * A toolbar section's button: the only way to Chats, Library, Browser and PhotoCraft. A section
+ * in the closed Sections drawer is reached by opening the drawer first.
  */
 export async function section(page: Page, name: SectionName): Promise<Locator> {
   const id = name.toLowerCase()

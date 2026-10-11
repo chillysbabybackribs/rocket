@@ -1,0 +1,429 @@
+
+> rocket-orchestrator@0.1.0 build
+> tsc --noEmit && electron-vite build
+
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 87 modules transformed.
+rendering chunks...
+out/main/script-worker.js              4.88 kB
+out/main/chunks/ui-test-D9uN6wI7.js   51.35 kB
+out/main/index.js                    177.95 kB
+out/main/host.js                     426.14 kB
+✓ built in 2.74s
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.mjs  1.83 kB
+✓ built in 33ms
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2251 modules transformed.
+rendering chunks...
+../../out/renderer/fill.html                                                      0.63 kB
+../../out/renderer/suggest.html                                                   0.75 kB
+../../out/renderer/index.html                                                     0.78 kB
+../../out/renderer/assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2          5.81 kB
+../../out/renderer/assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2      6.18 kB
+../../out/renderer/assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2        7.70 kB
+../../out/renderer/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2            10.25 kB
+../../out/renderer/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2             11.23 kB
+../../out/renderer/assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2         12.94 kB
+../../out/renderer/assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2        14.70 kB
+../../out/renderer/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2              18.75 kB
+../../out/renderer/assets/inter-greek-wght-normal-CkhJZR-_.woff2                 19.00 kB
+../../out/renderer/assets/geist-mono-latin-wght-normal-XN7g48iV.woff2            23.13 kB
+../../out/renderer/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2          25.96 kB
+../../out/renderer/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                 48.26 kB
+../../out/renderer/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2             85.07 kB
+../../out/renderer/assets/suggest-Wwojl-O_.css                                    1.25 kB
+../../out/renderer/assets/index-hA6BJ-kU.css                                      2.44 kB
+../../out/renderer/assets/fill-DVrebo1E.css                                       4.38 kB
+../../out/renderer/assets/index-DJmJ-fok.css                                    134.15 kB
+../../out/renderer/assets/types-7ki8Xw5x.js                                       1.19 kB
+../../out/renderer/assets/suggest-j2x2i565.js                                     1.70 kB
+../../out/renderer/assets/fill-BVFUMawF.js                                        8.35 kB
+../../out/renderer/assets/index-BgE4XvMq.js                                   1,463.77 kB
+✓ built in 9.19s
+
+> rocket-orchestrator@0.1.0 test
+> node --experimental-transform-types --disable-warning=ExperimentalWarning --test "src/**/*.test.ts" "scripts/*.test.mjs"
+
+✔ library add and edit preserve other references and reject invalid writes (20.272902ms)
+✔ each research claim gets another provider and reviewers rotate without self-review (18.50236ms)
+✔ research and review barriers precede synthesis and unbounded deeper rounds (1.455644ms)
+✔ old or empty report receipts cannot complete a new attempt (4.315026ms)
+✔ transcript reconciliation recovers sends and explicit resume clears interrupted attempts (5.338785ms)
+✔ UI cancellation stops wrapper, ordinary children and detached TERM-resistant descendants (2142.034321ms)
+✔ UI command preserves exit status and does not start work after interruption (212.148246ms)
+✔ persistent UI supervisors receive stdin and callback failures clean up the child (1250.235206ms)
+✔ an exited UI supervisor cannot leave a detached child behind (5311.49684ms)
+✔ agent situation is always returned for every turn, with the map and where the shell is (18.947019ms)
+✔ without a readable window the block says to ask rocket_ui_where (1.845501ms)
+✔ images are validated by bytes and round-trip through SQLite and files after restart (224.836048ms)
+✔ PDFs and text files are stored by content, previewed, and given to providers as text within a budget (1149.204548ms)
+✔ preparation discovers an editable library and tolerates unavailable resources (5.91003ms)
+✔ buildTurnExport includes turn items and timing fallback (128.104759ms)
+✔ EvalExport writes tagged chat turns to inbox (148.14158ms)
+✔ writeTurnExport also writes ledger-slice.json (4.069578ms)
+✔ files_unchanged and only_files_changed read the files the run changed (8.392469ms)
+✔ a file grader on a turn with no record of its files fails with what to do (9.019638ms)
+✔ no_question_asked fails on ask_user or a reply that ends with a question (0.743867ms)
+✔ runEvalCell exports a completed turn (212.429308ms)
+✔ a run puts providers side by side, each provider's trials in turn, and grades each copy (722.563484ms)
+✔ a cell waits while its provider is answering another chat, and a stopped run starts nothing more (2133.64544ms)
+✔ a run copy reports the files the turn changed, added and deleted, with repo-relative paths (96.553738ms)
+✔ a scenario folder that does not exist is refused with what to fix (12.702897ms)
+✔ a fill runs in a chat the window never sees, answers from its fill block, and leaves nothing behind (87.201431ms)
+✔ a reply with no fill block fails with a sentence, and the last model sent with is the one used (28.799942ms)
+✔ Sound like you is given the user's own messages, never a fill's or an eval's (54.421968ms)
+✔ a goal is drafted, confirmed, worked, checked and done (151.346911ms)
+✔ a worker that forgets to report goes to the checker with its last reply (64.503529ms)
+✔ the same gap twice in a row asks the user, and a note carries on (106.028088ms)
+✔ a worker that needs the user waits, and the answer is its next message (56.495686ms)
+✔ a draft without a brief asks the user, and their answer redrafts (44.913279ms)
+✔ a failed turn is tried once more, then the user is asked (62.08599ms)
+✔ a checker with no verdict is asked once more, then the user (82.226947ms)
+✔ usage at the pause level waits, and Resume goes ahead anyway (191.740495ms)
+✔ pause waits for the turn in flight; stop cuts it off (91.078512ms)
+✔ a goal cut off by the app closing waits for the user after a restart (108.580689ms)
+✔ goal_report outside a goal turn, or with the wrong arguments, says what to do (27.144256ms)
+✔ with no other provider signed in, the worker checks its own work (38.490482ms)
+✔ files a work turn changed through the shell are added to its round (35.339978ms)
+✔ a visual brief needs a concept and screenshots that exist, and gains the design line (49.549684ms)
+✔ a brief without a design gets no design line (23.926927ms)
+✔ automatic usage resume reads fresh usage before proceeding (99%) (46.716572ms)
+✔ automatic usage resume reads fresh usage before proceeding (10%) (40.473561ms)
+✔ nothing missed means no handoff (2.744447ms)
+✔ a handoff carries user and assistant text, tool lines, and no reasoning or tool output (9.380902ms)
+✔ a question the user has not answered is named as still open; an answered one is not flagged (3.66841ms)
+✔ the user sees their own words when a message went out with a handoff in front (2.849202ms)
+✔ an oversized handoff is cut to the budget and keeps the newest turn whole (1.397005ms)
+✔ files a turn touched are named once each, relative to the chat folder, edits ahead of reads (0.984996ms)
+✔ a handoff carries what a turn concluded, not what it said between tool calls (4.654009ms)
+✔ older turns keep their files and a shortened request and reply; the newest go whole (22.878972ms)
+✔ a history too long to fit even cut down keeps the newest turns and says how many were left out (210.417551ms)
+✔ image-only messages, queues, restart restoration and provider handoffs retain image references (71.633203ms)
+✔ waitForTurn resolves when the turn ends (21.535186ms)
+✔ prepare hands the provider the chat folder and the session it would resume (18.573554ms)
+✔ prepare for the next new chat passes the folder it will start in, and never throws (25.815097ms)
+✔ a turn reports when it first showed anything and when it first showed text (52.602146ms)
+✔ changing the folder drops every provider's warm session for the chat (6.063547ms)
+✔ a failed turn the provider had started answering is not handed back to it (16.96284ms)
+✔ a session that was lost is told the app's context again (10.813293ms)
+✔ a goal's turn does not name the chat after the app's message (13.747615ms)
+✔ a turn the provider starts by itself is recorded, replied in, and settled (15.393925ms)
+✔ words sent to the provider answering join its turn, told not to acknowledge them (17.276756ms)
+✔ words a turn never said it read are kept when it completes, and sent next when it is stopped (41.456603ms)
+✔ Stop gives back words on their way into the turn with those waiting for it (15.281996ms)
+✔ words for a provider that cannot take them wait, and go out together when the turn ends (17.743767ms)
+✔ a turn that cannot take words leaves them waiting, and later words keep their place behind them (12.419789ms)
+✔ Stop during initial context prevents provider startup (18.380655ms)
+✔ Stop during lost-session retry context prevents provider startup (18.187324ms)
+✔ a turn's tokens are kept on it and reported with its timing; the latest reading wins (9.745833ms)
+✔ a page leaves finished tool output out and serves it on request; the turn in flight keeps its own (32.72338ms)
+✔ a turn records the pages it opened against the pages its reply cites, and the next message is told of the unopened ones (78.264089ms)
+✔ all providers reject textual fetch failures and search URLs as citation evidence (29.915504ms)
+✔ a torn last line does not hide the entries before it (5.323958ms)
+✔ a turn far slower than usual is a warning, and the usual stays unspoiled (6.395726ms)
+✔ a failed turn is an error that carries its reason (4.221442ms)
+✔ a chat hears about new trouble once, and not about trouble from before the host started (2.727656ms)
+✔ a note a model filed is not announced back to it (2.473262ms)
+✔ a turn's tokens are kept with its timing and summed up in the stats (4.039042ms)
+✔ sent attachments are on the shelf with their chat; a draft’s and an eval chat’s are not (851.703073ms)
+✔ files join by path once, keep where they first came from, and show when they go missing (126.170864ms)
+✔ a turn’s finished downloads join the shelf with the site they came from (49.352269ms)
+✔ library_list lists with the panel’s filters, "this" chat included, and refuses unknown values (150.496443ms)
+✔ the first start shelves the Markdown files earlier turns wrote, once, dated by the last turn to write each (313.586712ms)
+✔ continuous review uses defaults, waits for workers, then dispatches fresh deeper chats (75.562752ms)
+✔ user file edits survive checkpoints and wake an idle owner without spurious self-updates (32.0428ms)
+✔ drain refuses new dispatch and produces one final review after all workers finish (37.697595ms)
+✔ Stop requests cancellation only for owned workers, retains unresolved work, and never restarts on late completion (19.997009ms)
+✔ completed-with-error-prose but missing report is not accepted as a successful worker (18.15279ms)
+✔ failed or empty leader turns pause rather than spend usage in automatic retries (70.928691ms)
+✔ restart preserves evidence and pauses; damaged user-note boundary is never overwritten (43.385622ms)
+✔ tool context cannot control another chat and worker concurrency is bounded (55.66553ms)
+✔ a damaged saved state disables orchestration without losing evidence or preventing host startup (19.577967ms)
+✔ Antigravity shared identity is not used concurrently with another active chat (6.283608ms)
+✔ unlimited dispatch persists queued chats and broadcasts every queue transition (170.700168ms)
+✔ provider queues run FIFO independently and bypass review only for previously approved work (53.111999ms)
+✔ failed and interrupted turns release their provider queue slot (31.903461ms)
+✔ synchronous send failures release slots for already-approved FIFO work (24.469108ms)
+✔ stop and drain cancel queued tasks without starting or stopping their chats (80.278978ms)
+✔ restart leaves queued work paused and resume starts it without reapproval (32.565716ms)
+✔ old state backfills task timing while preserving valid timestamps (36.351696ms)
+✔ queued Antigravity starts only after its shared identity is free (12.014353ms)
+✔ single-task cancellation persists queued cancellation without launching it or stopping peers (13.332712ms)
+✔ single running cancellation waits for the actual end, releases its slot and reports stop failure (14.539742ms)
+✔ user replies to queued worker chats are rejected before a provider turn can start (19.287676ms)
+✔ a new conversation is told each tool, its arguments and how to call it (8.439206ms)
+✔ with no tools there is nothing to tell (0.575583ms)
+✔ a step that was only thinking carries no text and shows nothing (2.349121ms)
+✔ claudeCodeExecutable prefers the user install over the SDK bundle (11.898908ms)
+✔ CLAUDE_CODE_EXECUTABLE overrides the default install path (3.217069ms)
+✔ the same text said twice in a turn is two closed rows (restated after the stop) (21.245557ms)
+✔ the same text said twice in a turn is two closed rows (restated before the stop) (9.241182ms)
+✔ a reply that ends while background tasks run keeps its turn open for the follow-up (11.32607ms)
+✔ TodoWrite is the turn's plan, replaced whole on each update and never a tool row (10.995894ms)
+✔ a turn's tokens add up its results, and its context is the last model call's input (8.089785ms)
+✔ early Stop waits for the Codex turn ID from its reply and interrupts remotely once (13.750541ms)
+✔ early Stop waits for the Codex turn ID from its notification and interrupts remotely once (3.563205ms)
+✔ a turn's tokens are the thread's running count less where it stood before the turn (1.842476ms)
+✔ a blocking question is skipped and pointed at ask_user, so the turn never waits on a human (2.371332ms)
+✔ a plan asking for approval is accepted, as in an unattended session (3.982366ms)
+✔ todos and task completions sent as requests are accepted with what they carried (1.159943ms)
+✔ a method the app does not know is still refused (1.632844ms)
+✔ the ACP plan update becomes the turn's plan item (6.0438ms)
+✔ an item updated in place keeps its first position (25.943669ms)
+✔ a provider is owed exactly the turns after the one its session last saw (12.609774ms)
+✔ deleting a chat removes its turns, items and sessions (10.261886ms)
+✔ a store made before goals gains the goal_role column, and turns keep their role (61.156912ms)
+✔ a turn's sources are saved with it, and a turn without them reads as null (17.53634ms)
+✔ a turn's tokens are saved with it, and a turn without them reads as null (10.915575ms)
+✔ a handoff read returns the turns in a range with their own items, in order (16.381557ms)
+✔ the running and the last settled turn are found without reading the chat (22.162597ms)
+✔ the attachment sweep keeps what user messages and queues hold, whatever else mentions attachments (15.397022ms)
+✔ a chat opens with its newest page of turns, and earlier pages come on request until none are left (44.348949ms)
+✔ what a turn changed is kept with it as a patch, with totals on the turn, leaving out another running turn's file (1237.01169ms)
+✔ undo puts a turn's files back, removes the ones it made, commits the reversal and marks the turn; a file changed since is named (3482.268403ms)
+✔ a turn's changes are committed alone, under the request, and a stopped turn waits for the one that finishes it (1602.046727ms)
+✔ a model is told who is working in the folder, what other chats finished, and what changed under it (688.364162ms)
+✔ a file another running turn has edited is left for that turn to commit (548.798065ms)
+✔ wilson lower bound is conservative for small samples (1.949806ms)
+✔ loadToolEvalScores combines ledger R and eval-live P for targetTool scenarios (81.268986ms)
+✔ ledger records failures and successes, immutable finishes, versions and denominator-safe grouping (244.320981ms)
+✔ restart distinguishes interrupted calls, malformed evidence is skipped and retention preserves active calls (123.613249ms)
+✔ redacted evidence is bounded and fallback grouping removes volatile paths and numeric values (8.730701ms)
+✔ broken recording and diagnostics do not change tool behavior (1.586478ms)
+✔ query tool validates filters and bounds JSON responses without returning arguments in lists (507.759311ms)
+✔ concurrent tool calls record distinct finishes without cross-talk (182.659159ms)
+✔ summary exposes context limits and description bytes beside success rates (66.974183ms)
+✔ review annotations stay separate, support retry links and a bounded queue (118.066298ms)
+✔ setToolLedgerReview rejects invalid lifecycle and annotates like MCP review (64.045912ms)
+✔ panel loader exposes registered tools and summary fields for the eval Tools view (70.678711ms)
+✔ opening an unavailable ledger can be handled without corrupting an existing file (1.521718ms)
+✔ a question needs real options, their consequences and the model's own pick (11.043563ms)
+✔ the answer goes to the model with the question quoted above it (0.745189ms)
+✔ ask_user posts one question into the running turn and refuses a second (92.241308ms)
+✔ closing tabs never marks, loads or inspects a page as a side effect (522.930403ms)
+✔ browser context names the open tabs to a new session, then only when they change (4.315758ms)
+✔ browser context says nothing with no tabs open, and research guidance rides in the tool description only (1.058795ms)
+✔ browser_download sends main an absolute saveTo, and reports where the file went (4.985667ms)
+✔ saveTo paths resolve from the chat folder or home, and downloads in flight say so (1.421941ms)
+✔ the pages a chat asks the browser for are reported with the chat, and a read of the tab as it is reports nothing (7.154892ms)
+✔ browser challenge and rejected navigation never earn evidence; tab-only reads do (1.721801ms)
+✔ network-only and controls-only inspections do not count as reading source content (2.90615ms)
+✔ shared reader returns original article and links, saves pagination, credits only successful sources (408.317814ms)
+✔ 403 falls back to browser, but a challenge is an explicit failure with no source credit (12.75733ms)
+✔ search switches engines after a challenge and never credits result destinations (2.514439ms)
+✔ local PDF is extracted with poppler without requiring a model or network (78.329227ms)
+✔ failure detector recognizes the incident without rejecting articles discussing access failures (1.277813ms)
+✔ a passing project reports each script as passed (2085.06139ms)
+✔ a failing script is an error that carries its output (1185.448009ms)
+✔ a folder without scripts says what to do instead (6.959358ms)
+✔ the where line names the asking chat’s pane, the other panes and the side panel (7.259548ms)
+✔ go and act pass through the dispatcher, add the pane and the image, and refuse unknown names (19.000122ms)
+✔ the schemas enumerate the map, so a model cannot invent a place or action (0.838664ms)
+✔ multiple verbose UI captures keep parseable metadata, image content and full-result paths (15.559014ms)
+✔ invalid UI requests do not start a supervisor or require a source installation (14.338148ms)
+✔ UI mode requires an explicit marked profile and matching host data directory (13.155402ms)
+✔ a controlled stream remains pending until stopped and emits no final response after stop (18.283445ms)
+✔ controlled worker writes its report only after release, and cancellation delivers none (16.722273ms)
+✔ controlled leader accepts 6 dispatches across the HTTP boundary (515.045496ms)
+✔ controlled leader accepts 40 dispatches across the HTTP boundary (657.423941ms)
+✔ a user reply with quoted orchestration context completes instead of holding a worker stream (1.869296ms)
+✔ stress worker waits for board barrier, streams 100 deltas, and delivers a report (5106.594468ms)
+✔ a small project is mapped whole, one line per folder (3.345087ms)
+✔ a large project keeps its upper folders and counts what lies deeper (5.250291ms)
+✔ a note saved by one provider reaches the others: at once in a going session, and at the start of a new one (254.120866ms)
+✔ parseReadQuery treats slash syntax as regex (6.947095ms)
+✔ filterReadByQuery keeps matching control lines (4.197968ms)
+✔ buildA11ySnapshot assigns refs to actionable nodes (6.428178ms)
+✔ buildHar filters by request seq and shapes entries (6.55784ms)
+✔ truncateJsonBody keeps short JSON whole (2.358768ms)
+✔ truncateJsonBody clips long JSON (1.140036ms)
+✔ formatAttachedJson wraps with request id (0.628712ms)
+✔ somSvg places a badge label at scaled coordinates (8.236269ms)
+✔ escapeXml escapes markup in ref labels (0.880933ms)
+✔ the plain user agent is Chrome's, with the app and Electron names gone (6.549504ms)
+✔ an app name with regex characters is matched literally (0.758876ms)
+✔ a user agent already plain is left alone (0.656004ms)
+✔ client hints for Chrome 152 on Linux are what Chrome itself would send (6.290471ms)
+✔ the GREASE brand and the order change with the major version, as in Chrome (1.046962ms)
+✔ a user agent that is not Chrome on Linux gets no client hints (0.465839ms)
+✔ every request carries the three low-entropy hints, serialized as Chrome writes them (1.9572ms)
+✔ an origin that asked with Accept-CH also gets the high-entropy hints it named (0.877627ms)
+✔ Accept-CH given as several header lines is read as one list (1.322777ms)
+✔ a selection in display coordinates maps to image pixels at any device scale, clamped (3.706091ms)
+✔ capture names carry the source and time and are safe file names (2.65435ms)
+✔ chat links resolve files, encoded names, line references, and browser documents (162.643445ms)
+✔ an empty window.chrome gets Chrome's three members, in Chrome's order and with its descriptors (16.577404ms)
+✔ loadTimes() has Chrome's thirteen fields with the right types and values (7.085593ms)
+✔ before any network navigation the values are the zeros and "unknown" Chrome shows (6.513958ms)
+✔ csi() has startE, onloadT (DOMContentLoaded), pageT and tran 15 for an ordinary navigation (2.412048ms)
+✔ a reload and a back/forward navigation are reported as Chrome reports them (10.291042ms)
+✔ app has Chrome's members and enum values (7.276941ms)
+✔ a window.chrome that already has members is left alone, so running twice changes nothing (17.481019ms)
+▶ chromium cookie decryption
+  ✔ recovers a v11 value, dropping the tag and the 32-byte host hash (4.132727ms)
+  ✔ recovers a v10 value the same way (1.522209ms)
+  ✔ returns null for an untagged or empty blob (2.667575ms)
+  ✔ returns null when the key is wrong rather than throwing (1.451016ms)
+✔ chromium cookie decryption (20.408769ms)
+▶ chromium timestamps
+  ✔ converts microseconds since 1601 to Unix seconds (0.900469ms)
+  ✔ treats a zero or negative expiry as a session cookie (0.43462ms)
+✔ chromium timestamps (1.849609ms)
+▶ sameSite mapping
+  ✔ maps Chromium codes to Electron values (0.739029ms)
+  ✔ downgrades insecure SameSite=None to lax so it is not rejected (2.517185ms)
+✔ sameSite mapping (4.068717ms)
+▶ host matching for site-only import
+  ✔ matches host-only and domain cookies for the same site (1.221688ms)
+  ✔ does not match an unrelated site (2.498199ms)
+✔ host matching for site-only import (4.25235ms)
+▶ conversion to an Electron cookie
+  ✔ builds a domain cookie with an https url and expiry (6.382132ms)
+  ✔ builds a host-only cookie without a domain, and an http url when insecure (0.454828ms)
+  ✔ leaves expirationDate unset for a session cookie (0.341327ms)
+✔ conversion to an Electron cookie (9.167355ms)
+✔ a suggested file name cannot climb out of the folder or carry control characters (7.374612ms)
+✔ saveTo names a folder or a file, and defaults to the downloads folder (5.043465ms)
+✔ an existing or arriving file is never overwritten (0.781427ms)
+✔ the page's reading status is kept only while it reads, and rounded for the toolbar (18.363526ms)
+✔ markdown links, bare URLs, and code paths link without altering code blocks (78.547561ms)
+✔ link transform permits local files and rejects executable schemes (0.930285ms)
+✔ paragraphs and headings split at blank lines, and the pieces join back to the text (4.547019ms)
+✔ a blank line inside a code fence is not a boundary (1.961838ms)
+✔ a list stays with the paragraph before it, loose items and indented continuations included (0.633411ms)
+✔ emphasis and rules at the start of a line are not mistaken for list items (5.095181ms)
+✔ text with link definitions is left whole (5.597228ms)
+✔ a table and a short text are single blocks (0.683695ms)
+✔ saved toolbar preferences drop unknown sections and add missing ones (15.153379ms)
+✔ renaming keeps the real name for screen readers, and a blank or default name clears it (0.645043ms)
+✔ keeping and moving sections splits them between the toolbar and the drawer in order (18.265002ms)
+✔ every map name has a control in the renderer, and every name a control uses is in the map (11.569977ms)
+✔ every place names a component file that exists (1.031414ms)
+✔ every action with a place names a place that exists, and names are well formed (1.993648ms)
+✔ the map prints every place and action with its parameters (4.711908ms)
+✔ the prompt says where the field is, what is around it and how to answer (10.39719ms)
+✔ a rework says what to change, and Sound like you carries the user's messages (1.219684ms)
+✔ a form lists every field and the ones Rocket will not touch (1.055388ms)
+✔ the fill block is read from the end of the reply, whatever came before it (2.620106ms)
+✔ a reply without a usable fill says so in a sentence (6.25777ms)
+✔ steps are read from the model's own calls (8.18835ms)
+✔ sources are each page once, the page itself named, and the commands that ran (0.991799ms)
+✔ voice samples skip pasted text, one-word replies and walls of text (0.827964ms)
+✔ the done line says what was filled and what was left (1.064535ms)
+✔ the chip sits above the field's top right corner, below it with no room above, and inside the page (1.819483ms)
+✔ a file’s kind comes from its name (6.619785ms)
+✔ added buckets follow the local calendar (0.91133ms)
+✔ filters combine, and search needs every word somewhere in the name, origin, path or chat title (2.562679ms)
+✔ loose filter input is checked, and an unknown value is refused with the valid ones (1.959885ms)
+✔ a git patch is read into files, kinds, counts and numbered lines (13.302828ms)
+✔ an empty patch is no files (0.673316ms)
+✔ the slider spans the speeds on a log scale (5.169691ms)
+✔ a drag lands on a round speed near it, and anywhere else between (0.578008ms)
+✔ speeds stay in range whatever arrives (0.523957ms)
+✔ labels read as the control shows them (0.704143ms)
+✔ a page key is the host and path, with www, the fragment, a trailing slash and tracking parameters dropped (9.23919ms)
+✔ the urls in a reply are its link targets and bare urls, each once, without trailing punctuation (14.555825ms)
+✔ only requests that go to a page count as opening one (1.111693ms)
+✔ a turn’s sources mark each cited page opened or not, by page, and are null with nothing to record (3.942653ms)
+✔ the next message is told about unopened citations, and nothing when every citation was opened (1.562564ms)
+ℹ tests 272
+ℹ suites 5
+ℹ pass 272
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15806.306725
+(node:142535) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:142795) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/ui/orchestra-stress.spec.ts:12:1 › orchestra-stress forty workers stream within frame and interaction budgets (1.6m)
+
+
+  1) tests/ui/orchestra-stress.spec.ts:12:1 › orchestra-stress forty workers stream within frame and interaction budgets 
+
+    Error: p95 frame interval <50ms
+
+    expect(received).toBeLessThan(expected)
+
+    Expected: < 50
+    Received:   83.40000000000146
+
+      143 |   expect(states.some(state => state.done > 0 && state.queued > 0 && state.running === 3)).toBe(true)
+      144 |   expect(Number(stream.frameCount)).toBeGreaterThan(30)
+    > 145 |   expect.soft(Number(stream.p95FrameMs), 'p95 frame interval <50ms').toBeLessThan(50)
+          |                                                                      ^
+      146 |   expect.soft(Number(stream.maxLongTaskMs), 'No main-thread long task >=200ms').toBeLessThan(200)
+      147 |   expect.soft(expandMs, 'Expand click event to visible worker <500ms').toBeLessThan(500)
+      148 | })
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/orchestra-stress.spec.ts:145:70
+
+    attachment #2: stress-start-40-cards: app shell (image/png) ────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/stress-start-40-cards-app-shell-cc2fc489dc12914fa4c48e6c2b4f99667decf141.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: stress-start-40-cards: full window (image/png) ──────────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/stress-start-40-cards-full-window-f6945f566a224bc5c37aa50615e23650c7b1cbf2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: Streaming CPU profile (application/json) ────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/Streaming-CPU-profile-121b7293221012ff2bf935fead21eec5b0dc0693.cpuprofile
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: stress-mid-streaming: app shell (image/png) ─────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/stress-mid-streaming-app-shell-44f5e9d406b0e97d6cc014efed4d15fa44ffea72.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: stress-mid-streaming: full window (image/png) ───────────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/stress-mid-streaming-full-window-cb1fc5a68e6f1a547ea643ea700bcddd9637d42b.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: stress-end-40-reports: app shell (image/png) ────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/stress-end-40-reports-app-shell-fe13ebd1fcd4366383db501d185aeba09d2467d4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #11: stress-end-40-reports: full window (image/png) ─────────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/stress-end-40-reports-full-window-10b35ac65fba4e629dad01fd77b2caff8ee0c4fe.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #12: Worker board performance metrics (application/json) ────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/Worker-board-performance-metrics-1f9bd32ac932c1c03f2cb08e44aa168ea2bc78d1.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #13: failure: app shell (image/png) ─────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/failure-app-shell-2176277ffbb840ec12ae37957586d7360cc81586.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #15: failure: full window (image/png) ───────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/failure-full-window-12ac230aa2674b8bad916b082cd3d1e1315f1cc6.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #16: Trace (application/zip) ────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/attachments/Trace-91a40a300d4b2379a06805550eff1e842018eb32.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #17: App log (text/plain) ───────────────────────────────────────────────────────────
+    (node:143158) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+    (Use `exe --trace-warnings ...` to show where the warning was created)
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has eithe...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #18: Journal (text/plain) ───────────────────────────────────────────────────────────
+    {"at":1791439648847,"source":"turn","severity":"info","kind":"timing","message":"cursor (ui-default) completed in 8.9s","details":{"chatId":"56f2c835-f3a6-49c4-a616-6f471530b5c0","provider":"cursor","model":"ui-default","firstEventMs":668.675968,"firstTextMs":677.0562190000005,"totalMs":8935}}
+    {"at"...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T06-06-12-845Z-Yn1O2A/results/orchestra-stress-orchestra-e4506-ame-and-interaction-budgets/error-context.md
+
+  1 failed
+    tests/ui/orchestra-stress.spec.ts:12:1 › orchestra-stress forty workers stream within frame and interaction budgets 

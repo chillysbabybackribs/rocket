@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildA11ySnapshot, filterReadByQuery, parseReadQuery, type AxNode } from './browser-a11y.ts'
+import { buildA11ySnapshot, digestMaxFor, filterReadByQuery, parseReadQuery, type AxNode } from './browser-a11y.ts'
+
+test('digestMaxFor lets a query scan the whole page text', () => {
+  // The old cap of 250 characters hid matches further down a long article.
+  assert.ok((digestMaxFor('Chromium', 80) ?? 0) > 100_000)
+  assert.ok((digestMaxFor('/Node\\.js/i', null) ?? 0) > 100_000)
+  assert.equal(digestMaxFor(null, 80), 80)
+  assert.equal(digestMaxFor('   ', null), null)
+})
 
 test('parseReadQuery treats slash syntax as regex', () => {
   const parsed = parseReadQuery('/Beta/i')

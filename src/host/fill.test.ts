@@ -54,7 +54,7 @@ function setup(script: (request: RunRequest, sink: TurnSink) => RunResult) {
 
 test('a fill runs in a chat the window never sees, answers from its fill block, and leaves nothing behind', async () => {
   const { store, fills, adapter, shown, posted, root, ended } = setup((request, sink) => {
-    sink.item({ type: 'tool', id: 'x1', turnId: request.turnId, kind: 'web', label: 'https://wiki.hypr.land/rules', status: 'done', output: '' })
+    sink.item({ type: 'tool', id: 'x1', turnId: request.turnId, kind: 'web', label: 'https://wiki.hypr.land/rules', status: 'done', output: 'Float is static: matched at window open.' })
     sink.item({ type: 'assistant', id: 'a1', turnId: request.turnId, streaming: false, text: 'Checked the wiki.\n```rocket-fill\n{"fields": {"f1": "Float is static: it is matched once, at open."}}\n```' })
     return { status: 'completed' }
   })

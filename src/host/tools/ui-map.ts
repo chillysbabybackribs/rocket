@@ -25,21 +25,14 @@ export function describeWhere(where: UiWhereForChat): string {
   let side: string
   if (where.side === 'chat') side = 'no side panel'
   else if (where.side === 'browser') side = 'the browser is open beside the chat'
+  else if (where.side === 'photocraft') side = 'PhotoCraft is open beside the chat (the photocraft_* tools work in it)'
   else if (where.side === 'artifact') side = `an artifact panel is open${where.artifact?.path ? ` (${where.artifact.path})` : ''}`
   else if (where.side === 'library') {
     const library = where.library
     const filters = library ? Object.entries(library.filters).map(([name, value]) => `${name} ${value}`).join(', ') : ''
     side = library ? `the library is open beside the chat (${library.view}, ${library.shown} of ${library.total} files${filters ? `, filtered by ${filters}` : ''})` : 'the library is open beside the chat'
   }
-  else {
-    const evals = where.evals!
-    const run = evals.run
-    const counts = run ? `${run.cells.filter((cell) => cell.pass).length} of ${run.cells.length} cells passed${run.status === 'running' ? `, ${run.cells.filter((cell) => cell.status === 'running').length} running` : ''}` : ''
-    const detail = evals.view === 'tools' ? `, ${evals.tools.section} section`
-      : evals.view === 'scenario' ? `, scenario ${evals.scenario}${run ? ` (run ${run.status}: ${counts})` : ', never run'}`
-        : evals.view === 'run' && evals.cell ? `, scenario ${evals.scenario}, ${evals.cell.provider} trial ${evals.cell.trial}` : ''
-    side = `evals open at ${where.place}${detail}`
-  }
+  else side = `${where.side} is open beside the chat`
   return `Where you are: ${panes}, ${own}${others.length ? ` (${others.join('; ')})` : ''}; ${side}.`
 }
 
@@ -80,7 +73,7 @@ export function uiMapTools(main: Main): Tool[] {
   return [
     {
       name: 'rocket_ui_where',
-      description: 'Where Rocket’s app shell is, in the app map’s names: the chat panes and which one is yours, the side panel (chat, browser, evals, artifact) and what it shows, running eval cells and open dialogs. No image. Call it before deciding how to reach something, and to follow a run that rocket_ui_act reported as still running.',
+      description: 'Where Rocket’s app shell is, in the app map’s names: the chat panes and which one is yours, the side panel (chat, browser, library, artifact) and what it shows. No image. Call it before deciding how to reach something.',
       inputSchema: { type: 'object', properties: {}, additionalProperties: false },
       run: async (_args, context) => {
         try {
@@ -112,7 +105,7 @@ export function uiMapTools(main: Main): Tool[] {
     },
     {
       name: 'rocket_ui_act',
-      description: `Do an action in Rocket’s app shell by name, through the same code its buttons use, and return its result and where the shell ended up with an image. An action goes to its place first when that is not on screen. Running actions start real provider turns in eval chats. A wrong parameter is refused with the valid choices.\nActions${describeMap().split('\nActions')[1]}`,
+      description: `Do an action in Rocket’s app shell by name, through the same code its buttons use, and return its result and where the shell ended up with an image. An action goes to its place first when that is not on screen. A wrong parameter is refused with the valid choices.\nActions${describeMap().split('\nActions')[1]}`,
       inputSchema: {
         type: 'object',
         properties: {

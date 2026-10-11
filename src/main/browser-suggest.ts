@@ -4,13 +4,14 @@ import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Bounds, Suggestion, SuggestionList } from '../shared/types.ts'
 import { SUGGEST_PADDING, SUGGEST_ROW_HEIGHT } from '../shared/types.ts'
-import { conceal, isAddress, isNewTabUrl, prettyUrl, reveal } from './browser-url.ts'
+import { completeAddress, conceal, isAddress, isNewTabUrl, prettyUrl, reveal } from './browser-url.ts'
 
 // The address field's dropdown. The rows come from the pages visited before and from Google's
 // search suggestions; they are shown in a small view of their own stacked above the page,
 // because the page is a native view and nothing in the UI's own page can be drawn over it.
 // Keyboard focus stays in the address field throughout: the UI moves the selection and this
-// view only draws it, and reports a click.
+// view only draws it, and reports a click. The field also fills in the best visited site after
+// what is typed (completeAddress), Chrome's inline autocomplete.
 
 const HISTORY_LIMIT = 3000
 const VISITED_ROWS = 4
@@ -49,6 +50,10 @@ class History {
     if (!known || !title || known.title === title) return
     known.title = title
     this.changed()
+  }
+
+  pages(): Iterable<Visit> {
+    return this.entries().values()
   }
 
   /** The visited pages that contain every typed word, best first. */
@@ -110,7 +115,7 @@ async function searchSuggestions(text: string): Promise<string[]> {
   }
 }
 
-const NONE: SuggestionList = { items: [], selected: -1 }
+const NONE: SuggestionList = { items: [], selected: -1, typed: '', inline: null }
 
 export class Suggestions {
   readonly history = new History()
@@ -139,13 +144,18 @@ export class Suggestions {
     this.anchor = anchor
     const request = ++this.request
     const address = isAddress(typed)
+    // The site the field fills in leads the rows, so the highlighted row is what Enter opens.
+    const inline = completeAddress(typed, this.history.pages())
     const local: Suggestion[] = [
+      ...(inline ? [{ kind: 'url', value: inline, title: inline, detail: 'Open page' } satisfies Suggestion] : []),
       address
         ? { kind: 'url', value: typed, title: typed, detail: 'Open page' }
         : { kind: 'search', value: typed, title: typed, detail: 'Google Search' },
-      ...this.history.match(typed, VISITED_ROWS).map((visit): Suggestion => ({
-        kind: 'history', value: visit.url, title: visit.title || prettyUrl(visit.url), detail: prettyUrl(visit.url)
-      }))
+      ...this.history.match(typed, VISITED_ROWS)
+        .filter((visit) => !inline || prettyUrl(visit.url).toLowerCase() !== inline.toLowerCase())
+        .map((visit): Suggestion => ({
+          kind: 'history', value: visit.url, title: visit.title || prettyUrl(visit.url), detail: prettyUrl(visit.url)
+        }))
     ]
     const withSearches = (words: string[]): Suggestion[] => [
       ...local,
@@ -157,12 +167,12 @@ export class Suggestions {
     // What is typed as an address is not sent anywhere.
     if (address) this.searches = []
     else this.searches = this.searches.filter((word) => word.toLowerCase().startsWith(typed.toLowerCase()))
-    this.show({ items: withSearches(this.searches), selected: -1 })
+    this.show({ items: withSearches(this.searches), selected: -1, typed: text, inline })
     if (address) return
     void searchSuggestions(typed).then((words) => {
       if (request !== this.request) return
       this.searches = words
-      this.show({ items: withSearches(words), selected: this.list.selected })
+      this.show({ items: withSearches(words), selected: this.list.selected, typed: text, inline })
     })
   }
 
@@ -213,7 +223,9 @@ export class Suggestions {
         contextIsolation: true,
         nodeIntegration: false,
         // As for the window: an ESM preload cannot run sandboxed, and this loads only the app's own page.
-        sandbox: false
+        sandbox: false,
+        // Its first load would otherwise take the keyboard from the address field (see browser-pane.ts).
+        focusOnNavigation: false
       }
     })
     view.setBorderRadius(10)

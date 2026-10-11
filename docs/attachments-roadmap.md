@@ -1,5 +1,18 @@
 # Rocket attachment expansion plan
 
+> **Status note (2026-10-09), checked against the code.** Phases 1 to 3 are built and the table
+> below is accurate for them. Built: the attachment union (`Attachment = ImageAttachment |
+> FileAttachment` in `src/shared/types.ts`); file import, text and PDF handling through poppler
+> (`src/host/attachments.ts`); the attachment menu with Copy to chat, Save as and Reveal
+> (`AttachmentMenu.tsx`, `saveAttachmentAs` and `revealAttachment` in `types.ts`); drag from
+> image and file cards (`Attachments.tsx`); capture with a desktopCapturer picker and a
+> pen/eraser review (`src/main/capture.ts`, `components/Capture.tsx`, Red/Yellow/Blue/White).
+> Covered by `tests/ui/images.spec.ts` and `tests/ui/capture.spec.ts`. Still open: Phase 1's
+> real model turns (not run, and not run for this note); Phase 2's named destination highlight
+> on drag (not confirmed) and a Files-in-this-chat view (not built, by design); Phase 4 crop and
+> annotate (no editor in renderer, host, or main). Corrected: Phase 3 is built, not "starting",
+> and `README.md` "Images and files in chat" now covers capture (its section on the camera).
+
 Extend the existing image workflow into general files, reuse across chats, direct capture,
 and image annotation. Keep every attachment separate from the prompt in the transcript and
 keep importing, previewing and sending distinct actions.
@@ -16,7 +29,7 @@ keep importing, previewing and sending distinct actions.
 The image upload baseline is implemented: paste, file selection, per-pane drop targets,
 preview, restart persistence, queue restoration and provider handoff references. Phase 1 was
 built to the approved [general file attachment mockup](mockups/file-attachments.html); the
-README's "Images and files in chat" describes what shipped for phases 1 and 2. Phase 3 starts with its mockup.
+README's "Images and files in chat" describes what shipped for phases 1 to 3.
 
 Each phase proceeds through mockup review, implementation, controlled desktop checks and
 visual inspection. Real provider checks that send model turns require separate approval.
@@ -24,7 +37,7 @@ visual inspection. Real provider checks that send model turns require separate a
 ## Shared foundation
 
 - Extend `ImageAttachment` into a discriminated attachment union while continuing to read
-  existing image records, drafts, transcript items and queues.
+  existing image records, drafts, transcript items and queues. (Done: `Attachment` in `src/shared/types.ts`.)
 - Keep stable attachment IDs and host-owned copies of original files. SQLite stores metadata;
   disk stores originals, previews and derived files. The renderer uses the existing MessagePort.
 - Separate import validation, preview generation, provider conversion and export. A readable

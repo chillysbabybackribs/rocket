@@ -1,0 +1,445 @@
+{
+  "elapsedMs": 4200.562,
+  "topInclusiveFrames": [
+    {
+      "inclusiveMs": 4200.092,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "(root)",
+        "scriptId": "0",
+        "url": "",
+        "lineNumber": -1,
+        "columnNumber": -1
+      }
+    },
+    {
+      "inclusiveMs": 2546.938,
+      "selfMs": 2546.938,
+      "frame": {
+        "functionName": "(program)",
+        "scriptId": "0",
+        "url": "",
+        "lineNumber": -1,
+        "columnNumber": -1
+      }
+    },
+    {
+      "inclusiveMs": 1043.921,
+      "selfMs": 23.269,
+      "frame": {
+        "functionName": "performWorkUntilDeadline",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 145,
+        "columnNumber": 37
+      }
+    },
+    {
+      "inclusiveMs": 1006.253,
+      "selfMs": 5.511,
+      "frame": {
+        "functionName": "performWorkOnRootViaSchedulerTask",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 10596,
+        "columnNumber": 44
+      }
+    },
+    {
+      "inclusiveMs": 997.351,
+      "selfMs": 1.102,
+      "frame": {
+        "functionName": "performWorkOnRoot",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 9543,
+        "columnNumber": 28
+      }
+    },
+    {
+      "inclusiveMs": 970.85,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "renderRootConcurrent",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 9908,
+        "columnNumber": 31
+      }
+    },
+    {
+      "inclusiveMs": 969.748,
+      "selfMs": 1.39,
+      "frame": {
+        "functionName": "workLoopConcurrentByScheduler",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 10003,
+        "columnNumber": 40
+      }
+    },
+    {
+      "inclusiveMs": 968.358,
+      "selfMs": 6.004,
+      "frame": {
+        "functionName": "performUnitOfWork",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 10007,
+        "columnNumber": 28
+      }
+    },
+    {
+      "inclusiveMs": 957.433,
+      "selfMs": 0.835,
+      "frame": {
+        "functionName": "beginWork",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 6508,
+        "columnNumber": 20
+      }
+    },
+    {
+      "inclusiveMs": 929.792,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "updateFunctionComponent",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 5873,
+        "columnNumber": 34
+      }
+    },
+    {
+      "inclusiveMs": 926.469,
+      "selfMs": 2.75,
+      "frame": {
+        "functionName": "ChatMarkdown",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 30692,
+        "columnNumber": 21
+      }
+    },
+    {
+      "inclusiveMs": 926.469,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "renderWithHooks",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 4233,
+        "columnNumber": 26
+      }
+    },
+    {
+      "inclusiveMs": 923.719,
+      "selfMs": 5.84,
+      "frame": {
+        "functionName": "Markdown",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 27630,
+        "columnNumber": 17
+      }
+    },
+    {
+      "inclusiveMs": 797.332,
+      "selfMs": 1.075,
+      "frame": {
+        "functionName": "parse",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 27139,
+        "columnNumber": 7
+      }
+    },
+    {
+      "inclusiveMs": 754.107,
+      "selfMs": 2.086,
+      "frame": {
+        "functionName": "parser",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 24833,
+        "columnNumber": 17
+      }
+    },
+    {
+      "inclusiveMs": 749.778,
+      "selfMs": 16.406,
+      "frame": {
+        "functionName": "fromMarkdown",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 24063,
+        "columnNumber": 21
+      }
+    },
+    {
+      "inclusiveMs": 316.11,
+      "selfMs": 20.192,
+      "frame": {
+        "functionName": "subtokenize",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 21456,
+        "columnNumber": 20
+      }
+    },
+    {
+      "inclusiveMs": 316.11,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "postprocess",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23963,
+        "columnNumber": 20
+      }
+    },
+    {
+      "inclusiveMs": 299.721,
+      "selfMs": 1.114,
+      "frame": {
+        "functionName": "write",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23661,
+        "columnNumber": 16
+      }
+    },
+    {
+      "inclusiveMs": 297.725,
+      "selfMs": 7.617,
+      "frame": {
+        "functionName": "main",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23697,
+        "columnNumber": 15
+      }
+    },
+    {
+      "inclusiveMs": 291.342,
+      "selfMs": 9.211,
+      "frame": {
+        "functionName": "subcontent",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 21527,
+        "columnNumber": 19
+      }
+    },
+    {
+      "inclusiveMs": 290.108,
+      "selfMs": 3.446,
+      "frame": {
+        "functionName": "go2",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23713,
+        "columnNumber": 14
+      }
+    },
+    {
+      "inclusiveMs": 267.532,
+      "selfMs": 1.098,
+      "frame": {
+        "functionName": "write",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23661,
+        "columnNumber": 16
+      }
+    },
+    {
+      "inclusiveMs": 241.303,
+      "selfMs": 2.295,
+      "frame": {
+        "functionName": "main",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23697,
+        "columnNumber": 15
+      }
+    },
+    {
+      "inclusiveMs": 239.008,
+      "selfMs": 33.794,
+      "frame": {
+        "functionName": "go2",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23713,
+        "columnNumber": 14
+      }
+    },
+    {
+      "inclusiveMs": 211.349,
+      "selfMs": 211.349,
+      "frame": {
+        "functionName": "(idle)",
+        "scriptId": "0",
+        "url": "",
+        "lineNumber": -1,
+        "columnNumber": -1
+      }
+    },
+    {
+      "inclusiveMs": 176.143,
+      "selfMs": 3.636,
+      "frame": {
+        "functionName": "flowContinue",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 20433,
+        "columnNumber": 23
+      }
+    },
+    {
+      "inclusiveMs": 166.005,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "writeToChild",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 20450,
+        "columnNumber": 23
+      }
+    },
+    {
+      "inclusiveMs": 159.763,
+      "selfMs": 1.083,
+      "frame": {
+        "functionName": "write",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23661,
+        "columnNumber": 16
+      }
+    },
+    {
+      "inclusiveMs": 151.94,
+      "selfMs": 6.508,
+      "frame": {
+        "functionName": "main",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23697,
+        "columnNumber": 15
+      }
+    },
+    {
+      "inclusiveMs": 149.463,
+      "selfMs": 149.463,
+      "frame": {
+        "functionName": "(garbage collector)",
+        "scriptId": "0",
+        "url": "",
+        "lineNumber": -1,
+        "columnNumber": -1
+      }
+    },
+    {
+      "inclusiveMs": 145.432,
+      "selfMs": 8.6,
+      "frame": {
+        "functionName": "go2",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23713,
+        "columnNumber": 14
+      }
+    },
+    {
+      "inclusiveMs": 135.942,
+      "selfMs": 10.468,
+      "frame": {
+        "functionName": "data",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 23436,
+        "columnNumber": 17
+      }
+    },
+    {
+      "inclusiveMs": 86.045,
+      "selfMs": 1.129,
+      "frame": {
+        "functionName": "runSync",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 27361,
+        "columnNumber": 9
+      }
+    },
+    {
+      "inclusiveMs": 84.916,
+      "selfMs": 1.076,
+      "frame": {
+        "functionName": "run",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 27317,
+        "columnNumber": 5
+      }
+    },
+    {
+      "inclusiveMs": 84.315,
+      "selfMs": 6.684,
+      "frame": {
+        "functionName": "flowStart",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 20416,
+        "columnNumber": 20
+      }
+    },
+    {
+      "inclusiveMs": 84.315,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "thereIsNoNewContainer",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 20402,
+        "columnNumber": 32
+      }
+    },
+    {
+      "inclusiveMs": 83.84,
+      "selfMs": 2.877,
+      "frame": {
+        "functionName": "next",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 26152,
+        "columnNumber": 17
+      }
+    },
+    {
+      "inclusiveMs": 83.84,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "run",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 26145,
+        "columnNumber": 14
+      }
+    },
+    {
+      "inclusiveMs": 83.84,
+      "selfMs": 0.0,
+      "frame": {
+        "functionName": "executor",
+        "scriptId": "131",
+        "url": "file:///home/dp/Desktop/rocket-orchestrator/out/renderer/assets/index-BgE4XvMq.js",
+        "lineNumber": 27326,
+        "columnNumber": 21
+      }
+    }
+  ]
+}

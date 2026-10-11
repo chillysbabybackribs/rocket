@@ -2,7 +2,7 @@ import type { BrowserAgentOp, TurnSources } from './types.ts'
 
 // What a reply cites against what its turn opened. The host records both when a turn ends and
 // the window marks each link in the reply with the result. The rules are deliberately dumb: a
-// page counts as opened only when the app saw a request leave for it, two URLs are the same page
+// page counts as opened only when a reader reports usable content, two URLs are the same page
 // only by host and path, and a search result is never a source. Nothing here asks a model.
 
 /** A URL as one page: host without `www.`, path without a trailing slash, query without tracking parameters. Null for anything but HTTP(S). */

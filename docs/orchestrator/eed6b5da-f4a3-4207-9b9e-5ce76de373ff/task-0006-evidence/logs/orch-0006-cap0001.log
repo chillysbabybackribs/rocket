@@ -1,0 +1,94 @@
+
+Running 1 test using 1 worker
+
+  ✘  1 .artifacts/board-capture/board-capture.spec.ts:10:1 › board capture: empty, streaming, done, report, expand+reply, stop, filters, map, many workers (39.2s)
+
+
+  1) .artifacts/board-capture/board-capture.spec.ts:10:1 › board capture: empty, streaming, done, report, expand+reply, stop, filters, map, many workers 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 1
+
+    Call Log:
+    - Timeout 20000ms exceeded while waiting on the predicate
+
+      81 |       if (task.status === 'running' && task.turnId) await releaseTurn(task.turnId)
+      82 |     }
+    > 83 |     await expect.poll(async () => (await status()).tasks.filter(task => task.status === 'running').length, { timeout: 20_000 }).toBe(0)
+         |                                                                                                                                 ^
+      84 |     for (const task of (await status()).tasks) if (task.review === null && task.status !== 'queued') await review(task.id)
+      85 |     await raw({ action: 'dispatch', provider: ['claude', 'codex', 'cursor'][round % 3], task: `Board capture worker ${round + 1}` })
+      86 |   }
+        at /home/dp/Desktop/rocket-orchestrator/.artifacts/board-capture/board-capture.spec.ts:83:129
+
+    attachment #1: 01-empty-board: app shell (image/png) ───────────────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/01-empty-board-app-shell-2b985f0b52a33cb861c5369ab77a5ea3c87a73b5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: 01-empty-board: full window (image/png) ─────────────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/01-empty-board-full-window-88cd60064344d1f071368b59dbe94d3ec10b0402.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: 02-workers-streaming: app shell (image/png) ─────────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/02-workers-streaming-app-shell-9f52c5877184c7e4afe1c9fc438cc2c49ae78bc1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: 02-workers-streaming: full window (image/png) ───────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/02-workers-streaming-full-window-9b82dee4bcb9ebf0d23442d66d02e24b07209c25.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: 03-report-artifact: app shell (image/png) ───────────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/03-report-artifact-app-shell-30e773713a716f56dcec39cbd8ca821beb490861.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: 03-report-artifact: full window (image/png) ─────────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/03-report-artifact-full-window-eb4e4e8a9afde5d96fcbac84d5f26b9b4f96bc0e.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #10: 04-worker-expanded-reply: app shell (image/png) ────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/04-worker-expanded-reply-app-shell-2550c0e03b5d53b4c87fb3b524d8354c9a1f9df9.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #12: 04-worker-expanded-reply: full window (image/png) ──────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/04-worker-expanded-reply-full-window-9e37d2364a18b3fea5c8457d32d9712227a3ade6.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #13: 05-worker-stopped: app shell (image/png) ───────────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/05-worker-stopped-app-shell-f3f4094b085505826809e8b58445177c6e7eab2d.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #15: 05-worker-stopped: full window (image/png) ─────────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/05-worker-stopped-full-window-c09286a62b5c6e37ee8c352e2adb1827031e8793.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #16: failure: app shell (image/png) ─────────────────────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/failure-app-shell-2858262947389e1e8a2c053205f986576ff2438d.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #18: failure: full window (image/png) ───────────────────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/failure-full-window-a67f3617ffe0305964636cee5308b27309eae2f6.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #19: Trace (application/zip) ────────────────────────────────────────────────────────
+    .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/attachments/Trace-abd85ebb044038ebe6a0e333ed9d271f1e4336c9.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #20: App log (text/plain) ───────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #21: Journal (text/plain) ───────────────────────────────────────────────────────────
+    {"at":1791440418170,"source":"turn","severity":"info","kind":"timing","message":"claude (ui-default) completed in 2.1s","details":{"chatId":"5813c1f9-e2bb-47f7-8af8-7bcf62a08ab4","provider":"claude","model":"ui-default","firstEventMs":372.79916200000025,"firstTextMs":374.138551,"totalMs":2056}}
+    {"at...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/board-capture/out-0001-rerun/results/board-capture-board-captur-579db-op-filters-map-many-workers/error-context.md
+
+  1 failed
+    .artifacts/board-capture/board-capture.spec.ts:10:1 › board capture: empty, streaming, done, report, expand+reply, stop, filters, map, many workers 

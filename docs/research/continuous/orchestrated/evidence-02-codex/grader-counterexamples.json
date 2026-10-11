@@ -1,0 +1,132 @@
+[
+  {
+    "name": "failed forbidden call",
+    "body": {
+      "turn": {
+        "id": "t1",
+        "status": "completed"
+      },
+      "items": [],
+      "ledger": {
+        "calls": [
+          {
+            "turnId": "t1",
+            "tool": "goal_report",
+            "outcome": "failure",
+            "finish": {
+              "error": {
+                "code": "INVALID_ARGUMENT"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "graders": [
+      "tool_not_called:goal_report"
+    ],
+    "result": {
+      "allPass": true,
+      "graders": {
+        "tool_not_called:goal_report": {
+          "score": 1,
+          "pass": true,
+          "metadata": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "shell label mentions required tool",
+    "body": {
+      "turn": {
+        "id": "t1",
+        "status": "completed"
+      },
+      "items": [
+        {
+          "type": "tool",
+          "kind": "command",
+          "status": "done",
+          "label": "echo goal_report",
+          "turnId": "t1"
+        }
+      ],
+      "ledger": {
+        "calls": []
+      }
+    },
+    "graders": [
+      "goal_report_called"
+    ],
+    "result": {
+      "allPass": true,
+      "graders": {
+        "goal_report_called": {
+          "score": 1,
+          "pass": true,
+          "metadata": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "other turn success",
+    "body": {
+      "turn": {
+        "id": "t1",
+        "status": "completed"
+      },
+      "items": [],
+      "ledger": {
+        "calls": [
+          {
+            "turnId": "other-turn",
+            "tool": "goal_report",
+            "outcome": "success"
+          }
+        ]
+      }
+    },
+    "graders": [
+      "goal_report_called"
+    ],
+    "result": {
+      "allPass": true,
+      "graders": {
+        "goal_report_called": {
+          "score": 1,
+          "pass": true,
+          "metadata": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "question followed by explanation",
+    "body": {
+      "turn": {
+        "status": "completed"
+      },
+      "items": [
+        {
+          "type": "assistant",
+          "text": "Should I proceed? I can do this once you approve."
+        }
+      ]
+    },
+    "graders": [
+      "no_question_asked"
+    ],
+    "result": {
+      "allPass": true,
+      "graders": {
+        "no_question_asked": {
+          "score": 1,
+          "pass": true,
+          "metadata": {}
+        }
+      }
+    }
+  }
+]

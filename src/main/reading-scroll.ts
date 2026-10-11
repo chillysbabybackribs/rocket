@@ -178,6 +178,8 @@ function same(a: BrowserReading | null, b: BrowserReading | null): boolean {
 /** Main's half: which tabs are reading, and the speed they all share. */
 export class ReadingScroll {
   private readonly tabs = new Map<WebContents, BrowserReading>()
+  // Pages whose isolated world already holds the reader library, so a poll sends only the call.
+  private readonly loaded = new WeakSet<WebContents>()
   private timer: NodeJS.Timeout | null = null
   private speedValue = 1
   /** Set this run, so the saved session's speed, read later, is older news. */
@@ -249,11 +251,23 @@ export class ReadingScroll {
     this.tabs.clear()
   }
 
+  // The whole reader library would be sent and compiled on every poll (four times a second while a
+  // page reads), so it is sent once per document. A new document has no library, the call
+  // fails, and the library is sent again.
   private async call(contents: WebContents, expression: string): Promise<BrowserReading | null> {
     if (contents.isDestroyed()) return null
+    const run = (code: string): Promise<unknown> => contents.executeJavaScriptInIsolatedWorld(WORLD, [{ code }])
     try {
-      const code = `${READER_LIB};globalThis.__rocketReader.${expression}`
-      return readingOf(await contents.executeJavaScriptInIsolatedWorld(WORLD, [{ code }]))
+      if (this.loaded.has(contents)) {
+        try {
+          return readingOf(await run(`globalThis.__rocketReader.${expression}`))
+        } catch {
+          this.loaded.delete(contents)
+        }
+      }
+      const value = readingOf(await run(`${READER_LIB};globalThis.__rocketReader.${expression}`))
+      this.loaded.add(contents)
+      return value
     } catch {
       // A page between documents, or gone: it is not reading.
       return null

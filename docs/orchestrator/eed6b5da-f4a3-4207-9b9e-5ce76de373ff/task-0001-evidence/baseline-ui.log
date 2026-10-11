@@ -1,0 +1,178 @@
+
+> rocket-orchestrator@0.1.0 check:ui
+> node scripts/ui-check.mjs tests/ui/fill.spec.ts tests/ui/sources.spec.ts tests/ui/eval-tools.spec.ts tests/ui/tool-failure-loop.spec.ts
+
+UI check artifacts: /tmp/orch-baseline/.artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC
+
+> rocket-orchestrator@0.1.0 build
+> tsc --noEmit && electron-vite build
+
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 87 modules transformed.
+rendering chunks...
+out/main/script-worker.js              4.88 kB
+out/main/chunks/ui-test-Bic2xwxM.js   47.19 kB
+out/main/index.js                    177.95 kB
+out/main/host.js                     421.90 kB
+✓ built in 1.49s
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.mjs  1.83 kB
+✓ built in 21ms
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2249 modules transformed.
+rendering chunks...
+../../out/renderer/fill.html                                                      0.63 kB
+../../out/renderer/suggest.html                                                   0.75 kB
+../../out/renderer/index.html                                                     0.78 kB
+../../out/renderer/assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2          5.81 kB
+../../out/renderer/assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2      6.18 kB
+../../out/renderer/assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2        7.70 kB
+../../out/renderer/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2            10.25 kB
+../../out/renderer/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2             11.23 kB
+../../out/renderer/assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2         12.94 kB
+../../out/renderer/assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2        14.70 kB
+../../out/renderer/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2              18.75 kB
+../../out/renderer/assets/inter-greek-wght-normal-CkhJZR-_.woff2                 19.00 kB
+../../out/renderer/assets/geist-mono-latin-wght-normal-XN7g48iV.woff2            23.13 kB
+../../out/renderer/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2          25.96 kB
+../../out/renderer/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                 48.26 kB
+../../out/renderer/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2             85.07 kB
+../../out/renderer/assets/suggest-Wwojl-O_.css                                    1.25 kB
+../../out/renderer/assets/index-hA6BJ-kU.css                                      2.44 kB
+../../out/renderer/assets/fill-DVrebo1E.css                                       4.38 kB
+../../out/renderer/assets/index-C_xjTI2b.css                                    120.40 kB
+../../out/renderer/assets/types-7ki8Xw5x.js                                       1.19 kB
+../../out/renderer/assets/suggest-j2x2i565.js                                     1.70 kB
+../../out/renderer/assets/fill-BVFUMawF.js                                        8.35 kB
+../../out/renderer/assets/index-QQD6c6Yd.js                                   1,431.92 kB
+✓ built in 4.60s
+
+Running 4 tests using 1 worker
+
+  ✓  1 tests/ui/eval-tools.spec.ts:5:1 › eval Tools tab loads ledger and supports mark verified (18.9s)
+  ✘  2 tests/ui/fill.spec.ts:8:1 › Fill with Rocket fills a field, a rich editor and a form, undoes, reworks, and stops on Esc (12.8s)
+  ✘  3 tests/ui/sources.spec.ts:5:1 › each link in a reply is marked opened or not by what the turn fetched (11.7s)
+  ✓  4 tests/ui/tool-failure-loop.spec.ts:6:1 › tool failure history supports review through verified fix (18.4s)
+
+
+  1) tests/ui/fill.spec.ts:8:1 › Fill with Rocket fills a field, a rich editor and a form, undoes, reworks, and stops on Esc › A field offers the fill first in its menu, and the chip says what the model is doing 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: locator('.count')
+    Expected: "1"
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" locator('.count') with timeout 10000ms
+      - waiting for locator('.count')
+        6 × locator resolved to <span class="count">0</span>
+          - unexpected value "0"
+
+
+      63 |     const chip = await rocket.surface('fill')
+      64 |     await expect(chip.locator('.chip')).toContainText(/Reading|Opening/)
+    > 65 |     await expect(chip.locator('.count')).toHaveText('1')
+         |                                          ^
+      66 |     // One width from start to finish.
+      67 |     expect(Math.round((await chip.locator('.chip').boundingBox())!.width)).toBe(500)
+      68 |     await expect(page.locator('.btab.is-filling')).toHaveCount(1)
+        at /tmp/orch-baseline/tests/ui/fill.spec.ts:65:42
+        at /tmp/orch-baseline/tests/ui/fill.spec.ts:57:3
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-app-shell-ef9f8dbfd28846a6fee6e88e7f36ec45ef3e8590.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: http://127.0.0.1:43565/forum (image/png) ───────────────────────────────
+    .artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-http-127-0-0-1-43565-forum-f760abf75124d75da41b2ff87bd0d0687451e52d.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: failure: file:///tmp/orch-baseline/out/renderer/fill.html (image/png) ───────────
+    .artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-file-tmp-orch-baseline-out-renderer-fill-html-72aab9016a3b2c456a95b6215f70650cf6894dd6.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/failure-full-window-bd80d02e625087702bed10017a2870d22899887e.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/attachments/Trace-facf9675cf8fd4da2360846799273aac40edda4a.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: App log (text/plain) ────────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791438262837,"source":"turn","severity":"info","kind":"timing","message":"claude (ui-default) completed in 1.6s","details":{"chatId":"514b82b8-bc63-4755-9d78-2144ae427905","provider":"claude","model":"ui-default","firstEventMs":32.89058699999987,"firstTextMs":1560.451723,"totalMs":1573}}
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC/results/fill-Fill-with-Rocket-fill-d6cda-es-reworks-and-stops-on-Esc/error-context.md
+
+  2) tests/ui/sources.spec.ts:5:1 › each link in a reply is marked opened or not by what the turn fetched 
+
+    Error: expect(locator).toHaveClass(expected) failed
+
+    Locator: locator('.turn .prose').last().locator('a').filter({ hasText: 'the auth docs' }).locator('.source-mark')
+    Expected pattern: /is-opened/
+    Received string:  "source-mark is-unopened"
+    Timeout: 10000ms
+
+    Call log:
+      - Expect "toHaveClass" locator('.turn .prose').last().locator('a').filter({ hasText: 'the auth docs' }).locator('.source-mark') with timeout 10000ms
+      - waiting for locator('.turn .prose').last().locator('a').filter({ hasText: 'the auth docs' }).locator('.source-mark')
+        24 × locator resolved to <span class="source-mark is-unopened" title="Not opened this turn: the model cited this page without reading it">…</span>
+           - unexpected value "source-mark is-unopened"
+
+
+      11 |   await expect(reply).toContainText('not verified')
+      12 |   const opened = reply.locator('a', { hasText: 'the auth docs' }).locator('.source-mark')
+    > 13 |   await expect(opened).toHaveClass(/is-opened/)
+         |                        ^
+      14 |   await expect(opened).toHaveAttribute('title', 'Opened this turn')
+      15 |   const unopened = reply.locator('a', { hasText: 'a blog post' }).locator('.source-mark')
+      16 |   await expect(unopened).toHaveClass(/is-unopened/)
+        at /tmp/orch-baseline/tests/ui/sources.spec.ts:13:24
+
+    attachment #1: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/attachments/failure-app-shell-05705c69a2da57e1f9b5b23abfe562870c927566.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/attachments/failure-full-window-fcb3d5294a519e3ac03a26129db0f864f1cb31b5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/attachments/Trace-e6f0cd85fc2874f36b9c0040530d14327d03ec73.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: App log (text/plain) ────────────────────────────────────────────────────────────
+    [host] turn claude (ui-default) completed: first event 86ms, first text 89ms, total 0.1s
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. ...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: Journal (text/plain) ────────────────────────────────────────────────────────────
+    {"at":1791438274305,"source":"turn","severity":"info","kind":"timing","message":"claude (ui-default) completed in 0.1s","details":{"chatId":"3c802ed4-2f55-4a2a-b31e-996582f22652","provider":"claude","model":"ui-default","firstEventMs":86.30032399999993,"firstTextMs":89.00145599999996,"totalMs":102}}...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC/results/sources-each-link-in-a-rep-abac3-ot-by-what-the-turn-fetched/error-context.md
+
+  2 failed
+    tests/ui/fill.spec.ts:8:1 › Fill with Rocket fills a field, a rich editor and a form, undoes, reworks, and stops on Esc 
+    tests/ui/sources.spec.ts:5:1 › each link in a reply is marked opened or not by what the turn fetched 
+  2 passed (1.1m)
+
+FAIL — UI check artifacts: /tmp/orch-baseline/.artifacts/ui/2026-10-08T05-43-41-465Z-fXEecC

@@ -1,0 +1,71 @@
+
+> rocket-orchestrator@0.1.0 check:ui
+> node scripts/ui-check.mjs --grep orchestra-shell --repeat-each=3
+
+UI check artifacts: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T06-18-06-983Z-qE0AoA
+
+> rocket-orchestrator@0.1.0 build
+> tsc --noEmit && electron-vite build
+
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 87 modules transformed.
+rendering chunks...
+out/main/script-worker.js              4.88 kB
+out/main/chunks/ui-test-D9uN6wI7.js   51.35 kB
+out/main/index.js                    177.95 kB
+out/main/host.js                     426.14 kB
+✓ built in 3.00s
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.mjs  1.83 kB
+✓ built in 42ms
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2251 modules transformed.
+rendering chunks...
+../../out/renderer/fill.html                                                      0.63 kB
+../../out/renderer/suggest.html                                                   0.75 kB
+../../out/renderer/index.html                                                     0.78 kB
+../../out/renderer/assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2          5.81 kB
+../../out/renderer/assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2      6.18 kB
+../../out/renderer/assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2        7.70 kB
+../../out/renderer/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2            10.25 kB
+../../out/renderer/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2             11.23 kB
+../../out/renderer/assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2         12.94 kB
+../../out/renderer/assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2        14.70 kB
+../../out/renderer/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2              18.75 kB
+../../out/renderer/assets/inter-greek-wght-normal-CkhJZR-_.woff2                 19.00 kB
+../../out/renderer/assets/geist-mono-latin-wght-normal-XN7g48iV.woff2            23.13 kB
+../../out/renderer/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2          25.96 kB
+../../out/renderer/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                 48.26 kB
+../../out/renderer/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2             85.07 kB
+../../out/renderer/assets/suggest-Wwojl-O_.css                                    1.25 kB
+../../out/renderer/assets/index-hA6BJ-kU.css                                      2.44 kB
+../../out/renderer/assets/fill-DVrebo1E.css                                       4.38 kB
+../../out/renderer/assets/index-B3h1fCT2.css                                    134.81 kB
+../../out/renderer/assets/types-7ki8Xw5x.js                                       1.19 kB
+../../out/renderer/assets/suggest-j2x2i565.js                                     1.70 kB
+../../out/renderer/assets/fill-BVFUMawF.js                                        8.35 kB
+../../out/renderer/assets/index-B0oX7As-.js                                   1,464.20 kB
+✓ built in 6.93s
+(node:159450) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 9 tests using 1 worker
+
+  ✓  1 tests/ui/orchestra-shell.spec.ts:9:1 › orchestra-shell fresh profile keeps the leader full height below the title strip (2.2s)
+  ✓  2 tests/ui/orchestra-shell.spec.ts:74:1 › orchestra-shell controlled queue releases slots and delivers reports (7.1s)
+  ✓  3 tests/ui/orchestra-shell.spec.ts:101:1 › orchestra-shell streams queued workers and supports cancel expand reply stop reports and scrolling (17.0s)
+  ✓  4 tests/ui/orchestra-shell.spec.ts:9:1 › orchestra-shell fresh profile keeps the leader full height below the title strip (2.1s)
+  ✓  5 tests/ui/orchestra-shell.spec.ts:74:1 › orchestra-shell controlled queue releases slots and delivers reports (5.6s)
+  ✓  6 tests/ui/orchestra-shell.spec.ts:101:1 › orchestra-shell streams queued workers and supports cancel expand reply stop reports and scrolling (15.9s)
+  ✓  7 tests/ui/orchestra-shell.spec.ts:9:1 › orchestra-shell fresh profile keeps the leader full height below the title strip (2.5s)
+  ✓  8 tests/ui/orchestra-shell.spec.ts:74:1 › orchestra-shell controlled queue releases slots and delivers reports (5.4s)
+  ✓  9 tests/ui/orchestra-shell.spec.ts:101:1 › orchestra-shell streams queued workers and supports cancel expand reply stop reports and scrolling (23.2s)
+
+  9 passed (1.4m)
+
+PASS — UI check artifacts: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T06-18-06-983Z-qE0AoA

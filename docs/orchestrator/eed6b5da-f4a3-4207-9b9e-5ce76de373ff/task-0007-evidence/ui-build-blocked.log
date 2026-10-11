@@ -1,0 +1,12 @@
+
+> rocket-orchestrator@0.1.0 check:ui
+> node scripts/ui-check.mjs --grep orchestra-stress
+
+UI check artifacts: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T06-02-59-714Z-52NdRR
+
+> rocket-orchestrator@0.1.0 build
+> tsc --noEmit && electron-vite build
+
+src/renderer/src/components/OrchestratorShell.tsx(84,241): error TS2554: Expected 2 arguments, but got 1.
+
+FAIL — UI check artifacts: /home/dp/Desktop/rocket-orchestrator/.artifacts/ui/2026-10-08T06-02-59-714Z-52NdRR

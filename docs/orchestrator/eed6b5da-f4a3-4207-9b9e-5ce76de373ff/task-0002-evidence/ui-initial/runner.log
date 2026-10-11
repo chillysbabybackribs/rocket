@@ -1,0 +1,459 @@
+
+> rocket-orchestrator@0.1.0 build
+> tsc --noEmit && electron-vite build
+
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 87 modules transformed.
+rendering chunks...
+out/main/script-worker.js              4.88 kB
+out/main/chunks/ui-test-D9H1zUQY.js   49.67 kB
+out/main/index.js                    177.95 kB
+out/main/host.js                     421.90 kB
+✓ built in 1.42s
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.mjs  1.83 kB
+✓ built in 18ms
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2249 modules transformed.
+rendering chunks...
+../../out/renderer/fill.html                                                      0.63 kB
+../../out/renderer/suggest.html                                                   0.75 kB
+../../out/renderer/index.html                                                     0.78 kB
+../../out/renderer/assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2          5.81 kB
+../../out/renderer/assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2      6.18 kB
+../../out/renderer/assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2        7.70 kB
+../../out/renderer/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2            10.25 kB
+../../out/renderer/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2             11.23 kB
+../../out/renderer/assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2         12.94 kB
+../../out/renderer/assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2        14.70 kB
+../../out/renderer/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2              18.75 kB
+../../out/renderer/assets/inter-greek-wght-normal-CkhJZR-_.woff2                 19.00 kB
+../../out/renderer/assets/geist-mono-latin-wght-normal-XN7g48iV.woff2            23.13 kB
+../../out/renderer/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2          25.96 kB
+../../out/renderer/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                 48.26 kB
+../../out/renderer/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2             85.07 kB
+../../out/renderer/assets/suggest-Wwojl-O_.css                                    1.25 kB
+../../out/renderer/assets/index-hA6BJ-kU.css                                      2.44 kB
+../../out/renderer/assets/fill-DVrebo1E.css                                       4.38 kB
+../../out/renderer/assets/index-C_xjTI2b.css                                    120.40 kB
+../../out/renderer/assets/types-7ki8Xw5x.js                                       1.19 kB
+../../out/renderer/assets/suggest-j2x2i565.js                                     1.70 kB
+../../out/renderer/assets/fill-BVFUMawF.js                                        8.35 kB
+../../out/renderer/assets/index-QQD6c6Yd.js                                   1,431.92 kB
+✓ built in 4.49s
+
+> rocket-orchestrator@0.1.0 test
+> node --experimental-transform-types --disable-warning=ExperimentalWarning --test "src/**/*.test.ts" "scripts/*.test.mjs"
+
+✔ library add and edit preserve other references and reject invalid writes (16.69428ms)
+✔ each research claim gets another provider and reviewers rotate without self-review (6.383654ms)
+✔ research and review barriers precede synthesis and unbounded deeper rounds (1.254541ms)
+✔ old or empty report receipts cannot complete a new attempt (0.866597ms)
+✔ transcript reconciliation recovers sends and explicit resume clears interrupted attempts (8.03728ms)
+✔ UI cancellation stops wrapper, ordinary children and detached TERM-resistant descendants (1112.566582ms)
+✔ UI command preserves exit status and does not start work after interruption (140.795531ms)
+✔ persistent UI supervisors receive stdin and callback failures clean up the child (690.327176ms)
+✔ an exited UI supervisor cannot leave a detached child behind (2683.108271ms)
+✔ agent situation is always returned for every turn, with the map and where the shell is (8.717775ms)
+✔ without a readable window the block says to ask rocket_ui_where (16.60481ms)
+✔ images are validated by bytes and round-trip through SQLite and files after restart (131.918495ms)
+✔ PDFs and text files are stored by content, previewed, and given to providers as text within a budget (447.211558ms)
+✔ preparation discovers an editable library and tolerates unavailable resources (3.807786ms)
+✔ buildTurnExport includes turn items and timing fallback (100.855982ms)
+✔ EvalExport writes tagged chat turns to inbox (102.914281ms)
+✔ writeTurnExport also writes ledger-slice.json (5.050545ms)
+✔ files_unchanged and only_files_changed read the files the run changed (8.758753ms)
+✔ a file grader on a turn with no record of its files fails with what to do (0.564857ms)
+✔ no_question_asked fails on ask_user or a reply that ends with a question (1.222069ms)
+✔ runEvalCell exports a completed turn (80.273404ms)
+✔ a run puts providers side by side, each provider's trials in turn, and grades each copy (407.817128ms)
+✔ a cell waits while its provider is answering another chat, and a stopped run starts nothing more (2129.619553ms)
+✔ a run copy reports the files the turn changed, added and deleted, with repo-relative paths (69.706033ms)
+✔ a scenario folder that does not exist is refused with what to fix (1.078668ms)
+✔ a fill runs in a chat the window never sees, answers from its fill block, and leaves nothing behind (35.571534ms)
+✔ a reply with no fill block fails with a sentence, and the last model sent with is the one used (26.382188ms)
+✔ Sound like you is given the user's own messages, never a fill's or an eval's (18.297379ms)
+✔ a goal is drafted, confirmed, worked, checked and done (93.226062ms)
+✔ a worker that forgets to report goes to the checker with its last reply (36.441869ms)
+✔ the same gap twice in a row asks the user, and a note carries on (71.280128ms)
+✔ a worker that needs the user waits, and the answer is its next message (39.533332ms)
+✔ a draft without a brief asks the user, and their answer redrafts (24.12939ms)
+✔ a failed turn is tried once more, then the user is asked (34.566736ms)
+✔ a checker with no verdict is asked once more, then the user (37.423064ms)
+✔ usage at the pause level waits, and Resume goes ahead anyway (67.424271ms)
+✔ pause waits for the turn in flight; stop cuts it off (48.263831ms)
+✔ a goal cut off by the app closing waits for the user after a restart (41.536798ms)
+✔ goal_report outside a goal turn, or with the wrong arguments, says what to do (9.700652ms)
+✔ with no other provider signed in, the worker checks its own work (12.727704ms)
+✔ files a work turn changed through the shell are added to its round (32.615177ms)
+✔ a visual brief needs a concept and screenshots that exist, and gains the design line (33.919663ms)
+✔ a brief without a design gets no design line (21.785862ms)
+✔ automatic usage resume reads fresh usage before proceeding (99%) (31.112608ms)
+✔ automatic usage resume reads fresh usage before proceeding (10%) (31.822509ms)
+✔ nothing missed means no handoff (3.077846ms)
+✔ a handoff carries user and assistant text, tool lines, and no reasoning or tool output (3.38086ms)
+✔ a question the user has not answered is named as still open; an answered one is not flagged (1.333029ms)
+✔ the user sees their own words when a message went out with a handoff in front (0.778381ms)
+✔ an oversized handoff is cut to the budget and keeps the newest turn whole (1.952831ms)
+✔ files a turn touched are named once each, relative to the chat folder, edits ahead of reads (1.545721ms)
+✔ a handoff carries what a turn concluded, not what it said between tool calls (1.102303ms)
+✔ older turns keep their files and a shortened request and reply; the newest go whole (6.765024ms)
+✔ a history too long to fit even cut down keeps the newest turns and says how many were left out (93.295453ms)
+✔ image-only messages, queues, restart restoration and provider handoffs retain image references (58.953222ms)
+✔ waitForTurn resolves when the turn ends (8.072687ms)
+✔ prepare hands the provider the chat folder and the session it would resume (7.967607ms)
+✔ prepare for the next new chat passes the folder it will start in, and never throws (3.36521ms)
+✔ a turn reports when it first showed anything and when it first showed text (18.084698ms)
+✔ changing the folder drops every provider's warm session for the chat (7.258868ms)
+✔ a failed turn the provider had started answering is not handed back to it (16.11773ms)
+✔ a session that was lost is told the app's context again (22.122518ms)
+✔ a goal's turn does not name the chat after the app's message (11.483181ms)
+✔ a turn the provider starts by itself is recorded, replied in, and settled (5.764284ms)
+✔ words sent to the provider answering join its turn, told not to acknowledge them (13.414932ms)
+✔ words a turn never said it read are kept when it completes, and sent next when it is stopped (11.999306ms)
+✔ Stop gives back words on their way into the turn with those waiting for it (9.072376ms)
+✔ words for a provider that cannot take them wait, and go out together when the turn ends (28.610859ms)
+✔ a turn that cannot take words leaves them waiting, and later words keep their place behind them (12.496266ms)
+✔ Stop during initial context prevents provider startup (9.23877ms)
+✔ Stop during lost-session retry context prevents provider startup (9.461831ms)
+✔ a turn's tokens are kept on it and reported with its timing; the latest reading wins (8.985151ms)
+✔ a page leaves finished tool output out and serves it on request; the turn in flight keeps its own (11.13853ms)
+✔ a turn records the pages it opened against the pages its reply cites, and the next message is told of the unopened ones (19.083455ms)
+✔ all providers reject textual fetch failures and search URLs as citation evidence (11.014195ms)
+✔ a torn last line does not hide the entries before it (2.276873ms)
+✔ a turn far slower than usual is a warning, and the usual stays unspoiled (5.565969ms)
+✔ a failed turn is an error that carries its reason (1.472293ms)
+✔ a chat hears about new trouble once, and not about trouble from before the host started (2.595174ms)
+✔ a note a model filed is not announced back to it (1.044183ms)
+✔ a turn's tokens are kept with its timing and summed up in the stats (4.231467ms)
+✔ sent attachments are on the shelf with their chat; a draft’s and an eval chat’s are not (423.563877ms)
+✔ files join by path once, keep where they first came from, and show when they go missing (88.756224ms)
+✔ a turn’s finished downloads join the shelf with the site they came from (63.013826ms)
+✔ library_list lists with the panel’s filters, "this" chat included, and refuses unknown values (84.289834ms)
+✔ the first start shelves the Markdown files earlier turns wrote, once, dated by the last turn to write each (142.126286ms)
+✔ continuous review uses defaults, waits for workers, then dispatches fresh deeper chats (23.817992ms)
+✔ user file edits survive checkpoints and wake an idle owner without spurious self-updates (17.785922ms)
+✔ drain refuses new dispatch and produces one final review after all workers finish (12.621543ms)
+✔ Stop requests cancellation only for owned workers, retains unresolved work, and never restarts on late completion (9.728856ms)
+✔ completed-with-error-prose but missing report is not accepted as a successful worker (6.051627ms)
+✔ failed or empty leader turns pause rather than spend usage in automatic retries (15.536351ms)
+✔ restart preserves evidence and pauses; damaged user-note boundary is never overwritten (8.608739ms)
+✔ tool context cannot control another chat and worker concurrency is bounded (9.910199ms)
+✔ a damaged saved state disables orchestration without losing evidence or preventing host startup (5.363255ms)
+✔ Antigravity shared identity is not used concurrently with another active chat (2.837713ms)
+✔ a new conversation is told each tool, its arguments and how to call it (2.602649ms)
+✔ with no tools there is nothing to tell (0.560048ms)
+✔ a step that was only thinking carries no text and shows nothing (2.249782ms)
+✔ claudeCodeExecutable prefers the user install over the SDK bundle (7.713788ms)
+✔ CLAUDE_CODE_EXECUTABLE overrides the default install path (4.696065ms)
+✔ the same text said twice in a turn is two closed rows (restated after the stop) (6.583852ms)
+✔ the same text said twice in a turn is two closed rows (restated before the stop) (2.457935ms)
+✔ a reply that ends while background tasks run keeps its turn open for the follow-up (6.012793ms)
+✔ TodoWrite is the turn's plan, replaced whole on each update and never a tool row (3.294416ms)
+✔ a turn's tokens add up its results, and its context is the last model call's input (1.509974ms)
+✔ early Stop waits for the Codex turn ID from its reply and interrupts remotely once (13.202741ms)
+✔ early Stop waits for the Codex turn ID from its notification and interrupts remotely once (6.536693ms)
+✔ a turn's tokens are the thread's running count less where it stood before the turn (5.681426ms)
+✔ a blocking question is skipped and pointed at ask_user, so the turn never waits on a human (2.552213ms)
+✔ a plan asking for approval is accepted, as in an unattended session (1.563866ms)
+✔ todos and task completions sent as requests are accepted with what they carried (0.790594ms)
+✔ a method the app does not know is still refused (1.35958ms)
+✔ the ACP plan update becomes the turn's plan item (1.792758ms)
+✔ an item updated in place keeps its first position (8.951346ms)
+✔ a provider is owed exactly the turns after the one its session last saw (3.827744ms)
+✔ deleting a chat removes its turns, items and sessions (4.036198ms)
+✔ a store made before goals gains the goal_role column, and turns keep their role (44.633179ms)
+✔ a turn's sources are saved with it, and a turn without them reads as null (9.014025ms)
+✔ a turn's tokens are saved with it, and a turn without them reads as null (7.08014ms)
+✔ a handoff read returns the turns in a range with their own items, in order (6.505163ms)
+✔ the running and the last settled turn are found without reading the chat (5.934866ms)
+✔ the attachment sweep keeps what user messages and queues hold, whatever else mentions attachments (7.667691ms)
+✔ a chat opens with its newest page of turns, and earlier pages come on request until none are left (14.188935ms)
+✔ what a turn changed is kept with it as a patch, with totals on the turn, leaving out another running turn's file (561.319711ms)
+✔ undo puts a turn's files back, removes the ones it made, commits the reversal and marks the turn; a file changed since is named (1438.475688ms)
+✔ a turn's changes are committed alone, under the request, and a stopped turn waits for the one that finishes it (888.911252ms)
+✔ a model is told who is working in the folder, what other chats finished, and what changed under it (278.998089ms)
+✔ a file another running turn has edited is left for that turn to commit (207.729022ms)
+✔ wilson lower bound is conservative for small samples (2.161084ms)
+✔ loadToolEvalScores combines ledger R and eval-live P for targetTool scenarios (75.132398ms)
+✔ ledger records failures and successes, immutable finishes, versions and denominator-safe grouping (95.68547ms)
+✔ restart distinguishes interrupted calls, malformed evidence is skipped and retention preserves active calls (95.356368ms)
+✔ redacted evidence is bounded and fallback grouping removes volatile paths and numeric values (8.319904ms)
+✔ broken recording and diagnostics do not change tool behavior (1.831872ms)
+✔ query tool validates filters and bounds JSON responses without returning arguments in lists (322.090999ms)
+✔ concurrent tool calls record distinct finishes without cross-talk (123.712486ms)
+✔ summary exposes context limits and description bytes beside success rates (72.531663ms)
+✔ review annotations stay separate, support retry links and a bounded queue (86.915115ms)
+✔ setToolLedgerReview rejects invalid lifecycle and annotates like MCP review (62.16386ms)
+✔ panel loader exposes registered tools and summary fields for the eval Tools view (57.625543ms)
+✔ opening an unavailable ledger can be handled without corrupting an existing file (1.478504ms)
+✔ a question needs real options, their consequences and the model's own pick (4.658644ms)
+✔ the answer goes to the model with the question quoted above it (0.453817ms)
+✔ ask_user posts one question into the running turn and refuses a second (27.454074ms)
+✔ closing tabs never marks, loads or inspects a page as a side effect (239.230796ms)
+✔ browser context names the open tabs to a new session, then only when they change (6.642734ms)
+✔ browser context says nothing with no tabs open, and research guidance rides in the tool description only (1.432628ms)
+✔ browser_download sends main an absolute saveTo, and reports where the file went (1.396199ms)
+✔ saveTo paths resolve from the chat folder or home, and downloads in flight say so (2.509141ms)
+✔ the pages a chat asks the browser for are reported with the chat, and a read of the tab as it is reports nothing (2.160774ms)
+✔ browser challenge and rejected navigation never earn evidence; tab-only reads do (1.633607ms)
+✔ network-only and controls-only inspections do not count as reading source content (0.972077ms)
+✔ shared reader returns original article and links, saves pagination, credits only successful sources (174.574546ms)
+✔ 403 falls back to browser, but a challenge is an explicit failure with no source credit (9.11683ms)
+✔ search switches engines after a challenge and never credits result destinations (1.526525ms)
+✔ local PDF is extracted with poppler without requiring a model or network (45.515167ms)
+✔ failure detector recognizes the incident without rejecting articles discussing access failures (0.959764ms)
+✔ a passing project reports each script as passed (905.115968ms)
+✔ a failing script is an error that carries its output (352.423221ms)
+✔ a folder without scripts says what to do instead (3.649447ms)
+✔ the where line names the asking chat’s pane, the other panes and the side panel (2.506917ms)
+✔ go and act pass through the dispatcher, add the pane and the image, and refuse unknown names (4.644588ms)
+✔ the schemas enumerate the map, so a model cannot invent a place or action (1.025959ms)
+✔ multiple verbose UI captures keep parseable metadata, image content and full-result paths (6.761098ms)
+✔ invalid UI requests do not start a supervisor or require a source installation (2.408211ms)
+✔ UI mode requires an explicit marked profile and matching host data directory (5.700503ms)
+✔ a controlled stream remains pending until stopped and emits no final response after stop (7.339531ms)
+✔ controlled worker writes its report only after release, and cancellation delivers none (4.60377ms)
+✔ controlled leader invokes real HTTP tool boundary and retains rejected fourth dispatch (151.974286ms)
+✔ a small project is mapped whole, one line per folder (3.039694ms)
+✔ a large project keeps its upper folders and counts what lies deeper (3.25951ms)
+✔ a note saved by one provider reaches the others: at once in a going session, and at the start of a new one (49.295681ms)
+✔ parseReadQuery treats slash syntax as regex (5.877668ms)
+✔ filterReadByQuery keeps matching control lines (5.299475ms)
+✔ buildA11ySnapshot assigns refs to actionable nodes (2.421376ms)
+✔ buildHar filters by request seq and shapes entries (2.885924ms)
+✔ truncateJsonBody keeps short JSON whole (5.035616ms)
+✔ truncateJsonBody clips long JSON (0.604142ms)
+✔ formatAttachedJson wraps with request id (0.507018ms)
+✔ somSvg places a badge label at scaled coordinates (1.386681ms)
+✔ escapeXml escapes markup in ref labels (0.488172ms)
+✔ the plain user agent is Chrome's, with the app and Electron names gone (5.610843ms)
+✔ an app name with regex characters is matched literally (0.779673ms)
+✔ a user agent already plain is left alone (0.418591ms)
+✔ client hints for Chrome 152 on Linux are what Chrome itself would send (3.690745ms)
+✔ the GREASE brand and the order change with the major version, as in Chrome (0.861549ms)
+✔ a user agent that is not Chrome on Linux gets no client hints (0.424983ms)
+✔ every request carries the three low-entropy hints, serialized as Chrome writes them (1.194207ms)
+✔ an origin that asked with Accept-CH also gets the high-entropy hints it named (0.722585ms)
+✔ Accept-CH given as several header lines is read as one list (1.111461ms)
+✔ a selection in display coordinates maps to image pixels at any device scale, clamped (2.612808ms)
+✔ capture names carry the source and time and are safe file names (1.2537ms)
+✔ chat links resolve files, encoded names, line references, and browser documents (44.264082ms)
+✔ an empty window.chrome gets Chrome's three members, in Chrome's order and with its descriptors (10.335502ms)
+✔ loadTimes() has Chrome's thirteen fields with the right types and values (3.066144ms)
+✔ before any network navigation the values are the zeros and "unknown" Chrome shows (3.283465ms)
+✔ csi() has startE, onloadT (DOMContentLoaded), pageT and tran 15 for an ordinary navigation (2.327058ms)
+✔ a reload and a back/forward navigation are reported as Chrome reports them (4.401748ms)
+✔ app has Chrome's members and enum values (2.11654ms)
+✔ a window.chrome that already has members is left alone, so running twice changes nothing (8.618337ms)
+▶ chromium cookie decryption
+  ✔ recovers a v11 value, dropping the tag and the 32-byte host hash (5.163588ms)
+  ✔ recovers a v10 value the same way (1.471871ms)
+  ✔ returns null for an untagged or empty blob (0.951558ms)
+  ✔ returns null when the key is wrong rather than throwing (3.720902ms)
+✔ chromium cookie decryption (14.491757ms)
+▶ chromium timestamps
+  ✔ converts microseconds since 1601 to Unix seconds (1.064511ms)
+  ✔ treats a zero or negative expiry as a session cookie (0.414613ms)
+✔ chromium timestamps (2.442847ms)
+▶ sameSite mapping
+  ✔ maps Chromium codes to Electron values (0.979371ms)
+  ✔ downgrades insecure SameSite=None to lax so it is not rejected (0.488403ms)
+✔ sameSite mapping (2.129274ms)
+▶ host matching for site-only import
+  ✔ matches host-only and domain cookies for the same site (1.234934ms)
+  ✔ does not match an unrelated site (0.524802ms)
+✔ host matching for site-only import (2.226898ms)
+▶ conversion to an Electron cookie
+  ✔ builds a domain cookie with an https url and expiry (0.792558ms)
+  ✔ builds a host-only cookie without a domain, and an http url when insecure (2.068479ms)
+  ✔ leaves expirationDate unset for a session cookie (0.621634ms)
+✔ conversion to an Electron cookie (4.166504ms)
+✔ a suggested file name cannot climb out of the folder or carry control characters (5.564035ms)
+✔ saveTo names a folder or a file, and defaults to the downloads folder (0.731392ms)
+✔ an existing or arriving file is never overwritten (0.634179ms)
+✔ the page's reading status is kept only while it reads, and rounded for the toolbar (10.935717ms)
+✔ markdown links, bare URLs, and code paths link without altering code blocks (36.87073ms)
+✔ link transform permits local files and rejects executable schemes (1.945808ms)
+✔ paragraphs and headings split at blank lines, and the pieces join back to the text (4.670977ms)
+✔ a blank line inside a code fence is not a boundary (1.351254ms)
+✔ a list stays with the paragraph before it, loose items and indented continuations included (0.927783ms)
+✔ emphasis and rules at the start of a line are not mistaken for list items (0.516065ms)
+✔ text with link definitions is left whole (0.51314ms)
+✔ a table and a short text are single blocks (0.691056ms)
+✔ saved toolbar preferences drop unknown sections and add missing ones (7.331275ms)
+✔ renaming keeps the real name for screen readers, and a blank or default name clears it (0.793209ms)
+✔ keeping and moving sections splits them between the toolbar and the drawer in order (0.810331ms)
+✔ every map name has a control in the renderer, and every name a control uses is in the map (15.198272ms)
+✔ every place names a component file that exists (1.279448ms)
+✔ every action with a place names a place that exists, and names are well formed (2.018274ms)
+✔ the map prints every place and action with its parameters (1.472422ms)
+✔ the prompt says where the field is, what is around it and how to answer (4.250052ms)
+✔ a rework says what to change, and Sound like you carries the user's messages (1.035006ms)
+✔ a form lists every field and the ones Rocket will not touch (0.816533ms)
+✔ the fill block is read from the end of the reply, whatever came before it (2.746701ms)
+✔ a reply without a usable fill says so in a sentence (1.331967ms)
+✔ steps are read from the model's own calls (2.459268ms)
+✔ sources are each page once, the page itself named, and the commands that ran (0.88924ms)
+✔ voice samples skip pasted text, one-word replies and walls of text (0.718619ms)
+✔ the done line says what was filled and what was left (1.531314ms)
+✔ the chip sits above the field's top right corner, below it with no room above, and inside the page (1.064341ms)
+✔ a file’s kind comes from its name (5.160873ms)
+✔ added buckets follow the local calendar (3.433629ms)
+✔ filters combine, and search needs every word somewhere in the name, origin, path or chat title (2.735059ms)
+✔ loose filter input is checked, and an unknown value is refused with the valid ones (1.152668ms)
+✔ a git patch is read into files, kinds, counts and numbered lines (3.491609ms)
+✔ an empty patch is no files (0.560529ms)
+✔ the slider spans the speeds on a log scale (1.660929ms)
+✔ a drag lands on a round speed near it, and anywhere else between (0.530032ms)
+✔ speeds stay in range whatever arrives (0.271914ms)
+✔ labels read as the control shows them (0.233281ms)
+✔ a page key is the host and path, with www, the fragment, a trailing slash and tracking parameters dropped (2.146366ms)
+✔ the urls in a reply are its link targets and bare urls, each once, without trailing punctuation (1.469778ms)
+✔ only requests that go to a page count as opening one (0.309996ms)
+✔ a turn’s sources mark each cited page opened or not, by page, and are null with nothing to record (0.898117ms)
+✔ the next message is told about unopened citations, and nothing when every citation was opened (0.689673ms)
+ℹ tests 258
+ℹ suites 5
+ℹ pass 258
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7784.987011
+(node:98359) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+(node:98371) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/ui/orchestra-shell.spec.ts:9:1 › orchestra-shell fresh profile keeps the leader full height below the title strip (11.6s)
+(node:98611) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 tests/ui/orchestra-shell.spec.ts:67:1 › orchestra-shell controlled dispatch and report harness exercises actual host limits (2.6s)
+  ✘  3 tests/ui/orchestra-shell.spec.ts:85:1 › orchestra-shell streams eight workers and supports expand reply stop reports and scrolling (12.4s)
+
+
+  1) tests/ui/orchestra-shell.spec.ts:9:1 › orchestra-shell fresh profile keeps the leader full height below the title strip 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.orch-shell')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.orch-shell') with timeout 10000ms
+      - waiting for locator('.orch-shell')
+
+
+      10 |   const { page } = rocket
+      11 |   await rocket.capture('01-fresh-profile')
+    > 12 |   await expect(page.locator('.orch-shell')).toBeVisible()
+         |                                             ^
+      13 |   const leader = page.getByTestId('orchestrator-chat')
+      14 |   await expect(leader).toBeVisible()
+      15 |   await expect(page.getByTestId('worker-board-empty')).toBeVisible()
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/orchestra-shell.spec.ts:12:45
+
+    attachment #1: 01-fresh-profile: app shell (image/png) ─────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/attachments/01-fresh-profile-app-shell-dbc1ce32503b4ec28b1463e7401f9e6117eb2eb1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: 01-fresh-profile: full window (image/png) ───────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/attachments/01-fresh-profile-full-window-0e46a26d3e42fa45e88a611b22b92680a8e0c62a.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/attachments/failure-app-shell-166da434540632b067c534aa5529da145155a767.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/attachments/failure-full-window-70236264f7ce6967d1f6f2c07074c2da5d6f1911.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/attachments/Trace-cd5e6f47981d63a3f097bf20a39f57aac43ea4db.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: App log (text/plain) ────────────────────────────────────────────────────────────
+    Debugger ending on ws://127.0.0.1:33309/a0bb5580-8b62-42fc-a956-d0ba58517a8a
+    For help, see: https://nodejs.org/learn/getting-started/debugging
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: Journal (text/plain) ────────────────────────────────────────────────────────────
+    (empty)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--9667e-eight-below-the-title-strip/error-context.md
+
+  2) tests/ui/orchestra-shell.spec.ts:85:1 › orchestra-shell streams eight workers and supports expand reply stop reports and scrolling 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.orch-shell')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.orch-shell') with timeout 10000ms
+      - waiting for locator('.orch-shell')
+
+
+      88 |   await info.attach('Controlled tool results', { body: JSON.stringify(fixture, null, 2), contentType: 'application/json' })
+      89 |   await rocket.capture('04-workers-dispatched')
+    > 90 |   await expect(page.locator('.orch-shell')).toBeVisible()
+         |                                             ^
+      91 |   const leader = page.getByTestId('orchestrator-chat')
+      92 |   const initialWidth = (await leader.boundingBox())!.width
+      93 |   const windows = page.getByTestId('worker-window')
+        at /home/dp/Desktop/rocket-orchestrator/tests/ui/orchestra-shell.spec.ts:90:45
+
+    attachment #2: 04-workers-dispatched: app shell (image/png) ────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/04-workers-dispatched-app-shell-8bbb040bb9cc2c1873dc3c34a6b8f457715ba6e0.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: 04-workers-dispatched: full window (image/png) ──────────────────────────────────
+    .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/04-workers-dispatched-full-window-1fcd2c869b72026b718253e04554f86d181bc835.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: failure: app shell (image/png) ──────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/failure-app-shell-b4e68d40b17c10c5a53d2a839e3c9b59d96baa62.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: failure: full window (image/png) ────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/failure-full-window-4c1985adca7342a6c83eb785a8bd871fcf908783.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: Trace (application/zip) ─────────────────────────────────────────────────────────
+    .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/attachments/Trace-2315cbbf62078c73234649b6e4d89f39ad857a89.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: App log (text/plain) ────────────────────────────────────────────────────────────
+    [warning] about:blank: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+      Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+      this app to unnecessary security risks.
+    
+    For more information and...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #10: Journal (text/plain) ───────────────────────────────────────────────────────────
+    {"at":1791436932117,"source":"tool:orchestrator","severity":"warn","kind":"tool-error","message":"Three workers are already running. Review completed work or wait.","details":{"provider":"claude","chatId":"2eb5fe8f-6a61-4971-8132-679afcb39599"}}
+    
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .artifacts/ui/2026-10-08T05-21-28-547Z-qpkg5v/results/orchestra-shell-orchestra--4e48f--stop-reports-and-scrolling/error-context.md
+
+  2 failed
+    tests/ui/orchestra-shell.spec.ts:9:1 › orchestra-shell fresh profile keeps the leader full height below the title strip 
+    tests/ui/orchestra-shell.spec.ts:85:1 › orchestra-shell streams eight workers and supports expand reply stop reports and scrolling 
+  1 passed (29.2s)

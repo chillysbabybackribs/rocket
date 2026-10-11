@@ -1,18 +1,17 @@
-// The toolbar's sections: the rail's five destinations, which the user can rename, reorder, keep
+// The toolbar's sections: the rail's destinations, which the user can rename, reorder, keep
 // in the toolbar for good, or consolidate into the drawer that slides out of the Sections icon
 // (docs/mockups/titlebar-nav-drawer-mac.html). A name is only a label: the section's id, the app
 // map and what a screen reader hears all keep the real name, so a model asked to open the evals
 // still finds them.
 
-export type SectionId = 'goals' | 'chats' | 'library' | 'evals' | 'browser'
+export type SectionId = 'chats' | 'library' | 'browser' | 'photocraft'
 
 /** Menus open a list under their button; panels take the side column, one at a time. */
 export const SECTIONS: Record<SectionId, { name: string; kind: 'menu' | 'panel' }> = {
-  goals: { name: 'Goals', kind: 'menu' },
   chats: { name: 'Chats', kind: 'menu' },
   library: { name: 'Library', kind: 'panel' },
-  evals: { name: 'Evals', kind: 'panel' },
-  browser: { name: 'Browser', kind: 'panel' }
+  browser: { name: 'Browser', kind: 'panel' },
+  photocraft: { name: 'PhotoCraft', kind: 'panel' }
 }
 
 export const SECTION_IDS = Object.keys(SECTIONS) as SectionId[]

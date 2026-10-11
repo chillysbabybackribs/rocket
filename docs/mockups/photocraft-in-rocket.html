@@ -1,0 +1,363 @@
+<!doctype html>
+<!-- PhotoCraft as Rocket's first built-in app: the editor lives in a side panel beside the chat,
+     and every provider drives it through tools served by Rocket's one MCP server. The canvas is a
+     real PhotoCraft render (shot-2.png from ~/photocraft-agent-demo, pixels untouched; the native
+     window buttons are covered because the in-Rocket build has none). The image cards are crops of
+     the real neon-horizon.png standing in for Codex generations; grid.png is a plain grid drawn with
+     Pillow standing in for the downloaded web reference.
+     Tokens follow src/renderer/src/styles.css. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup: PhotoCraft inside Rocket</title>
+<style>
+@font-face{font-family:Inter;src:url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap}
+@font-face{font-family:GeistMono;src:url('../../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap}
+:root{
+  color-scheme:dark;
+  --font:'Inter',system-ui,sans-serif;--mono:'GeistMono',ui-monospace,monospace;
+  --canvas:#08090a;--panel:#0f1011;--raised:#17181a;--menu:#1b1c1e;--bubble:#1c1d20;
+  --composer:#151617;--composer-line:#2f3031;
+  --line:rgba(255,255,255,.07);--line-strong:rgba(255,255,255,.11);
+  --text:#f7f8f8;--text-2:#b4b8c0;--text-3:#8a8f98;--text-4:#62666d;
+  --hover:rgba(255,255,255,.045);--selected:rgba(255,255,255,.08);
+  --accent:#7170ff;--ok:#4cb782;--warn:#f2c94c;--danger:#eb5757;
+  --codex:#10a37f;--claude:#d97757;
+  --sheen:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0) 180px);
+  --gap:8px;--r:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#050506;color:var(--text);font:13px/1.5 var(--font);letter-spacing:-.006em;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+svg{display:block;flex-shrink:0}
+img{display:block}
+code,.mono{font-family:var(--mono);font-size:11.5px}
+
+/* Page around the window */
+.doc-head{max-width:1440px;margin:0 auto;padding:26px 28px 14px;display:flex;align-items:flex-end;gap:24px}
+.doc-head .intro{flex:1}
+.eyebrow{color:var(--text-4);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:500}
+.doc-head h1{font-size:22px;font-weight:600;letter-spacing:-.5px;margin:6px 0 4px}
+.doc-head p{color:var(--text-3);margin:0;max-width:760px}
+.states{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line)}
+.states button{padding:6px 11px;border-radius:7px;font-size:12px;color:var(--text-3);white-space:nowrap}
+.states button[aria-pressed=true]{background:var(--raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.fit{max-width:1440px;margin:0 auto;padding:0 28px}
+.fit-inner{transform-origin:0 0}
+
+/* Window, drawn at 1440 × 900 */
+.window{width:1440px;height:900px;background:var(--canvas);border-radius:12px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(255,255,255,.09),0 30px 90px rgba(0,0,0,.7);display:flex;flex-direction:column}
+.titlebar{height:40px;flex:none;display:flex;align-items:center;padding:0 10px 0 14px;gap:6px;position:relative}
+.lights{display:flex;gap:7px;margin-right:10px}.lights i{width:12px;height:12px;border-radius:50%}
+.lights i:nth-child(1){background:#ff5f57}.lights i:nth-child(2){background:#febc2e}.lights i:nth-child(3){background:#28c840}
+.nav{display:flex;align-items:center;gap:2px;padding:3px;border-radius:9px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line)}
+.nav b{font-weight:450;font-size:12px;color:var(--text-3);padding:3px 9px;border-radius:6px;display:flex;align-items:center;gap:6px}
+.nav b.on{background:var(--raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.nav .count{background:#f2c94c;color:#111;border-radius:8px;font-size:10px;padding:0 5px;font-weight:600}
+.nav .new{font-size:9.5px;color:var(--accent);border:1px solid rgba(113,112,255,.5);border-radius:5px;padding:0 4px;letter-spacing:.04em}
+.pc-mark{width:14px;height:14px;border-radius:4px;background:linear-gradient(135deg,#ff4fd8,#5ee7ff)}
+.usage{margin-left:auto;display:flex;gap:10px;padding:4px 10px;border-radius:9px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line)}
+.usage span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-3)}
+.usage i{width:14px;height:14px;border-radius:50%;border:2px solid var(--text-4);border-right-color:var(--ok)}
+.usage .hot i{border-right-color:var(--warn);border-top-color:var(--warn)}
+
+.shell{flex:1;min-height:0;display:flex;gap:var(--gap);padding:0 var(--gap) var(--gap)}
+.panel{border:1px solid var(--line);border-radius:var(--r);background:var(--sheen),var(--panel);min-height:0;overflow:hidden;position:relative}
+
+/* Chat pane */
+.chat{width:470px;flex:none;display:flex;flex-direction:column}
+.transcript{flex:1;min-height:0;overflow:hidden;padding:16px 18px 10px;display:flex;flex-direction:column;gap:12px}
+.msg-user{align-self:flex-end;max-width:90%;background:var(--bubble);border:1px solid var(--line);padding:9px 12px;border-radius:12px;color:var(--text);font-size:12.5px}
+.turn-head{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-4);border-bottom:1px solid var(--line);padding-bottom:6px}
+.turn-head .live{color:var(--text-3)}
+.steps{display:flex;flex-direction:column;gap:2px}
+.worked{font-size:11.5px;color:var(--text-4);margin-bottom:4px}
+.step{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-3);padding:3px 0;min-width:0}
+.step .ic{width:16px;height:16px;border-radius:4px;display:grid;place-items:center;font-size:9px;font-weight:700;color:#000;flex:none}
+.ic.web{background:#5e9cff}.ic.cx{background:var(--codex);color:#fff}.ic.pc{background:linear-gradient(135deg,#ff4fd8,#5ee7ff)}
+.step .label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.step .label b{color:var(--text-2);font-weight:500}
+.step .tail{margin-left:auto;font-size:11px;color:var(--text-4);white-space:nowrap}
+.step .tail.ok{color:var(--ok)}
+.step.running .tail{color:var(--accent)}
+.spin{width:10px;height:10px;border-radius:50%;border:2px solid rgba(113,112,255,.25);border-top-color:var(--accent);display:inline-block;vertical-align:-1px;margin-right:4px}
+
+/* Codex image as it lands in the reply */
+.gen{margin:4px 0 6px 24px;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--raised);width:340px}
+.gen img{width:100%;height:118px;object-fit:cover}
+.gen .cap{padding:7px 10px;font-size:11.5px;color:var(--text-3);display:flex;gap:8px;align-items:flex-start}
+.gen .cap b{color:var(--text-2);font-weight:500}
+.gen .who{font-size:10px;color:var(--codex);border:1px solid rgba(16,163,127,.45);border-radius:5px;padding:0 5px;white-space:nowrap;margin-top:1px}
+.thumbrow{display:flex;gap:6px;margin:2px 0 4px 24px}
+.thumbrow img{width:84px;height:46px;object-fit:cover;border-radius:6px;border:1px solid var(--line-strong)}
+.peek{margin:2px 0 4px 24px;width:170px;border-radius:6px;border:1px solid var(--line-strong);overflow:hidden}
+.reply{color:var(--text-2);font-size:12.5px}
+.files{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.file{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:7px;background:var(--raised);border:1px solid var(--line);font-size:11.5px;color:var(--text-2)}
+.file i{width:8px;height:8px;border-radius:2px;background:var(--accent)}
+
+.tabs{display:flex;align-items:center;gap:4px;padding:0 14px}
+.tab{font-size:11px;padding:5px 10px;border-radius:8px 8px 0 0;background:var(--raised);border:1px solid var(--line);border-bottom:0;display:flex;gap:6px;align-items:center;color:var(--text-2)}
+.tab i{width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.composer{margin:0 12px 12px;border:1px solid var(--composer-line);border-radius:12px;background:var(--composer);padding:10px 12px 8px}
+.composer .ph{color:var(--text-4);font-size:12.5px;margin-bottom:10px}
+.composer .row{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-3)}
+.chip{padding:3px 8px;border-radius:7px;border:1px solid var(--line);display:flex;align-items:center;gap:6px}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--claude)}
+.composer .grow{flex:1}
+.sq{width:26px;height:26px;border-radius:7px;background:var(--raised);display:grid;place-items:center;border:1px solid var(--line)}
+.sq i{width:8px;height:8px;background:var(--text-2);border-radius:2px}
+
+/* PhotoCraft panel */
+.pc{flex:1;display:flex;flex-direction:column}
+.pc-head{height:42px;flex:none;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid var(--line)}
+.pc-head .title{display:flex;align-items:center;gap:7px;font-weight:550;font-size:12.5px;margin-right:6px}
+.doc-tab{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:7px;background:var(--raised);box-shadow:inset 0 0 0 1px var(--line-strong);font-size:12px}
+.doc-tab .x{color:var(--text-4)}
+.doc-tab.off{background:none;box-shadow:none;color:var(--text-3)}
+.pc-head .grow{flex:1}
+.driver{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text-2);padding:4px 8px 4px 9px;border-radius:8px;background:rgba(113,112,255,.12);box-shadow:inset 0 0 0 1px rgba(113,112,255,.35)}
+.driver .pulse{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(113,112,255,.25)}
+.btn{font-size:11.5px;padding:4px 9px;border-radius:7px;border:1px solid var(--line-strong);color:var(--text-2);background:var(--raised)}
+.btn.primary{background:var(--text);color:#111;border-color:transparent;font-weight:550}
+.stage{position:relative;flex:none;margin:8px 8px 0;border-radius:8px;overflow:hidden;box-shadow:0 0 0 1px var(--line)}
+.stage img{width:100%;height:auto}
+.stage .cover{position:absolute;right:0;top:0;width:7.1%;height:3.1%;background:rgb(83,83,83)}
+.stage.agent{box-shadow:0 0 0 2px rgba(113,112,255,.7)}
+.cursor{position:absolute;display:flex;align-items:flex-start;gap:4px;pointer-events:none}
+.cursor svg{filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.cursor span{font-size:10.5px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:5px;margin-top:12px;white-space:nowrap}
+.tray{flex:1;min-height:0;display:flex;flex-direction:column;padding:10px 12px 0}
+.tray-head{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);margin-bottom:8px}
+.tray-head b{font-weight:550;color:var(--text)}
+.filters{display:flex;gap:2px;margin-left:6px}
+.filters span{font-size:11px;color:var(--text-3);padding:2px 8px;border-radius:6px}
+.filters span.on{background:var(--selected);color:var(--text)}
+.tray-head .hint{margin-left:auto;font-size:11px;color:var(--text-4)}
+.cards{display:flex;gap:10px}
+.card{width:176px;border-radius:9px;background:var(--raised);border:1px solid var(--line);overflow:hidden;position:relative}
+.card img{width:100%;height:92px;object-fit:cover}
+.card .meta{padding:6px 8px;font-size:11px;color:var(--text-3);line-height:1.35}
+.card .meta b{display:block;color:var(--text-2);font-weight:500;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src{position:absolute;top:6px;left:6px;font-size:10px;padding:0 6px;border-radius:5px;background:rgba(0,0,0,.7);color:#fff}
+.src.cx{background:rgba(16,163,127,.9)}.src.web{background:rgba(94,156,255,.9)}.src.out{background:rgba(113,112,255,.95)}
+.placed{position:absolute;top:6px;right:6px;font-size:10px;padding:0 6px;border-radius:5px;background:rgba(0,0,0,.7);color:var(--ok)}
+.card.drop{display:grid;place-items:center;border-style:dashed;color:var(--text-4);font-size:11.5px;text-align:center;padding:10px;background:none}
+.status{height:30px;flex:none;display:flex;align-items:center;gap:14px;padding:0 12px;border-top:1px solid var(--line);font-size:11px;color:var(--text-4);margin-top:auto}
+.status b{color:var(--text-3);font-weight:500}
+
+/* States: each element names the states it shows in; everything else keeps its own display */
+body:not([data-state=working]) .only-working{display:none}
+body:not([data-state=done]) .only-done{display:none}
+body:not([data-state=you]) .only-you{display:none}
+body:not([data-state=working]) .stage.agent{box-shadow:0 0 0 1px var(--line)}
+/* A finished chat sits scrolled to its end, the way the transcript follows a reply */
+body:not([data-state=working]) .transcript{justify-content:flex-end}
+.transcript>*{flex:none}
+
+/* Notes */
+.notes{max-width:1440px;margin:22px auto 60px;padding:0 28px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;color:var(--text-3);font-size:12.5px}
+.note h3{margin:0 0 6px;font-size:13px;color:var(--text);font-weight:600}
+.note ul{margin:6px 0 0;padding-left:18px}
+.note li{margin:3px 0}
+.note b{color:var(--text-2);font-weight:550}
+.note .warn{color:var(--warn)}
+.note.wide{grid-column:span 3}
+</style>
+</head>
+<body data-state="working">
+
+<div class="doc-head">
+  <div class="intro">
+    <div class="eyebrow">Mockup · not built</div>
+    <h1>PhotoCraft inside Rocket</h1>
+    <p>PhotoCraft becomes a section of Rocket, like the Browser and the Library. Any provider in the chat can run every PhotoCraft command, bring in images from the web or from Codex's image generator, and save or export the result. You can click into the same canvas at any time.</p>
+  </div>
+  <div class="states" role="group" aria-label="State">
+    <button aria-pressed="true" data-s="working">Model at work</button>
+    <button aria-pressed="false" data-s="done">Finished</button>
+    <button aria-pressed="false" data-s="you">You took over</button>
+  </div>
+</div>
+
+<div class="fit"><div class="fit-inner">
+<div class="window">
+  <div class="titlebar">
+    <div class="lights"><i></i><i></i><i></i></div>
+    <div class="nav">
+      <b>☷</b>
+      <b>Goals <span class="count">19</span></b>
+      <b>Chats</b>
+      <b>Library</b>
+      <b>Evals</b>
+      <b>Browser</b>
+      <b class="on"><span class="pc-mark"></span>PhotoCraft <span class="new">NEW</span></b>
+    </div>
+    <div class="usage">
+      <span><i></i>4%</span>
+      <span class="hot"><i></i>Codex 31%</span>
+      <span><i></i>33%</span>
+      <span><i></i>0%</span>
+    </div>
+  </div>
+
+  <div class="shell">
+    <!-- Chat -->
+    <section class="panel chat">
+      <div class="transcript">
+        <div class="msg-user">Make a 1600×1000 poster for Friday's synthwave night. Find a retro grid reference on the web, have Codex make the sunset sky, build it in PhotoCraft with the title NEON HORIZON, then save it and export a PNG and a PSD to ~/Pictures/posters.</div>
+
+        <div class="turn-head"><span>Claude · Opus 5.5</span><span class="live only-working">Working for 2m 14s</span><span class="only-done">Worked for 3m 02s</span></div>
+
+        <div class="steps">
+          <div class="worked">Worked · <span class="only-working">9 steps</span><span class="only-done">14 steps</span><span class="only-you">8 steps, paused</span></div>
+          <div class="step"><span class="ic web">⌕</span><span class="label">web_search <b>synthwave retro grid floor reference</b></span><span class="tail">8 results</span></div>
+          <div class="step"><span class="ic web">↓</span><span class="label">browser_download <b>retro-grid.jpg</b> from unsplash.com</span><span class="tail ok">saved</span></div>
+          <div class="step"><span class="ic cx">◎</span><span class="label">image_generate <b>Codex · gpt-image-2</b></span><span class="tail ok">1 image</span></div>
+          <div class="gen">
+            <img src="photocraft-in-rocket/sky.png" alt="Generated synthwave sunset sky over dark mountains">
+            <div class="cap"><span class="who">Codex</span><span><b>sky.png</b> · “A huge striped synthwave sun setting behind dark purple mountains, magenta haze, 1600×560, no text.”</span></div>
+          </div>
+          <div class="step"><span class="ic pc"></span><span class="label">photocraft · doc_new <b>poster 1600×1000 RGB/8</b></span><span class="tail ok">done</span></div>
+          <div class="step"><span class="ic pc"></span><span class="label">photocraft · place <b>sky.png</b> → layer “Sky”</span><span class="tail ok">done</span></div>
+          <div class="step"><span class="ic pc"></span><span class="label">photocraft · place <b>retro-grid.jpg</b> → layer “Grid”, perspective</span><span class="tail ok">done</span></div>
+          <div class="step"><span class="ic pc"></span><span class="label">photocraft · command_run <b>type.create</b> “NEON HORIZON”</span><span class="tail ok">done</span></div>
+          <div class="step only-working running"><span class="ic pc"></span><span class="label">photocraft · command_run <b>layer.style</b> gradient, stroke, outer glow</span><span class="tail"><span class="spin"></span>running</span></div>
+          <div class="step only-done"><span class="ic pc"></span><span class="label">photocraft · command_run <b>layer.style</b> gradient, stroke, outer glow</span><span class="tail ok">done</span></div>
+          <div class="step only-done"><span class="ic pc"></span><span class="label">photocraft · command_run <b>layer.newAdjustmentLayer.hueSaturation</b></span><span class="tail ok">done</span></div>
+          <div class="step only-done"><span class="ic pc"></span><span class="label">photocraft · ui_screenshot <b>checks its work</b></span><span class="tail ok">done</span></div>
+          <div class="peek only-done"><img src="photocraft-in-rocket/export-thumb.png" alt="" style="width:100%"></div>
+          <div class="step only-done"><span class="ic pc"></span><span class="label">photocraft · doc_save <b>poster.pcraft</b></span><span class="tail ok">saved</span></div>
+          <div class="step only-done"><span class="ic pc"></span><span class="label">photocraft · doc_export <b>neon-horizon.png</b>, <b>neon-horizon.psd</b></span><span class="tail ok">2 files</span></div>
+        </div>
+
+        <div class="reply only-done">The poster is open in PhotoCraft with its layers intact: Sky, Grid, Floor, Title (gradient, stroke and glow), Subtitle, Grain and a Hue/Saturation adjustment. Both exports are in ~/Pictures/posters, and all of them are in the Library.
+          <div class="files"><span class="file"><i></i>neon-horizon.png</span><span class="file"><i></i>neon-horizon.psd</span><span class="file"><i></i>poster.pcraft</span></div>
+        </div>
+        <div class="reply only-you">You took over PhotoCraft. Claude's PhotoCraft tools are paused until you hand it back; it can still search and generate images.</div>
+      </div>
+
+      <div class="tabs"><span class="tab"><i></i>Synthwave poster</span><span style="color:var(--text-4)">+</span></div>
+      <div class="composer">
+        <div class="ph only-working">Add to this turn…</div>
+        <div class="ph only-done">Ask for a change, e.g. “make the title smaller and add the date”…</div>
+        <div class="ph only-you">Message Claude…</div>
+        <div class="row">
+          <span>⊕</span><span>◉</span><span class="chip">~/Pictures/posters</span>
+          <span class="grow"></span>
+          <span class="chip"><span class="dot"></span>Claude Opus 5.5</span>
+          <span class="sq"><i></i></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- PhotoCraft -->
+    <section class="panel pc">
+      <div class="pc-head">
+        <span class="title"><span class="pc-mark"></span>PhotoCraft</span>
+        <span class="doc-tab">poster.pcraft <span class="x">×</span></span>
+        <span class="doc-tab off">+</span>
+        <span class="grow"></span>
+        <span class="driver only-working"><span class="pulse"></span>Claude is editing · Layer Style</span>
+        <button class="btn only-working">Take over</button>
+        <button class="btn only-working">Stop</button>
+        <span class="driver only-you" style="background:rgba(242,201,76,.1);box-shadow:inset 0 0 0 1px rgba(242,201,76,.35)"><span class="pulse" style="background:var(--warn);box-shadow:0 0 0 3px rgba(242,201,76,.2)"></span>You are editing</span>
+        <button class="btn only-you">Hand back to Claude</button>
+        <button class="btn only-done">Undo Claude's reply</button>
+        <button class="btn">Open…</button>
+        <button class="btn primary">Export ▾</button>
+      </div>
+
+      <div class="stage agent">
+        <img src="photocraft-in-rocket/photocraft-app.png" alt="PhotoCraft editing the NEON HORIZON poster, with Layers, Properties and Color panels">
+        <div class="cover"></div>
+        <div class="cursor only-working" style="left:63%;top:73%">
+          <svg width="16" height="18" viewBox="0 0 16 18"><path d="M1 1l13 8-6 1.5L5 17z" fill="#7170ff" stroke="#fff" stroke-width="1.2"/></svg>
+          <span>Claude</span>
+        </div>
+      </div>
+
+      <div class="tray">
+        <div class="tray-head">
+          <b>Images for this chat</b>
+          <div class="filters"><span class="on">All</span><span>Web</span><span>Codex</span><span>Exports</span></div>
+          <span class="hint">Drag onto the canvas to place as a layer · the model uses <code>photocraft · place</code></span>
+        </div>
+        <div class="cards">
+          <div class="card"><img src="photocraft-in-rocket/grid.png" alt=""><span class="src web">Web</span><span class="placed">✓ placed</span><div class="meta"><b>retro-grid.jpg</b>unsplash.com · 1600×440</div></div>
+          <div class="card"><img src="photocraft-in-rocket/sky.png" alt=""><span class="src cx">Codex</span><span class="placed">✓ placed</span><div class="meta"><b>sky.png</b>gpt-image-2 · 1600×560</div></div>
+          <div class="card"><img src="photocraft-in-rocket/sun.png" alt=""><span class="src cx">Codex</span><div class="meta"><b>sun-closeup.png</b>gpt-image-2 · alternate</div></div>
+          <div class="card only-done"><img src="photocraft-in-rocket/export-thumb.png" alt=""><span class="src out">Export</span><div class="meta"><b>neon-horizon.png</b>~/Pictures/posters · 1.7 MB</div></div>
+          <div class="card drop">Drop images here, or pick from the Library</div>
+        </div>
+      </div>
+
+      <div class="status">
+        <span><b>poster.pcraft</b></span><span>1600 × 1000 px · RGB/8</span><span>8 layers</span>
+        <span class="only-working">Unsaved changes</span><span class="only-done">Saved 4 s ago</span><span class="only-you">Unsaved changes</span>
+        <span style="margin-left:auto">History: <b class="only-working">23 steps by Claude</b><b class="only-done">31 steps by Claude</b><b class="only-you">23 by Claude · 2 by you</b></span>
+      </div>
+    </section>
+  </div>
+</div>
+</div></div>
+
+<div class="notes">
+  <div class="note">
+    <h3>Where PhotoCraft runs</h3>
+    PhotoCraft's own <b>web build</b> (<code>apps/photocraft-web</code>: egui in the browser, WebGPU with a WebGL2 fallback) runs in a Rocket view beside the chat, the same way a browser tab does. It looks and works like the desktop app.
+    <ul>
+      <li class="warn">Today the web build has no control channel; only the desktop app has <code>--control</code>. Our fork adds one to the web build that calls the same command registry.</li>
+      <li>The web build can't read the disk, so Rocket hands it files and saves what it exports.</li>
+      <li>Not yet checked: WebGPU in Rocket's Electron on this Linux machine.</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h3>What the models can do</h3>
+    Every PhotoCraft command, through tools that copy the names of PhotoCraft's own MCP bridge: <code>command_run</code>, <code>command_batch</code>, <code>command_list</code>, <code>doc_new / open / save / export / inspect</code>, <code>ui_screenshot</code>, <code>ui_pointer</code>, <code>ui_menu_invoke</code>, <code>ui_set</code>, plus <code>place</code> for putting an image in as a layer.
+    <ul>
+      <li>Rocket serves them from its one MCP server, so Claude, Codex, Cursor and Antigravity all get them.</li>
+      <li>Ahead of each message the model is told the open document, its size and its layer tree.</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h3>Getting images in</h3>
+    <ul>
+      <li><b>Web:</b> the existing <code>web_search</code>, <code>web_read</code> and <code>browser_download</code> tools.</li>
+      <li><b>Codex:</b> a new <code>image_generate</code> tool runs Codex's built-in generator (gpt-image-2), so Claude or Cursor can ask for an image too. A Codex turn uses it directly. Image turns use Codex usage 3–5× faster than text, so the Codex meter is shown.</li>
+      <li>Every image lands in the Library and in this tray; this depends on the Codex image fix now under way in another chat.</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h3>You and the model share it</h3>
+    <ul>
+      <li>You can click into the canvas at any time. <b>Take over</b> pauses the model's PhotoCraft tools until you hand it back. Search and image generation keep working.</li>
+      <li>A model's steps are marked in PhotoCraft's History, and <b>Undo Claude's reply</b> steps back to where the reply began.</li>
+      <li>A cursor labelled with the model's name shows where it is pointing and drawing.</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h3>In Rocket's app map</h3>
+    Place <code>photocraft {doc?}</code>. Actions <code>photocraft.open {path}</code>, <code>photocraft.export {format, path}</code>, <code>photocraft.takeOver</code>, <code>photocraft.handBack</code>, <code>photocraft.stop</code>. Its state lives in <code>store.ts</code>, so the toolbar buttons and the models go through the same dispatcher.
+  </div>
+  <div class="note">
+    <h3>No chat inside PhotoCraft</h3>
+    Rocket's chat is the chat. The PhotoCraft panel needs no chat panel of its own, and its toolbar keeps only what belongs to the document: document tabs, Open, Export, Take over and Undo.
+  </div>
+</div>
+
+<script>
+const fit = () => { const box = document.querySelector('.fit'), inner = document.querySelector('.fit-inner')
+  const s = Math.min(1, (box.clientWidth - 56) / 1440); inner.style.transform = `scale(${s})`; inner.style.height = 900 * s + 'px' }
+addEventListener('resize', fit); fit()
+document.querySelectorAll('.states button').forEach((b) => b.onclick = () => {
+  document.body.dataset.state = b.dataset.s
+  document.querySelectorAll('.states button').forEach((x) => x.setAttribute('aria-pressed', x === b))
+})
+</script>
+</body>
+</html>

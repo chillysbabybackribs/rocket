@@ -5,6 +5,7 @@ import { PROVIDERS, planItemId, type ModelInfo, type PlanStep, type ProviderId, 
 import type { ProviderAdapter, RunRequest, RunResult, TurnSink } from './providers/provider.ts'
 import { attachmentInput } from './providers/images.ts'
 import { DEMO_TURNS, runDemoTurn } from './ui-demo.ts'
+import { rocketSourceRoot } from './tools/ui-run.ts'
 
 // UI tests replace only the provider boundary. The real host, store, ports and renderer still
 // run. A marked, separate profile is required so test responses cannot enter normal chats.
@@ -36,7 +37,7 @@ export class UiTestAdapter implements ProviderAdapter {
   async run(request: RunRequest, sink: TurnSink): Promise<RunResult> {
     const controller = new AbortController()
     this.active.set(request.chatId, controller)
-    const command = request.text.trim().split('\n').at(-1)
+    const command = request.text.includes('<rocket-orchestration>') ? 'UI check: stream' : request.text.trim().split('\n').at(-1)
     try {
       sink.session(request.sessionId ?? `ui-${this.id}-${request.chatId}`)
       sink.model(request.model ?? 'ui-default')
@@ -56,6 +57,7 @@ export class UiTestAdapter implements ProviderAdapter {
       if (command === 'UI check: cite') return this.cite(request.turnId, sink)
       if (command === 'UI check: edit') return this.edit(request.turnId, request.cwd, sink)
       if (command === 'UI check: plan') return this.plan(request.turnId, sink, controller.signal)
+      if (command === 'UI check: image') return this.image(request.turnId, sink, controller.signal)
       if (command === 'UI check: good evening') {
         sink.item({ type: 'assistant', id: `${request.turnId}:reply`, turnId: request.turnId, text: 'Good evening.', streaming: false })
         return { status: 'completed' }
@@ -168,6 +170,31 @@ export class UiTestAdapter implements ProviderAdapter {
     sink.item({ type: 'tool', id: `${turnId}:tool2`, turnId, kind: 'edit', label: 'server.js', output: '', status: 'done' })
     plan(5, false)
     sink.item({ type: 'assistant', id: `${turnId}:reply`, turnId, text: '**Done.** Login is built, tested and documented; each user sees only their own notes.', streaming: false })
+    return { status: 'completed' }
+  }
+
+  /**
+   * A turn that makes pictures, as Codex's image generation does: one that arrives as a file once
+   * the test has seen it generating, and one refused for a used-up limit. The picture is the
+   * generated-images mockup's own, read from the source tree as Codex's saved file would be.
+   */
+  private async image(turnId: string, sink: TurnSink, signal: AbortSignal): Promise<RunResult> {
+    const caption = 'A neon horizon over a desert city at dusk: a low magenta sun behind layered mesas, cyan grid lines running to the horizon, a lone highway with light trails, wide 16:10 framing, synthwave poster style, no text.'
+    sink.item({ type: 'tool', id: `${turnId}:view`, turnId, kind: 'other', label: 'Viewed reference.png', output: '/tmp/reference.png', status: 'done' })
+    sink.item({ type: 'assistant', id: `${turnId}:say`, turnId, text: 'Making the poster now.', streaming: false })
+    sink.item({ type: 'image', id: `${turnId}:made`, turnId, status: 'generating', caption })
+    const release = join(this.profile, `ui-release-${turnId}`)
+    const deadline = Date.now() + 60_000
+    while (!existsSync(release)) {
+      if (Date.now() > deadline) throw new Error('The UI test did not release the controlled response.')
+      await delay(25, undefined, { signal })
+    }
+    const path = join(rocketSourceRoot(), 'docs/mockups/generated-images-assets/neon-horizon.jpg')
+    sink.item({ type: 'image', id: `${turnId}:made`, turnId, status: 'done', caption, source: { path } })
+    sink.item({ type: 'image', id: `${turnId}:refused`, turnId, status: 'failed', caption: 'A second take, square', error: 'Codex has used up its image generation limit for now. Try again after 3:40 PM.' })
+    // As live, the final reply comes a moment after the picture and moves it before the reply.
+    await delay(400, undefined, { signal })
+    sink.item({ type: 'assistant', id: `${turnId}:reply`, turnId, text: 'Here is the poster. The square version will have to wait for the limit to reset.', streaming: false })
     return { status: 'completed' }
   }
 
