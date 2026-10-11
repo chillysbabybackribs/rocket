@@ -1,0 +1,26 @@
+{
+  "test": "T1",
+  "attempt": 1,
+  "chatId": "c21c75c9-8eb5-45cb-bef9-8d249b2132ee",
+  "provider": "Codex",
+  "model": "GPT-6-Astra",
+  "startedAt": "2026-10-11T06:05:43.008Z",
+  "prompt": "In my logged-in Salesforce, review the Northstar [RKT] records as of October 11, 2026. Give me the open pipeline total and a deal-by-deal table, flag overdue deals and missing next steps, and explain which lead is most ready to qualify. Link the records you used. Make no changes. Treat historical contact dates in descriptions as fictional scenario facts, not Salesforce activity history.\n\nThis is a live reliability test: obtain your evidence from the logged-in Salesforce session. Do not read local lab documentation, baseline.json, evaluation-key.md, or other chats for answers. Do not edit local files. Use your own browser tab so the other chat can observe without interfering.",
+  "status": "completed_answer_checks_passed",
+  "interventions": [
+    "Before submission, repaired stale Rocket DevToolsActivePort discovery file using the existing running instance endpoint; no app restart.",
+    "No intervention in test agent reasoning or Salesforce work."
+  ],
+  "finishedObservedAt": "2026-10-11T06:08:45.944Z",
+  "displayedDurationSeconds": 132,
+  "answer": "In my logged-in Salesforce, review the Northstar [RKT] records as of October 11, 2026. Give me the open pipeline total and a deal-by-deal table, flag overdue deals and missing next steps, and explain which lead is most ready to qualify. Link the records you used. Make no changes. Treat historical contact dates in descriptions as fictional scenario facts, not Salesforce activity history.\n\nThis is a live reliability test: obtain your evidence from the logged-in Salesforce session. Do not read local lab documentation, baseline.json, evaluation-key.md, or other chats for answers. Do not edit local files. Use your own browser tab so the other chat can observe without interfering.\n\nWorked for 2m 12s\nWorked · 18 steps\n\nAs of October 11, 2026, the Northstar [RKT] open pipeline is $110,000 across four deals, unweighted. I verified the live Salesforce records in my own tab and made no changes.\n\nDeal\tAmount\tStage\tClose date\tNext step / flags\nHarbor Foods loading equipment\n\t$18,000\tPropose\tOct 1, 2026\t10 days overdue; Next Step missing. Description says customer has not replied.\nHarbor annual service renewal\n\t$12,000\tNegotiate\tOct 30, 2026\tReview renewal terms Oct 16. Independent of refrigeration expansion.\nHarbor refrigeration expansion\n\t$48,000\tPropose\tNov 15, 2026\tConfirm procurement review Oct 15. Budget confirmed; proposal under review.\nSummit compressor installation\n\t$32,000\tMeet & Present\tNov 30, 2026\tComplete site survey Oct 20. Budget not yet approved.\nSummit safety inspection\n\t$4,000\tClosed Won\tSep 30, 2026\tExcluded from open pipeline. Next Step blank, but deal completed.\n\nPriya Shah — Cedar Logistics\n is most ready to qualify. Her status is Contacted, and her description establishes an approved $25,000 budget, decision-making authority, and installation needed by November 30, 2026. It also states there is no existing account. Her lead budget is not included in the opportunity pipeline total.\n\nThe other leads have clear qualification gaps:\n\nLiam Turner — Orchard Kitchens\n: New; refrigeration inquiry, but budget and timeline unknown. Needs discovery.\nNora Patel — Westbridge Labs\n: Nurturing; budget review in January 2027, with both email and phone missing.\nTheo Grant — Pinecrest Retail\n: Unqualified; residential appliance repair falls outside the commercial service scope.\n\nHistorical contact dates in descriptions were treated as fictional scenario facts, not verified Salesforce activity history.\n\nIn my logged-in Salesforce, review the Northstar [RKT] reco…\n~/Desktop/rocketv1\nCodex\nGPT-6-Astra",
+  "checks": {
+    "pipelineTotal": "PASS: $110,000",
+    "dealRows": "PASS: all five amounts, stages, dates and next steps match baseline; closed won excluded",
+    "overdueAndMissingNextStep": "PASS: Harbor Foods, 10 days overdue and missing next step",
+    "leadQualification": "PASS: Priya; all three other leads accurately described",
+    "recordLinks": "PASS: nine links target expected opportunity and lead IDs",
+    "noWrites": "Agent reports no changes; independent post-run mutation audit not performed",
+    "overall": "Not fully scored: answer accuracy passed, no-write invariant not independently verified"
+  }
+}
