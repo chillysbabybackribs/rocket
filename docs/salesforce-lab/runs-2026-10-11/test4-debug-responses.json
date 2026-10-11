@@ -1,0 +1,240 @@
+{
+  "r225": [
+    {
+      "state": "SUCCESS",
+      "result": {
+        "isPaused": false,
+        "lastModifiedDate": "2026-10-11T07:29:44.000Z",
+        "lastModifiedBy": "daniel parker",
+        "runInMode": "",
+        "progressStatus": "Draft",
+        "fullName": "RKT_EVAL_Cooler_AlarmRKT_EVAL_Cooler_Alarm",
+        "flowRecordId": "2aFfn000005oPgHEAU",
+        "flowId": "301fn00000enhT9AAI",
+        "versionNumber": 2,
+        "isSuccess": true,
+        "status": "Draft",
+        "definitionId": "300fn00000J6rBZAAZ"
+      },
+      "error": []
+    }
+  ],
+  "r239": [
+    {
+      "state": "SUCCESS",
+      "result": [
+        [
+          {
+            "interviewStatus": "FINISHED",
+            "interviewGuid": "16416b4069b6d55b3b071aff02421a1295c32ea-37cc",
+            "debugTrace": [
+              {
+                "summary": [
+                  {
+                    "style": null,
+                    "text": "This flow was triggered as if the ",
+                    "url": null
+                  },
+                  {
+                    "style": "bold",
+                    "text": "case",
+                    "url": null
+                  },
+                  {
+                    "style": null,
+                    "text": " record was ",
+                    "url": null
+                  },
+                  {
+                    "style": "bold",
+                    "text": "created",
+                    "url": null
+                  },
+                  {
+                    "style": null,
+                    "text": ".",
+                    "url": null
+                  }
+                ],
+                "entryType": "DefaultDebugInfoEntry",
+                "lines": [
+                  "How the Interview Started",
+                  "This debug run was triggered as if the case record was created.",
+                  "daniel parker (005fn000008fCdy) started the flow interview.",
+                  "API Version for Running the Flow: 68",
+                  "Some of this flow's variables were set when the interview started.",
+                  "$Record = Case (No ID)"
+                ]
+              },
+              {
+                "summary": [
+                  {
+                    "style": null,
+                    "text": "The triggering record met the start conditions.",
+                    "url": null
+                  }
+                ],
+                "entryType": "DefaultDebugInfoEntry",
+                "lines": [
+                  "The triggering record met the condition requirements.",
+                  "<b>Entry Conditions</b>",
+                  "Subject ([RKT EVAL4] Cooler alarm) Equals [RKT EVAL4] Cooler alarm",
+                  "All conditions must be true (AND)"
+                ],
+                "elementType": "Start Condition Requirements"
+              },
+              {
+                "summary": [
+                  {
+                    "style": null,
+                    "text": "One or more ",
+                    "url": null
+                  },
+                  {
+                    "style": "bold",
+                    "text": "Case",
+                    "url": null
+                  },
+                  {
+                    "style": null,
+                    "text": " records are ready to be updated.",
+                    "url": null
+                  }
+                ],
+                "entryType": "DefaultDebugInfoEntry",
+                "elementLabel": "Set alarm priority",
+                "lines": [
+                  "Update the Case record that triggered the flow: ",
+                  "Conditions to update the record",
+                  "None\u2014Always Update Record",
+                  "Update the record's fields",
+                  "Priority = High",
+                  "Final Values for the Triggering Case",
+                  "{\"Origin\":\"Phone\",\"Status\":\"New\",\"BusinessHoursId\":\"01mfn000002WzNNAA0\",\"Description\":\"Fictional automation test only. Cooler alarm threatens inventory, no workaround. No contact or external communications.\",\"IsEscalated\":false,\"OwnerId\":\"005fn000008fCdyAAE\",\"Priority\":\"High\",\"IsClosedOnCreate\":false,\"IsClosed\":false,\"Subject\":\"[RKT EVAL4] Cooler alarm\"}",
+                  "Result",
+                  "The Case record is ready to be updated when the interview finishes."
+                ],
+                "elementType": "Update Records",
+                "elementApiName": "Set_alarm_priority",
+                "elementIconType": "RecordUpdate"
+              },
+              {
+                "entryType": "DefaultDebugInfoEntry",
+                "lines": [
+                  "Because the flow ran in rollback mode, any changes to add, delete, or modify records were rolled back."
+                ],
+                "elementType": "Rollback"
+              }
+            ],
+            "serializedInterview": "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",
+            "isSummaryIncluded": true
+          },
+          {
+            "decoratedElements": [
+              {
+                "decoratedConnectors": [
+                  {
+                    "connectorType": "REGULAR",
+                    "childSource": null
+                  }
+                ],
+                "decorationType": null,
+                "elementType": "START",
+                "elementApiName": null
+              },
+              {
+                "decoratedConnectors": [
+                  {
+                    "connectorType": "REGULAR",
+                    "childSource": null
+                  }
+                ],
+                "decorationType": null,
+                "elementType": null,
+                "elementApiName": "Set_alarm_priority"
+              }
+            ],
+            "flowTestResult": null
+          }
+        ]
+      ],
+      "error": []
+    }
+  ],
+  "r250": [
+    {
+      "state": "SUCCESS",
+      "result": [
+        [
+          {
+            "interviewStatus": "STARTED",
+            "interviewGuid": "22662d7184e4ea327ea25bedf0011a1295c342e-3521",
+            "debugTrace": [
+              {
+                "summary": [
+                  {
+                    "style": null,
+                    "text": "This flow was triggered as if the ",
+                    "url": null
+                  },
+                  {
+                    "style": "bold",
+                    "text": "case",
+                    "url": null
+                  },
+                  {
+                    "style": null,
+                    "text": " record was ",
+                    "url": null
+                  },
+                  {
+                    "style": "bold",
+                    "text": "created",
+                    "url": null
+                  },
+                  {
+                    "style": null,
+                    "text": ".",
+                    "url": null
+                  }
+                ],
+                "entryType": "DefaultDebugInfoEntry",
+                "lines": [
+                  "How the Interview Started",
+                  "This debug run was triggered as if the case record was created.",
+                  "daniel parker (005fn000008fCdy) started the debug run as this running user: daniel parker (005fn000008fCdy).",
+                  "API Version for Running the Flow: 68",
+                  "$Record: Case()"
+                ]
+              },
+              {
+                "summary": [
+                  {
+                    "style": null,
+                    "text": "The triggering record didn\u2019t meet the start conditions.",
+                    "url": null
+                  }
+                ],
+                "entryType": "DefaultDebugInfoEntry",
+                "lines": [
+                  "The triggering record didn\u2019t meet the condition requirements, so the flow didn\u2019t run.",
+                  "<b>Entry Conditions</b>",
+                  "Subject ([RKT] Harbor Foods manual request) Equals [RKT EVAL4] Cooler alarm",
+                  "All conditions must be true (AND)"
+                ],
+                "elementType": "Start Condition Requirements"
+              }
+            ],
+            "serializedInterview": "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",
+            "isSummaryIncluded": true
+          },
+          {
+            "decoratedElements": [],
+            "flowTestResult": null
+          }
+        ]
+      ],
+      "error": []
+    }
+  ]
+}
