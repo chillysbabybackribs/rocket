@@ -134,6 +134,10 @@ counted as three 40-pt notches: every notch jumped ×1.33 in one frame. The web 
 (`read_gliding`), with quick notches running together. The wheel tests, including a new glide
 test, pass.
 
+**2026-10-11: double-click the image to fit (fork, `crates/ui-egui/src/canvas.rs`).** With the
+Move or Hand tool, double-clicking on the document (not the pasteboard) runs Fit on Screen, same
+as ⌘0 / double-clicking the Hand tool in the toolbar (Photoshop Move parity, #214).
+
 ## Known limits that stay
 
 - WebAssembly has 32-bit addresses: 4 GiB at most. Very large PSB files stay a desktop-app job.
