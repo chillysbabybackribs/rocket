@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Images, X } from 'lucide-react'
 import { act } from './app-map.ts'
 import { PaneContext, usePane, usePaneChatId, usePaneView } from './pane.ts'
-import { dismissError, focusedChatId, paneAt, peekState, setPhotocraftOpen, setSideWidth, useApp } from './store.ts'
+import { dismissError, focusedChatId, paneAt, peekState, setBrowserWidth, setPhotocraftOpen, setSideWidth, useApp } from './store.ts'
 import { ArtifactPanel } from './components/ArtifactPanel.tsx'
 import { AttachmentNotice, copyTo } from './components/AttachmentMenu.tsx'
 import { BrowserPanel } from './components/BrowserPanel.tsx'
@@ -64,6 +64,101 @@ function Split({ side, children }: { side: React.ReactNode; children: React.Reac
         </>
       )}
     </div>
+  )
+}
+
+const CHAT_PANEL_MIN = 380
+const CHAT_PANEL_SIDE_MIN = 640
+const BROWSER_PANEL_MIN = 360
+const APP_GAP = 8
+
+function AppDivider({ appRef }: { appRef: React.RefObject<HTMLDivElement | null> }) {
+  const browserWidth = useApp((state) => state.browserWidth)
+  const hasSide = useApp((state) => {
+    if (state.panes.length !== 1) return false
+    const chatId = focusedChatId(state)
+    return chatId !== null && state.views[chatId]?.planTurnId != null
+  })
+  const sideIsWide = useApp((state) => state.libraryOpen || state.photocraftOpen)
+
+  const drag = (event: React.PointerEvent<HTMLDivElement>): void => {
+    if (event.button !== 0) return
+    const handle = event.currentTarget
+    handle.setPointerCapture(event.pointerId)
+    handle.classList.add('is-dragging')
+    document.body.classList.add('is-resizing')
+
+    const appEl = appRef.current
+    const appBox = appEl ? appEl.getBoundingClientRect() : { width: window.innerWidth, right: window.innerWidth }
+    const chatMin = hasSide ? CHAT_PANEL_SIDE_MIN : CHAT_PANEL_MIN
+    const sideMin = sideIsWide ? 560 : BROWSER_PANEL_MIN
+    const totalAvailable = appBox.width - APP_GAP * 2 - APP_GAP
+    const maxSide = Math.max(sideMin, totalAvailable - chatMin)
+
+    let last = browserWidth ?? Math.round(appBox.right - APP_GAP - event.clientX - APP_GAP / 2)
+
+    const move = (moved: PointerEvent): void => {
+      const target = appBox.right - APP_GAP - moved.clientX - Math.round(APP_GAP / 2)
+      last = Math.round(Math.max(sideMin, Math.min(maxSide, target)))
+      setBrowserWidth(last, false)
+    }
+
+    const up = (ended: PointerEvent): void => {
+      handle.classList.remove('is-dragging')
+      document.body.classList.remove('is-resizing')
+      handle.removeEventListener('pointermove', move)
+      handle.removeEventListener('pointerup', up)
+      handle.removeEventListener('pointercancel', up)
+      try {
+        handle.releasePointerCapture(ended.pointerId)
+      } catch {
+        // Pointer capture may have already ended
+      }
+      setBrowserWidth(last, true)
+    }
+
+    handle.addEventListener('pointermove', move)
+    handle.addEventListener('pointerup', up)
+    handle.addEventListener('pointercancel', up)
+  }
+
+  const reset = (): void => {
+    setBrowserWidth(null, true)
+  }
+
+  return (
+    <div
+      className="app-divider"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize chat and browser panes"
+      title="Drag to resize · Double-click to reset"
+      tabIndex={0}
+      onPointerDown={drag}
+      onDoubleClick={reset}
+      onKeyDown={(event) => {
+        const appEl = appRef.current
+        const appBox = appEl ? appEl.getBoundingClientRect() : { width: window.innerWidth, right: window.innerWidth }
+        const chatMin = hasSide ? CHAT_PANEL_SIDE_MIN : CHAT_PANEL_MIN
+        const sideMin = sideIsWide ? 560 : BROWSER_PANEL_MIN
+        const totalAvailable = appBox.width - APP_GAP * 2 - APP_GAP
+        const maxSide = Math.max(sideMin, totalAvailable - chatMin)
+        const current = browserWidth ?? (event.currentTarget.nextElementSibling ? Math.round(event.currentTarget.nextElementSibling.getBoundingClientRect().width) : Math.round(totalAvailable * 0.5))
+
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault()
+          const next = Math.round(Math.max(sideMin, Math.min(maxSide, current + 20)))
+          setBrowserWidth(next, true)
+        } else if (event.key === 'ArrowRight') {
+          event.preventDefault()
+          const next = Math.round(Math.max(sideMin, Math.min(maxSide, current - 20)))
+          setBrowserWidth(next, true)
+        } else if (event.key === 'Home' || event.key === 'Enter') {
+          event.preventDefault()
+          reset()
+        }
+      }}
+    />
   )
 }
 
@@ -157,6 +252,7 @@ function ChatCard() {
 }
 
 export function App() {
+  const appRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const preventNavigation = (event: DragEvent): void => {
       if (event.dataTransfer?.types.includes('Files') || event.dataTransfer?.types.includes(ATTACHMENT_DRAG_TYPE)) event.preventDefault()
@@ -175,17 +271,22 @@ export function App() {
   const browserOpen = useApp((state) => state.browserOpen)
   const libraryOpen = useApp((state) => state.libraryOpen)
   const photocraftOpen = useApp((state) => state.photocraftOpen)
+  const browserWidth = useApp((state) => state.browserWidth)
   const error = useApp((state) => state.error)
   const split = useApp((state) => {
     if (state.panes.length !== 1) return false
     const chatId = focusedChatId(state)
     return chatId !== null && state.views[chatId]?.planTurnId != null
   })
+  const sidePanel = artifact ? <ArtifactPanel /> : libraryOpen ? <LibraryPanel /> : photocraftOpen ? <PhotocraftPanel /> : browserOpen ? <BrowserPanel /> : null
+  const style = (browserWidth != null ? { '--browser-width': `${browserWidth}px` } : undefined) as React.CSSProperties | undefined
+
   return (
-    <div className={`app${libraryOpen && !artifact ? ' has-library' : ''}${photocraftOpen && !libraryOpen && !artifact ? ' has-photocraft' : ''}${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-side' : ''}`}>
+    <div ref={appRef} className={`app${libraryOpen && !artifact ? ' has-library' : ''}${photocraftOpen && !libraryOpen && !artifact ? ' has-photocraft' : ''}${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-side' : ''}`} style={style}>
       <TitleStrip />
       <ChatCard />
-      {artifact ? <ArtifactPanel /> : libraryOpen ? <LibraryPanel /> : photocraftOpen ? <PhotocraftPanel /> : browserOpen && <BrowserPanel />}
+      {sidePanel && <AppDivider appRef={appRef} />}
+      {sidePanel}
       <AttachmentNotice />
       {error && (
         <div className="toast" role="alert">

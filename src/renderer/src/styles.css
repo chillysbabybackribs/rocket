@@ -103,11 +103,11 @@ button {
   padding: var(--titlebar) var(--gap) var(--gap);
 }
 .app.has-browser {
-  grid-template-columns: minmax(380px, 1fr) minmax(360px, 1.15fr);
+  grid-template-columns: minmax(380px, 1fr) var(--gap) minmax(360px, var(--browser-width, 1.15fr));
 }
 /* The library and PhotoCraft share one wide side column so switching from the toolbar never moves the chat. */
 .app.has-library, .app.has-photocraft {
-  grid-template-columns: minmax(340px, 0.8fr) minmax(560px, 1.5fr);
+  grid-template-columns: minmax(340px, 0.8fr) var(--gap) minmax(560px, var(--browser-width, 1.5fr));
 }
 
 .chat, .browser {
@@ -116,7 +116,12 @@ button {
   background: var(--sheen), var(--panel);
   overflow: hidden;
 }
-.browser { margin-left: var(--gap); }
+.browser { margin-left: 0; }
+.app.has-browser .artifact,
+.app.has-library .library-panel,
+.app.has-photocraft .photocraft-panel {
+  margin-left: 0;
+}
 
 
 /* ── Title strip and usage notch ───────────────────────────────────── */
@@ -289,8 +294,53 @@ button {
 /* ── Side pane (plan drawer) ───────────────────────────────────────── */
 
 .app.has-browser.has-side {
-  grid-template-columns: minmax(640px, 1.5fr) minmax(360px, 1fr);
+  grid-template-columns: minmax(640px, 1.5fr) var(--gap) minmax(360px, var(--browser-width, 1fr));
 }
+.app-divider {
+  position: relative;
+  width: var(--gap);
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  touch-action: none;
+  z-index: 10;
+}
+.app-divider::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+}
+.app-divider::before {
+  content: '';
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+.app-divider:hover::before,
+.app-divider.is-dragging::before {
+  background: var(--accent);
+}
+.app-divider:focus-visible {
+  outline: none;
+}
+.app-divider:focus-visible::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(113, 112, 255, 0.35);
+}
+
+body.is-resizing,
+body.is-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
 .pane-split { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .pane-split.is-split {
   display: grid;

@@ -89,6 +89,8 @@ export type AppState = {
   toolbar: ToolbarPrefs
   /** Width of the plan drawer beside the chat, in pixels. */
   sideWidth: number
+  /** Width of the browser pane beside the chat, in pixels (null for default ratio). */
+  browserWidth: number | null
   /** The folder a new chat starts in: the last one the user chose, or their home folder. */
   defaultCwd: string
   error: string | null
@@ -127,6 +129,7 @@ type Prefs = {
   photocraftOpen?: boolean
   toolbar?: ToolbarPrefs
   sideWidth?: number
+  browserWidth?: number | null
   /** @deprecated migrated to sideWidth */
   goalWidth?: number
   /** Chats whose plan drawer the user closed; it no longer opens by itself there. */
@@ -208,6 +211,7 @@ let state: AppState = {
   photocraftOpen: prefs.photocraftOpen === true,
   toolbar: normalizeToolbar(prefs.toolbar),
   sideWidth: prefs.sideWidth ?? prefs.goalWidth ?? 400,
+  browserWidth: typeof prefs.browserWidth === 'number' ? prefs.browserWidth : null,
   defaultCwd: prefs.cwd || window.rocket.homeDir,
   error: null
 }
@@ -663,6 +667,11 @@ export function loadModels(provider: ProviderId): Promise<void> {
 export function setSideWidth(sideWidth: number, save: boolean): void {
   setState({ sideWidth })
   if (save) writePrefs({ sideWidth })
+}
+
+export function setBrowserWidth(browserWidth: number | null, save: boolean): void {
+  setState({ browserWidth })
+  if (save) writePrefs({ browserWidth })
 }
 
 /**
