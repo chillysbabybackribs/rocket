@@ -1,0 +1,34 @@
+{
+  "records": [
+    {
+      "records": [
+        {
+          "name": "[RKT EVAL] Opportunity Workspace",
+          "id": "0M0fn000009KUj9CAG",
+          "lastModifiedDate": "2026-10-11T07:26:54.000Z",
+          "lastModifiedBy": "daniel parker",
+          "lastModifiedById": "005fn000008fCdyAAE",
+          "entityLabel": "Opportunity",
+          "pageReference": {
+            "type": "setup__relatedRecordPage",
+            "attributes": {
+              "recordId": "Opportunity",
+              "relatedObject": "LightningPages",
+              "setupId": "ObjectManager",
+              "action": "view",
+              "relatedId": "0M0fn000009KUj9CAG"
+            },
+            "state": {}
+          }
+        }
+      ],
+      "hasMoreObjects": false
+    }
+  ],
+  "observedColumns": {
+    "orgDefault": "blank",
+    "appDefault": "blank",
+    "otherAssignments": "blank"
+  },
+  "visualInspection": "Reopened saved page in independent evaluator tab. Exact Northstar note at top; two columns with details left, activity right. API name RKT_EVAL_Opportunity_Workspace and label verified from screenshot."
+}

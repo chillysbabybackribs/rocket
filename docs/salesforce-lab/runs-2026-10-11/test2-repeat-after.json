@@ -1,0 +1,26 @@
+{
+  "006fn000009zeRZAAY": {
+    "Id": "006fn000009zeRZAAY",
+    "lastModifiedDate": "2026-10-11T07:21:18.000Z",
+    "AccountId": "001fn00000enIeIAAU",
+    "Amount": 72000,
+    "CloseDate": "2026-11-20",
+    "CreatedById": "005fn000008fCdyAAE",
+    "CreatedDate": "2026-10-11T05:51:23.000Z",
+    "Description": "ROCKET FIXTURE RKT-20261011. Two NC-24 cooling units at $24000 each. Buyer Maya Chen. Last customer contact 2026-10-08. Budget confirmed; procurement reviewing proposal.",
+    "ForecastCategoryName": "Pipeline",
+    "HasOpportunityLineItem": false,
+    "LastModifiedById": "005fn000008fCdyAAE",
+    "LastModifiedDate": "2026-10-11T07:21:18.000Z",
+    "Name": "[RKT] Harbor refrigeration expansion",
+    "NextStep": "Send revised proposal on 2026-10-16",
+    "OwnerId": "005fn000008fCdyAAE",
+    "Probability": 75,
+    "StageName": "Negotiate",
+    "SystemModstamp": "2026-10-11T07:21:18.000Z"
+  },
+  "005fn000008fCdyAAE": {
+    "FirstName": "daniel",
+    "lastModifiedDate": "2026-10-11T07:18:42.000Z"
+  }
+}

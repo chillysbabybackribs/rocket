@@ -1,0 +1,167 @@
+[
+  {
+    "state": "SUCCESS",
+    "result": {
+      "flowRecordId": "2aFfn000005oPgHEAU",
+      "flow": {
+        "createdById": "005fn000008fCdyAAE",
+        "createdDate": "2026-10-11T07:29:43.000+0000",
+        "definitionId": "300fn00000J6rBZAAZ",
+        "fieldsToNull": [],
+        "fullName": "RKT_EVAL_Cooler_AlarmRKT_EVAL_Cooler_Alarm",
+        "id": "301fn00000enhT9AAI",
+        "isPaused": false,
+        "lastModifiedBy": {
+          "fieldsToNull": [],
+          "name": "daniel parker"
+        },
+        "lastModifiedById": "005fn000008fCdyAAE",
+        "lastModifiedDate": "2026-10-11T07:29:44.000+0000",
+        "manageableState": "unmanaged",
+        "masterLabel": "RKT EVAL Cooler Alarm",
+        "metadata": {
+          "actionCalls": [],
+          "apexPluginCalls": [],
+          "apiVersion": 68,
+          "areMetricsLoggedToDataCloud": false,
+          "assignments": [],
+          "choices": [],
+          "collectionFilterCriteria": [],
+          "collectionProcessors": [],
+          "constants": [],
+          "customErrors": [],
+          "customProperties": [],
+          "dataLookups": [],
+          "decisions": [],
+          "description": "Isolated Rocket reliability fixture. Only exact Subject [RKT EVAL4] Cooler alarm. Keep inactive.",
+          "dynamicChoiceSets": [],
+          "ends": [
+            {
+              "locationX": 0,
+              "locationY": 0,
+              "name": "END_ELEMENT_1",
+              "processMetadataValues": []
+            }
+          ],
+          "environments": [
+            "Default"
+          ],
+          "exitRules": [],
+          "experiments": [],
+          "formulas": [],
+          "groups": [],
+          "interviewLabel": "RKT EVAL Cooler Alarm {!$Flow.CurrentDateTime}",
+          "isAdditionalPermissionRequiredToRun": false,
+          "isOverridable": false,
+          "isTemplate": false,
+          "label": "RKT EVAL Cooler Alarm",
+          "loops": [],
+          "orchestratedStages": [],
+          "processMetadataValues": [
+            {
+              "name": "BuilderType",
+              "value": {
+                "collectionElements": [],
+                "stringValue": "LightningFlowBuilder"
+              }
+            },
+            {
+              "name": "CanvasMode",
+              "value": {
+                "collectionElements": [],
+                "stringValue": "AUTO_LAYOUT_CANVAS"
+              }
+            },
+            {
+              "name": "OriginBuilderType",
+              "value": {
+                "collectionElements": [],
+                "stringValue": "LightningFlowBuilder"
+              }
+            }
+          ],
+          "processType": "AutoLaunchedFlow",
+          "recordCreates": [],
+          "recordDeletes": [],
+          "recordLookups": [],
+          "recordRollbacks": [],
+          "recordUpdates": [
+            {
+              "connector": {
+                "isGoTo": false,
+                "processMetadataValues": [],
+                "targetReference": "END_ELEMENT_1"
+              },
+              "filters": [],
+              "inputAssignments": [
+                {
+                  "field": "Priority",
+                  "processMetadataValues": [],
+                  "value": {
+                    "collectionElements": [],
+                    "stringValue": "High"
+                  }
+                }
+              ],
+              "inputReference": "$Record",
+              "label": "Set alarm priority",
+              "locationX": 0,
+              "locationY": 0,
+              "name": "Set_alarm_priority",
+              "processMetadataValues": []
+            }
+          ],
+          "screens": [],
+          "stages": [],
+          "start": {
+            "capabilityTypes": [],
+            "conditions": [],
+            "connector": {
+              "isGoTo": false,
+              "processMetadataValues": [],
+              "targetReference": "Set_alarm_priority"
+            },
+            "dataTypeMappings": [],
+            "doesRequireRecordChangedToMeetCriteria": false,
+            "filterLogic": "and",
+            "filters": [
+              {
+                "field": "Subject",
+                "operator": "EqualTo",
+                "processMetadataValues": [],
+                "value": {
+                  "collectionElements": [],
+                  "stringValue": "[RKT EVAL4] Cooler alarm"
+                }
+              }
+            ],
+            "inputs": [],
+            "isAsync": false,
+            "isContactPointDedupeEnabled": false,
+            "locationX": 0,
+            "locationY": 0,
+            "object": "Case",
+            "processMetadataValues": [],
+            "publishSegment": false,
+            "recordTriggerType": "Create",
+            "scheduledPaths": [],
+            "sendMsgToOneContactPtPerIndv": false,
+            "triggerType": "RecordBeforeSave",
+            "triggers": []
+          },
+          "status": "Draft",
+          "steps": [],
+          "subflows": [],
+          "textTemplates": [],
+          "transforms": [],
+          "variables": [],
+          "waits": []
+        },
+        "processType": "AutoLaunchedFlow",
+        "progressStatus": "Draft",
+        "status": "Draft",
+        "versionNumber": 2
+      }
+    }
+  }
+]

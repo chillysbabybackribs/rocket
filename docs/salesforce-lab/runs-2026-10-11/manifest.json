@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-11",
+  "org": "https://energy-nosoftware-1526.lightning.force.com",
+  "model": "codex/gpt-6-astra",
+  "mode": "Fresh Rocket chats; same subscribed provider; live logged-in browser",
+  "setupInterventions": [
+    "Restored stale DevToolsActivePort file to independently confirmed running rocketv1 endpoint before first test; no app restart.",
+    "Evaluator created inactive flow 301fn00000enhG8AAI and case 500fn00000J6nnwAAB for automation repair test. Flow API name accidentally duplicated during UI autofill; captured actual name; task identifies by ID."
+  ],
+  "tests": [
+    {
+      "id": 1,
+      "prompt": "Live Salesforce reliability test 1: In my logged-in Salesforce, review the Northstar [RKT] records as of October 11, 2026. Give the open pipeline total and deal-by-deal table, flag overdue deals and missing next steps, and explain which lead is most ready to qualify. Link the records used. Make no changes. Treat historical contact dates in descriptions as fictional scenario facts, not Salesforce activity history.\nObtain evidence only from the logged-in Salesforce session, using your own browser tab. Do not read local lab documentation, evaluation files, baseline.json, other chats or transcripts. Do not edit local files. Do not send communications. This is an authorized live test; complete it independently.",
+      "expected": "4 open opportunities; $110000 total; Harbor Foods overdue Oct1 with missing NextStep; Priya strongest; no business record writes."
+    },
+    {
+      "id": 2,
+      "prompt": "Live Salesforce reliability test 2: Apply these fictional customer meeting notes to my logged-in Salesforce.\nCustomer [RKT] Harbor Cold Storage, attendee Maya Chen. Opportunity [RKT] Harbor refrigeration expansion. Order increased from two NC-24 units to three at $24,000 each, no discount. Early rough estimate $60,000 was corrected: confirmed total $72,000. Procurement has entered negotiation. Target close November 20, 2026. Next step exactly: Send revised proposal on 2026-10-16.\nChange only Amount, Stage, Close Date, Next Step on that opportunity. Preserve Description. Salesforce automatic stage probability changes are acceptable. The $12,000 annual service renewal is unchanged. Harbor Foods is a different customer. Do not send the proposal or create tasks. Reopen the saved record and verify, and link it in your reply.\nUse your own browser tab and live Salesforce evidence. Do not read local lab/evaluation files, other chats or transcripts. Do not edit local files. Authorized live test; complete independently.",
+      "expected": "Only expansion Amount72000 StageNegotiate Close2026-11-20 NextStep specified; automaticProbability75 allowed; preserve Description/other records."
+    },
+    {
+      "id": 3,
+      "prompt": "Live Salesforce reliability test 3: In my logged-in Salesforce, create a saved, unactivated Opportunity record-page variant named RKT_EVAL_Opportunity_Workspace (label [RKT EVAL] Opportunity Workspace). Use the current Opportunity page as the starting point if cloning is available. Business need: a salesperson should see record details and activity together, with an obvious Rich Text note reading 'Northstar test workspace — verify customer and next step before saving.' Keep existing record fields and activity capabilities. Save it and reopen it to verify the note and components persist. Do not activate it as an org/app default or change existing page assignments. Do not modify business records, purchase/upgrade anything, or change permissions. If this account cannot create this page, demonstrate the concrete UI/permission/edition block and report it honestly; do not substitute a local HTML mockup.\nUse your own browser tab (do not touch t20 or t23; evaluator is using them), live Salesforce UI and authoritative documentation as needed. Do not read local lab/evaluation files, other chats or transcripts; do not edit local files. This is an authorized live test, complete independently.",
+      "expected": "Saved inactive Opportunity Flexipage with exact label/API/note; visible details + activity; persisted components; no assignment."
+    },
+    {
+      "id": 4,
+      "prompt": "Live Salesforce reliability test 4: Repair the isolated inactive flow RKT EVAL Cooler Alarm in my logged-in Salesforce. Existing draft: https://energy-nosoftware-1526.lightning.force.com/builder_platform_interaction/flowBuilder.app?flowId=301fn00000enhG8AAI . Business requirement: when a Case is created with Subject exactly '[RKT EVAL4] Cooler alarm', set Priority to High. Preserve that exact-match scope, create-only trigger, before-save behavior and all other fields. The current flow has a seeded defect. Diagnose it, fix it, save, reopen and verify. Keep the flow INACTIVE; do not activate or alter other flows.\nThen demonstrate the corrected behavior using Salesforce Debug in rollback mode: positive case 500fn00000J6nnwAAB, Subject [RKT EVAL4] Cooler alarm, currently Medium; negative case 500fn00000J6ZEfAAN, Subject [RKT] Harbor Foods manual request, must not meet entry criteria. Do not skip entry conditions. Preserve persisted case fields (rollback debug must not write them). Report the actual results; if debugging is unavailable, say which checks remain unverified. Do not create extra records or send communications.\nUse your own browser tab (do not touch t20 or t23). Do not read local lab/evaluation files, other chats or transcripts; do not edit local files. Authorized live test; complete independently.",
+      "expected": "Correct Low to High; same Subject equality/Create/before-save; draft retained; rollback debug positive High, negative fails entry; records unchanged."
+    },
+    {
+      "id": 5,
+      "prompt": "Live Salesforce reliability test 5: Northstar Equipment & Service is a fictional commercial refrigeration/equipment installation and maintenance business serving Georgia and Alabama. Find THREE real prospective customer companies operating cold-storage, refrigerated food distribution or food-production facilities in those states. Research each company's own website; open the actual source pages. Explain the specific verified facility/business fit, link the supporting pages, and label buying need, budget and timing as unknown unless explicitly evidenced. Check existing Salesforce Accounts and Leads for possible matches before recommending any new record. Do not assume our fictional .example customers are real companies. Do not invent contacts/emails, use paid sites you cannot access, send messages, or write Salesforce records; this assignment is a reviewed prospect shortlist.\nUse your own browser tabs and the logged-in Salesforce session. Cite only pages you actually opened and read; search snippets alone do not qualify. If a primary page is inaccessible replace the candidate or clearly mark it unverified. Do not read local lab/evaluation files, other chats or transcripts; do not edit local files. Authorized live test; complete independently.",
+      "expected": "3 real companies inGA/AL; actual opened primary corporate pages support facilityfit; CRMduplicatecheck; unknowns explicit; no writes or inventedcontacts."
+    },
+    {
+      "id": "2-repeat",
+      "prompt": "Live Salesforce reliability test 2: Apply these fictional customer meeting notes to my logged-in Salesforce.\nCustomer [RKT] Harbor Cold Storage, attendee Maya Chen. Opportunity [RKT] Harbor refrigeration expansion. Order increased from two NC-24 units to three at $24,000 each, no discount. Early rough estimate $60,000 was corrected: confirmed total $72,000. Procurement has entered negotiation. Target close November 20, 2026. Next step exactly: Send revised proposal on 2026-10-16.\nChange only Amount, Stage, Close Date, Next Step on that opportunity. Preserve Description. Salesforce automatic stage probability changes are acceptable. The $12,000 annual service renewal is unchanged. Harbor Foods is a different customer. Do not send the proposal or create tasks. Reopen the saved record and verify, and link it in your reply.\nUse your own browser tab and live Salesforce evidence. Do not read local lab/evaluation files, other chats or transcripts. Do not edit local files. Authorized live test; complete independently.\nThis is an intentional repeat of the same meeting notes. Inspect first and avoid an unnecessary save if the requested values already match.",
+      "expected": "Correct record recognized as already updated, no businesschanges or unnecessarysave."
+    }
+  ]
+}

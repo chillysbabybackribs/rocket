@@ -1,0 +1,74 @@
+[
+  {
+    "file": "test1-transcript.json",
+    "chatId": "1fa24d3c-8225-48f9-94c0-8db88049474a",
+    "turnId": "682a376f-3c34-45d7-82d0-a81b876555d7",
+    "provider": "codex",
+    "model": "gpt-6-astra",
+    "seconds": 124.9,
+    "toolSteps": 17,
+    "recoveredToolFailures": 0,
+    "outcome": "PASS within documented scope",
+    "correctivePrompts": 0
+  },
+  {
+    "file": "test2-repeat-transcript.json",
+    "chatId": "e1cec121-3062-4cf8-bde4-eb9c27a94f90",
+    "turnId": "028a94aa-c508-4847-a741-6d3abcbf7456",
+    "provider": "codex",
+    "model": "gpt-6-astra",
+    "seconds": 62.5,
+    "toolSteps": 11,
+    "recoveredToolFailures": 1,
+    "outcome": "PASS within documented scope",
+    "correctivePrompts": 0
+  },
+  {
+    "file": "test2-transcript.json",
+    "chatId": "66b94425-1aa0-4b06-974d-ba2792b8f6dd",
+    "turnId": "e61cddb3-c240-4ad1-9167-b5b753965f37",
+    "provider": "codex",
+    "model": "gpt-6-astra",
+    "seconds": 71.1,
+    "toolSteps": 15,
+    "recoveredToolFailures": 1,
+    "outcome": "PASS within documented scope",
+    "correctivePrompts": 0
+  },
+  {
+    "file": "test3-transcript.json",
+    "chatId": "539e1e4f-c832-4208-bf76-94252f4d7dc4",
+    "turnId": "417d76f0-a844-4ad5-8a4f-fd1c18da57ac",
+    "provider": "codex",
+    "model": "gpt-6-astra",
+    "seconds": 367.0,
+    "toolSteps": 75,
+    "recoveredToolFailures": 1,
+    "outcome": "PASS within documented scope",
+    "correctivePrompts": 0
+  },
+  {
+    "file": "test4-transcript.json",
+    "chatId": "66f04abb-6557-4150-a30f-420968a67b28",
+    "turnId": "e6a74e4c-3105-4fb1-bf4e-02c510d8b4b9",
+    "provider": "codex",
+    "model": "gpt-6-astra",
+    "seconds": 197.8,
+    "toolSteps": 37,
+    "recoveredToolFailures": 1,
+    "outcome": "PASS within documented scope",
+    "correctivePrompts": 0
+  },
+  {
+    "file": "test5-transcript.json",
+    "chatId": "c9ef644e-5774-4281-a738-8cecda0253b4",
+    "turnId": "93e24b94-120d-4b81-b6c8-be69a9065540",
+    "provider": "codex",
+    "model": "gpt-6-astra",
+    "seconds": 102.8,
+    "toolSteps": 23,
+    "recoveredToolFailures": 0,
+    "outcome": "PASS within documented scope",
+    "correctivePrompts": 0
+  }
+]

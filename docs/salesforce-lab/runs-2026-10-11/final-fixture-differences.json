@@ -1,0 +1,28 @@
+{
+  "006fn000009zeRZAAY": {
+    "Amount": [
+      48000,
+      72000
+    ],
+    "CloseDate": [
+      "2026-11-15",
+      "2026-11-20"
+    ],
+    "LastModifiedDate": [
+      "2026-10-11T05:51:23.000Z",
+      "2026-10-11T07:21:18.000Z"
+    ],
+    "NextStep": [
+      "Confirm procurement review on 2026-10-15",
+      "Send revised proposal on 2026-10-16"
+    ],
+    "Probability": [
+      50,
+      75
+    ],
+    "StageName": [
+      "Propose",
+      "Negotiate"
+    ]
+  }
+}

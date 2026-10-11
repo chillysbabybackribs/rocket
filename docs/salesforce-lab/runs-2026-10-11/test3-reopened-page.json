@@ -1,0 +1,26 @@
+{
+  "properties": [],
+  "preview": "Northstar test workspace — verify customer and next step before saving.\n\nOpportunity\n[RKT] Summit safety inspection\nSlack\nSlack in Salesforce\n\nNow you can see all of your Slack conversations related to any record inside of Salesforce. Click here to open the Slack panel.\n\nEdit\nDelete\nPath\nShow Key Fields and/or Guidance for Success Details\nstage complete\nQualify\nstage complete\nMeet & Present\nstage complete\nPropose\nstage complete\nNegotiate\nClosed Won\nChange Closed Stage\nRelated List Quick Links\nContact Roles\n(0)\nPartners\n(0)\nProducts\n(0)\nNotes & Attachments\n(0)\nFiles\n(0)\nStage History\n(1)\nTabs\nDetails\nActivity\nDetails\nAbout\nOpportunity Name\n[RKT] Summit safety inspection\nEdit Opportunity Name\nAccount Name\n[RKT] Summit Fabrication\nEdit Account Name\nClose Date\n9/30/2026\nEdit Close Date\nAmount\n$4,000.00\nEdit Amount\nDescription\nROCKET FIXTURE RKT-20261011. Completed inspection; signed acceptance received 2026-09-30. Historical won deal; exclude from open pipeline.\nEdit Description\nOpportunity Owner\ndaniel parker\nChange Owner\nStatus\nStage\nClosed Won\nEdit Stage\nProbability (%)\n100%\nEdit Probability (%)\nForecast Category\nClosed\nEdit Forecast Category\nNext Step\nEdit Next Step\nHistory\nCreated By\ndaniel parker, 10/10/2026, 10:52 PM\nLast Modified By\ndaniel parker, 10/10/2026, 10:52 PM\nContact Roles\n(0)\nAdd Contact Roles\nEdit Contact Roles\nPartners\n(0)\nNew\nProducts\n(0)\nAdd Products\nChoose Price Book\nNotes & Attachments\n(0)\nUpload Files\nDrop Files\nUpload Files\nOr drop files\nFiles\n(0)\nAdd Files\nDrop Files\nUpload Files\nOr drop files\nStage History\n(1)\nList View Controls\nRefresh\n\n1 item • Sorted by Last Modified • Updated a few seconds ago\n\nItem Number\n\t\nSort\nStage\nShow Stage Column Actions\n\t\nSort\nAmount\nShow Amount Column Actions\n\t\nSort\nProbability (%)\nShow Probability (%) Column Actions\n\t\nSort\nClose Date\nShow Close Date Column Actions\n\t\nSort\nLast Modified By\nShow Last Modified By Column Actions\n\t\nSort\nLast Modified\nSorted Descending\nShow Last Modified Column Actions\n\n\n\t\nClosed Won\n\t\n$4,000.00\n\t\n100%\n\t\n9/30/2026\n\t\ndaniel parker\n\t\n10/10/2026, 10:52 PM\nView All\nActivity Publisher\nEmail\nEmail\nMore Email Actions\nNew Event\nNew Event\nMore New Event Actions\nNew Task\nNew Task\nNo Additional New Task Actions\nLog a Call\nLog a Call\nNo Additional Log a Call Actions\nActivity Timeline\nSkip to the bottom of the activity timeline\nOnly show activities with insights\nOnly show activities with insights\nOnly show activities with insights\nFilters: Within 2 months • All activities • All types\nTimeline Settings\nRefresh • Expand All\nUpcoming & Overdue\nNo activities to show.\nGet started by sending an email, scheduling a task, and more.\ninformation\n\nTo change what's shown, try changing your filters.\n\nShow All Activities\nSkip to the top of the activity timeline",
+  "requests": [
+    {
+      "id": "r4163",
+      "url": "https://energy-nosoftware-1526.lightning.force.com/aura?r=1&flexipage-editor-aura-component.FlexipageComponent.loadComponentDefinitions=7"
+    },
+    {
+      "id": "r4171",
+      "url": "https://energy-nosoftware-1526.lightning.force.com/aura?r=12&ui-force-components-controllers-actionListEditor.ActionListEditor.isFlexipageValueListPermEnabled=1"
+    },
+    {
+      "id": "r4227",
+      "url": "https://energy-nosoftware-1526.lightning.force.com/aura?r=10&flexipage-editor-aura-component.FlexipageComponent.loadComponentDefinitions=1"
+    },
+    {
+      "id": "r4236",
+      "url": "https://energy-nosoftware-1526.lightning.force.com/aura?r=16&visualeditor-aura-info.LayoutsDesignInfo.getPageAndCompactLayouts=1"
+    },
+    {
+      "id": "r4238",
+      "url": "https://energy-nosoftware-1526.lightning.force.com/aura?r=17&visualeditor-aura-info.LayoutsDesignInfo.getPageLayouts=1"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "500fn00000J6nnwAAB": {
+    "Id": "500fn00000J6nnwAAB",
+    "lastModifiedDate": "2026-10-11T07:24:48.000Z",
+    "Account": null,
+    "AccountId": null,
+    "CaseNumber": "00001007",
+    "Contact": null,
+    "ContactId": null,
+    "CreatedById": "005fn000008fCdyAAE",
+    "CreatedDate": "2026-10-11T07:24:48.000Z",
+    "Description": "Fictional automation test only. Cooler alarm threatens inventory, no workaround. No contact or external communications.",
+    "LastModifiedById": "005fn000008fCdyAAE",
+    "LastModifiedDate": "2026-10-11T07:24:48.000Z",
+    "Origin": "Phone",
+    "OwnerId": "005fn000008fCdyAAE",
+    "Priority": "Medium",
+    "Status": "New",
+    "Subject": "[RKT EVAL4] Cooler alarm",
+    "SystemModstamp": "2026-10-11T07:24:48.000Z"
+  },
+  "500fn00000J6ZEfAAN": {
+    "Id": "500fn00000J6ZEfAAN",
+    "lastModifiedDate": "2026-10-11T05:59:02.000Z",
+    "AccountId": "001fn00000enDgEAAU",
+    "CaseNumber": "00001006",
+    "ContactId": "003fn00000G0ypNAAR",
+    "CreatedById": "005fn000008fCdyAAE",
+    "CreatedDate": "2026-10-11T05:59:02.000Z",
+    "Description": "ROCKET FIXTURE RKT-20261011. Requested loading-equipment manual. Manual delivered; Jordan confirmed receipt and resolution on 2026-10-10. Closed reference case; exclude from open-case triage.",
+    "LastModifiedById": "005fn000008fCdyAAE",
+    "LastModifiedDate": "2026-10-11T05:59:02.000Z",
+    "Origin": "Web",
+    "OwnerId": "005fn000008fCdyAAE",
+    "Priority": "Low",
+    "Status": "Closed",
+    "Subject": "[RKT] Harbor Foods manual request",
+    "SystemModstamp": "2026-10-11T05:59:02.000Z"
+  }
+}
