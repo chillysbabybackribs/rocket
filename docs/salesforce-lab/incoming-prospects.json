@@ -1,0 +1,7 @@
+[
+  {"row":1,"firstName":"Maya","lastName":"Chen [RKT]","company":"[RKT] Harbor Cold Storage","email":"maya.chen@harbor.example"},
+  {"row":2,"firstName":"Liam","lastName":"Turner [RKT]","company":"[RKT] Orchard Kitchens","email":"liam.turner@orchard.example"},
+  {"row":3,"firstName":"Jamie","lastName":"Park [RKT]","company":"[RKT] Bluewater Packing","email":"jamie.park@bluewater.example","notes":"Commercial cooling inquiry; budget and authority not confirmed."},
+  {"row":4,"firstName":"Sam","lastName":"Lee [RKT]","company":"","email":"sam.lee@fictional.example"},
+  {"row":5,"firstName":"Morgan","lastName":"Reed [RKT]","company":"[RKT] Ridgeway Supply","email":"not-an-email"}
+]

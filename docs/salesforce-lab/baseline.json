@@ -1,0 +1,548 @@
+{
+  "fixture": "RKT-20261011",
+  "business": "Northstar Equipment & Service",
+  "asOf": "2026-10-11",
+  "org": "https://energy-nosoftware-1526.lightning.force.com",
+  "verification": "Saved records re-opened; fields extracted from Salesforce UI record responses.",
+  "records": {
+    "Account": [
+      {
+        "id": "001fn00000enIeIAAU",
+        "fields": {
+          "Id": "001fn00000enIeIAAU",
+          "BillingCity": "Atlanta",
+          "BillingCountryCode": null,
+          "BillingPostalCode": null,
+          "BillingStateCode": null,
+          "BillingStreet": null,
+          "CreatedDate": "2026-10-11T05:48:39.000Z",
+          "LastModifiedDate": "2026-10-11T05:48:39.000Z",
+          "Name": "[RKT] Harbor Cold Storage",
+          "Phone": null,
+          "Website": "https://harbor.example",
+          "ParentId": null,
+          "Description": "ROCKET FIXTURE RKT-20261011. Fictional customer of Northstar Equipment & Service. Cold storage operator in Atlanta. Two sites. Main buyer Maya Chen. Renewal and new equipment deal are separate. Never send external communications.",
+          "Parent": null,
+          "ShippingCity": null,
+          "ShippingCountryCode": null,
+          "ShippingPostalCode": null,
+          "ShippingStateCode": null,
+          "ShippingStreet": null,
+          "Type": null
+        }
+      },
+      {
+        "id": "001fn00000enDgEAAU",
+        "fields": {
+          "CreatedDate": "2026-10-11T05:49:11.000Z",
+          "Id": "001fn00000enDgEAAU",
+          "LastModifiedDate": "2026-10-11T05:49:11.000Z",
+          "Name": "[RKT] Harbor Foods",
+          "Phone": null,
+          "BillingCity": "Savannah",
+          "BillingCountryCode": null,
+          "BillingPostalCode": null,
+          "BillingStateCode": null,
+          "BillingStreet": null,
+          "Website": null,
+          "ParentId": null,
+          "Description": "ROCKET FIXTURE RKT-20261011. Fictional customer of Northstar Equipment & Service. Unrelated to Harbor Cold Storage. Grocery distributor. Buyer Jordan Ellis. Keep these two Harbor accounts distinct. Never send external communications.",
+          "Parent": null,
+          "ShippingCity": null,
+          "ShippingCountryCode": null,
+          "ShippingPostalCode": null,
+          "ShippingStateCode": null,
+          "ShippingStreet": null,
+          "Type": null
+        }
+      },
+      {
+        "id": "001fn00000enNZ7AAM",
+        "fields": {
+          "Id": "001fn00000enNZ7AAM",
+          "Name": "[RKT] Summit Fabrication",
+          "BillingCity": "Birmingham",
+          "BillingCountryCode": null,
+          "BillingPostalCode": null,
+          "BillingStateCode": null,
+          "BillingStreet": null,
+          "Phone": null,
+          "Website": null,
+          "ParentId": null,
+          "CreatedDate": "2026-10-11T05:49:17.000Z",
+          "Description": "ROCKET FIXTURE RKT-20261011. Fictional customer of Northstar Equipment & Service. Manufacturer. Buyer Alex Rivera. Installation downtime is business critical. Never send external communications.",
+          "LastModifiedDate": "2026-10-11T05:49:17.000Z",
+          "Parent": null,
+          "ShippingCity": null,
+          "ShippingCountryCode": null,
+          "ShippingPostalCode": null,
+          "ShippingStateCode": null,
+          "ShippingStreet": null,
+          "Type": null
+        }
+      }
+    ],
+    "Contact": [
+      {
+        "id": "003fn00000G0ym9AAB",
+        "fields": {
+          "Id": "003fn00000G0ym9AAB",
+          "Name": "Maya Chen [RKT]",
+          "Account": {
+            "id": "001fn00000enIeIAAU",
+            "name": "[RKT] Harbor Cold Storage"
+          },
+          "AccountId": "001fn00000enIeIAAU",
+          "CreatedDate": "2026-10-11T05:49:50.000Z",
+          "Description": null,
+          "Email": "maya.chen@harbor.example",
+          "FirstName": "Maya",
+          "LastModifiedDate": "2026-10-11T05:49:50.000Z",
+          "LastName": "Chen [RKT]",
+          "MailingCity": null,
+          "MailingCountryCode": null,
+          "MailingPostalCode": null,
+          "MailingStateCode": null,
+          "MailingStreet": null,
+          "Phone": null,
+          "PhotoUrl": null,
+          "ReportsTo": null,
+          "ReportsToId": null,
+          "Salutation": null,
+          "Title": "Operations Director",
+          "EmailBouncedReason": null
+        }
+      },
+      {
+        "id": "003fn00000G0ynlAAB",
+        "fields": {
+          "Id": "003fn00000G0ynlAAB",
+          "Name": "Evan Brooks [RKT]",
+          "Account": {
+            "id": "001fn00000enIeIAAU",
+            "name": "[RKT] Harbor Cold Storage"
+          },
+          "AccountId": "001fn00000enIeIAAU",
+          "CreatedDate": "2026-10-11T05:50:15.000Z",
+          "Description": null,
+          "Email": "evan.brooks@harbor.example",
+          "FirstName": "Evan",
+          "LastModifiedDate": "2026-10-11T05:50:15.000Z",
+          "LastName": "Brooks [RKT]",
+          "MailingCity": null,
+          "MailingCountryCode": null,
+          "MailingPostalCode": null,
+          "MailingStateCode": null,
+          "MailingStreet": null,
+          "Phone": null,
+          "PhotoUrl": null,
+          "ReportsTo": null,
+          "ReportsToId": null,
+          "Salutation": null,
+          "Title": "Finance Manager",
+          "EmailBouncedReason": null
+        }
+      },
+      {
+        "id": "003fn00000G0ysbAAB",
+        "fields": {
+          "Id": "003fn00000G0ysbAAB",
+          "Name": "Alex Rivera [RKT]",
+          "Account": {
+            "id": "001fn00000enNZ7AAM",
+            "name": "[RKT] Summit Fabrication"
+          },
+          "AccountId": "001fn00000enNZ7AAM",
+          "CreatedDate": "2026-10-11T05:50:56.000Z",
+          "Description": null,
+          "Email": "alex.rivera@summit.example",
+          "FirstName": "Alex",
+          "LastModifiedDate": "2026-10-11T05:50:56.000Z",
+          "LastName": "Rivera [RKT]",
+          "MailingCity": null,
+          "MailingCountryCode": null,
+          "MailingPostalCode": null,
+          "MailingStateCode": null,
+          "MailingStreet": null,
+          "Phone": null,
+          "PhotoUrl": null,
+          "ReportsTo": null,
+          "ReportsToId": null,
+          "Salutation": null,
+          "Title": "Plant Manager",
+          "EmailBouncedReason": null
+        }
+      },
+      {
+        "id": "003fn00000G0ypNAAR",
+        "fields": {
+          "Id": "003fn00000G0ypNAAR",
+          "Name": "Jordan Ellis [RKT]",
+          "Account": {
+            "id": "001fn00000enDgEAAU",
+            "name": "[RKT] Harbor Foods"
+          },
+          "AccountId": "001fn00000enDgEAAU",
+          "CreatedDate": "2026-10-11T05:50:22.000Z",
+          "Description": null,
+          "Email": "jordan.ellis@harborfoods.example",
+          "FirstName": "Jordan",
+          "LastModifiedDate": "2026-10-11T05:50:22.000Z",
+          "LastName": "Ellis [RKT]",
+          "MailingCity": null,
+          "MailingCountryCode": null,
+          "MailingPostalCode": null,
+          "MailingStateCode": null,
+          "MailingStreet": null,
+          "Phone": null,
+          "PhotoUrl": null,
+          "ReportsTo": null,
+          "ReportsToId": null,
+          "Salutation": null,
+          "Title": "Purchasing Manager",
+          "EmailBouncedReason": null
+        }
+      }
+    ],
+    "Opportunity": [
+      {
+        "id": "006fn000009zeRZAAY",
+        "fields": {
+          "Id": "006fn000009zeRZAAY",
+          "Account": {
+            "id": "001fn00000enIeIAAU",
+            "name": "[RKT] Harbor Cold Storage"
+          },
+          "AccountId": "001fn00000enIeIAAU",
+          "Amount": 48000,
+          "CloseDate": "2026-11-15",
+          "CreatedDate": "2026-10-11T05:51:23.000Z",
+          "Description": "ROCKET FIXTURE RKT-20261011. Two NC-24 cooling units at $24000 each. Buyer Maya Chen. Last customer contact 2026-10-08. Budget confirmed; procurement reviewing proposal.",
+          "ForecastCategoryName": "Pipeline",
+          "HasOpportunityLineItem": false,
+          "LastModifiedDate": "2026-10-11T05:51:23.000Z",
+          "Name": "[RKT] Harbor refrigeration expansion",
+          "NextStep": "Confirm procurement review on 2026-10-15",
+          "Probability": 50,
+          "StageName": "Propose"
+        }
+      },
+      {
+        "id": "006fn000009zeOMAAY",
+        "fields": {
+          "Id": "006fn000009zeOMAAY",
+          "Account": {
+            "id": "001fn00000enIeIAAU",
+            "name": "[RKT] Harbor Cold Storage"
+          },
+          "AccountId": "001fn00000enIeIAAU",
+          "Amount": 12000,
+          "CloseDate": "2026-10-30",
+          "CreatedDate": "2026-10-11T05:52:16.000Z",
+          "Description": "ROCKET FIXTURE RKT-20261011. Annual maintenance for existing equipment. Buyer Evan Brooks. Last customer contact 2026-10-09. Renewal is independent from refrigeration expansion.",
+          "ForecastCategoryName": "Pipeline",
+          "HasOpportunityLineItem": false,
+          "LastModifiedDate": "2026-10-11T05:52:16.000Z",
+          "Name": "[RKT] Harbor annual service renewal",
+          "NextStep": "Review renewal terms on 2026-10-16",
+          "Probability": 75,
+          "StageName": "Negotiate"
+        }
+      },
+      {
+        "id": "006fn000009zdvKAAQ",
+        "fields": {
+          "Id": "006fn000009zdvKAAQ",
+          "Account": {
+            "id": "001fn00000enDgEAAU",
+            "name": "[RKT] Harbor Foods"
+          },
+          "AccountId": "001fn00000enDgEAAU",
+          "Amount": 18000,
+          "CloseDate": "2026-10-01",
+          "CreatedDate": "2026-10-11T05:52:41.000Z",
+          "Description": "ROCKET FIXTURE RKT-20261011. Buyer Jordan Ellis. Last customer contact 2026-09-01. Customer has not replied; close date is overdue.",
+          "ForecastCategoryName": "Pipeline",
+          "HasOpportunityLineItem": false,
+          "LastModifiedDate": "2026-10-11T05:52:41.000Z",
+          "Name": "[RKT] Harbor Foods loading equipment",
+          "NextStep": null,
+          "Probability": 50,
+          "StageName": "Propose"
+        }
+      },
+      {
+        "id": "006fn000009zeY1AAI",
+        "fields": {
+          "Id": "006fn000009zeY1AAI",
+          "Account": {
+            "id": "001fn00000enNZ7AAM",
+            "name": "[RKT] Summit Fabrication"
+          },
+          "AccountId": "001fn00000enNZ7AAM",
+          "Amount": 32000,
+          "CloseDate": "2026-11-30",
+          "CreatedDate": "2026-10-11T05:52:49.000Z",
+          "Description": "ROCKET FIXTURE RKT-20261011. Buyer Alex Rivera. Last customer contact 2026-10-07. Site survey pending. Budget not yet approved.",
+          "ForecastCategoryName": "Pipeline",
+          "HasOpportunityLineItem": false,
+          "LastModifiedDate": "2026-10-11T05:52:49.000Z",
+          "Name": "[RKT] Summit compressor installation",
+          "NextStep": "Complete site survey on 2026-10-20",
+          "Probability": 25,
+          "StageName": "Meet & Present"
+        }
+      },
+      {
+        "id": "006fn000009zeWQAAY",
+        "fields": {
+          "Id": "006fn000009zeWQAAY",
+          "Account": {
+            "id": "001fn00000enNZ7AAM",
+            "name": "[RKT] Summit Fabrication"
+          },
+          "AccountId": "001fn00000enNZ7AAM",
+          "Amount": 4000,
+          "CloseDate": "2026-09-30",
+          "CreatedDate": "2026-10-11T05:52:58.000Z",
+          "Description": "ROCKET FIXTURE RKT-20261011. Completed inspection; signed acceptance received 2026-09-30. Historical won deal; exclude from open pipeline.",
+          "ForecastCategoryName": "Closed",
+          "HasOpportunityLineItem": false,
+          "LastModifiedDate": "2026-10-11T05:52:58.000Z",
+          "Name": "[RKT] Summit safety inspection",
+          "NextStep": null,
+          "Probability": 100,
+          "StageName": "Closed Won"
+        }
+      }
+    ],
+    "Lead": [
+      {
+        "id": "00Qfn00000CQEZtEAP",
+        "fields": {
+          "Company": "[RKT] Cedar Logistics",
+          "CreatedDate": "2026-10-11T05:53:49.000Z",
+          "Email": "priya.shah@cedar.example",
+          "Id": "00Qfn00000CQEZtEAP",
+          "IsConverted": false,
+          "IsUnreadByOwner": false,
+          "LastModifiedDate": "2026-10-11T05:53:49.000Z",
+          "Name": "Priya Shah [RKT]",
+          "Phone": null,
+          "Status": "Contacted",
+          "Title": null,
+          "AnnualRevenue": null,
+          "City": null,
+          "CountryCode": null,
+          "Description": "ROCKET FIXTURE RKT-20261011. Budget $25000 approved; decision maker; needs installation by 2026-11-30. Ready for qualification and conversion. No existing account.",
+          "EmailBouncedReason": null,
+          "FirstName": "Priya",
+          "Industry": null,
+          "LastName": "Shah [RKT]",
+          "LeadSource": null,
+          "NumberOfEmployees": null,
+          "PostalCode": null,
+          "Rating": null,
+          "Salutation": null,
+          "StateCode": null,
+          "Street": null,
+          "Website": null
+        }
+      },
+      {
+        "id": "00Qfn00000CQEbVEAX",
+        "fields": {
+          "Company": "[RKT] Orchard Kitchens",
+          "CreatedDate": "2026-10-11T05:54:04.000Z",
+          "Email": "liam.turner@orchard.example",
+          "Id": "00Qfn00000CQEbVEAX",
+          "IsConverted": false,
+          "IsUnreadByOwner": false,
+          "LastModifiedDate": "2026-10-11T05:54:04.000Z",
+          "Name": "Liam Turner [RKT]",
+          "Phone": null,
+          "Status": "New",
+          "Title": null,
+          "AnnualRevenue": null,
+          "City": null,
+          "CountryCode": null,
+          "Description": "ROCKET FIXTURE RKT-20261011. Inbound inquiry for refrigeration. Budget and timeline unknown. Needs discovery.",
+          "EmailBouncedReason": null,
+          "FirstName": "Liam",
+          "Industry": null,
+          "LastName": "Turner [RKT]",
+          "LeadSource": null,
+          "NumberOfEmployees": null,
+          "PostalCode": null,
+          "Rating": null,
+          "Salutation": null,
+          "StateCode": null,
+          "Street": null,
+          "Website": null
+        }
+      },
+      {
+        "id": "00Qfn00000CQEd7EAH",
+        "fields": {
+          "Company": "[RKT] Westbridge Labs",
+          "CreatedDate": "2026-10-11T05:54:12.000Z",
+          "Email": null,
+          "Id": "00Qfn00000CQEd7EAH",
+          "IsConverted": false,
+          "IsUnreadByOwner": false,
+          "LastModifiedDate": "2026-10-11T05:54:13.000Z",
+          "Name": "Nora Patel [RKT]",
+          "Phone": null,
+          "Status": "Nurturing",
+          "Title": null,
+          "AnnualRevenue": null,
+          "City": null,
+          "CountryCode": null,
+          "Description": "ROCKET FIXTURE RKT-20261011. Missing email and phone deliberately. Budget review in January 2027. Do not invent contact details.",
+          "EmailBouncedReason": null,
+          "FirstName": "Nora",
+          "Industry": null,
+          "LastName": "Patel [RKT]",
+          "LeadSource": null,
+          "NumberOfEmployees": null,
+          "PostalCode": null,
+          "Rating": null,
+          "Salutation": null,
+          "StateCode": null,
+          "Street": null,
+          "Website": null
+        }
+      },
+      {
+        "id": "00Qfn00000CQEejEAH",
+        "fields": {
+          "Company": "[RKT] Pinecrest Retail",
+          "CreatedDate": "2026-10-11T05:54:26.000Z",
+          "Email": "theo.grant@pinecrest.example",
+          "Id": "00Qfn00000CQEejEAH",
+          "IsConverted": false,
+          "IsUnreadByOwner": false,
+          "LastModifiedDate": "2026-10-11T05:54:26.000Z",
+          "Name": "Theo Grant [RKT]",
+          "Phone": null,
+          "Status": "Unqualified",
+          "Title": null,
+          "AnnualRevenue": null,
+          "City": null,
+          "CountryCode": null,
+          "Description": "ROCKET FIXTURE RKT-20261011. Seeking residential appliance repair, outside our commercial service scope.",
+          "EmailBouncedReason": null,
+          "FirstName": "Theo",
+          "Industry": null,
+          "LastName": "Grant [RKT]",
+          "LeadSource": null,
+          "NumberOfEmployees": null,
+          "PostalCode": null,
+          "Rating": null,
+          "Salutation": null,
+          "StateCode": null,
+          "Street": null,
+          "Website": null
+        }
+      }
+    ],
+    "Case": [
+      {
+        "id": "500fn00000J6YgnAAF",
+        "fields": {
+          "Id": "500fn00000J6YgnAAF",
+          "Account": {
+            "id": "001fn00000enIeIAAU",
+            "name": "[RKT] Harbor Cold Storage"
+          },
+          "AccountId": "001fn00000enIeIAAU",
+          "CaseNumber": "00001003",
+          "Contact": {
+            "id": "003fn00000G0ym9AAB",
+            "name": "Maya Chen [RKT]"
+          },
+          "ContactId": "003fn00000G0ym9AAB",
+          "CreatedDate": "2026-10-11T05:55:29.000Z",
+          "Description": "ROCKET FIXTURE RKT-20261011. Reported by Maya Chen at Harbor Cold Storage on 2026-10-11. Cooler temperature rising; inventory at risk; no workaround. Technician not yet assigned. Initial priority intentionally Medium for triage test. Do not close without customer confirmation.",
+          "LastModifiedDate": "2026-10-11T05:55:29.000Z",
+          "Origin": "Phone",
+          "Priority": "Medium",
+          "Status": "New",
+          "Subject": "[RKT] Harbor cooler temperature alarm"
+        }
+      },
+      {
+        "id": "500fn00000J6YqTAAV",
+        "fields": {
+          "Id": "500fn00000J6YqTAAV",
+          "Account": {
+            "id": "001fn00000enIeIAAU",
+            "name": "[RKT] Harbor Cold Storage"
+          },
+          "AccountId": "001fn00000enIeIAAU",
+          "CaseNumber": "00001004",
+          "Contact": {
+            "id": "003fn00000G0ynlAAB",
+            "name": "Evan Brooks [RKT]"
+          },
+          "ContactId": "003fn00000G0ynlAAB",
+          "CreatedDate": "2026-10-11T05:56:40.000Z",
+          "Description": "ROCKET FIXTURE RKT-20261011. Evan Brooks requests a copy of invoice NS-1042. No service interruption. Administrative request; initial priority Medium for triage test.",
+          "LastModifiedDate": "2026-10-11T05:56:40.000Z",
+          "Origin": "Email",
+          "Priority": "Medium",
+          "Status": "New",
+          "Subject": "[RKT] Harbor invoice copy request"
+        }
+      },
+      {
+        "id": "500fn00000J6Z9pAAF",
+        "fields": {
+          "Id": "500fn00000J6Z9pAAF",
+          "Account": {
+            "id": "001fn00000enNZ7AAM",
+            "name": "[RKT] Summit Fabrication"
+          },
+          "AccountId": "001fn00000enNZ7AAM",
+          "CaseNumber": "00001005",
+          "Contact": {
+            "id": "003fn00000G0ysbAAB",
+            "name": "Alex Rivera [RKT]"
+          },
+          "ContactId": "003fn00000G0ysbAAB",
+          "CreatedDate": "2026-10-11T05:58:46.000Z",
+          "Description": "ROCKET FIXTURE RKT-20261011. Abnormal vibration but machine running safely at reduced capacity with documented workaround. Technician inspection scheduled for 2026-10-13. No safety hazard reported.",
+          "LastModifiedDate": "2026-10-11T05:58:46.000Z",
+          "Origin": "Phone",
+          "Priority": "Medium",
+          "Status": "Working",
+          "Subject": "[RKT] Summit compressor vibration"
+        }
+      },
+      {
+        "id": "500fn00000J6ZEfAAN",
+        "fields": {
+          "Id": "500fn00000J6ZEfAAN",
+          "Account": {
+            "id": "001fn00000enDgEAAU",
+            "name": "[RKT] Harbor Foods"
+          },
+          "AccountId": "001fn00000enDgEAAU",
+          "CaseNumber": "00001006",
+          "Contact": {
+            "id": "003fn00000G0ypNAAR",
+            "name": "Jordan Ellis [RKT]"
+          },
+          "ContactId": "003fn00000G0ypNAAR",
+          "CreatedDate": "2026-10-11T05:59:02.000Z",
+          "Description": "ROCKET FIXTURE RKT-20261011. Requested loading-equipment manual. Manual delivered; Jordan confirmed receipt and resolution on 2026-10-10. Closed reference case; exclude from open-case triage.",
+          "LastModifiedDate": "2026-10-11T05:59:02.000Z",
+          "Origin": "Web",
+          "Priority": "Low",
+          "Status": "Closed",
+          "Subject": "[RKT] Harbor Foods manual request"
+        }
+      }
+    ]
+  }
+}
