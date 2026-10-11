@@ -23,7 +23,7 @@ import { CursorAdapter } from './providers/cursor.ts'
 import type { ProviderAdapter } from './providers/provider.ts'
 import { Store } from './store.ts'
 import { answerMessage, askTools } from './tools/ask.ts'
-import { agentSituationContext } from './agent-situation.ts'
+import { agentEnvironmentContext } from './agent-situation.ts'
 import { browserContext, browserTools } from './tools/browser.ts'
 import { ToolChannel } from './tools/channel.ts'
 import { imageTools } from './tools/image.ts'
@@ -244,8 +244,8 @@ const hub: Hub = new Hub(
         // The window may be closed or still loading; the block then says to ask rocket_ui_where.
         askWhere(askBrowser, chatId).then(async (where) => {
           const photocraft = await photocraftBrief(askBrowser, where.side === 'photocraft')
-          return [agentSituationContext(describeWhere(where)), photocraft].filter(Boolean).join('\n\n')
-        }, () => agentSituationContext())
+          return [agentEnvironmentContext(describeWhere(where), fresh), photocraft].filter(Boolean).join('\n\n')
+        }, () => agentEnvironmentContext(null, fresh))
       ])
     ]
     return parts.filter(Boolean).join('\n\n') || null

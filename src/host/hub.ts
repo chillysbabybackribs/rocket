@@ -616,7 +616,10 @@ export class Hub {
       },
       usage: (snapshot) => this.noteUsage(snapshot),
       // Kept on the turn and saved with its end.
-      tokens: (tokens) => { turn.tokens = tokens },
+      tokens: (tokens) => {
+        turn.tokens = tokens
+        this.emit({ type: 'turn', turn: publicTurn(turn) })
+      },
       activity: (text) => {
         if ((turn.activity ?? null) === text) return
         turn.activity = text

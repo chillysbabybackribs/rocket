@@ -5,6 +5,7 @@ import { createContext, Fragment, memo, useContext, useDeferredValue, useEffect,
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 import { AlertCircle, Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
 import { citationMarks } from '../../../shared/sources.ts'
+import { contextMeterLabel } from '../../../shared/context-meter.ts'
 import { planItemId, providerLabel, type Item, type MessageDraft, type ToolKind, type Turn, type TurnSources } from '../../../shared/types.ts'
 import { splitBlocks } from '../markdown-blocks.ts'
 import { ShownChatContext, usePane, usePaneChatId, usePaneView } from '../pane.ts'
@@ -436,6 +437,7 @@ function TurnHead({ turn, thoughts, plan, open, onToggle }: { turn: Turn; though
   }, [running])
   // A turn can be waiting rather than thinking, on background tasks it started; its head says so.
   const label = running ? <Shimmer>{turn.activity ?? 'Thinking'}</Shimmer> : thoughts && <span>Thought</span>
+  const context = contextMeterLabel(turn.tokens)
   return (
     <div className="turn-head" role={running ? 'status' : undefined}>
       {plan
@@ -448,6 +450,7 @@ function TurnHead({ turn, thoughts, plan, open, onToggle }: { turn: Turn; though
             </button>
           )
           : label}
+      {context && <span className="turn-head-context">{context}</span>}
       {running
         ? <span className="turn-head-time">Working for {duration(now - turn.startedAt)}</span>
         : turn.endedAt !== null && <span className="turn-head-time">Worked for {duration(turn.endedAt - turn.startedAt)}</span>}

@@ -792,7 +792,10 @@ body.is-resizing * {
 }
 .turn-head .shimmer { font-weight: 510; }
 .turn-head-toggle { display: inline-flex; align-items: center; gap: 6px; color: inherit; font: inherit; }
-.turn-head-time { margin-left: auto; }
+.turn-head-context { margin-left: auto; color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.turn-head-time { margin-left: 0.75rem; color: var(--text-3); font-size: 12px; }
+.turn-head-time:last-child { margin-left: auto; }
+.turn-head-context + .turn-head-time { margin-left: 0.75rem; }
 .turn-head-toggle:hover > span:not(.shimmer) { color: var(--text-2); }
 /* "Planning · 2 of 5": the head line as the plan's switch. Open, it reads a shade brighter. */
 .plan-toggle.is-open > span:not(.shimmer) { color: var(--text-2); }

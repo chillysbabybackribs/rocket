@@ -23,13 +23,32 @@ Facts from the web come in two tiers. A search result is a lead, not a source: i
 
 Plans mean two different things. When the user asks for a plan, roadmap, or implementation plan as a deliverable, write a markdown file in the repo (for example docs/something-plan.md), keep the chat reply to a short pointer and link, and run npm run open -- on that path so they see the artifact panel. Do not paste a long plan only in chat. The in-app plan beside the chat (Planning · N of M in the turn head) is only the provider's step checklist while a turn runs; it is not a substitute for a plan document.`
 
-/**
- * Prepended on every turn so models know where they are and that live UI access exists.
- * `where` is the current shell state as one line, or null when the window could not be read.
- */
-export function agentSituationContext(where: string | null = null): string {
+const INCREMENTAL_HINT = 'The shell map and operating rules were sent at the start of this provider session. If you are unsure where something is, call rocket_ui_where.'
+
+/** Full block: rules, live where-line, and the place/action map. Used once per provider session. */
+export function agentSituationFull(where: string | null = null): string {
   const parts = [AGENT_SITUATION, where ?? 'Where you are: the window could not be read for this turn; call rocket_ui_where.', describeMap()]
   return `<agent-environment>\n${parts.join('\n\n')}\n</agent-environment>`
+}
+
+/** Later turns in the same session: only where the shell is now, plus a pointer back to the map. */
+export function agentSituationIncremental(where: string | null = null): string {
+  const line = where ?? 'Where you are: the window could not be read for this turn; call rocket_ui_where.'
+  return `<agent-environment>\n${line}\n\n${INCREMENTAL_HINT}\n</agent-environment>`
+}
+
+/**
+ * Prepended ahead of the user's message. `fresh` is true when the provider session is new.
+ * `ROCKET_AGENT_SITUATION=full` keeps the old every-turn map for comparison or rollback.
+ */
+export function agentEnvironmentContext(where: string | null, fresh: boolean): string {
+  const full = process.env.ROCKET_AGENT_SITUATION === 'full' || fresh
+  return full ? agentSituationFull(where) : agentSituationIncremental(where)
+}
+
+/** @deprecated Use agentEnvironmentContext(where, fresh). Kept for tests that assert the full block. */
+export function agentSituationContext(where: string | null = null): string {
+  return agentSituationFull(where)
 }
 
 /** Extra detail for tool schemas (Antigravity first message, MCP list). */

@@ -204,9 +204,9 @@ Recommendations below are ordered by **impact × feasibility**. None require pro
 
 ### P0 — High impact, contained changes
 
-1. **Split static vs dynamic agent-environment** (§1A) with eval gate.
-2. **Map Cursor todos → plan item** and render subagent `cursor/task` outcomes (provider-updates §2–3).
-3. **Context window meter** in UI (provider-updates §4).
+1. **Split static vs dynamic agent-environment** (§1A) with eval gate. **Done (Oct 2026):** `agentEnvironmentContext(where, fresh)` in `agent-situation.ts`; rollback with `ROCKET_AGENT_SITUATION=full`.
+2. **Map Cursor todos → plan item** and render subagent `cursor/task` outcomes (provider-updates §2–3). **Done:** `planFromTodos`, `cursor/update_todos` and `cursor/task` in `cursor.ts`.
+3. **Context window meter** in UI (provider-updates §4). **Done:** live `Turn.tokens` updates from hub; Codex/Claude/Cursor `usage_update`; label in turn head via `shared/context-meter.ts`.
 
 ### P1 — Strong leverage, moderate work
 

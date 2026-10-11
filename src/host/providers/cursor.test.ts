@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cursorExtensionReply } from './cursor.ts'
+import { cursorExtensionReply, cursorUsageUpdate, planFromTodos } from './cursor.ts'
 
 const outcome = (method: string, params: Record<string, unknown> = {}) =>
   (cursorExtensionReply(method, params) as { outcome: Record<string, unknown> }).outcome
@@ -25,6 +25,24 @@ test('todos and task completions sent as requests are accepted with what they ca
 test('a method the app does not know is still refused', () => {
   assert.throws(() => cursorExtensionReply('cursor/generate_image', {}), /does not implement cursor\/generate_image/)
   assert.throws(() => cursorExtensionReply('toString', {}), /does not implement/)
+})
+
+test('cursor todos become the turn plan item', () => {
+  const item = planFromTodos('t', [
+    { content: 'Read the API', status: 'completed' },
+    { content: 'Add login', status: 'in_progress' }
+  ])
+  assert.deepEqual(item, {
+    type: 'plan', id: 't:plan', turnId: 't',
+    steps: [{ text: 'Read the API', status: 'done' }, { text: 'Add login', status: 'doing' }]
+  })
+})
+
+test('usage_update on a session update becomes turn tokens', () => {
+  assert.deepEqual(cursorUsageUpdate({ sessionUpdate: 'usage_update', used: 90_000, size: 200_000 }), {
+    input: 90_000, cached: 0, output: 0, context: 90_000, contextWindow: 200_000
+  })
+  assert.equal(cursorUsageUpdate({ sessionUpdate: 'agent_message_chunk' }), null)
 })
 
 test('the ACP plan update becomes the turn\'s plan item', async () => {

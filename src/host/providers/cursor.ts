@@ -7,7 +7,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import type { Item, ModelInfo, ToolKind, UsageSnapshot } from '../../shared/types.ts'
+import type { Item, ModelInfo, ToolKind, TurnTokens, UsageSnapshot } from '../../shared/types.ts'
 import { withHandoff } from '../handoff.ts'
 import { clipOutput, jsonPreview, messageOf, recordOf, stringOf } from '../json.ts'
 import { JsonRpcPeerError, StdioJsonRpcClient, type JsonRpcNotification, type JsonRpcRequest } from '../stdio-json-rpc.ts'
@@ -38,8 +38,8 @@ import {
 // - (ACP spec, read 2026-10-05; not yet seen live from cursor-agent) The agent's plan is the
 //   `plan` session update, `entries: [{content, priority, status: 'pending'|'in_progress'|
 //   'completed'}]`, the whole list each time; it becomes the turn's plan item. Cursor's own
-//   `cursor/update_todos` request carries no session id, so with several chats on one process it
-//   cannot be placed; it is accepted and its list dropped.
+//   `cursor/update_todos` carries no session id; Rocket maps todos to the plan item on the
+//   session that most recently streamed (or the sole active turn when only one is running).
 // - The model list is whatever a session's setup reports in `models.availableModels`; an id is
 //   `<base>[<key>=<value>,…]` and only an id listed there verbatim can be selected.
 // - (cursor-agent 2026.10.01 bundle, read 2026-10-05) The ACP schema it ships allows `usage` on
@@ -58,6 +58,8 @@ function cursorBinary(): string {
 
 class AcpClient extends StdioJsonRpcClient {
   supportsImages = false
+  /** Heard before the JSON-RPC answer when Cursor sends a `cursor/*` extension request. */
+  onExtension: ((method: string, params: Record<string, unknown>) => void) | null = null
   constructor() {
     super({ peer: 'Cursor', executable: cursorBinary(), cwd: homedir(), args: ['acp'], version: '2.0' })
     this.on('request', (request: JsonRpcRequest) => { void this.serve(request) })
@@ -96,6 +98,7 @@ class AcpClient extends StdioJsonRpcClient {
         await writeFile(String(params.path), String(params.content ?? ''), 'utf8')
         this.respond(request.id, {})
       } else if (Object.hasOwn(CURSOR_EXTENSIONS, request.method)) {
+        this.onExtension?.(request.method, params)
         this.respond(request.id, cursorExtensionReply(request.method, params))
       } else {
         this.respondWithError(request.id, -32601, `Rocket does not implement ${request.method}`)
@@ -106,7 +109,7 @@ class AcpClient extends StdioJsonRpcClient {
   }
 }
 
-type ActiveTurn = { sink: TurnSink; translator: UpdateTranslator }
+type ActiveTurn = { sink: TurnSink; translator: UpdateTranslator; turnId: string }
 
 /** What a session's setup said about models. */
 type SessionModels = {
@@ -161,6 +164,8 @@ export class CursorAdapter implements ProviderAdapter {
   private readonly active = new Map<string, ActiveTurn>()
   /** chatId → a `prepare` still opening that chat's session; `run` waits for it instead of opening twice. */
   private readonly preparing = new Map<string, Promise<void>>()
+  /** The session whose turn most recently started a prompt; `cursor/update_todos` has no session id. */
+  private promptSessionId: string | null = null
 
   constructor(private readonly tools: ToolEndpoint = null) {}
 
@@ -183,7 +188,8 @@ export class CursorAdapter implements ProviderAdapter {
       return { status: 'failed', error: messageOf(error) }
     }
     const translator = new UpdateTranslator(request.turnId)
-    this.active.set(sessionId, { sink, translator })
+    this.active.set(sessionId, { sink, translator, turnId: request.turnId })
+    this.promptSessionId = sessionId
     try {
       if (request.attachments?.length && !client.supportsImages) throw new Error('This Cursor version does not accept images. Update Cursor or choose Claude or Codex.')
       const result = await client.request<{ stopReason?: unknown }>(
@@ -284,6 +290,7 @@ export class CursorAdapter implements ProviderAdapter {
         this.loaded.clear()
       })
       await client.start()
+      client.onExtension = (method, params) => this.onExtension(method, params)
       this.client = client
       return client
     })().finally(() => { this.starting = null })
@@ -339,13 +346,60 @@ export class CursorAdapter implements ProviderAdapter {
   private onNotification(notification: JsonRpcNotification): void {
     if (notification.method !== 'session/update') return
     const params = recordOf(notification.params)
-    const turn = this.active.get(stringOf(params.sessionId))
+    const sessionId = stringOf(params.sessionId)
+    const turn = this.active.get(sessionId)
     if (!turn) return
-    for (const op of turn.translator.handle(recordOf(params.update))) {
+    this.promptSessionId = sessionId
+    const update = recordOf(params.update)
+    const tokens = cursorUsageUpdate(update)
+    if (tokens) turn.sink.tokens(tokens)
+    for (const op of turn.translator.handle(update)) {
       if (op.type === 'item') turn.sink.item(op.item)
       else turn.sink.delta(op.itemId, op.delta)
     }
   }
+
+  private onExtension(method: string, params: Record<string, unknown>): void {
+    const turn = this.activeTurnForExtension()
+    if (!turn) return
+    if (method === 'cursor/update_todos') {
+      const plan = planFromTodos(turn.turnId, params.todos)
+      if (plan) turn.sink.item(plan)
+      return
+    }
+    if (method === 'cursor/task') {
+      const agent = stringOf(params.agentId)
+      const label = agent ? `Subagent ${agent} finished.` : 'A subagent finished.'
+      turn.sink.item({ type: 'notice', id: itemId(turn.turnId, `task-${stringOf(params.toolCallId) || Date.now()}`), turnId: turn.turnId, text: label, tone: 'info' })
+    }
+  }
+
+  /** When several Cursor sessions run at once, todos attach to the session that most recently streamed. */
+  private activeTurnForExtension(): ActiveTurn | undefined {
+    const preferred = this.promptSessionId ? this.active.get(this.promptSessionId) : undefined
+    if (preferred) return preferred
+    if (this.active.size === 1) return [...this.active.values()][0]
+    return undefined
+  }
+}
+
+/** Cursor `cursor/update_todos` → the turn's plan item (same shape as the ACP `plan` update). */
+export function planFromTodos(turnId: string, todos: unknown): Item | null {
+  return planItem(turnId, todos, (entry) => stringOf(entry.content) || stringOf(entry.title))
+}
+
+/** ACP `usage_update` on a session update, when cursor-agent sends it. */
+export function cursorUsageUpdate(update: Record<string, unknown>): TurnTokens | null {
+  const kind = stringOf(update.sessionUpdate)
+  if (kind !== 'usage_update' && kind !== 'usageUpdate') return null
+  const used = numberOf(update.used ?? update.inputTokens ?? update.tokensUsed)
+  const size = numberOf(update.size ?? update.contextWindow ?? update.maxTokens)
+  if (used === null) return null
+  return { input: used, cached: 0, output: numberOf(update.outputTokens) ?? 0, context: used, contextWindow: size }
+}
+
+function numberOf(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : null
 }
 
 type Op = { type: 'item'; item: Item } | { type: 'delta'; itemId: string; delta: string }
