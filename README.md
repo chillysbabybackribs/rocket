@@ -16,29 +16,26 @@ npm run open -- docs/mockups/turn-changes.html   # open a file or URL inside the
 ```
 
 Rocket runs one instance per profile. `npm run open -- <path or URL>` hands its argument to the
-running app, which opens it as a chat link would: a page or HTML file in a browser tab, a text
-file in the artifact panel. With no app running it starts one. Mockups and reports made for you
-by an assistant belong here, not in an outside browser.
+running app (or starts one), which opens it as a chat link would: a page or HTML file in a
+browser tab, a text file in the artifact panel. Mockups and reports made for you belong here,
+not in an outside browser.
 
 Each provider runs through its own CLI, signed in with your own account. Install and sign in to
 the ones you want: `claude`, `codex`, `cursor-agent`, `agy`.
 
 ### Linux sandbox
 
-Chromium's sandbox needs its helper to be owned by root with mode `4755`. Electron updates
-can replace that helper and reset its permissions. `npm run dev`, `npm run preview`, and
-`npm run open` check it before launching and automatically repair it using `sudo -n` when
-passwordless sudo is available. Correct permissions require no sudo calls.
-
-If automatic repair is unavailable, the launcher prints these manual repair commands:
+Chromium's sandbox needs its helper owned by root with mode `4755`, and Electron updates can
+reset that. `npm run dev`, `preview` and `open` check it and repair it with `sudo -n` when
+passwordless sudo is available. Otherwise the launcher prints the manual commands:
 
 ```sh
 sudo chown root:root node_modules/electron/dist/chrome-sandbox
 sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
 ```
 
-`ROCKET_NO_SANDBOX=1 npm run dev` starts without the sandbox instead. Use that only for a quick
-look: the embedded browser then renders web pages unsandboxed.
+`ROCKET_NO_SANDBOX=1 npm run dev` starts without the sandbox. Use it only for a quick look: the
+embedded browser then renders pages unsandboxed.
 
 ## How it fits together
 
@@ -48,7 +45,7 @@ renderer (React)  ⇄ MessagePort ⇄  agent host (utility process)  ⇄  provid
         └─ ipc ─ main (window, browser tabs)
 ```
 
-- **Main** (`src/main`) owns the window and the browser view, forks the agent host, and hands the
+- **Main** (`src/main`) owns the window and the browser views, forks the agent host, and hands the
   renderer a MessagePort to it. Chat traffic never passes through main.
 - **Agent host** (`src/host`) owns the transcript (`store.ts`), decides what each provider is told
   (`hub.ts`, `handoff.ts`), and runs one adapter per provider (`providers/`).
@@ -58,855 +55,760 @@ renderer (React)  ⇄ MessagePort ⇄  agent host (utility process)  ⇄  provid
 ### Continuous orchestration
 
 Ask a chat to run a continuous task with the `orchestrator` tool. That chat assigns fresh workers,
-reviews their evidence, and chooses deeper follow-ups using provider default models. The host keeps
-review turns continuing while the readable `docs/orchestrator/<run-id>/progress.md` records progress,
-findings, worker reports and next questions. Message the chat or edit the file's User notes section
-to steer it. Stop remains available while workers run; asking to wrap up drains current work and
-writes a final review. Interrupted runs pause for explicit resume after a restart.
-See [the orchestration guide](docs/orchestrator.md) for actions, recovery and validation.
+reviews their evidence and chooses deeper follow-ups, using provider default models. The host
+keeps review turns going while `docs/orchestrator/<run-id>/progress.md` records progress,
+findings, worker reports and next questions. Message the chat or edit the file's User notes
+section to steer it. Stop is available while workers run; asking to wrap up drains current work
+and writes a final review. Interrupted runs pause until explicitly resumed after a restart. See
+[the orchestration guide](docs/orchestrator.md).
 
 ### Switching providers
 
-The app's SQLite log is the conversation. Each provider's own session is a cache of the part it
-has seen: per chat and provider, the store keeps the session id and the last turn that session
-contains. A message to a provider resumes its session and hands over only the turns after that
-mark; the handoff names the files those turns read and edited, so the next provider need not search
-for them. Codex receives them as real history (`thread/inject_items`); the other three receive a
-tagged block in front of the message. If a provider has lost its session, it gets a new one and
-the whole conversation.
+The SQLite log is the conversation. A provider's own session is a cache of the part it has seen:
+per chat and provider the store keeps the session id and the last turn that session contains. A
+message resumes the session and hands over only the turns after that mark, naming the files those
+turns read and edited. Codex receives them as real history (`thread/inject_items`); the other
+three receive a tagged block in front of the message. A provider that lost its session gets a new
+one and the whole conversation.
 
-A handoff stays in the receiving session's history, read again with every later message, so it
-carries what each turn concluded and not how it got there (`handoff.ts`): the user's words, the
-reply after the turn's last tool call (the narration between calls is left out), and the files it
-touched, and each picture a turn generated (the path of Rocket's copy and its prompt; the pixels
-are not sent). The newest three turns go whole with a line per other tool call; older ones keep their
-files and the head and tail of their request and reply. The whole block is held to 30,000
-characters, cutting the middle of the longest older replies first and, for a history too long to
-fit even cut down, leaving out the oldest turns with a line saying how many. The missed turns and
-their items are read in one query (`turnsWithItems`), so a full replay of a long chat stays fast.
+A handoff stays in the receiving session's history, so it carries what each turn concluded, not
+how it got there (`handoff.ts`): the user's words, the reply after the turn's last tool call, the
+files touched, and each generated picture (Rocket's copy path and prompt, not pixels). The newest
+three turns go whole with a line per other tool call; older ones keep their files and the head and
+tail of request and reply. The block is capped at 30,000 characters: the middle of the longest
+older replies is cut first, then the oldest turns are left out with a line saying how many.
+Missed turns and their items are read in one query (`turnsWithItems`).
 
-What a session is told once (the git rules, the workspace map) goes to it when it starts, not
-again when a session is resumed after the app restarts. The browser research guidance is in
-`browser_read`'s description, which every session has, so it is not repeated ahead of a message.
+What a session is told once (git rules, workspace map) goes to it at start, not again on resume
+after a restart. Browser research guidance lives in `browser_read`'s description, so it is not
+repeated ahead of messages.
 
 ### Tokens
 
 Each turn keeps what it cost (`Turn.tokens`): input tokens across its model calls with how many
-came from the prompt cache, output tokens, and `context`, the input of its last call, which is how
-full the session is. Claude reports them in its `result` and `message_start` events, Codex in
-`thread/tokenUsage/updated`. Cursor's agent sends no usage over ACP and Antigravity's stream has
-shown only thinking counts, so their turns carry none. The readings go into the journal with each
-turn's timing, and `rocket_diagnostics` summarizes them per provider and model.
+were cached, output tokens, and `context` (the input of its last call, i.e. how full the session
+is). Claude reports them in `result` and `message_start`, Codex in `thread/tokenUsage/updated`.
+Cursor sends no usage over ACP and Antigravity shows only thinking counts, so their turns carry
+none. Readings go into the journal with each turn's timing; `rocket_diagnostics` summarizes them
+per provider and model.
 
 ### Chat panes
 
-The chat card holds one to four chats at once. The add-chat button in the composer's text line
-(a speech box with a plus, left of where the text starts; the `+` among the tabs is a new tab in
-the same pane) splits the card: two side by side, three as two above one across the bottom, four
-as quadrants, and no more for now. A new pane opens on the new-chat screen and takes the focus.
-Every pane is a whole chat with its own tabs, transcript, composer, folder and model, and a turn
-streams into every pane that shows its chat. The pane last clicked or typed in is the focused one:
-the toolbar's Chats menu opens chats there, Ctrl+1–4 picks its provider, and its chat is the
-one marked in the history. Closing a pane's last tab closes the pane (the only pane shows the
-new-chat screen instead); the others take the room in the same order of layouts. The plan drawer
-shows only while the chat has the card to itself. The panes and their tabs come back after a restart.
+The chat card holds one to four chats. The add-chat button in the composer's text line (a speech
+box with a plus; the `+` among the tabs is a new tab in the same pane) splits the card: two side
+by side, three as two above one, four as quadrants. A new pane opens on the new-chat screen and
+takes the focus. Each pane is a whole chat with its own tabs, transcript, composer, folder and
+model, and a turn streams into every pane that shows its chat.
 
-In the renderer (`src/renderer/src/store.ts`) `panes` says what each pane shows and `views`,
-keyed by chat, holds what a shown chat has loaded, so two panes on one chat share a copy. The
-components inside a pane read their chat through `PaneContext` (`pane.ts`); every store action
-that means "in this chat" takes the pane it was asked in.
+The focused pane is the one last clicked or typed in: the Chats menu opens chats there, Ctrl+1–4
+picks its provider, and its chat is marked in the history. Closing a pane's last tab closes the
+pane (the only pane shows the new-chat screen instead). The plan drawer shows only while the chat
+has the card to itself. Panes and tabs come back after a restart.
 
-### The title strip
+In the renderer (`store.ts`), `panes` says what each pane shows and `views`, keyed by chat, holds
+what a shown chat has loaded, so two panes on one chat share a copy. Components read their chat
+through `PaneContext` (`pane.ts`); every store action meaning "in this chat" takes its pane.
+
+### The title strip and toolbar
 
 There is no rail: the chat card starts at the window's left edge. The 48px strip above the cards
-(`TitleStrip.tsx`, design in `docs/mockups/usage-in-titlebar.html`) holds the window lights and the
-toolbar at its start, and the usage notch at its centre: a tab hanging from the window's top edge
-with one ring per provider and its percentage beside it. The strip's two outer columns share the
-width equally, so the notch stays at the window's centre until the toolbar outgrows its half, and
-then moves right rather than covering it. Hovering a ring opens its flyout (each limit, when it
-resets, and a refresh button) below the notch, pulled left to end inside the chat card for the same
-reason as the toolbar's menus. The strip is the window's drag handle wherever no control sits.
+(`TitleStrip.tsx`, design in `docs/mockups/usage-in-titlebar.html`) holds the window controls and
+toolbar at its start, and the usage notch at its centre: a tab hanging from the top edge with one
+ring per provider and its percentage. The notch stays centred until the toolbar outgrows its half,
+then moves right. Hovering a ring opens its flyout (each limit, when it resets, refresh).
 
-### The toolbar
-
-The toolbar in the title strip is Mac-style and unified (`Toolbar.tsx`, design in
-`docs/mockups/titlebar-nav-drawer-mac.html`). Its Sections icon slides a drawer out to the right
-with the app's sections by name (no icons), and is their only home: Chats opens its menu under it,
-and Library, Browser and PhotoCraft show or hide the side column. The drawer's last button, or a
+The toolbar (`Toolbar.tsx`, design in `docs/mockups/titlebar-nav-drawer-mac.html`) is Mac-style.
+Its Sections icon slides out a drawer with the app's sections by name: Chats opens its menu, and
+Library, Browser and PhotoCraft show or hide the side column. The drawer's last button, or a
 right-click on the icon, opens Customize: rename a section, drag it (or use the arrow keys on its
-handle) to reorder, and choose **Keep** to show it in the toolbar at all times or **Consolidate**
-to leave it in the drawer. A renamed section keeps its real name for screen readers and the app
-map. The choices, and whether the drawer is open, are kept with the other preferences
-(`toolbar.ts`). The focused chat's title, provider and folder follow. Every menu
-and popover is pulled left to end inside the chat card, since the browser's page is a native view
-that would paint over it.
+handle) to reorder, and choose **Keep** (always in the toolbar) or **Consolidate** (drawer only).
+A renamed section keeps its real name for screen readers and the app map. Choices persist
+(`toolbar.ts`). The focused chat's title, provider and folder follow. Every menu and popover is
+pulled left to end inside the chat card, since the browser page is a native view that would paint
+over it.
 
 ### Images and files in chat
 
-Paste a screenshot into the message field, choose **Attach files**, or drop files anywhere in
-the receiving chat pane. A thumbnail tray keeps images beside the draft; click a thumbnail to
-enlarge it, remove it with its cross, or drag it into another chat to copy it there. Images may
-be sent without text. In the transcript, attachments sit above a separate prompt bubble;
-image-only messages have no empty text bubble. Attaching never sends automatically. PNG, JPEG, WebP and GIF are accepted,
-up to 5 MB each, 8000 pixels per side, 32 megapixels, and ten images totaling 20 MB per message.
+Paste a screenshot, choose **Attach files**, or drop files anywhere in a chat pane. A thumbnail
+tray keeps images beside the draft: click to enlarge, cross to remove, or drag into another chat
+to copy. Images may be sent without text; attaching never sends automatically. Accepted: PNG,
+JPEG, WebP and GIF, up to 5 MB each, 8000 px per side, 32 megapixels, and ten images totalling
+20 MB per message.
 
-Rocket copies image bytes and thumbnails into its profile's `attachments/` directory and keeps
-metadata in SQLite. Draft references and text survive restarts in renderer preferences; sent
-and queued references live in SQLite. The existing MessagePort carries imports directly to the
-host. Original files may be moved after importing. Unreferenced images older than a day are
-collected when the renderer reconnects, preserving images still in drafts, queues or transcripts.
+Rocket copies image bytes and thumbnails into the profile's `attachments/` directory and keeps
+metadata in SQLite. Draft references survive restarts in renderer preferences; sent and queued
+ones live in SQLite. Originals may be moved after import. Unreferenced images older than a day are
+collected when the renderer reconnects, keeping any still in drafts, queues or transcripts.
+
+Image messages wait for the active turn to finish, even with providers that support text steering;
+**Edit** and **Stop** restore the whole message. Claude receives image content blocks, Codex local
+image paths, and Cursor ACP image blocks only when its handshake advertises support. Antigravity
+does not take images. Provider image formats have unit coverage, but real image model turns have
+not yet been exercised. On a provider switch or lost session the handoff sends current and recent
+images within the message budget and stored paths for older ones, so files must stay available to
+the local provider processes.
+
+**PDFs and text or code files** use the same paperclip, paste and drop, shown as cards with name,
+type and size (`docs/mockups/file-attachments.html`). Clicking one opens it in the side panel:
+text as text, a PDF as its first 12 pages as images. The host decides what a file is from its
+bytes: `%PDF-` is a PDF, UTF-8 without NUL bytes is text, anything else is refused with a message.
+Limits: 25 MB a file, 50 MB and ten attachments of any kind per message. PDFs are read with
+poppler-utils (`pdfinfo`, `pdftotext`, `pdftoppm`) outside the app; a password-protected or damaged
+PDF is refused at import, and nothing in a file is rendered as a page or executed. The stored copy
+keeps its extension, with extracted text beside it (`<id>.extracted.txt`) and preview pages in
+`<id>.pages/`.
+
+Every provider gets files the same way (`src/host/providers/images.ts`): the message names each
+file's stored path and the text follows in `<file>` blocks, up to 60,000 characters a file and
+120,000 a message, current files first. Past the budget, or for a PDF with no text, the model is
+told to read the stored file. Because files travel as text, Antigravity takes them.
+
+Every attachment has a ⋯ menu (also right-click, Shift+F10 or the context-menu key;
+`AttachmentMenu.tsx`, `docs/mockups/attachment-reuse.html`):
+
+- **Copy to chat** lists New chat, chats open in panes, then recent chats with a search, and
+  appends the attachment to that chat's draft. Nothing is sent; a notice offers Undo. Dragging an
+  attachment onto another pane does the same. A copy is the same stored file referenced twice, so
+  deleting the source chat leaves it working.
+- **Save as** opens the system save dialog in main; the host copies the stored original there.
+- **Reveal stored file** shows the host's copy (`<id>.<ext>`); main refuses paths outside the
+  profile's `attachments/` folder.
+
+The camera beside the paperclip (`Capture.tsx`, `docs/mockups/screen-capture.html`) captures into
+that composer's draft: **Browser page**, **Rocket window**, **Another app's window…**, **Entire
+screen** (under the pointer) or **Select a region…**. Main does the capturing
+(`src/main/capture.ts`) through Electron's `desktopCapturer`, which on X11 lists every window and
+screen (Rocket finds itself by `getMediaSourceId()`, so its capture includes the native browser
+view). Under PipeWire (Wayland) it returns only the one source picked in the system dialog. A
+region capture hides Rocket, freezes the screen into a frameless sandboxed window and crops source
+pixels from the drag. Every capture opens a review dialog with a pen (red, yellow, blue, white),
+an eraser that removes paint only, and Clear; drawing is flattened into the image at capture
+resolution. Add to draft imports it like any image (JPEG if a busy screen exceeds 5 MB) with an
+Undo notice; Retake and Cancel change nothing. The destination is fixed when the camera is
+pressed.
 
 #### Generated images
 
-Codex makes pictures with its built-in image generation when asked in plain words or with
-`$imagegen` (on by default in codex-cli 0.161.0; image turns use the usage limits faster than text
-turns). Its `imageGeneration` thread item becomes an `image` item in the transcript, at the point
-in the reply where it was made: `generating` while Codex works, then `done` or `failed` with a
-sentence saying why, such as a used-up limit and when it resets. Codex sends the picture both as
-the file it saved (`savedPath`, under `~/.codex/generated_images/`) and as base64 PNG (`result`).
-The adapter passes both on, and the hub keeps Rocket's own copy in the attachments folder (from the
-file, or the bytes if the file cannot be read), with a thumbnail made by ImageMagick when it is
-installed, so the picture survives Codex cleaning its folder. The item then carries the stored
-`ImageAttachment` and nothing of the provider's bytes; a turn that made pictures ends after they
-are saved, and one still `generating` when its turn ends is marked failed. The attachment sweep
-keeps any picture a reply shows. Codex's `imageView` item (Codex looking at a picture on disk) is a
-small step, "Viewed <file name>". `ROCKET_CODEX_TRACE=<file>` appends every app-server notification,
-long strings cut, to a file; the header of `codex.ts` records what one live image turn sent.
+Codex makes pictures with its built-in image generation, asked for in plain words or with
+`$imagegen` (on by default in codex-cli 0.161.0; image turns use limits faster than text). Its
+`imageGeneration` thread item becomes an `image` item in the transcript at the point in the reply
+where it was made: `generating`, then `done` or `failed` with a sentence saying why (such as a
+used-up limit and when it resets). Codex sends both the saved file (`savedPath`, under
+`~/.codex/generated_images/`) and base64 PNG (`result`); the hub keeps Rocket's own copy in the
+attachments folder, with an ImageMagick thumbnail when installed, so the picture survives Codex
+cleaning its folder. The item then carries the stored `ImageAttachment` and none of the provider's
+bytes. A turn that made pictures ends after they are saved, and one still `generating` at turn end
+is marked failed. Codex's `imageView` item is a small step, "Viewed <file name>".
+`ROCKET_CODEX_TRACE=<file>` appends every app-server notification, long strings cut; the header of
+`codex.ts` records what one live image turn sent.
 
-Pictures for every provider: `generate_image` (`src/host/tools/image.ts`, `src/host/image.ts`)
-lends Codex's image generation to Claude, Cursor and Antigravity, so nobody has to switch to a Codex
-model for one. Arguments are `prompt`, an optional `aspect` (square, landscape or portrait) and up to
-four `reference_images` (absolute paths, named in the brief for Codex to look at first). `ImageRunner`
-runs one hidden Codex turn per call, the way a fill runs (`fill.ts`): a chat of its own in a folder of
-its own under `image-chats/` in the profile, kept out of the chat list, the window's events and the
-library, and deleted with its folder when the turn ends (`recover` clears any a crash left). The turn
-is told to make one picture and stop. The calling chat gets an `image` item of its own through
-`hub.addItem`, so whichever provider asked shows the same animated placeholder as a Codex picture
-while Codex works, then the picture (the stored `ImageAttachment`) or a sentence saying why not; that
-item is also what puts it on the library shelf (its maker reads as the calling provider). The picture
-is copied to `generated-images/` in the profile too, and the tool answers with that path, not the
-pixels: a model that wants to look reads the file, and `photocraft_open` opens it as a document or
-layer. None of Codex's own steps or tokens join the calling chat. At most two
-pictures are made at once, a run is given five minutes, and a used-up image limit, a refusal or
-Codex not being signed in come back as sentences the caller can read. Like any tool, it needs the app
-restarted and fresh provider sessions before a session sees it. Its description tells models to use
-it only when the user asks for a picture or a generative edit, never to crop, zoom or resize.
+**For every provider**, `generate_image` (`src/host/tools/image.ts`, `src/host/image.ts`) lends
+Codex's generation to Claude, Cursor and Antigravity. Arguments: `prompt`, optional `aspect`
+(square, landscape, portrait) and up to four `reference_images` (absolute paths). `ImageRunner`
+runs one hidden Codex turn per call, as a fill does (`fill.ts`): a chat of its own in a folder
+under `image-chats/` in the profile, hidden from the chat list, window events and library, deleted
+when the turn ends (`recover` clears any a crash left). The calling chat gets its own `image` item
+through `hub.addItem`, so it shows the same placeholder and picture, and that item is what puts it
+on the library shelf (maker: the calling provider). The picture is also copied to
+`generated-images/` in the profile and the tool answers with that path, not pixels: a model reads
+the file to look, and `photocraft_open` opens it. Codex's own steps and tokens do not join the
+calling chat. Limits: two pictures at once, five minutes a run; a used-up limit, a refusal or
+Codex not being signed in come back as readable sentences. The description tells models to use it
+only when the user asks for a picture or generative edit, never to crop, zoom or resize. As with
+any tool, restart the app and use fresh provider sessions before a session sees it.
 
-The reply shows the picture where it was made (`GeneratedImage` in `Transcript.tsx`, agreed in
-`docs/mockups/generated-images.html`; the placeholder was picked from
-`docs/mockups/generating-image-variants.html`). Pictures are not folded into the turn's steps:
-they stand before or after the reply text, and around the work under way, by where they came, in
-one keyed list so a picture is moved, not mounted again, when the final reply arrives. While one is made, a field of dots
-ripples out from the centre on its own, with no frame, label or clock over it (screen readers hear
-"Generating image"). The hub still stamps `startedAt` on the item's first report. The finished picture comes into focus in place (only when it was seen arriving), up
-to 520 px wide at its own proportions, with the prompt as a two-line caption and More. Clicking it
-opens the same full-size viewer as an attached image (`useImagePreview` in `Attachments.tsx`), and
-it has the same ⋯ menu: Preview, Copy to chat, Save as… and Reveal stored file. A failure is its
-sentence in the error colour. Reduced motion holds the dots still. `UI check: image` in
-`ui-test.ts` drives it in `tests/ui/generated-images.spec.ts`.
-
-Image messages wait for the active turn to finish, including with providers that support text
-steering. **Edit** and **Stop** restore the whole message. Queues recovered after a restart stay
-visible until sent or edited. Claude receives image content blocks, Codex receives local image
-paths, and Cursor receives ACP image blocks only when its handshake advertises support.
-Antigravity image submission and active-goal note attachments are not supported yet. Provider
-image formats have unit coverage and documented contracts; real image model turns have not yet
-been exercised. Switching providers or recovering a lost session carries image references in
-the handoff, sends current and recent images within the message budget, and supplies stored
-file paths for older images. Image files must remain available to the local provider processes.
-
-PDFs and text or code files use the same paperclip, paste and drop, and sit in the same row as
-images, as cards with a document mark, name, type and size (`docs/mockups/file-attachments.html`).
-Clicking a card opens it in the side panel: text as text, a PDF as its first 12 pages rendered to
-images. The host decides what a file is from its bytes, not its name or MIME label: `%PDF-` makes
-a PDF, UTF-8 without NUL bytes makes text, and anything else is refused with a message saying so.
-Each file may be up to 25 MB, files together up to 50 MB per message, and ten attachments of any
-kind per message. PDFs are read with poppler-utils (`pdfinfo`, `pdftotext`, `pdftoppm`) outside
-the app; a password-protected or damaged PDF is refused at import with what to do, and nothing in
-a file is rendered as a page or executed. The stored copy keeps its extension, a PDF's extracted
-text sits beside it as `<id>.extracted.txt`, and its preview pages in `<id>.pages/`.
-
-Every provider receives files the same way (`src/host/providers/images.ts`): the message names
-each file with its stored path, and the text (a PDF's extracted text) follows inside `<file>`
-blocks, up to 60,000 characters a file and 120,000 a message, current files first. Past the
-budget, or for a PDF with no text (likely scanned), the model is told to read the stored file.
-Because files travel as text, Antigravity takes them, though not images. No provider's native
-document input is relied on yet.
-
-Every attachment, in a draft, a waiting message or a sent one, has a ⋯ menu (also right-click,
-Shift+F10 or the context-menu key; `components/AttachmentMenu.tsx`, agreed in
-`docs/mockups/attachment-reuse.html`). **Copy to chat** lists New chat, the chats open in panes,
-then recent chats with a search, and appends the attachment to that chat's draft, keeping its
-text and files; nothing is sent, the card is highlighted briefly, and a notice offers Undo.
-Dragging any attachment onto another pane does the same, with a drop target that names the
-chat. A copy is the same stored file referenced twice, so deleting the source chat leaves it
-working: collection keeps every attachment a draft, queue or transcript still names. **Save as**
-opens the system save dialog in main and the host copies the stored original there byte for
-byte. **Reveal stored file** shows the host's copy in the file manager under its stored name
-(`<id>.<ext>`); main refuses any path outside the profile's `attachments/` folder.
-
-The camera beside the paperclip (`components/Capture.tsx`, agreed in
-`docs/mockups/screen-capture.html`) captures into that composer's draft: **Browser page** (the
-visible part of the current tab), **Rocket window**, **Another app's window…** (a picker of every
-open window and screen with previews), **Entire screen** (the one under the pointer) or **Select a
-region…**. Main does the capturing (`src/main/capture.ts`). Windows and screens come from
-Electron's `desktopCapturer`, which on X11 lists them all and returns a window at its own size;
-Rocket finds itself there by `getMediaSourceId()`, so its capture includes the native browser view.
-With PipeWire (Wayland) `desktopCapturer` returns only the one source picked in the system dialog.
-A region hides Rocket, freezes the screen under the pointer into a frameless window of its own
-(sandboxed, no Node, reporting its selection through its title) and crops source pixels from the
-drag. Every capture opens a review dialog with a pen (red, yellow, blue, white), an eraser that
-removes paint only, and Clear; the drawing is flattened into the image at the capture's resolution.
-Add to draft imports it like any image (PNG, or JPEG when a busy screen is over the 5 MB image
-limit) with a notice offering Undo; Retake and Cancel change nothing, and nothing is sent. The
-destination is fixed when the camera is pressed, so clicking another pane meanwhile does not
-redirect it.
+The picture appears where it was made (`GeneratedImage` in `Transcript.tsx`, designs in
+`docs/mockups/generated-images.html` and `generating-image-variants.html`). It is not folded into
+the turn's steps and moves rather than remounts when the final reply arrives. While generating, a
+field of dots ripples from the centre with no label or clock (screen readers hear "Generating
+image"; reduced motion holds it still). The finished picture comes into focus in place, up to
+520 px wide, with the prompt as a two-line caption. Clicking opens the full-size viewer
+(`useImagePreview` in `Attachments.tsx`); its ⋯ menu offers Preview, Copy to chat, Save as… and
+Reveal stored file. A failure is its sentence in the error colour. `tests/ui/generated-images.spec.ts`
+drives it through `UI check: image` in `ui-test.ts`.
 
 ### Library
 
 The toolbar's Library section opens every file the chats have touched, beside the chat
-(`components/LibraryPanel.tsx`, agreed in `docs/mockups/document-library.html`; the plan is
-`docs/library-plan.md`). Five sources fill it, and nothing else on the disk is listed:
-attachments a chat has sent (a draft's are not on the shelf until sent), pictures a model
-generated ("Made by a model", with the provider as their origin), files a model downloaded
-with the browser (indexed when the turn ends, from main's record of the chat's downloads), Markdown
-files a turn wrote (from the turn's changed files), and files opened from a chat (a link or
-`npm run open`). Attachments and generated pictures are read live from the store; the others are rows in `library_files`,
-keyed by path, so a file keeps the source it first arrived with. Eval chats' files stay off it.
-On the first start with a library, the Markdown files earlier turns wrote are added once from the
-turn patches the store kept, each dated by the last turn that wrote it; files since deleted are
+(`LibraryPanel.tsx`, `docs/mockups/document-library.html`, plan in `docs/library-plan.md`). Only
+five sources fill it:
+
+- attachments a chat has sent (drafts are not listed until sent);
+- pictures a model generated ("Made by a model", with the provider as origin);
+- files a model downloaded with the browser (indexed at turn end from main's download record);
+- Markdown files a turn wrote (from the turn's changed files);
+- files opened from a chat (a link or `npm run open`).
+
+Attachments and generated pictures are read live from the store; the rest are rows in
+`library_files`, keyed by path, so a file keeps the source it first arrived with. Eval chats'
+files stay off it. On the first start with a library, Markdown files earlier turns wrote are added
+once from the stored turn patches, dated by the last turn that wrote them; deleted files are
 skipped.
 
-The panel is a filter rail (source, kind, chat, added; each option shows how many files choosing
-it would leave) and a search over names, folders, paths and chat titles, then a grid or a list.
-Cards show real previews made by the host (`src/host/library.ts`): a PDF's first page from
-`pdftoppm`, a picture's thumbnail (the attachment's own, or ImageMagick's for a download), the
-start of a text or Markdown file set as a small page, and an Office file's embedded thumbnail
-when it carries one. Previews are cached under the profile's `library-previews/` by path, size
-and time, at most two are made at once, and a card asks for its picture only as it scrolls near.
-A missing tool or a failed preview leaves the card's type mark. A file that has moved shows as
-missing. Clicking a card opens it in the side panel (text, rendered Markdown, a PDF's first 12
-pages, or the picture) with **Library** to go back; the grid outlines the card last opened.
+The panel has a filter rail (source, kind, chat, added; each option shows how many files it
+would leave), a search over names, folders, paths and chat titles, and a grid or list. Cards show
+host-made previews (`src/host/library.ts`): a PDF's first page (`pdftoppm`), a picture thumbnail
+(the attachment's own, or ImageMagick's), the start of a text or Markdown file, or an Office
+file's embedded thumbnail. Previews are cached under `library-previews/` by path, size and time,
+at most two are made at once, and a card asks only as it scrolls near. A missing tool or failed
+preview leaves the type mark; a moved file shows as missing. Clicking a card opens it in the side
+panel (text, rendered Markdown, a PDF's first 12 pages, or the picture) with **Library** to go
+back.
 
-Filters, search and opening a file go through the app map (`library` place with the filters as
-parameters, `library.clear`, `library.open`), and `library_list` (`src/host/tools/library.ts`) lists
-the same shelf with the same filters (`src/shared/library.ts`), so a model and the user see one
-answer. Viewers that a model can mark (PDF.js, CodeMirror 6) come in the plan's next slices.
+Filters, search and opening go through the app map (`library` place, `library.clear`,
+`library.open`), and `library_list` (`src/host/tools/library.ts`) lists the same shelf with the
+same filters (`src/shared/library.ts`), so a model and the user see one answer. Viewers a model
+can mark (PDF.js, CodeMirror 6) are later slices of the plan.
 
 ### Messages sent while a turn runs
 
-The composer stays open while a turn runs; Esc or the Stop button beside Send stops it. A message
-to the provider that is answering joins its turn (`Hub.post`, `ProviderAdapter.steer`): Claude
-Code gets it as a streamed user message with priority `next`, Codex through `turn/steer`. The
-message is wrapped in an instruction to carry on without acknowledging it, so no "Got it" reply.
-The model reads it only at its next step, which can be many seconds away, so until then it shows
-dashed under the turn ("Claude reads this at its next step"). The adapter calls `steer`'s `taken`
-callback when the model reads it: Claude Code echoes it (`--replay-user-messages`) and reports
-`command_lifecycle` `started`; Codex reports a `userMessage` item. Only then is it stored as a
-user item marked `steer` inside the same turn, at the point it was read, and the transcript splits
-the turn there, folding the earlier steps into their own summary. Words a turn never said it read
-are recorded in it when it ends, not sent again; a stopped turn dropped them, so Send now sends
-them first and Stop returns them to the composer. Cursor and Antigravity cannot take
-words mid-turn, and a message to a different provider must wait for the turn anyway: those queue
-in the hub, show under the turn with Send now (stop, then send) and Edit (back to the composer),
-and go out together as one message to the last picked provider when the turn ends. Stop returns
-queued text to the composer instead of sending it. Answers to a question card in a plain chat go
-through the same queue. Stop cancels a Claude message still queued inside Claude Code
-(`interrupt({ cancelQueued: true })`), so it does not run as a turn of its own; only a CLI too old
-to cancel it has its process retired instead, which ends its background work.
+The composer stays open while a turn runs; Esc or Stop stops it. A message to the answering
+provider joins its turn (`Hub.post`, `ProviderAdapter.steer`): Claude Code gets a streamed user
+message with priority `next`, Codex uses `turn/steer`. It is wrapped in an instruction to carry on
+without acknowledging it. The model reads it only at its next step, so until then it shows dashed
+under the turn ("Claude reads this at its next step"). The adapter calls `steer`'s `taken`
+callback when the model reads it (Claude Code echoes it with `--replay-user-messages` and reports
+`command_lifecycle` `started`; Codex reports a `userMessage` item). Only then is it stored as a
+user item marked `steer` inside the same turn, at the point it was read, and the transcript
+splits the turn there, folding earlier steps into their own summary. Words a turn never read are
+recorded when it ends, not sent again; a stopped turn dropped them, so Send now sends them first
+and Stop returns them to the composer.
+
+Cursor and Antigravity cannot take words mid-turn, and a message to a different provider must
+wait anyway. Those queue in the hub, show under the turn with **Send now** (stop, then send) and
+**Edit**, and go out together as one message to the last picked provider when the turn ends. Stop
+returns queued text to the composer. Answers to a question card in a plain chat use the same
+queue. Stop cancels a Claude message still queued inside Claude Code
+(`interrupt({ cancelQueued: true })`); only a CLI too old to cancel has its process retired, which
+ends its background work.
 
 ### Turns a provider starts by itself
 
-Claude Code can start a turn with no message from the app: when a subagent or shell it ran in
-the background finishes, it answers on its own. A turn whose reply ends while such tasks still
-run is therefore held open: it keeps its working state, its head reads "Waiting for 2 background
-tasks" instead of "Thinking" (`Turn.activity`, set through the sink and never stored), and the
-follow-up lands in it (Stop ends the wait). A follow-up with no turn open,
-after a restart for instance, gets a turn of its own through `onUnprompted` (`provider.ts`), with
-a notice saying what finished. Before this, those replies were dropped. While background tasks are
-live, the Claude Code process is not retired for idleness, since that would kill them.
+Claude Code can start a turn with no app message: when a background subagent or shell finishes it
+answers on its own. A turn whose reply ends while such tasks still run is held open in its
+working state, its head reading "Waiting for 2 background tasks" (`Turn.activity`, set through the
+sink, never stored), and the follow-up lands in it (Stop ends the wait). A follow-up with no turn
+open, after a restart for instance, gets a turn of its own through `onUnprompted` (`provider.ts`)
+with a notice saying what finished. While background tasks are live the Claude Code process is
+not retired for idleness, since that would kill them.
 
 ### Browser
 
 The browser panel has Chromium's tab strip and shortcuts (Ctrl+T, W, Shift+T, Tab, 1–9, L) and a
 Safari-style address field. Each tab is a native view owned by main (`src/main/browser-pane.ts`);
-only the active one is on screen. The address field's dropdown is a view of its own
-(`browser-suggest.ts`, `src/renderer/suggest.html`) stacked above the page, so it overlays the
-page and never moves it; so is the chip of Fill with Rocket (below). While typing, the field fills
-in the most visited site that starts with the text (`completeAddress` in `browser-url.ts`), with
-the added part selected, as Chrome does: Enter opens it, Backspace or Escape takes it back. Pages
-are made with `focusOnNavigation: false`, because Electron otherwise focuses a page on each of its
-navigations and would take the keyboard from the address field mid-word. Tabs, history and the
-last session are kept in the profile folder.
+only the active one is on screen. Background tabs are hidden with `setVisible(false)`; set
+`ROCKET_BROWSER_HIDE=park` to move them off screen instead if one ever comes back blank (see
+`src/main/browser-url.ts`). Tabs, history and the last session are kept in the profile.
 
-Closing tabs keeps Rocket and its chats open; the last browser tab leaves one home tab.
-Agent tab-close calls remove restored tabs without loading them or opening an extra agent tab,
-and wait for native page cleanup before returning. Navigation and debugger traffic stop before
-a loaded view closes. Every provider is told that only an explicit request to quit Rocket
-authorizes closing the app or its process, including restarts after source edits.
+The address dropdown is a view of its own (`browser-suggest.ts`, `src/renderer/suggest.html`)
+stacked above the page, so it overlays the page and never moves it; so is the Fill with Rocket
+chip. While typing, the field fills in the most visited matching site with the added part
+selected, as Chrome does (`completeAddress` in `browser-url.ts`): Enter opens it, Backspace or
+Escape takes it back. Pages are made with `focusOnNavigation: false`, since Electron would
+otherwise steal keyboard focus from the address field mid-word on each navigation.
 
-Pages see an ordinary Chrome. Electron's default user agent adds `Rocket/<version>` and
-`Electron/<version>`, and Chromium sets `navigator.webdriver` in every page when the remote
-debugging port it is started with is 0 (`content/child/runtime_features.cc`); login pages read
-both as a bot, and X locked logins out for a while after a model visited it. So the browser session's
-user agent is Chrome's own (`plainUserAgent` in `src/main/browser-url.ts`, keeping the real Chrome
-version), and main finds a free loopback port itself and passes it by number. The debugging port
-is still only on loopback and still read from `DevToolsActivePort` by the live UI connection.
+Closing tabs keeps Rocket and its chats open; the last tab leaves one home tab. Agent tab-close
+calls remove restored tabs without loading them and wait for native page cleanup before returning.
+Every provider is told that only an explicit request to quit authorizes closing the app or its
+process, including restarts after source edits.
 
-Client hints are the third tell. Electron has no client-hints delegate
-(`ElectronBrowserContext::GetClientHintsControllerDelegate` returns null, Electron 44), so Chromium
-never sends the `Sec-CH-UA` headers a real Chrome puts on every secure request, and
-`navigator.userAgentData` carries a Chromium-only brand list; against a user agent that says Chrome,
-both are inconsistencies a managed challenge (Cloudflare's "Just a moment…" on openai.com, for one)
-picks up. `userAgentMetadata` (`browser-url.ts`) builds the metadata Chrome itself would send for
-the bundled Chrome version, with Chrome's own algorithm for the GREASE brand and the brand order.
-It reaches pages two ways, from the same metadata so they agree: the pane attaches each tab's
-debugger as the tab is made and sets it with `Network.setUserAgentOverride`, which is what
-`navigator.userAgentData` reads (opening DevTools detaches it; it is put back when they close); and
-the session's `webRequest` adds the headers, the three low-entropy hints on every HTTPS request and
-the high-entropy ones for an origin that asked with `Accept-CH`. `Critical-CH` restarts are not
-emulated: such an origin gets its extra hints from the second request on. The fingerprint behind
-this is in `docs/browser-realism-audit.md`.
+**Pages see an ordinary Chrome.** Login pages and managed challenges read Electron's defaults as a
+bot. The browser session therefore presents as the bundled Chrome: its own user agent (no
+`Rocket/` or `Electron/` tokens, `plainUserAgent` in `browser-url.ts`), no `navigator.webdriver`
+(main picks a free loopback debugging port itself rather than port 0, which makes Chromium set
+the flag; the port is still loopback-only and read from `DevToolsActivePort`), client hints
+(`Sec-CH-UA*` headers and `navigator.userAgentData`, built by `userAgentMetadata` in
+`browser-url.ts`), a filled `window.chrome` (`chrome-object.ts`) and Chrome's `navigator.languages`.
+The fill rides on a per-tab debugger session attached as each tab is made (opening DevTools
+detaches it; it is restored when they close). Because protocol commands need a renderer, a new tab
+loads a blank document first and the entry is removed from history once the next page is in.
+Known gaps: `Critical-CH` restarts are not emulated, a page's synchronous first-tick read of a new
+iframe's `chrome` sees it empty, and Notification permission cannot show Chrome's "default" state.
+Details and the fingerprint audit are in `docs/browser-realism-audit.md`.
 
-Two more things ride on that per-tab debugger session. Electron leaves `window.chrome` an empty
-object, where Chrome has `loadTimes`, `csi` and `app`; `chrome-object.ts` is the fill, read from the
-installed Chrome 152 itself, run at document start in every frame through
-`Page.addScriptToEvaluateOnNewDocument`. And the override's `acceptLanguage` is what gives
-`navigator.languages` Chrome's `["en-US", "en"]` (Electron's own reading repeats "en"). Protocol
-commands only land once a page has a renderer, and a new view has none until it navigates, so a new
-tab loads a blank document first, then the real page with everything in place; the blank entry is
-taken out of history as soon as the next page is in. A page's own synchronous read of a brand-new
-iframe's `chrome` still sees it empty for an instant, since the fill is a script and Chrome's is
-native. Notification permission is the one tell left as is: Electron's permission handlers are
-yes/no, so a fresh site cannot be shown Chrome's "default" state.
+**Hands-free reading** scrolls the page at a steady pace (double chevron at the right of the
+toolbar, or Alt+S; `docs/mockups/reading-scroll.html`). While a tab reads, the button opens into a
+pill (`ReadingControl.tsx`): play/pause in a ring that fills with the page, a log-scale speed
+slider from ¼× to 8× (1× is 30 px/s; `src/shared/reading.ts`), the time the rest of the page takes,
+and stop. Scrolling runs in the page in an isolated world (`src/main/reading-scroll.ts`) so it
+sees the reader's input: wheel, scrollbar and scroll keys move the page and reading resumes half a
+second later; Space, a click or typing pauses; at the foot it waits a few seconds for a feed to
+load more before calling the page done. Main starts and stops it, pauses a tab that leaves the
+screen, forgets it on navigation, takes Esc and Alt+↑/↓ (slower, faster), and polls progress four
+times a second. One speed is shared by every tab and kept in `browser-tabs.json`.
 
-Hands-free reading scrolls the page at a steady pace (the double chevron at the right of the
-toolbar, or Alt+S; the design is `docs/mockups/reading-scroll.html`). While a tab reads, the
-button opens into a pill (`ReadingControl.tsx`): play/pause in a ring that fills with the page,
-a log-scale speed slider from ¼× to 8× (1× is 30 px/s; the maths is `src/shared/reading.ts`),
-the speed with the time the rest of the page takes, and stop. The scrolling runs in the page, in an
-isolated world of its own (`src/main/reading-scroll.ts`), so it moves every frame and sees the
-reader's own input: the wheel, scrollbar and scroll keys move the page and reading carries on from
-there half a second later, Space pauses, a click or typing pauses, and at the foot it waits a few
-seconds for a feed to load more before it calls the page done. Main starts and stops it, pauses a
-tab that leaves the screen, forgets it when the page navigates, takes Esc and Alt+↑/↓ (slower,
-faster), and asks the page on screen for its progress four times a second. The speed is shared by
-every tab and kept with the session in `browser-tabs.json`.
+The file panel beside the chat has the same reading in its header for whatever it shows (plan,
+Markdown, library document, PDF, attachment, turn diff; `PanelReader.tsx`,
+`src/renderer/src/panel-reader.ts`, which mirrors the page's because it cannot share code). It
+scrolls `.artifact-content` and starts at rest for each file. The speed is shared with the
+browser: the renderer keeps it in preferences and passes it to main.
 
-The file panel beside the chat has the same reading in its header, for whatever it shows: a plan
-or other Markdown, a library document or PDF, an attachment, a turn's diff (`PanelReader.tsx`,
-with the scrolling in `src/renderer/src/panel-reader.ts`, which mirrors the page's because it cannot
-share its code). It scrolls the view's `.artifact-content`, takes the same keys while focus is in the
-panel, and starts at rest for each new file. One speed serves both: the renderer keeps it in its
-preferences and passes it to main, and a change main makes (Alt+↑/↓ in a page) comes back with the
-browser's state.
+**Logged-in sessions.** The embedded browser can share the user's sessions from their OS browser
+(`src/main/cookie-import.ts`). On first launch, cookies from the default OS browser are copied
+into the persistent `persist:browser` session, once (a `cookies-imported` marker records it).
+Later, the page's right-click menu has **Import login cookies**, listing each detected browser
+with "This site" and "All sites". Chrome, Chromium, Brave, Edge and Vivaldi are read from their
+profile's Cookies database and decrypted with the key in the login keyring ("<Browser> Safe
+Storage", via `secret-tool`); Firefox's `cookies.sqlite` is read as-is. Only the user's profile is
+read, never written, and the database is copied first so a running browser cannot block it.
 
-Background tabs are hidden with `setVisible(false)`, so Chromium stops drawing them.
-`ROCKET_BROWSER_HIDE=park npm run dev` moves them off screen instead, the older way, in case a
-tab ever comes back blank; see the note in `src/main/browser-url.ts`.
-
-The embedded browser can share the user's logged-in sessions from their own OS browser
-(`src/main/cookie-import.ts`). On first launch, cookies from the default OS browser are copied into
-the `persist:browser` session, which keeps them on disk, so the import survives restarts and runs
-once (a `cookies-imported` marker in the profile records that it has). Later, the page's right-click
-menu has **Import login cookies**, listing each detected browser with "This site" and "All sites".
-Chrome, Chromium, Brave, Edge and Vivaldi are read from their profile's Cookies database and
-decrypted with the key kept in the login keyring ("<Browser> Safe Storage", via `secret-tool`);
-Firefox's `cookies.sqlite` is read as-is. Only the user's profile is read, never written, and the
-database is copied before reading so a running browser cannot block it.
-
-Chat links open beside the conversation: HTTP(S) URLs and local HTML, images, PDFs, and media
-open in a new browser tab. Text and source files open in a closable artifact preview; Markdown
-renders as a document. Relative file links use the chat's working folder (or the containing
-artifact's folder), and `:line` / `#Lline` references highlight the source line. Markdown links,
-bare URLs, and recognizable file paths, including inline-code paths, are clickable. A folder opens
-as a list of its entries, each a link in turn. Text previews are limited to 2 MB; missing files
-and unsupported binary formats show an actionable error. Nothing opened from inside the app is
-handed to a system app: the Tools view's capture links and any link that tries to open a new
-window go through the same path as a chat link.
+**Chat links** open beside the conversation: HTTP(S) URLs and local HTML, images, PDFs and media
+open in a browser tab; text and source files open in a closable artifact preview (Markdown
+renders as a document, `:line` / `#Lline` highlights a source line); a folder opens as a list of
+links. Markdown links, bare URLs and recognizable file paths, including inline-code paths, are
+clickable. Relative links use the chat's working folder (or the containing artifact's). Text
+previews are limited to 2 MB; missing files and unsupported binaries show an actionable error.
+Nothing opened from inside the app is handed to a system app, and links that try to open a new
+window take the same path.
 
 ### PhotoCraft
 
-PhotoCraft, the open-source Photoshop rebuilt in Rust, runs beside the chat as a section of its
-own (plan and status in `docs/photocraft-in-rocket-plan.md`, mockup in
-`docs/mockups/photocraft-in-rocket.html`). It is PhotoCraft's web build, from the fork in
-`~/src/photocraft` (`apps/photocraft-web`, built with `trunk build --release` into `dist/web`;
+PhotoCraft, the open-source Photoshop rebuilt in Rust, runs beside the chat as its own section
+(plan and status in `docs/photocraft-in-rocket-plan.md`, mockup in
+`docs/mockups/photocraft-in-rocket.html`). It is PhotoCraft's web build from the fork in
+`~/src/photocraft` (`apps/photocraft-web`, `trunk build --release` into `dist/web`;
 `ROCKET_PHOTOCRAFT_WEB` points elsewhere). Main serves it from the privileged `photocraft://`
-scheme, a secure context with cross-origin isolation headers, into a view of its own laid over
-the panel's box the way a browser tab is (`src/main/photocraft-pane.ts`). The page is loaded with
-`?control`, which the fork answers with `window.photocraft`: the desktop app's control protocol
-without TCP, plus a file store standing in for the disk. Files cross through one-time URLs on the
-same scheme, so a large PSD never travels as script text. While the panel is closed the view is
-concealed like a background tab, so it keeps drawing and answering.
+scheme (a secure context with cross-origin isolation headers) into a view laid over the panel's
+box like a browser tab (`src/main/photocraft-pane.ts`). The page loads with `?control`, which the
+fork answers with `window.photocraft`: the desktop control protocol without TCP, plus a file
+store standing in for the disk. Files cross through one-time URLs on the same scheme, so a large
+PSD never travels as script text. While the panel is closed the view is concealed like a
+background tab, so it keeps answering.
 
 Every provider drives it with seven tools (`src/host/tools/photocraft.ts`): `photocraft_run` and
-`photocraft_batch` run engine commands (every menu item, tool and dialog is one),
-`photocraft_commands` finds them with their params, `photocraft_control` reaches any other
-control method (`ui.inspect`, `ui.set`, `ui.pointer`, menus, dialogs, keys), `photocraft_open`
-opens a file as a document or places it as a layer, `photocraft_save` saves or exports by
-extension, and `photocraft_screenshot` returns a picture of the editor, taken by Electron because
-PhotoCraft's own `ui.screenshot` never answers in the web build. Relative paths are taken from the
-chat's folder; a file goes into PhotoCraft under its absolute path, so the document's name and its
-Save target are the real file. A tool call brings the panel forward so the user sees the work.
+`photocraft_batch` run engine commands (every menu item, tool and dialog is one);
+`photocraft_commands` finds them with their params; `photocraft_control` reaches other control
+methods (`ui.inspect`, `ui.set`, `ui.pointer`, menus, dialogs, keys); `photocraft_open` opens a
+file as a document or places it as a layer; `photocraft_save` saves or exports by extension;
+`photocraft_screenshot` returns a picture of the editor, taken by Electron because PhotoCraft's own
+`ui.screenshot` never answers in the web build. Relative paths start in the chat's folder, and a
+file goes in under its absolute path so the document's Save target is the real file. A tool call
+brings the panel forward.
 
 ### Fill with Rocket
 
-Right-click a text field in the browser and **Fill with Rocket** writes the answer straight into
-the page; **Fill with instructions…** asks first; right-clicking anywhere in a form with two or
-more text fields offers **Fill this form with Rocket**. The design is
-`docs/mockups/fill-with-rocket.html`. No chat opens and nothing is kept.
+Right-click a text field in the browser: **Fill with Rocket** writes the answer straight into the
+page; **Fill with instructions…** asks first; right-clicking in a form with two or more text
+fields offers **Fill this form with Rocket**. No chat opens and nothing is kept
+(`docs/mockups/fill-with-rocket.html`).
 
-- **Main** (`src/main/page-fill.ts`) owns it. Before the menu opens it asks the page, through a
-  script in an isolated world of its own (`fill-page.ts`, world 1208), what is under the pointer:
-  the field, the form around it (its `<form>`, or the nearest ancestor holding two or more fields),
-  each field's label, value and selector, and the text around it. Passwords and payment fields are
-  never filled; dropdowns, checkboxes and fields in embedded frames are left alone.
-- **The host** (`src/host/fill.ts`) runs one turn in a chat of its own, in a folder under the
-  profile (`<profile>/fill/<id>`), with the model last sent from the composer (remembered in
-  `fill/model.json`; the menu names it). The turn has every tool a chat turn has; the message
-  (`fillPrompt` in `src/shared/fill.ts`) tells it to read the user's tab but never act in it, to
-  check facts at their source, to write as the user, to leave fields that need the user's own
-  details, and never to submit. Its reply ends with a ```` ```rocket-fill ```` JSON block, which
+- **Main** (`src/main/page-fill.ts`) asks the page, through an isolated-world script
+  (`fill-page.ts`, world 1208), what is under the pointer: the field, its form (the `<form>`, or
+  the nearest ancestor with two or more fields), each field's label, value and selector, and the
+  nearby text. Passwords and payment fields are never filled; dropdowns, checkboxes and fields in
+  embedded frames are left alone.
+- **The host** (`src/host/fill.ts`) runs one turn in a hidden chat in `<profile>/fill/<id>`, with
+  the model last sent from the composer (kept in `fill/model.json`; the menu names it), and every
+  tool a chat turn has. `fillPrompt` (`src/shared/fill.ts`) tells it to read the user's tab but
+  never act in it, check facts at their source, write as the user, leave fields needing the user's
+  own details, and never submit. Its reply ends with a ```` ```rocket-fill ```` JSON block that
   `parseFillReply` reads. The chat never reaches the window (`FillRunner.observe` swallows its
-  events, `chats.list` and the library leave its folder out), and it and its folder are deleted
-  when the turn ends; a fill cut off by an exit is cleared at the next start. Tabs the model opens
-  stay in the background (`BrowserAgent.setQuiet`), so the page being filled stays on screen.
-- **The chip** is a page of its own (`src/renderer/fill.html`) in a transparent view laid over the
-  page above the field's top right corner, one width (500 px) in every state, following the field
-  as it scrolls. Working, it shows the step the model is on, read from its own tool calls
-  (`describeStep`), the time, Sources (a count; the list opens on click and fills in live) and
-  Stop (or Esc in the page). Done, it offers Sources, **Another go** (Sound like you, Shorter, More
-  detail, Friendlier, A different take, With instructions…) and **Undo**, and goes away when the
-  user types in a filled field or clicks elsewhere in the page. A failed fill says why, offers Try
-  again, and another provider when one has usage left. The tab being filled wears a turning ring.
-- **Text goes in as typing would**: `insertText` for text boxes (so Ctrl+Z undoes it too), and a
-  paste for rich editors (Lexical, ProseMirror and other contenteditables), which turn its lines
-  into their own paragraphs. Undo writes back the text the fields held before the last fill; in a
-  rich editor that is the text without its formatting.
-- **Sound like you** rewrites the fill in the user's voice from up to 40 of their own messages in
-  Rocket's chats (`Store.userMessages`, skipping goal prompts, eval and fill chats, pasted text and
-  very short or long messages). Those messages go to the provider doing the rewrite.
+  events; `chats.list` and the library skip its folder) and is deleted with its folder at turn end
+  (a fill cut off by an exit is cleared at next start). Tabs the model opens stay in the
+  background (`BrowserAgent.setQuiet`).
+- **The chip** (`src/renderer/fill.html`) is a transparent 500 px view over the page, above the
+  field's top right corner, following it as it scrolls. Working, it shows the current step
+  (`describeStep`), time, Sources (live count and list) and Stop (or Esc). Done, it offers Sources,
+  **Another go** (Sound like you, Shorter, More detail, Friendlier, A different take, With
+  instructions…) and **Undo**, and goes away when the user types in the field or clicks elsewhere.
+  A failure says why and offers Try again, with another provider when one has usage left. The tab
+  being filled wears a turning ring.
+- **Text goes in as typing would**: `insertText` for text boxes (Ctrl+Z undoes it), a paste for
+  rich editors (Lexical, ProseMirror, other contenteditables). Undo restores what the fields held
+  before the last fill; in a rich editor that is the text without formatting.
+- **Sound like you** rewrites the fill in the user's voice from up to 40 of their own messages
+  (`Store.userMessages`, skipping goal prompts, eval and fill chats, pasted text and very short or
+  long messages). Those messages go to the provider doing the rewrite.
 
 ### Sources
 
-Search results are leads. Rocket records pages only after usable content returns from a reader.
-Navigation, a download alone, empty output, search pages and recognized access challenges do
-not count as source evidence. Provider fetches with textual failures are marked failed even
-when their protocol omits an error flag. Detection is conservative and heuristic: an opened
-mark means readable content was returned, not that a claim is true. Historical records are
-unchanged. The source record and citation notices are shared across all four providers.
+Search results are leads. Rocket records a page as a source only after a reader returns usable
+content. Navigation, a download alone, empty output, search pages and recognized access challenges
+do not count, and provider fetches with textual failures are marked failed even when their
+protocol omits an error flag. Detection is conservative and heuristic: an "opened" mark means
+readable content came back, not that a claim is true. The source record and citation notices are
+shared by all four providers (`src/shared/sources.ts`).
 
 ### Tools
 
-The app owns its tools and every provider sees the same ones. The agent host keeps them in one
-registry (`src/host/tools/registry.ts`) and serves them over a single MCP server on loopback
-(`channel.ts`), the one channel all four CLIs accept. Each session is given a URL that names its
-chat. Antigravity is the exception: its MCP config is global, so the app registers itself there
-as `rocket` (`agy mcp add`) and works out the chat from the turn that is running. Its CLI also
-leaves MCP tools out of the model's prompt, so the adapter opens a new conversation's first
-message with the tools, their arguments and how to call them.
+The app owns its tools and every provider sees the same ones. The host keeps them in one registry
+(`src/host/tools/registry.ts`) and serves them over a single loopback MCP server (`channel.ts`),
+the one channel all four CLIs accept; each session's URL names its chat. Antigravity is the
+exception: its MCP config is global, so the app registers itself there as `rocket` (`agy mcp add`)
+and works out the chat from the running turn. Its CLI also leaves MCP tools out of the model's
+prompt, so the adapter opens a new conversation's first message with the tools, arguments and how
+to call them.
 
-Every provider receives shared `web_search` and `web_read` tools in addition to the four
-browser tools (`src/host/tools/browser.ts`); `web_search` and `web_read` are defined in
-`src/host/tools/research.ts`. Native search remains available. `web_search`
-uses the app browser with Google/Bing fallback; it needs a live app browser and may encounter
-engine challenges. `web_read` retrieves source text directly, extracts HTML with Readability,
-extracts PDFs with installed `pdftotext`, and falls back to the browser for failed HTTP reads.
-It also accepts downloaded PDF paths. It preserves extracted text on disk, supports pagination,
-reports attempts and retrieval time, and bounds network downloads, time and output size.
-It never sends source content through an intermediate model summarizer. Browser source gathering
-and search are permitted recovery paths. Access challenges remain explicit failures; no bypass
-or universal access is promised. These host changes require a restart and refreshed provider sessions.
+Besides the browser and UI tools there are `library_list`, `generate_image`, the `photocraft_*`
+tools, `remember`, `ask_user`, the history tools, and with `ROCKET_SELF_CHECK=1` the three
+self-check tools. Every tool's schema is in every session's prompt, so what a model should simply
+know goes ahead of the user's message (tabs, file map, notes, trouble reports); a tool is added
+only for something a model must do.
 
-`browser_read` returns a page as text with links, its controls with short refs, and
-the data requests it made. `browser_screenshot` returns a tab as a small JPEG, for what text
-cannot say. `browser_run` runs a
-script the model writes against a small Playwright-shaped API (`tab.goto`, `tab.eval`,
-`tab.click`, `tab.fill`, `tab.waitFor`, `browser.fetch`), so a whole task is one call; the script
-runs in a worker thread of the host and each step is a request to main
-(`src/main/browser-agent.ts`), which drives the tab over the DevTools protocol. A model works in tabs of its own, marked with a dot in the tab strip. Opening one or navigating it
-to a URL switches the browser view to that tab so you can follow along; the page does not take
-keyboard focus from the composer. The model touches your tabs only by id. The open tabs ride at the
-head of the user's message when they have changed, so listing them costs no call. A page counts as
-loaded when its document is ready, not when its last ad is. While a turn uses a tab, its page runs
-at full speed even when concealed; when the turn ends it goes back to being an ordinary background
-tab, and a deleted chat's own tab is closed.
+#### Research
 
-`browser_download` saves a file with the user's sign-ins and no save dialog: a `url` (absolute or
-relative to the tab's page) or a `click` target that starts the download. It waits for the file
-(default 120 s, at most 600) and returns its path, size and type, or how far it got. Files go to
-the user's Downloads folder unless `saveTo` names a folder or a file, relative paths starting in
-the chat's working folder; an existing file is never overwritten (`report (1).pdf`). A click in
-`browser_run` that starts a download is saved the same way and listed in the script's result.
-Electron shows a save dialog whenever `will-download` does not set a save path, and a model cannot
-answer one, so main (`src/main/browser-downloads.ts`) sets the path itself for any download from a
-page a model is working in: its own tab, or a tab its running turn touched. A download you start
-in a tab no model is using still opens the usual save dialog.
+`web_search` and `web_read` (`src/host/tools/research.ts`) sit beside the browser tools; native
+search stays available. `web_search` uses the app browser with Google/Bing fallback, needs a live
+browser, and can hit engine challenges. `web_read` fetches source text directly, extracts HTML
+with Readability and PDFs with `pdftotext`, falls back to the browser when an HTTP read fails, and
+accepts downloaded PDF paths. It keeps extracted text on disk, paginates, reports attempts and
+retrieval time, and bounds downloads, time and output size. It never passes source content through
+a summarizing model. Access challenges stay explicit failures; no bypass is promised.
+
+#### Browser tools
+
+- `browser_read` returns a page as text with links, controls with short refs, and the data
+  requests it made.
+- `browser_screenshot` returns a tab as a small JPEG, for what text cannot say.
+- `browser_run` runs a model-written script against a small Playwright-shaped API (`tab.goto`,
+  `tab.eval`, `tab.click`, `tab.fill`, `tab.waitFor`, `browser.fetch`), so a task is one call. The
+  script runs in a host worker thread and each step is a request to main
+  (`src/main/browser-agent.ts`), which drives the tab over the DevTools protocol.
+- `browser_download` saves a file with the user's sign-ins and no save dialog, from a `url`
+  (absolute or relative to the tab's page) or a `click` target. It waits for the file (default
+  120 s, max 600) and returns path, size and type, or how far it got. Files go to Downloads unless
+  `saveTo` names a folder or file (relative paths start in the chat's folder); an existing file is
+  never overwritten (`report (1).pdf`). A click in `browser_run` that starts a download is saved
+  the same way and listed in the result. Because a model cannot answer Electron's save dialog,
+  main (`src/main/browser-downloads.ts`) sets the path for any download from a tab a model is
+  working in; a download you start in another tab still opens the usual dialog.
+
+A model works in tabs of its own, marked with a dot in the tab strip, and touches yours only by
+id. Opening one or navigating it switches the browser view to follow along, but the page never
+takes keyboard focus from the composer. Open tabs ride at the head of the user's message when
+they change, so listing them costs no call. A page counts as loaded when its document is ready.
+While a turn uses a tab it runs at full speed even when concealed; afterwards it is an ordinary
+background tab, and a deleted chat's own tab is closed.
 
 Rocket's Codex process disables the bundled `unified-computer-use`, `browser` and `chrome`
-plugins through process-local configuration overrides, so `cua_repl` and the related browser
-skills and hooks do not compete with Rocket's browser tools. The overrides apply to new and
-resumed chats when that process starts; restart Rocket after updating to apply them. Native web
-search and other plugins retain their configured settings, as do Codex sessions outside Rocket.
+plugins through process-local overrides, so `cua_repl` and related skills and hooks do not
+compete with Rocket's browser tools. They apply to new and resumed chats when that process
+starts; restart Rocket after updating. Native web search, other plugins, and Codex sessions
+outside Rocket keep their settings.
+
+#### UI tools
 
 `rocket_ui_snapshot` (`src/host/tools/ui-snapshot.ts`, `src/main/ui-snapshot.ts`) shows the
-currently running Rocket window without clicking, switching tabs or changing focus. It returns
-images directly to the model, visible shell control names and panel bounds, native view bounds,
-and the running process, start time, app version and main bundle fingerprint. It captures the
-composed window through ImageMagick on X11, including native browser pages and dropdowns; if
-that is unavailable, it returns separate shell and native-view images with a warning that they
-cannot verify overlap or stacking. Full-resolution PNGs and `snapshot.json` are retained under
-`<profile>/ui-snapshots/`; images sent to the model are JPEGs limited to 1600 pixels wide.
-Snapshots show the running instance, so source edits may still require a rebuild or reload.
-This read-only tool is always available to all providers; it does not require self-check mode.
+running window without clicking, switching tabs or changing focus. It returns images, visible
+shell control names and panel bounds, native view bounds, and the process, start time, app version
+and main bundle fingerprint. On X11 it captures the composed window through ImageMagick, including
+native pages and dropdowns; otherwise it returns separate shell and native-view images with a
+warning that they cannot verify overlap or stacking. Full PNGs and `snapshot.json` are kept under
+`<profile>/ui-snapshots/`; model images are JPEGs at most 1600 px wide. It shows the running
+instance, so source edits may need a rebuild. Always available; no self-check mode needed.
 
-`rocket_ui_run` drives the **live Rocket window by default**. It attaches to the running
-Electron app through a Chromium debugging endpoint bound to loopback, identifies the shell
-and visible native views by their target IDs, and disconnects after each script. It does
-not build or launch another app. Actions affect the user's actual panes, drafts, history and
-browser session. The same live window is shared by all chats and providers; one script runs
-at a time. Restart Rocket after installing this change to enable the endpoint and new schema.
+`rocket_ui_run` drives the **live window by default**, attaching to the running app through a
+loopback Chromium debugging endpoint, identifying the shell and visible native views by target
+ID, and disconnecting after each script. It builds or launches nothing; actions affect the user's
+actual panes, drafts, history and browser session. One script runs at a time across chats. The
+endpoint and schema need a restart after install.
 
-The tool accepts `code`, the body of an async function, with `page`, `ui`, `sleep` and
-`console`. Await every action. `page.getByRole`, `getByText`, `getByLabel`, `getByPlaceholder`,
-`getByTestId` and CSS `locator` support locator chaining, clicks, filling, keys, hovering,
-visibility waits and reads. Locator option names/text must be strings, not regular expressions.
-Use DOM evaluation for inspection, never to mutate renderer state to manufacture a passing UI.
-For example, to add a chat pane to the current window:
+It takes `code`, the body of an async function with `page`, `ui`, `sleep` and `console`. Await
+every action. `page.getByRole`, `getByText`, `getByLabel`, `getByPlaceholder`, `getByTestId` and
+CSS `locator` support chaining, clicks, filling, keys, hovering, visibility waits and reads;
+option names and text must be strings, not regular expressions. Use DOM evaluation to inspect,
+never to mutate renderer state and manufacture a passing UI. For example:
 
 ```js
 await page.getByRole('button', { name: 'Add a chat beside this one', exact: true }).first().click()
 return await page.locator('.pane').count()
 ```
 
-`ui.surface('browser' | 'suggestions')` returns the page API for the currently visible native
-view, including when multiple tabs have identical URLs. `ui.resize(width, height)` resizes
-the live window (880×560 through 4000×2400); `ui.read()` returns shell controls and panels;
-`ui.snapshot()` includes a capture in the result. A final snapshot is included by default;
-`capture=false` skips it on success, while script failures still capture. Results include the
-live process identity, logs and saved paths under `<profile>/ui-runs/`, with full-resolution
-captures under `<profile>/ui-snapshots/`. Source edits require rebuilding and restarting the
-live app. The default script timeout is 30 seconds (maximum 120). Scripts run in worker threads,
-so an infinite loop can be stopped. Timeout disconnects automation and leaves Rocket open;
-completed actions remain in the app. Live mode rejects `build`, `reset`, `close` and the
-controlled-test helpers `ui.request()`, `ui.release()` and `ui.restart()`.
+- `ui.surface('browser' | 'suggestions')` returns the page API for the visible native view.
+- `ui.resize(width, height)` resizes the live window (880×560 to 4000×2400).
+- `ui.read()` returns shell controls and panels; `ui.snapshot()` adds a capture.
+- A final snapshot is included by default; `capture=false` skips it on success (failures always
+  capture). Results include process identity, logs and saved paths under `<profile>/ui-runs/`.
+- The default timeout is 30 s (max 120). Scripts run in worker threads, so an infinite loop can
+  be stopped; a timeout disconnects automation, leaves Rocket open and keeps completed actions.
+- Live mode rejects `build`, `reset`, `close` and the test helpers `ui.request()`, `ui.release()`
+  and `ui.restart()`. Source edits need a rebuild and restart of the live app.
 
-Use **`target: "isolated"` explicitly** for regression tests. This mode builds current source
-into a private app folder under `.artifacts/ui-run/`, then launches Electron on a private Xvfb
-display with a marked fresh profile, scratch workspace, controlled providers and the desktop
-self-check network filter. Providers in the same chat share this isolated inspection session.
-Select its scratch folder through the normal folder button before sending `UI check:` prompts.
-`ui.request()` reads the latest controlled turn; `ui.release()` completes a held response or
-plan; `ui.restart()` restarts its profile and build. Ordinary prompts fail instead of starting
-real provider CLIs. Isolated resize limits are 880×560 through 2400×1400.
+Use **`target: "isolated"` explicitly** for regression tests. It builds current source into
+`.artifacts/ui-run/` and launches Electron on a private Xvfb display with a marked fresh profile,
+scratch workspace, controlled providers and the self-check network filter. Providers in the same
+chat share one isolated session. Select its scratch folder through the folder button before
+sending `UI check:` prompts. `ui.request()` reads the latest controlled turn, `ui.release()`
+completes a held response or plan, and `ui.restart()` restarts its profile and build. Ordinary
+prompts fail instead of starting real provider CLIs. Resize limits are 880×560 to 2400×1400.
 
-For isolated calls, `reset=true` discards the session and rebuilds; `build=false` uses the
-existing `out/` build for a new session; `close=true` closes it without a script. Initial build
-and startup have a separate three-minute deadline. Timeout discards the isolated session.
-Four sessions may be open at once, idle sessions close after ten minutes, and chat deletion
-and host shutdown close their sessions. Subprocess cleanup covers detached Electron descendants.
-Captures, per-call JSON results, `runner.log` and traces remain in the session directory.
+For isolated calls, `reset=true` discards the session and rebuilds, `build=false` reuses `out/`,
+and `close=true` closes it without a script. Build and startup have a separate three-minute
+deadline, and a timeout discards the session. Four sessions may be open at once; idle ones close
+after ten minutes, and chat deletion and host shutdown close theirs (cleanup covers detached
+Electron descendants). Captures, per-call JSON, `runner.log` and traces stay in the session
+directory.
 
-### The app map
+#### The app map
 
-The shell is finite, so a model navigates it by name rather than hunting for buttons in a
-screenshot. `src/shared/app-map.ts` is a hand-written map of every **place** the shell can show
-(`chat`, `browser`, `library`, `photocraft`, with the parameters a place takes) and every **action**
-a model can take (`pane.add`, `chat.open`, `library.open`, …), each naming the component file that
-renders it. The renderer's dispatcher (`src/renderer/src/app-map.ts`) implements the map: `where()`
-reads the shell's state in the map's words, `go(place, params)` shows a place and `act(action,
-params)` does an action, going to its place first when that is not on screen. Toolbar and panel
-controls call the same `go` and `act`, so what a click does and what a model does is one path, and
-the tables are typed against the map so a missing handler fails the typecheck. Mapped controls
-carry `data-nav="<place>"`, which `rocket_ui_snapshot` reports as `nav`.
+The shell is finite, so a model navigates it by name rather than hunting for buttons.
+`src/shared/app-map.ts` is a hand-written map of every **place** the shell can show (`chat`,
+`browser`, `library`, `photocraft`, with their parameters) and every **action** (`pane.add`,
+`chat.open`, `library.open`, …), each naming the component file that renders it. The renderer's
+dispatcher (`src/renderer/src/app-map.ts`) implements it: `where()` reads the shell's state in the
+map's words, `go(place, params)` shows a place, and `act(action, params)` does an action, going to
+its place first if needed. Toolbar and panel controls call the same `go` and `act`, so a click and
+a model take one path. Mapped controls carry `data-nav="<place>"`, which `rocket_ui_snapshot`
+reports as `nav`.
 
 The host serves the map as three tools (`src/host/tools/ui-map.ts`), run in the renderer through
-main's `uiMap` op: `rocket_ui_where` (no image; the panes, which one is the asking chat's, the
-side panel and what it shows), `rocket_ui_go` and `rocket_ui_act` (both return where the shell ended
-up and an image, `capture=false` to skip it). A wrong place, action or parameter is refused with
-the valid choices (`UI_MAP_REFUSED`) and nothing moves. `tests/ui/app-map.spec.ts` walks every
-place through the dispatcher and the tools.
+main's `uiMap` op: `rocket_ui_where` (no image: the panes, which is the asking chat's, the side
+panel and what it shows), `rocket_ui_go` and `rocket_ui_act` (both return where the shell ended
+up plus an image; `capture=false` skips it). A wrong place, action or parameter is refused with
+the valid choices (`UI_MAP_REFUSED`) and nothing moves.
 
-Three checks keep the map and the UI the same thing. The typecheck fails on a map entry the
-dispatcher does not implement. `src/shared/app-map.test.ts` reads the renderer source and fails
-on a `go('…')`, `act('…')` or `data-nav` naming something the map lacks, on a map entry no control
-uses, and on a place whose `file` is gone. The UI spec fails on a place the running app cannot
-reach. Adding UI a model may need is therefore: a map entry, a handler (the typecheck says where),
-state in the store, and a control that calls `go` or `act`; the tools and the turn context follow.
+Three checks keep the map and the UI one thing: the typecheck fails on a map entry the
+dispatcher does not implement; `src/shared/app-map.test.ts` fails on a `go`, `act` or `data-nav`
+naming something the map lacks, a map entry no control uses, or a place whose `file` is gone; and
+`tests/ui/app-map.spec.ts` fails on a place the running app cannot reach. Adding UI a model may
+need is therefore: a map entry, a handler (the typecheck says where), state in the store, and a
+control that calls `go` or `act`.
 
-Every turn's `<agent-environment>` block (`src/host/agent-situation.ts`) says where the model runs,
-carries one live "Where you are" line read through `rocket_ui_where` as the turn starts, and prints
-the map, so a prompt such as "run a tool eval" is three named calls rather than a search.
+Every turn's `<agent-environment>` block (`src/host/agent-situation.ts`) says where the model
+runs, carries one live "Where you are" line from `rocket_ui_where`, and prints the map.
 
-Besides the browser and UI tools there is `library_list` (see Library), `generate_image` (see Generated images), the `photocraft_*` tools (see PhotoCraft), `remember` (see Workspace and memory), `ask_user` (below), and with `ROCKET_SELF_CHECK=1`, the three self-check tools. Every
-tool's schema is in every session's prompt, so what a model should simply know goes ahead of the
-user's message instead (tabs, the file map, notes, trouble reports), and a tool is added only for
-something a model must do.
+#### `ask_user`
 
-`ask_user` (`src/host/tools/ask.ts`) is how a model asks the user something, and it never holds
-the chat up. The call posts a card in the transcript and returns at once; the model is told to
-carry on with everything the answer does not change and end its turn as usual, so no CLI is left
-holding a connection open for a human. A question must carry two to four options, each with a
-short label and what picking it means, and the index of the option the model would take itself;
-the card marks that one "Suggested", so taking the model's word is one click, and an unanswered
-question costs nothing. One question per turn; a second call, a question without real options,
-or one without the model's own pick is refused with a message saying what to do instead. An
-answer, clicked or typed under "Something else", is sent as the chat's next message with the
-question quoted above it, to the provider picked in the composer; clicked while the turn that
-asked is still running, it goes the moment that turn ends. A handoff names a question that is still
-open, so another provider knows what the user has not yet decided.
+`ask_user` (`src/host/tools/ask.ts`) is how a model asks the user something without holding the
+chat up. The call posts a card in the transcript and returns at once; the model carries on with
+everything the answer does not change and ends its turn as usual. A question needs two to four
+options, each with a short label and what picking it means, plus the index of the option the
+model would take; the card marks that one "Suggested". One question per turn; a second call, a
+question without real options, or one without the model's own pick is refused with a message
+saying what to do. An answer (clicked, or typed under "Something else") is sent as the chat's next
+message with the question quoted, to the provider picked in the composer; if the asking turn is
+still running it goes the moment that turn ends. A handoff names a still-open question so another
+provider knows what is undecided.
 
 Cursor has blocking questions and plan approvals of its own over ACP (`cursor/ask_question`,
-`cursor/create_plan`). Nobody would answer them, so its adapter skips the question with a
-pointer to `ask_user` and accepts the plan, as an unattended session would.
+`cursor/create_plan`). Nobody would answer them, so its adapter skips the question with a pointer
+to `ask_user` and accepts the plan, as an unattended session would.
 
 ### Plans
 
-The plan a model keeps while it works is shown beside the chat, not in it. Each adapter turns
-its provider's own list into one `plan` item per turn (`<turnId>:plan`, `PlanStep[]` with
-`todo` / `doing` / `done`), replaced whole on every update: Claude Code's `TodoWrite` calls, which
-no longer appear as tool rows; Codex's `turn/plan/updated` notifications; the ACP `plan` session
-update from Cursor. The turn's head line, which reads "Thinking" while it works, reads
-`Planning · 2 of 5` instead, the count moving as steps finish, and `Planned · 5 of 5` once the
-turn is over. The line opens and closes the plan drawer (`PlanDrawer.tsx`): a side column with
-only a hide arrow for chrome, the request as its title and the plan's lines under a count, done
-lines ticked and dim, the one under way marked with the accent. The drawer opens by itself on the
-first plan of a running turn; closing it is remembered per chat (`planClosed` in the renderer's
-preferences), after which only the head line opens it. Nothing else is added to the transcript,
-and the handoff does not carry the plan: the reply says what was done. The agreed states are in
-`docs/mockups/plan.html`.
+The plan a model keeps while it works is shown beside the chat, not in it. Each adapter turns its
+provider's list into one `plan` item per turn (`<turnId>:plan`, `PlanStep[]` with `todo` /
+`doing` / `done`), replaced whole on every update: Claude Code's `TodoWrite` calls (no longer shown
+as tool rows), Codex's `turn/plan/updated`, Cursor's ACP `plan` update. The turn's head line reads
+`Planning · 2 of 5` instead of "Thinking" while it works, and `Planned · 5 of 5` after. That line
+opens and closes the plan drawer (`PlanDrawer.tsx`): a side column with the request as title and
+the steps under a count, done ones ticked and dim, the current one in the accent. The drawer opens
+by itself on a running turn's first plan; closing it is remembered per chat (`planClosed` in
+preferences), after which only the head line opens it. The handoff does not carry the plan: the
+reply says what was done. States are in `docs/mockups/plan.html`.
 
 ### Workspace and memory
 
 A new provider session starts already knowing the folder (`src/host/workspace.ts`): its files, one
-line per folder, from `git ls-files`, cut to a budget by listing upper folders and counting what
+line per folder from `git ls-files`, cut to a budget by listing upper folders and counting what
 lies deeper; and the notes earlier sessions saved about it. So a session's first calls are not
-spent listing and searching. Notes are the project's memory, shared by all four providers: a model
-saves one with the `remember` tool (`src/host/tools/memory.ts`), they are kept per folder in the
-store, and a session already going is told the ones others save. Reading notes is not a tool, so
-it costs no call and no schema. A handoff names the files the missed turns edited and read, each
-once and relative to the chat's folder, so the next provider goes straight to them.
+spent listing and searching. Notes are the project's memory, shared by all four providers: a
+model saves one with `remember` (`src/host/tools/memory.ts`), they are kept per folder in the
+store, and a running session is told the ones others save. Reading notes is not a tool, so it
+costs no call or schema.
 
 ### Several assistants, one folder
 
-Chats can run at once in the same project, and the user and other programs change its files too.
-Ahead of a message, a model is told (`src/host/teamwork.ts`) who else is working in the folder
-right now and on what, what other chats finished there since its last turn, and which files
-changed under it, so it reads those again before touching them.
+Chats can run at once in the same project, and the user and other programs change files too. Ahead
+of a message, a model is told (`src/host/teamwork.ts`) who else is working in the folder and on
+what, what other chats finished there since its last turn, and which files changed under it, so
+it re-reads those before touching them.
 
-Git is the app's job, not the models'. When a turn completes, the files that changed during it
-are committed on the current branch, alone, with the user's request as the message
-(`src/host/git.ts`). Changes are found by comparing a snapshot of the folder at the turn's start
-and end, so files changed by a shell command count; what the user had already changed, and files
-another running turn has edited, are left out. A stopped or failed turn commits nothing: its
-files go in with the turn that finishes the work. Nothing is ever pushed, hooks are not run, and
-no commit is made mid-merge or off a branch. Models are told not to commit or bring git up.
-`ROCKET_AUTO_COMMIT=0` turns the committing off. A folder that is not a git repository is left
-as it is.
+Git is the app's job, not the models'. When a turn completes, the files that changed during it are
+committed on the current branch, alone, with the user's request as the message (`src/host/git.ts`).
+Changes come from comparing folder snapshots at the turn's start and end, so shell-made changes
+count; what the user had already changed and files another running turn edited are left out. A
+stopped or failed turn commits nothing: its files go in with the turn that finishes the work.
+Nothing is pushed, hooks are not run, and no commit is made mid-merge or off a branch. Models are
+told not to commit or bring git up. `ROCKET_AUTO_COMMIT=0` turns committing off, and a folder that
+is not a git repository is left alone. Claude Code sessions on this repository outside the app are
+covered by a Stop hook (`.claude/settings.json`, `scripts/auto-commit.sh`).
 
-The same two snapshots give the user what the turn did. Each finished turn that changed files
-carries one line under its reply, `Changed 3 files +184 −12` with a bar of the balance, and the
-line opens the turn's unified diff beside the chat in the artifact panel (`ChangesView.tsx`): a
-strip of its files to jump between, each under a heading that stays while its hunks scroll. The
-patch is `git diff` between the snapshots of the turn's own files (`patchBetween`), read into
-files and lines by `src/shared/patch.ts`, kept with the turn in the store (`turn_patches`, cut at
-2 MB on a file boundary) and served by `turn.changes`; the totals sit on the turn itself. This
-needs no commit, so it works with committing off too.
+The same snapshots show the user what a turn did. A finished turn that changed files carries a
+line under its reply, `Changed 3 files +184 −12` with a balance bar, which opens the turn's
+unified diff in the artifact panel (`ChangesView.tsx`) with a strip of files to jump between. The
+patch is `git diff` between the snapshots of the turn's own files (`patchBetween`), parsed by
+`src/shared/patch.ts`, stored with the turn (`turn_patches`, cut at 2 MB on a file boundary) and
+served by `turn.changes`. It needs no commit, so it works with committing off.
 
-The panel's header offers **Undo this turn**: one question in a strip under the header naming
-the files, and on Undo the turn's files are put back from its start snapshot (`restoreFrom`:
-working tree only, the user's index untouched; files the turn made are removed). With committing
-on, the reversal is committed as `Undo: <request>` so the history says what happened. The turn
-stays in the chat with its diff dimmed as a record, its line tagged `undone`, and the next model
-in the folder is told the files changed under it. Undo is not offered while a turn runs in that
-folder, or when one of the files has changed since; the note names the file, so the user knows
-what to look at (`teamwork.undoable`). There is no redo: the diff is still there to read, and a
-model can be asked to do it again. The states are in `docs/mockups/turn-changes.html`.
-
-Claude Code sessions working on this repository outside the app are covered by a Stop hook
-(`.claude/settings.json`, `scripts/auto-commit.sh`) that commits what a turn left changed.
+The panel's header offers **Undo this turn**: a strip names the files, and on Undo they are put
+back from the turn's start snapshot (`restoreFrom`: working tree only, index untouched; files the
+turn made are removed). With committing on, the reversal is committed as `Undo: <request>`. The
+turn stays in the chat with its diff dimmed and its line tagged `undone`, and the next model in
+the folder is told the files changed under it. Undo is not offered while a turn runs in that
+folder or when one of the files has changed since; the note names the file (`teamwork.undoable`).
+There is no redo: the diff is still there, and a model can be asked to redo it. States are in
+`docs/mockups/turn-changes.html`.
 
 ### Continuous research loop
 
 For ongoing codebase research across four live provider chats, see
-[the continuous research protocol](docs/research/continuous/PROTOCOL.md).
-`node scripts/research-loop.mjs start` starts a local supervisor against the existing panes;
-`status`, `pause`, `resume`, and `stop` manage it. Each round runs four research turns, four
-independent reviews, and a rotating synthesis that informs the next round. Reports stay in
-`docs/research/continuous/`, with supervisor state in `.artifacts/research-loop/`. This spends
-real provider usage without a configured round or token cap. It requires Rocket to stay open
-and does not implement proposed upgrades automatically.
-
-Historical eval scenarios, graders, and the in-app eval panel are archived under
-`docs/archive/evals/` (see `docs/archive/README.md`).
+[the protocol](docs/research/continuous/PROTOCOL.md). `node scripts/research-loop.mjs start`
+starts a local supervisor against the existing panes; `status`, `pause`, `resume` and `stop`
+manage it. Each round runs four research turns, four independent reviews and a rotating synthesis
+that informs the next. Reports stay in `docs/research/continuous/`, supervisor state in
+`.artifacts/research-loop/`. This spends real provider usage with no round or token cap, needs
+Rocket to stay open, and does not implement proposed upgrades. Historical eval scenarios and the
+in-app eval panel are archived in `docs/archive/evals/` (see `docs/archive/README.md`).
 
 ### Transcript zoom
 
-Ctrl + wheel (or a touchpad pinch) zooms the transcript (`transcript-zoom.ts`). The wheel moves
-a target and each frame eases toward it in log space, so zooming in and zooming out feel the
-same. The zoom is CSS `zoom` on `.transcript-inner`, so text reflows to the pane. Each frame
-holds the block under the pointer in place (the middle of the view in other panes), and a
-transcript resting at the bottom stays there. The level is shared by every pane and kept in
-`localStorage` (`rocket.transcriptZoom`), from 50 % to 250 %. The turn that fills the view divides
-the view's height by the zoom (`--turn-view`, `--chat-zoom`). `tests/ui/zoom.spec.ts` checks the
-easing and the anchoring.
+Ctrl + wheel (or a touchpad pinch) zooms the transcript (`transcript-zoom.ts`) from 50 % to 250 %.
+The wheel moves a target and each frame eases toward it in log space, so zooming in and out feel
+alike. It is CSS `zoom` on `.transcript-inner`, so text reflows. Each frame holds the block under
+the pointer in place (the middle of the view in other panes), and a transcript at the bottom stays
+there. The level is shared by every pane (`localStorage` `rocket.transcriptZoom`), and the turn
+that fills the view divides the view height by the zoom (`--turn-view`, `--chat-zoom`).
+`tests/ui/zoom.spec.ts` checks easing and anchoring.
 
 ### Long chats
 
-A chat opens with its newest 20 turns (`TURN_PAGE`, `store.snapshot`), not its whole history.
-`ChatView.hasOlder` says there are earlier ones, and as the reader scrolls within a screen and a
-half of the top, `loadOlder` fetches the 20 before the first loaded (`chat.older`) and puts them
-in above. `Transcript` keeps the reader where they were, by the distance from the bottom it keeps
-up to date on every scroll and resize, and tells a page put in above from a turn just sent by the
-last turn's id. A `turn` event for a turn above the loaded ones is left for when it is fetched.
-Pages read their items through `items_by_turn`, ordered by turn, so a page costs the same in any
-chat.
+A chat opens with its newest 20 turns (`TURN_PAGE`, `store.snapshot`). `ChatView.hasOlder` says
+earlier ones exist; scrolling within a screen and a half of the top calls `loadOlder`, which
+fetches the 20 before the first loaded (`chat.older`) and puts them above. `Transcript` keeps the
+reader in place by the distance from the bottom, and tells a page put in above from a turn just
+sent by the last turn's id. A `turn` event for a turn above the loaded ones waits until it is
+fetched. Pages read items through `items_by_turn`, ordered by turn, so a page costs the same in
+any chat.
 
-A page leaves out the output of finished tool calls, most of a chat's bytes, which shows only when
-a step is opened: such a call carries `outputLength`, and opening the step fetches the output
-(`item.output`, `loadOutput`). The turn in flight keeps its output, as it streams.
+A page leaves out the output of finished tool calls (most of a chat's bytes); a call carries
+`outputLength`, and opening its step fetches the output (`item.output`, `loadOutput`). The turn in
+flight keeps its output as it streams.
 
-The window keeps the chat of every open tab, in any pane, not just the ones on screen; live events
-keep it current, so going back to a tab asks the host for nothing (`pruneViews`, `openChat`). A kept
-chat that was read far up goes back to its newest page as it comes back on screen (`newestPage`).
-`ChatMarkdown` keeps what it parsed, by folder and text, for the last 600 texts, so a chat shown
-again parses nothing; a reply's last block is not kept while it streams.
+The window keeps the chat of every open tab, in any pane, current from live events, so returning
+to a tab asks the host for nothing (`pruneViews`, `openChat`). A kept chat read far up returns to
+its newest page when it comes back on screen (`newestPage`). `ChatMarkdown` caches its parse by
+folder and text for the last 600 texts; a reply's last block is not cached while it streams.
 
-Two benchmarks measure how the transcript copes with a long history, using seeded synthetic
-chats shaped like real ones (`tests/fixtures/long-chat.ts`). `npm run bench:transcript` times
-the host: reading a chat to open it, the payload, the attachment sweep and a full handoff.
-`npm run check:ui -- long-chat` times the isolated app opening a chat (the first open and the
-median of three), opening a step's output, switching back to its tab, bringing in the page above
-(and checks the reader does not move), reading up to the first turn and switching back again,
-with `LONG_CHAT_PROFILE=1` for a CPU profile. Its budgets fail the check when a chat's length shows
-up in its open time again. Both write to `.artifacts/bench/`. The audit, the baseline and the plan are in `docs/long-chat-plan.md`.
+Two benchmarks use seeded synthetic chats shaped like real ones (`tests/fixtures/long-chat.ts`).
+`npm run bench:transcript` times the host: opening a chat, the payload, the attachment sweep and a
+full handoff. `npm run check:ui -- long-chat` times the isolated app (first open and median of
+three, opening a step's output, switching tabs, bringing in the page above while checking the
+reader does not move, reading to the first turn), with `LONG_CHAT_PROFILE=1` for a CPU profile.
+Its budgets fail the check if a chat's length shows up in its open time. Both write to
+`.artifacts/bench/`; the audit and baseline are in `docs/long-chat-plan.md`.
 
 ### Design reference library
 
-Goal drafting now points agents to an editable preparation skill and shared reference catalog.
-See [the library guide](design-library/README.md) to add references, edit notes and images,
-search tags, or validate paths with `npm run design -- validate`. The initial Linear entry
-includes the supplied Refero source and a local screenshot. Catalog edits need no rebuild.
-[DESIGN.md](DESIGN.md) records Rocket-specific conventions; other projects retain their own.
-Set `ROCKET_DESIGN_LIBRARY` to use another library folder. Library management currently uses
-files and commands; there is no in-app editor.
+An editable reference catalog and preparation skill for design work. See
+[the library guide](design-library/README.md) to add references, edit notes and images, search
+tags, or validate paths with `npm run design -- validate`. Catalog edits need no rebuild.
+[DESIGN.md](DESIGN.md) records Rocket-specific conventions; other projects keep their own. Set
+`ROCKET_DESIGN_LIBRARY` to use another folder. There is no in-app editor.
 
 ### Permissions
 
-All four providers run unattended with full access to the chat's working folder and your shell,
-as in the reference build. There are no approval prompts yet.
+All four providers run unattended with full access to the chat's working folder and your shell.
+There are no approval prompts yet.
 
 ### Self-check
 
-The host keeps a journal of its own trouble, `journal.jsonl` in the profile folder (one JSON
-object per line, rotated at 2 MB; `src/host/journal.ts`). It always records: uncaught errors in the
-host, uncaught errors in the page (sent over the renderer's port, once per message), host restarts seen by main, failed turns, tool failures, and turns far slower than usual for
-their provider and model; every other turn is kept as a timing line with its tokens, when its
-provider reports them. With `ROCKET_SELF_CHECK=1` the app also serves three tools to every
-provider (`src/host/tools/self-check.ts`): `rocket_check` runs the chat folder's `typecheck` and
-`test` scripts and returns what failed (a failure also lands in the journal as a tool error);
-`rocket_diagnostics` reads the journal and the timing
-and token averages, and `rocket_note` files what a model saw, why it thinks it happened and the change it
-would make. Each chat is also told, ahead of its next message, when new warnings or errors have
-arrived, once. Notes edit nothing; changing code is still the user's request or the model's
-judgement about a clear defect, as `CLAUDE.md` says.
+The host keeps a journal, `journal.jsonl` in the profile folder (one JSON object per line, rotated
+at 2 MB; `src/host/journal.ts`). It always records uncaught host errors, uncaught page errors
+(sent over the renderer's port, once per message), host restarts seen by main, failed turns, tool
+failures, and turns far slower than usual for their provider and model; every other turn is kept
+as a timing line with its tokens when reported.
+
+With `ROCKET_SELF_CHECK=1` the app serves three more tools to every provider
+(`src/host/tools/self-check.ts`):
+
+- `rocket_check` runs the chat folder's `typecheck` and `test` scripts and returns what failed (a
+  failure also lands in the journal as a tool error).
+- `rocket_diagnostics` reads the journal and the timing and token averages.
+- `rocket_note` files what a model saw, why it thinks it happened and the change it would make.
+
+Each chat is also told once, ahead of its next message, when new warnings or errors have arrived.
+Notes edit nothing; changing code is still the user's request or the model's judgement about a
+clear defect, as `CLAUDE.md` says.
 
 The profile folder is `~/.config/Rocket` (Electron's `userData`), so the journal is
 `~/.config/Rocket/journal.jsonl`; `tail -f` it to watch. `npm run simulate:slow-turn` writes a
-fake slow turn from a `sim` provider to check detection; those rows stay in the journal and show
-in the timing averages, so use `ROCKET_DATA_DIR=<dir>` to point it at a scratch folder instead.
+fake slow turn from a `sim` provider to check detection. Those rows stay in the journal and the
+timing averages, so set `ROCKET_DATA_DIR=<dir>` to use a scratch folder.
 
 ### Tool-call history
 
-Rocket records calls to its shared MCP tools in `<profile>/tool-calls.db`, independently of
-self-check mode. Each call has a start and immutable finish, version/build fingerprints,
-provider and available model/turn identity, redacted arguments, duration, outcome, structured
-error and artifact references. Unfinished calls from a previous host are interrupted.
-Recording failures cannot change tool behavior.
+Rocket records calls to its shared MCP tools in `<profile>/tool-calls.db`, independent of
+self-check mode. Each call has a start and an immutable finish, version and build fingerprints,
+provider and any model/turn identity, redacted arguments, duration, outcome, structured error and
+artifact references. Unfinished calls from a previous host are marked interrupted, and recording
+failures cannot change tool behavior.
 
-`rocket_tool_history` returns bounded call lists or deterministic failure groups. Default:
-last 24 hours, 10 results. Filter by tool/version, error code or dates; use a call ID for
-redacted arguments and artifact references. Failure rates include successes in the same
-version/operation scope. UI operation failures are distinct from script-authored exceptions.
-History stays out of session prompts; tool descriptions are not automatically rewritten.
+- `rocket_tool_history` returns bounded call lists or deterministic failure groups (default: last
+  24 hours, 10 results). Filter by tool, version, error code or dates; pass a call ID for redacted
+  arguments and artifact references. Failure rates include successes in the same version and
+  operation scope. UI operation failures are distinct from script-authored exceptions.
+- `rocket_tool_review` records investigator annotations apart from the evidence: lifecycle stage,
+  cause notes, proposed fix, optional retry links. `action=queue` lists failures needing review.
 
-`rocket_tool_review` records investigator annotations separately from call evidence: lifecycle
-stage, cause notes, proposed fix and optional retry links. Use `action=queue` to list failures
-still needing review.
-
-Records are pruned after 30 days or beyond 10,000 finished/previous-instance calls, at startup
-and every 100 starts. Active calls are preserved. Captures and traces are not deleted by ledger
-pruning. See [tool-failure-history.md](docs/tool-failure-history.md) for format, redaction,
-retention and query details. Query the ledger with `rocket_tool_history` and `rocket_tool_review`.
+History stays out of session prompts, and tool descriptions are not rewritten automatically.
+Records are pruned after 30 days or beyond 10,000 finished or previous-instance calls, at startup
+and every 100 starts; active calls and captures/traces are kept. Format, redaction, retention and
+queries are in [tool-failure-history.md](docs/tool-failure-history.md).
 
 ### Desktop self-check
 
-`npm run check:ui` builds the current source, runs unit tests, and drives the actual Electron
-app with Playwright. The default uses a private Xvfb display so the test cannot steal your
-keyboard input. On Linux it requires `Xvfb`, `xvfb-run` and `xauth`; ImageMagick's `import`
-adds full-window screenshots. No Playwright browser download is needed: it uses the project's
-Electron binary. Use `npm run check:ui -- --visible` to watch on your desktop, or
-`npm run check:ui -- --repeat-each=3` to run every scenario three times with fresh profiles.
+`npm run check:ui` builds the current source, runs unit tests and drives the real Electron app with
+Playwright. By default it uses a private Xvfb display so it cannot steal your keyboard. On Linux it
+needs `Xvfb`, `xvfb-run` and `xauth`; ImageMagick's `import` adds full-window screenshots. No
+Playwright browser download is needed: it uses the project's Electron binary. Use
+`npm run check:ui -- --visible` to watch on your desktop, or `-- --repeat-each=3` to run every
+scenario three times with fresh profiles.
 
-Each run keeps a timestamped directory under `.artifacts/ui/`, printed at start and finish.
-It contains `runner.log`, `summary.json`, the machine-readable `results.json`, and an HTML
-report in `report/index.html`. The report includes named check steps, screenshots, native
-view bounds, the app log, the isolated journal, and a Playwright trace. Open it with
-`npx playwright show-report <run-directory>/report`; traces can be inspected from the report.
-Failed runs exit nonzero and capture the UI before closing. Test windows and the local web
-server close automatically; profiles remain with the report for investigation.
-SIGINT/SIGTERM stops the owned subprocess tree, including detached Electron processes;
-TERM-resistant children are killed after a grace period. Interrupted runs exit with status
-130/143 and record failure in `summary.json`.
+Each run keeps a timestamped directory under `.artifacts/ui/` with `runner.log`, `summary.json`,
+`results.json` and an HTML report (`report/index.html`) holding named steps, screenshots, native
+view bounds, the app log, the isolated journal and a Playwright trace. Open it with
+`npx playwright show-report <run-directory>/report`. Failed runs exit nonzero and capture the UI
+before closing; windows and the local web server close automatically, and profiles stay with the
+report. SIGINT/SIGTERM stops the owned subprocess tree, including detached Electron processes
+(TERM-resistant children are killed after a grace period); interrupted runs exit 130/143 and record
+the failure in `summary.json`.
 
-The checks exercise composer input, folder selection, usage, model selection, streaming,
-completion, tool output, provider handoff, cancellation, failure recovery, chat drafts,
-history, chat panes (splitting to four, a turn streaming into one pane, closing, and the layout
-after a restart), the title strip (no rail, the usage notch centred, its flyout inside the chat card), renderer reload, full app restart, recovery from a host crash during a response,
-minimum window size, browser navigation/tabs, the address dropdown and its inline completion (focus kept while a page navigates), chat links (browser tabs
-and local artifact preview), and model question cards from `ask_user`. The shell, embedded
-page and dropdown are separate Playwright targets. Their
-screenshots and bounds are retained separately; on X11, a whole-window capture also records
-how the native views overlap. If that optional capture is unavailable, the report says so.
-Assertions also check the native page bounds and dropdown visibility, overlap and stacking
-order, so misplaced or hidden native views fail even without visual screenshot comparison.
+The checks cover composer input, folder selection, usage, model selection, streaming, completion,
+tool output, provider handoff, cancellation, failure recovery, drafts, history, chat panes
+(splitting to four, streaming into one, closing, layout after restart), the title strip (no rail,
+centred usage notch, flyout inside the chat card), renderer reload, full restart, recovery from a
+host crash mid-response, minimum window size, browser navigation and tabs, the address dropdown
+and inline completion (focus kept while a page navigates), chat links, and `ask_user` question
+cards. The shell, embedded page and dropdown are separate Playwright targets, with screenshots and
+bounds kept separately; on X11 a whole-window capture also records how native views overlap (the
+report says so if that capture is unavailable). Assertions check native page bounds and dropdown
+visibility, overlap and stacking order, so misplaced or hidden native views fail without a visual
+comparison.
 
-The test fixture (`tests/ui/app.ts`) uses a fresh marked profile and scratch workspace. All
-four provider adapters are replaced by `src/host/ui-test.ts`; real provider CLIs are never
-started. Before any restored tab loads, the app and `persist:browser` sessions both block
-HTTP/WebSocket origins outside the local fixture; new-tab home navigation redirects to it.
-Responses wait for the test to
-observe the stream before finishing, which avoids timing-dependent sleeps. The host, SQLite
-store, MessagePort, and renderer are real. The folder dialog returns the scratch workspace.
-This checks app behavior, not provider authentication, CLI translation, or native OS dialogs;
-`check:live` remains the separate, explicitly authorized provider integration check.
+The fixture (`tests/ui/app.ts`) uses a fresh marked profile and scratch workspace. All four
+provider adapters are replaced by `src/host/ui-test.ts`, so real CLIs are never started. Before any
+restored tab loads, the app and `persist:browser` sessions block HTTP/WebSocket origins outside the
+local fixture, and new-tab home redirects to it. Responses wait for the test to observe the
+stream, avoiding timing-dependent sleeps. The host, SQLite store, MessagePort and renderer are
+real; the folder dialog returns the scratch workspace. This checks app behavior, not provider
+authentication, CLI translation or native OS dialogs; `check:live` is the separate, explicitly
+authorized provider integration check.
 
-The safeguards scenarios deliberately remove the browser filter and damage native view
-layout, then require the same assertions to reject those faults. The subprocess unit test
-checks ordinary and detached descendants, including ones that ignore SIGTERM.
+The safeguards scenarios deliberately remove the browser filter and damage native view layout,
+then require the same assertions to reject those faults. A subprocess unit test checks ordinary
+and detached descendants, including ones that ignore SIGTERM.
 
 Add scenarios in `tests/ui/` (`rocket.spec.ts`, `safeguards.spec.ts`, `recovery.spec.ts`,
-`question.spec.ts`, `chat-links.spec.ts`).
-Prefer accessible controls and observable state;
-do not mutate renderer state to manufacture a passing UI. `ROCKET_UI_TEST=1` is reserved for
-this runner and requires the marked profile before either main or host opens the store.
-The runner supplies `ROCKET_UI_TEST_ORIGIN` for its loopback server; this hook is inactive
-outside UI test mode.
+`question.spec.ts`, `chat-links.spec.ts`). Prefer accessible controls and observable state; do
+not mutate renderer state to manufacture a passing UI. `ROCKET_UI_TEST=1` is reserved for this
+runner and requires the marked profile before main or host opens the store; the runner supplies
+`ROCKET_UI_TEST_ORIGIN` for its loopback server, and the hook is inactive outside UI test mode.
 
 ## Development hooks
 
 - `ROCKET_SELF_CHECK=1` serves the self-check tools and nudges described above.
-- `ROCKET_DATA_DIR=<dir>` moves the host's data (transcript, journal, tool channel) and is set by main to the profile folder; set it by hand only for scripts that run the host without the app.
+- `ROCKET_DATA_DIR=<dir>` moves the host's data (transcript, journal, tool channel). Main sets it
+  to the profile folder; set it by hand only for scripts that run the host without the app.
 - `ROCKET_USER_DATA=<dir>` uses another profile folder, so test runs never touch real chats.
 - `ROCKET_CAPTURE=<file.png>` saves a picture of the UI after load; `ROCKET_CAPTURE_SCRIPT`,
   `ROCKET_CAPTURE_DELAY_MS` and `ROCKET_CAPTURE_EXIT=1` script a flow first and quit after.
 - `npm run check:live -- claude codex cursor antigravity` runs a real conversation across
   providers without the UI. It uses a little of each subscription.
-- `npm run demo:video` records a demo video (`.artifacts/demo/run/demo.mp4`): sending messages,
+- `npm run demo:video` records a demo (`.artifacts/demo/run/demo.mp4`) of sending messages,
   switching between Claude, Codex and Cursor, and the browser tools filling a form in one
   `browser_run` script. Like `check:ui`, it runs an isolated app on a private display with a fresh
-  profile and a local site. No model is called. The turns are scripted in `src/host/ui-demo.ts`,
-  but their tool calls go through the real MCP channel. `scripts/demo-video.mjs` records the screen
-  at 2× and logs where each action happened. `scripts/demo-edit.py` adds the camera zooms, the
-  pointer, outlines on the filled fields, and captions. It only crops and resamples the recorded
-  frames.
+  profile and a local site, and calls no model. Turns are scripted in `src/host/ui-demo.ts`, but
+  their tool calls go through the real MCP channel. `scripts/demo-video.mjs` records at 2× and
+  logs where each action happened; `scripts/demo-edit.py` adds camera zooms, the pointer, outlines
+  on filled fields and captions, only cropping and resampling the recorded frames.

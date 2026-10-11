@@ -1,6 +1,6 @@
 # Design reference library
 
-An editable shared library for Rocket goals. The index is the catalog; each reference has
+An editable shared library of design references for agents. The index is the catalog; each reference has
 Markdown notes and optional local images. Project DESIGN.md files record the direction selected
 for that project. The library is read from disk, so catalog and note edits need no rebuild.
 
@@ -53,11 +53,11 @@ source access. Unresearched categories are not presented as curated references.
 
 ## Agent use
 
-The goal draft prompt points to this library and `skills/goal-preparation/SKILL.md`. Agents
+The Goals feature that used to point agents here (`skills/goal-preparation/SKILL.md`) was removed in October 2026, but the skill and catalog remain readable by any agent. Agents
 select relevant entries, open their images, and explain a coherent direction in the brief.
 Existing project guidance and the user's instructions take precedence. Do not load every image
 or assume the library's default style is right for every project. Missing library files should
-not block a goal. `ROCKET_DESIGN_LIBRARY` can point to another absolute library folder.
+not block the task. `ROCKET_DESIGN_LIBRARY` can point to another absolute library folder.
 
 This first version is edited through files, commands, or by asking the agent to add a reference;
 there is no in-app library editor yet. The schema version is 1.

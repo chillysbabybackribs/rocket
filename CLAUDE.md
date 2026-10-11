@@ -12,23 +12,17 @@ npm test            # host/renderer unit tests and UI subprocess cleanup regress
 npm run check:ui    # build + unit tests + isolated Electron UI check, no real model turns
 npm run dev         # the app, rebuilding on change (ROCKET_NO_SANDBOX=1 if the sandbox helper is not set up)
 npm run open -- <path or URL>   # open it inside the running app (browser tab or artifact panel)
-```
-
-Anything made for the user to look at (a mockup, a capture, a report) is opened with
-`npm run open`, never `xdg-open` or an outside browser. Show a mockup in `docs/mockups` and get
-it agreed before building a UI change, and make checks visible: `npm run check:ui -- --visible`,
-or open the captures afterwards.
-
-Run typecheck and tests after every change. To check against the real CLIs without the UI:
-
-```sh
-USAGE=1 TURNS=0 npm run check:live -- claude cursor   # usage readings only, no model turns
+USAGE=1 TURNS=0 npm run check:live -- claude cursor   # real CLIs, usage readings only
 npm run check:live -- claude codex                    # a real conversation; spends subscription usage
 ```
 
-Ask before running a check that sends model turns. Prefer `npm run check:ui` for UI checks;
-it uses controlled responses, fresh profiles and a private display (see README). For manual UI checks, use `ROCKET_USER_DATA=<dir>`
-so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a picture of the UI.
+- Run typecheck and tests after every change.
+- Ask before any check that sends model turns. Prefer `npm run check:ui`: it uses controlled
+  responses, fresh profiles and a private display (see README). For manual UI checks set
+  `ROCKET_USER_DATA=<dir>` so real chats are untouched, and `ROCKET_CAPTURE` for a picture.
+- Anything made for the user to look at (mockup, capture, report) is opened with `npm run open`,
+  never `xdg-open` or an outside browser. Show a mockup in `docs/mockups` and get it agreed before
+  building a UI change. Make checks visible: `npm run check:ui -- --visible`, or open the captures.
 
 ## Where things are
 
@@ -37,37 +31,32 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
   transcript, `handoff.ts` builds what a provider is told about turns it missed.
 - `src/host/providers/`: one adapter per provider behind `provider.ts`. Each file's header lists
   the CLI behaviour it depends on, with the version and date it was verified.
-- `src/host/journal.ts`: the journal of errors, slow turns and model notes (`journal.jsonl`); see Self-check.
 - `src/host/tools/`: the app's tools, served to all providers by one loopback MCP server.
 - `src/shared/app-map.ts`: the hand-written map of the shell's places and actions;
   `src/renderer/src/app-map.ts` is the one dispatcher behind both the UI's buttons and the
-  `rocket_ui_where` / `go` / `act` tools. A new panel or button that a model may need goes in the
-  map, with its state in `store.ts`, not in component state.
-- `src/host/agent-situation.ts`: the `<agent-environment>` block ahead of every message: where
-  the shell is right now, and the map.
+  `rocket_ui_where` / `go` / `act` tools. A panel or button a model may need goes in the map,
+  with its state in `store.ts`, not in component state.
+- `src/host/agent-situation.ts`: the `<agent-environment>` block ahead of every message.
 - `src/host/workspace.ts`: the file map and saved notes a new session is told about its folder.
-- `src/shared/sources.ts`: a turn's sources record: the pages it opened against the pages its
-  reply cites, kept on the turn and marked on each link; the hub records both at a turn's end.
-- `src/host/teamwork.ts`, `git.ts`: what a model is told about others working in the folder, and
-  the commit the app makes of a turn's changes.
-- `src/host/library.ts`, `src/shared/library.ts`: the library's shelf, previews and filters, shared by
-  the panel (`LibraryPanel.tsx`) and `library_list` (`docs/library-plan.md`).
-- `src/host/goals.ts`: goals, the loop of work and check turns until a brief's checklist is met
-  (`docs/goals-phase1.md`); `tools/goal.ts` is how models report to it.
-- `src/main/`: the window, the browser tabs (`browser-pane.ts`) and the browser tools' hands
-  (`browser-agent.ts`, `browser-page-lib.ts`). `cookie-import.ts` brings the user's logged-in
-  sessions in from their OS browser (first-run and the page's right-click menu).
+- `src/host/teamwork.ts`, `git.ts`: what a model is told about others in the folder, and the
+  commit the app makes of a turn's changes.
+- `src/shared/sources.ts`: a turn's sources record (pages opened against pages cited).
+- `src/host/library.ts`, `src/shared/library.ts`: the library shelf, shared by `LibraryPanel.tsx`
+  and `library_list` (`docs/library-plan.md`).
+- `src/host/journal.ts`: errors, slow turns and model notes (`journal.jsonl`); see Self-check.
+- `src/host/orchestrator.ts`: continuous orchestration (`docs/orchestrator.md`).
+- `src/main/`: the window, browser tabs (`browser-pane.ts`) and the browser tools' hands
+  (`browser-agent.ts`, `browser-page-lib.ts`). `cookie-import.ts` brings in the user's logged-in
+  sessions from their OS browser.
 - `src/renderer/`: React UI. `store.ts` is the client state.
 
 ## Rules
 
-- User preference: crop, zoom, resize, and inspect screenshots with deterministic tools such as
-  Python Pillow or ImageMagick. Preserve source pixels for crops; use ordinary resampling for
-  zooms, never generative reconstruction, OCR re-rendering, or invented missing text. Keep the
-  original, save a separate output, inspect it, and open it with `npm run open`. Use generative
-  editing for these tasks only when the user explicitly requests it.
-- The app's SQLite transcript is the conversation. A provider's session is a cache: resume it and
-  hand over only the turns it missed. No full-history replay except after a lost session.
+- Crop, zoom, resize and inspect screenshots with deterministic tools (Pillow, ImageMagick).
+  Keep the original, save a separate output, inspect it, open it with `npm run open`. Never use
+  generative reconstruction or invent missing text unless the user explicitly asks for it.
+- The SQLite transcript is the conversation. A provider's session is a cache: resume it and hand
+  over only the turns it missed. No full-history replay except after a lost session.
 - Agent work stays in the host process. Nothing that talks to a provider or the store runs in
   main or the renderer, and chat traffic never passes through main.
 - An adapter knows nothing about other providers, the store or the renderer. The hub knows
@@ -76,18 +65,18 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
   its own. Never move or resize the page to make room.
 - Model lists and usage are read live from the provider, never hardcoded.
 - Every tool's schema is in every session's prompt. What a model should simply know goes ahead of
-  the user's message (tabs, the file map, notes); add a tool only for something a model must do.
-- Browser research: use native search or Rocket web_search, then web_read for primary sources.
-  Browser search and source gathering are allowed recovery paths. Recover PDFs from their saved
-  paths; try alternate primary sources after blocks. Never count a challenge or failed fetch as read.
+  the user's message (tabs, file map, notes); add a tool only for something a model must do.
+- Research: native search or `web_search`, then `web_read` for primary sources. Browser search is
+  an allowed recovery path; recover PDFs from their saved paths and try other primary sources
+  after a block. Never count a challenge or failed fetch as read.
 - Provider payloads are `unknown`: read them through `recordOf` / `stringOf` in `src/host/json.ts`.
 - When a CLI's behaviour is learned or re-verified, record it in that adapter's header with the
-  CLI version and date. When it changes, fix the header with the code.
+  CLI version and date; fix the header with the code when it changes.
 - Keep the README current with the code in the same change.
-- Git stays out of the chat. Do not commit, stage, branch or push, and do not mention git or
-  commits in replies unless asked. Inside Rocket the app commits each turn's changes itself.
-- Other assistants may be editing this folder at the same time. Read a file again before changing
-  it if it may have moved, and say so if someone else's change looks wrong rather than undoing it.
+- Git stays out of the chat: do not commit, stage, branch or push, or mention git or commits
+  unless asked. Inside Rocket the app commits each turn's changes itself.
+- Other assistants may be editing this folder. Re-read a file before changing it if it may have
+  moved, and say so if someone else's change looks wrong rather than undoing it.
 
 ## Style
 
@@ -99,10 +88,10 @@ so real chats are never touched, and `ROCKET_CAPTURE` (see the README) for a pic
 
 ## Self-check
 
-With `ROCKET_SELF_CHECK=1` you have `rocket_check`, `rocket_diagnostics` and `rocket_note`. When the app misbehaves,
-runs slow, or a `<self-check>` line appears ahead of a message, read the journal before guessing.
-Anything you notice but were not asked to fix goes in `rocket_note` with what you saw, the likely
-cause and the change you would make. Edit code only for what was asked or a clear defect in code
-you are already changing; propose anything larger in the chat. After a self-edit, call `rocket_check` (typecheck and
-tests), and read `rocket_diagnostics` for anything the change caused. Keep this section and the
-README's Self-check section current when the journal, its tools or its nudges change.
+With `ROCKET_SELF_CHECK=1` you have `rocket_check`, `rocket_diagnostics` and `rocket_note`. When
+the app misbehaves, runs slow, or a `<self-check>` line appears ahead of a message, read the
+journal before guessing. Anything you notice but were not asked to fix goes in `rocket_note` with
+what you saw, the likely cause and the change you would make. Edit code only for what was asked
+or a clear defect in code you are already changing; propose anything larger in the chat. After a
+self-edit call `rocket_check` (typecheck and tests) and read `rocket_diagnostics`. Keep this
+section and the README's Self-check section current when the journal, its tools or nudges change.

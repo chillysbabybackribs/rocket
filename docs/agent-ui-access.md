@@ -1,6 +1,6 @@
 # Agent situational awareness in Rocket
 
-**Status (2026-10-09): implemented.** The app map, dispatcher, the three `rocket_ui_*` map tools and the tests below are in the tree.
+**Status (2026-10-09): implemented.** The app map, dispatcher, the three `rocket_ui_*` map tools and the tests below are in the tree. The eval places, actions and examples below are historical: Evals were removed in October 2026 (see `docs/archive/README.md`); the current places are `chat`, `browser`, `library` and `photocraft`.
 
 ## Problem
 
