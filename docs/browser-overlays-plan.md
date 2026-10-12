@@ -86,3 +86,7 @@ Artifacts (relative to the repository):
 
 The minimal select at a nonzero browser offset accepts keyboard selection on X11 and Wayland without disturbing the page. The X11 whole-window capture places the popup rectangle beneath its control, but renders its contents black even after a painting delay. The available Wayland capture contains separate webContents images and cannot show the native popup. Consequently the original displaced categories dropdown is **not claimed fixed**, and its compositor/scale/zoom matrix remains pending. No replacement dropdowns were injected into real websites and no page-position workaround was introduced.
 
+
+### Follow-up: subscription flyout clipping
+
+The user's screenshot exposed a missed CSS collision: setting the overlay body class to `flyout` applied the component's padding, border, fixed positioning, and animation to the body as well as the actual panel. Live measurements confirmed a 280 × 219 viewport containing a panel whose right/bottom edges reached 287/225. Surface body classes now use the distinct `overlay-` prefix. The titlebar regression checks every provider's complete panel and descendant rectangles against the native viewport, rather than treating DOM visibility as proof that the content fits.

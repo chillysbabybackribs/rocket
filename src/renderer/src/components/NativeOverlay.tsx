@@ -39,22 +39,23 @@ function surfaceFor(slot: OverlaySlot): Promise<Surface> {
     style.textContent = `
       html, body { background: transparent !important; margin: 0; overflow: hidden; }
       #overlay-root { width: max-content; }
-      body.modal #overlay-root { width: 100%; height: 100%; }
-      body:not(.modal) #overlay-root > div { padding: 8px; width: max-content; max-width: var(--overlay-window-width); }
-      body:not(.modal) .attachment-menu, body:not(.modal) .flyout,
-      body:not(.modal) .picker-menu, body:not(.modal) .composer-history-pop, body:not(.modal) .attachment-notice {
+      body.overlay-modal #overlay-root { width: 100%; height: 100%; }
+      body:not(.overlay-modal) #overlay-root > div { padding: 8px; width: max-content; max-width: var(--overlay-window-width); }
+      body:not(.overlay-modal) .attachment-menu, body:not(.overlay-modal) .flyout,
+      body:not(.overlay-modal) .picker-menu, body:not(.overlay-modal) .composer-history-pop, body:not(.overlay-modal) .attachment-notice {
         position: relative; inset: auto; max-width: calc(var(--overlay-window-width) - 16px);
         max-height: calc(var(--overlay-window-height) - 16px); overflow: auto;
       }
-      body:not(.modal) .picker-menu { display: flex; }
-      body.notice .attachment-notice { max-width: min(560px, calc(var(--overlay-window-width) - 32px)); }
+      body:not(.overlay-modal) .picker-menu { display: flex; }
+      body.overlay-notice .attachment-notice { max-width: min(560px, calc(var(--overlay-window-width) - 32px)); }
       .picker-models { max-height: min(380px, calc(var(--overlay-window-height) - 32px)); }
       .history-menu { max-height: min(520px, calc(var(--overlay-window-height) - 32px)); }
     `
     doc.head.append(style)
     doc.documentElement.style.setProperty('--overlay-window-width', `${innerWidth}px`)
     doc.documentElement.style.setProperty('--overlay-window-height', `${innerHeight}px`)
-    doc.body.className = slot
+    // Keep surface markers separate from component classes such as .flyout.
+    doc.body.className = `overlay-${slot}`
     const root = doc.createElement('div')
     root.id = 'overlay-root'
     doc.body.append(root)

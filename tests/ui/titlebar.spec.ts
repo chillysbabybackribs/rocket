@@ -33,6 +33,22 @@ test('usage sits at the centre of the title strip and nothing but the chat uses 
     const native = await rocket.app.evaluate(({ BrowserWindow, WebContentsView }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(v => v instanceof WebContentsView && (v as InstanceType<typeof WebContentsView>).webContents.getTitle() === 'Rocket overlay: flyout').map(v => v.getBounds())[0])
     const chat = (await page.locator('.chat').boundingBox())!
     expect(native.x + native.width).toBeGreaterThan(chat.x + chat.width)
+    const surface = await overlay(page, 'flyout')
+    for (const provider of ['Claude', 'Codex', 'Cursor', 'Antigravity']) {
+      await page.getByRole('button', { name: new RegExp(`^${provider} usage`) }).hover()
+      const group = surface.getByRole('group', { name: `${provider} usage`, exact: true })
+      await expect(group).toBeVisible()
+      // Visibility alone permits clipping by the native viewport. Check the full panel
+      // and every text/control rectangle after its entrance animation settles.
+      await expect.poll(() => group.evaluate(element => {
+        const viewport = { width: innerWidth, height: innerHeight }
+        const nodes = [element, ...element.querySelectorAll('*')]
+        return nodes.every(node => {
+          const r = node.getBoundingClientRect()
+          return r.left >= 0 && r.top >= 0 && r.right <= viewport.width && r.bottom <= viewport.height
+        }) && document.body.getBoundingClientRect().x === 0 && getComputedStyle(document.body).padding === '0px'
+      })).toBe(true)
+    }
     await rocket.capture('titlebar-usage-flyout')
   })
 })

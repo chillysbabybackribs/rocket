@@ -324,7 +324,7 @@ button {
   text-align: left;
 }
 
-/* Placed from script (flyoutPlace in TitleStrip.tsx): under its ring, inside the chat card. */
+/* Placed from script (flyoutPlace in TitleStrip.tsx): under its ring, in a native overlay above the browser. */
 .flyout {
   position: fixed;
   z-index: 50;
