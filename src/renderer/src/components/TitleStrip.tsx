@@ -8,7 +8,7 @@ import { ProviderGlyph } from './glyphs.tsx'
 import libraryOrbit from '../assets/header/library-orbit.png'
 import browserOrbit from '../assets/header/browser-orbit.png'
 
-// The title strip: window lights and the usage notch with Library and Browser beside it
+// The title strip: the usage notch with Library and Browser beside it, and window lights at the end
 // (docs/mockups/usage-in-titlebar.html). The notch is the app's signature: a black tab hanging from
 // the window's top edge with one ring per provider, each showing how much of that subscription's
 // nearest limit is used. There is no rail; the chat card starts at the window's left edge.
@@ -235,19 +235,20 @@ function Traffic() {
 }
 
 /**
- * The strip above the cards: window lights at the start, the usage tab at the centre with Library
- * and Browser icons outside its sides.
+ * The strip above the cards: the usage tab at the centre with Library and Browser outside its sides,
+ * and window lights at the end.
  */
 export function TitleStrip() {
   return (
     <header className="titlebar">
-      <div className="titlebar-start">
-        <Traffic />
-      </div>
+      <div className="titlebar-start" aria-hidden="true" />
       <div className="titlebar-center">
         <NotchSidePanel id="library" />
         <UsageNotch />
         <NotchSidePanel id="browser" />
+      </div>
+      <div className="titlebar-end">
+        <Traffic />
       </div>
     </header>
   )
