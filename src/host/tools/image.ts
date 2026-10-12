@@ -5,13 +5,13 @@ import { failureResult, textResult, type Tool } from './registry.ts'
 
 // Codex's image generation, for every provider. The picture is made in a hidden Codex turn
 // (image.ts) and the caller gets its file path, not the pixels: a model that wants to see it
-// reads the file, and PhotoCraft opens it with photocraft_open. Nothing of the run joins the
+// reads the file. Nothing of the run joins the
 // calling chat's transcript but this call and its answer.
 
 const MAX_REFERENCES = 4
 const ASPECTS: Aspect[] = ['square', 'landscape', 'portrait']
 
-const DESCRIPTION = `Make a new picture with Codex's image generation, from words alone or from reference pictures, and save it as a file. Use it only when the user asks for a picture to be made or a generative edit; to crop, zoom, resize or inspect a picture, use ordinary image tools instead, and never regenerate a picture to "improve" it. It takes about 20 seconds, spends the user's Codex image limit, and fails with a sentence saying when that limit resets. Answers with the saved file's path (and shows it on the library shelf as made by Codex); open it in PhotoCraft with photocraft_open, or read the file to look at it.`
+const DESCRIPTION = `Make a new picture with Codex's image generation, from words alone or from reference pictures, and save it as a file. Use it only when the user asks for a picture to be made or a generative edit; to crop, zoom, resize or inspect a picture, use ordinary image tools instead, and never regenerate a picture to "improve" it. It takes about 20 seconds, spends the user's Codex image limit, and fails with a sentence saying when that limit resets. Answers with the saved file's path (and shows it on the library shelf as made by Codex); read the file or open it from the library to look at it.`
 
 export function imageTools(runner: () => ImageRunner): Tool[] {
   return [{

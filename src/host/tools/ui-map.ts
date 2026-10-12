@@ -25,7 +25,6 @@ export function describeWhere(where: UiWhereForChat): string {
   let side: string
   if (where.side === 'chat') side = 'no side panel'
   else if (where.side === 'browser') side = 'the browser is open beside the chat'
-  else if (where.side === 'photocraft') side = 'PhotoCraft is open beside the chat (the photocraft_* tools work in it)'
   else if (where.side === 'artifact') side = `an artifact panel is open${where.artifact?.path ? ` (${where.artifact.path})` : ''}`
   else if (where.side === 'library') {
     const library = where.library

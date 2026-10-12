@@ -4,7 +4,7 @@ import { accessibleName, arrange, DEFAULT_TOOLBAR, moveSection, normalizeToolbar
 
 test('saved toolbar preferences drop unknown sections and add missing ones', () => {
   const prefs = normalizeToolbar({ open: true, order: ['browser', 'nope', 'chats', 'browser'], kept: ['library', 'library', 7], names: { chats: '  History  ', library: 'Library', bogus: 'x' } })
-  assert.deepEqual(prefs.order, ['browser', 'chats', 'library', 'photocraft'])
+  assert.deepEqual(prefs.order, ['browser', 'chats', 'library'])
   assert.deepEqual(prefs.kept, ['library'])
   assert.deepEqual(prefs.names, { chats: 'History' })
   assert.equal(prefs.open, true)
@@ -27,10 +27,10 @@ test('keeping and moving sections splits them between the toolbar and the drawer
   prefs = { ...prefs, kept: setKept(prefs, 'browser', true) }
   prefs = { ...prefs, kept: setKept(prefs, 'library', true) }
   prefs = { ...prefs, order: moveSection(prefs.order, 'browser', 'chats') }
-  assert.deepEqual(prefs.order, ['browser', 'chats', 'library', 'photocraft'])
-  assert.deepEqual(arrange(prefs), { kept: ['browser', 'library'], drawer: ['chats', 'photocraft'] })
+  assert.deepEqual(prefs.order, ['browser', 'chats', 'library'])
+  assert.deepEqual(arrange(prefs), { kept: ['browser', 'library'], drawer: ['chats'] })
   prefs = { ...prefs, kept: setKept(prefs, 'library', false) }
   assert.deepEqual(arrange(prefs).kept, ['browser'])
-  assert.deepEqual(moveSection(prefs.order, 'photocraft', null), ['browser', 'chats', 'library', 'photocraft'])
-  assert.deepEqual(moveSection(prefs.order, 'photocraft', 'photocraft'), prefs.order)
+  assert.deepEqual(moveSection(prefs.order, 'library', null), ['browser', 'chats', 'library'])
+  assert.deepEqual(moveSection(prefs.order, 'library', 'library'), prefs.order)
 })

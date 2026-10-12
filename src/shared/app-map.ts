@@ -25,10 +25,6 @@ export type ActionSpec = {
 export const PLACES = {
   chat: { description: 'The chat panes alone, with no side panel.', file: 'src/renderer/src/App.tsx' },
   browser: { description: 'The built-in browser beside the chat.', file: 'src/renderer/src/components/BrowserPanel.tsx' },
-  photocraft: {
-    description: 'PhotoCraft, the image editor, beside the chat: what the photocraft_* tools work in. The tools bring it forward themselves.',
-    file: 'src/renderer/src/components/PhotocraftPanel.tsx'
-  },
   library: {
     description: 'The library beside the chat: every file the chats attached, downloaded, wrote as plans, opened or had a model make, as a grid or list. Filters given here replace the shown ones; library_list lists the same files.',
     file: 'src/renderer/src/components/LibraryPanel.tsx',

@@ -119,7 +119,7 @@ then moves right. Hovering a ring opens its flyout (each limit, when it resets, 
 
 The toolbar (`Toolbar.tsx`, design in `docs/mockups/titlebar-nav-drawer-mac.html`) is Mac-style.
 Its Sections icon slides out a drawer with the app's sections by name: Chats opens its menu, and
-Library, Browser and PhotoCraft show or hide the side column. The drawer's last button, or a
+Library and Browser show or hide the side column. The drawer's last button, or a
 right-click on the icon, opens Customize: rename a section, drag it (or use the arrow keys on its
 handle) to reorder, and choose **Keep** (always in the toolbar) or **Consolidate** (drawer only).
 A renamed section keeps its real name for screen readers and the app map. Choices persist
@@ -211,7 +211,7 @@ when the turn ends (`recover` clears any a crash left). The calling chat gets it
 through `hub.addItem`, so it shows the same placeholder and picture, and that item is what puts it
 on the library shelf (maker: the calling provider). The picture is also copied to
 `generated-images/` in the profile and the tool answers with that path, not pixels: a model reads
-the file to look, and `photocraft_open` opens it. Codex's own steps and tokens do not join the
+the file to look, or open it from the library. Codex's own steps and tokens do not join the
 calling chat. Limits: two pictures at once, five minutes a run; a used-up limit, a refusal or
 Codex not being signed in come back as readable sentences. The description tells models to use it
 only when the user asks for a picture or generative edit, never to crop, zoom or resize. As with
@@ -361,30 +361,6 @@ previews are limited to 2 MB; missing files and unsupported binaries show an act
 Nothing opened from inside the app is handed to a system app, and links that try to open a new
 window take the same path.
 
-### PhotoCraft
-
-PhotoCraft, the open-source Photoshop rebuilt in Rust, runs beside the chat as its own section
-(plan and status in `docs/photocraft-in-rocket-plan.md`, mockup in
-`docs/mockups/photocraft-in-rocket.html`). It is PhotoCraft's web build from the fork in
-`~/src/photocraft` (`apps/photocraft-web`, `trunk build --release` into `dist/web`;
-`ROCKET_PHOTOCRAFT_WEB` points elsewhere). Main serves it from the privileged `photocraft://`
-scheme (a secure context with cross-origin isolation headers) into a view laid over the panel's
-box like a browser tab (`src/main/photocraft-pane.ts`). The page loads with `?control`, which the
-fork answers with `window.photocraft`: the desktop control protocol without TCP, plus a file
-store standing in for the disk. Files cross through one-time URLs on the same scheme, so a large
-PSD never travels as script text. While the panel is closed the view is concealed like a
-background tab, so it keeps answering.
-
-Every provider drives it with seven tools (`src/host/tools/photocraft.ts`): `photocraft_run` and
-`photocraft_batch` run engine commands (every menu item, tool and dialog is one);
-`photocraft_commands` finds them with their params; `photocraft_control` reaches other control
-methods (`ui.inspect`, `ui.set`, `ui.pointer`, menus, dialogs, keys); `photocraft_open` opens a
-file as a document or places it as a layer; `photocraft_save` saves or exports by extension;
-`photocraft_screenshot` returns a picture of the editor, taken by Electron because PhotoCraft's own
-`ui.screenshot` never answers in the web build. Relative paths start in the chat's folder, and a
-file goes in under its absolute path so the document's Save target is the real file. A tool call
-brings the panel forward.
-
 ### Fill with Rocket
 
 Right-click a text field in the browser: **Fill with Rocket** writes the answer straight into the
@@ -439,8 +415,8 @@ and works out the chat from the running turn. Its CLI also leaves MCP tools out 
 prompt, so the adapter opens a new conversation's first message with the tools, arguments and how
 to call them.
 
-Besides the browser and UI tools there are `library_list`, `generate_image`, the `photocraft_*`
-tools, `remember`, `ask_user`, the history tools, and with `ROCKET_SELF_CHECK=1` the three
+Besides the browser and UI tools there are `library_list`, `generate_image`, `remember`, `ask_user`,
+the history tools, and with `ROCKET_SELF_CHECK=1` the three
 self-check tools. Every tool's schema is in every session's prompt, so what a model should simply
 know goes ahead of the user's message (tabs, file map, notes, trouble reports); a tool is added
 only for something a model must do.
@@ -543,7 +519,7 @@ directory.
 
 The shell is finite, so a model navigates it by name rather than hunting for buttons.
 `src/shared/app-map.ts` is a hand-written map of every **place** the shell can show (`chat`,
-`browser`, `library`, `photocraft`, with their parameters) and every **action** (`pane.add`,
+`browser`, `library`, with their parameters) and every **action** (`pane.add`,
 `chat.open`, `library.open`, …), each naming the component file that renders it. The renderer's
 dispatcher (`src/renderer/src/app-map.ts`) implements it: `where()` reads the shell's state in the
 map's words, `go(place, params)` shows a place, and `act(action, params)` does an action, going to

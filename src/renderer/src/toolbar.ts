@@ -4,14 +4,13 @@
 // map and what a screen reader hears all keep the real name, so a model asked to open the evals
 // still finds them.
 
-export type SectionId = 'chats' | 'library' | 'browser' | 'photocraft'
+export type SectionId = 'chats' | 'library' | 'browser'
 
 /** Menus open a list under their button; panels take the side column, one at a time. */
 export const SECTIONS: Record<SectionId, { name: string; kind: 'menu' | 'panel' }> = {
   chats: { name: 'Chats', kind: 'menu' },
   library: { name: 'Library', kind: 'panel' },
-  browser: { name: 'Browser', kind: 'panel' },
-  photocraft: { name: 'PhotoCraft', kind: 'panel' }
+  browser: { name: 'Browser', kind: 'panel' }
 }
 
 export const SECTION_IDS = Object.keys(SECTIONS) as SectionId[]

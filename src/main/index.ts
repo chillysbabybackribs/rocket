@@ -7,13 +7,12 @@ import { createServer, type AddressInfo } from 'node:net'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import type { HostToMainFill } from '../shared/fill.ts'
-import type { BrowserAgentReply, BrowserAgentRequest, BrowserCommand, CaptureRequest, PhotocraftCommand } from '../shared/types.ts'
+import type { BrowserAgentReply, BrowserAgentRequest, BrowserCommand, CaptureRequest } from '../shared/types.ts'
 import { HOST_PORT_MESSAGE } from '../shared/types.ts'
 import { readChatLink } from './chat-links.ts'
 import { ScreenCapture } from './capture.ts'
 import { BrowserAgent } from './browser-agent.ts'
 import { BrowserPane } from './browser-pane.ts'
-import { PhotocraftPane, registerPhotocraftScheme } from './photocraft-pane.ts'
 import { BROWSER_PARTITION } from './browser-url.ts'
 import { defaultCookieSource, detectCookieSources, importCookies } from './cookie-import.ts'
 import { appendJournal } from '../host/journal.ts'
@@ -23,7 +22,7 @@ import { captureUiSnapshot } from './ui-snapshot.ts'
 import { liveUiConnection } from './ui-connection.ts'
 
 // Electron's main process does three things and nothing else: it owns the window, it owns the
-// embedded views (the browser's tabs and PhotoCraft), and it forks the agent host and introduces
+// embedded views (the browser's tabs), and it forks the agent host and introduces
 // it to the renderer over a MessageChannel. Chat traffic never passes through here.
 
 // ROCKET_USER_DATA points the app at another profile folder, so a test run never touches real chats.
@@ -35,8 +34,6 @@ app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1')
 // a bot. So the free port is found here and passed by number; the live UI connection still reads
 // it from DevToolsActivePort.
 app.commandLine.appendSwitch('remote-debugging-port', String(await freeLoopbackPort()))
-registerPhotocraftScheme()
-
 function freeLoopbackPort(): Promise<number> {
   return new Promise((done, fail) => {
     const probe = createServer()
@@ -52,7 +49,6 @@ let window: BrowserWindow | null = null
 let host: UtilityProcess | null = null
 let browser: BrowserPane | null = null
 let browserAgent: BrowserAgent | null = null
-let photocraft: PhotocraftPane | null = null
 let screenCapture: ScreenCapture | null = null
 let quitting = false
 
@@ -101,10 +97,6 @@ function startHost(): UtilityProcess {
             : call === 'go' ? `window.rocketMap.go(${JSON.stringify(message.op.place)}, ${JSON.stringify(message.op.params)})`
               : `window.rocketMap.act(${JSON.stringify(message.op.action)}, ${JSON.stringify(message.op.params)})`
           return window.webContents.executeJavaScript(`(async () => { try { return await ${expression} } catch (error) { return { ok: false, error: String(error && error.message || error), where: window.rocketMap.where() } } })()`)
-        }
-        if (message.op.op === 'photocraft') {
-          if (!photocraft) throw new Error('Rocket’s window is closed. Open the app and try again.')
-          return photocraft.agent(message.op)
         }
         if (!browserAgent) throw new Error('The browser is not open')
         return browserAgent.handle(message.op)
@@ -173,7 +165,6 @@ function createWindow(): void {
   })
   browser = new BrowserPane(window, (message) => host?.postMessage(message))
   browserAgent = new BrowserAgent(browser)
-  photocraft = new PhotocraftPane(window)
   screenCapture = new ScreenCapture(window, () => browser)
   window.once('ready-to-show', () => window?.show())
   window.on('closed', () => {
@@ -181,8 +172,6 @@ function createWindow(): void {
     browser = null
     browserAgent?.dispose()
     browserAgent = null
-    photocraft?.dispose()
-    photocraft = null
     screenCapture = null
   })
   // The UI never navigates or opens windows. A link that tries opens inside the app, in a
@@ -269,10 +258,6 @@ ipcMain.handle('rocket:chat-link', (event, href: string, cwd: string) => {
 ipcMain.on('rocket:browser', (event, command: BrowserCommand) => {
   browser?.handle(event.sender, command)
 })
-ipcMain.on('rocket:photocraft', (event, command: PhotocraftCommand) => {
-  photocraft?.handle(event.sender, command)
-})
-
 // `rocket <path or URL>` opens it inside the app, as a link in the chat would: a page in a
 // browser tab, a text file in the artifact panel. A second launch hands its arguments to the
 // instance already running and exits; the first launch opens its argument once the page is up.

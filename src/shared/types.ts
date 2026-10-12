@@ -488,22 +488,7 @@ export type BrowserAgentOp =
   /** The chat is gone: its own tab is closed. */
   | { op: 'forget'; chat: string }
 /** The host-to-main channel also carries app UI captures, live automation connections and the app map. */
-export type MainAgentOp = BrowserAgentOp | { op: 'uiSnapshot' } | { op: 'uiConnection' } | { op: 'uiResize'; width: number; height: number } | UiMapOp | PhotocraftOp
-/**
- * PhotoCraft, which lives in a view of its own in main (src/main/photocraft-pane.ts). `control`
- * is one request of PhotoCraft's control protocol; `load` puts a file from disk into the page's
- * file store under `path`, and `save` writes what PhotoCraft saved under `path` to `file`.
- */
-export type PhotocraftOp =
-  | { op: 'photocraft'; call: 'control'; method: string; params: Record<string, unknown> }
-  | { op: 'photocraft'; call: 'load'; file: string; path: string }
-  | { op: 'photocraft'; call: 'save'; path: string; file: string }
-  /** Bring the PhotoCraft panel beside the chat, so the user sees what the model does there. */
-  | { op: 'photocraft'; call: 'show' }
-  /** A picture of the editor as drawn, taken by Electron (PhotoCraft's own ui.screenshot never answers on the web). */
-  | { op: 'photocraft'; call: 'capture' }
-  /** The view's state, without starting PhotoCraft. */
-  | { op: 'photocraft'; call: 'status' }
+export type MainAgentOp = BrowserAgentOp | { op: 'uiSnapshot' } | { op: 'uiConnection' } | { op: 'uiResize'; width: number; height: number } | UiMapOp
 /** Main runs these in the renderer's dispatcher (`window.rocketMap`); see `src/shared/app-map.ts`. */
 export type UiMapOp =
   | { op: 'uiMap'; call: 'where' }
@@ -514,7 +499,7 @@ export type UiWhere = {
   place: string
   panes: Array<{ index: number; chatId: string | null; title: string; provider: ProviderId; focused: boolean; running: boolean; planOpen: boolean }>
   focused: number
-  side: 'chat' | 'browser' | 'artifact' | 'library' | 'photocraft'
+  side: 'chat' | 'browser' | 'artifact' | 'library'
   artifact: { kind: string; path: string | null } | null
   /** The library panel: its filters, view and how many files they show; null while it is closed. */
   library: { filters: LibraryFilters; view: 'grid' | 'list'; shown: number; total: number } | null
@@ -560,24 +545,6 @@ export type SuggestionList = { items: Suggestion[]; selected: number; typed: str
 /** The dropdown is a native view sized by main, so both sides share its row metrics. */
 export const SUGGEST_ROW_HEIGHT = 32
 export const SUGGEST_PADDING = 5
-
-/** What the UI asks of the PhotoCraft view. */
-export type PhotocraftCommand =
-  /** Where the editor goes, in window coordinates; null hides it. */
-  | { type: 'setBounds'; bounds: Bounds | null }
-  | { type: 'sync' }
-  | { type: 'reload' }
-
-/**
- * The PhotoCraft view as the panel shows it. `off` until something first opens it; `missing`
- * when the web build is not where Rocket looks; `message` says what to do in a full sentence.
- */
-export type PhotocraftState = {
-  status: 'off' | 'loading' | 'ready' | 'missing' | 'failed'
-  message: string | null
-  /** The active document's title as PhotoCraft shows it, once it reports one. */
-  title: string | null
-}
 
 /** Everything the UI can ask of the browser. Commands without an id act on the active tab. */
 export type BrowserCommand =
@@ -654,12 +621,6 @@ export type RocketBridge = {
     onFill: (listener: (state: FillChipState) => void) => () => void
     /** Main asks for the address field to take focus (Ctrl+L, a new tab). */
     onFocusAddress: (listener: () => void) => () => void
-  }
-  photocraft: {
-    send: (command: PhotocraftCommand) => void
-    onState: (listener: (state: PhotocraftState) => void) => () => void
-    /** Main asks for the panel to come forward: a model has started working in PhotoCraft. */
-    onShow: (listener: () => void) => () => void
   }
 }
 

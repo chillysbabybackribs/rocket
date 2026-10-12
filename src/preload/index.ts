@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { homedir } from 'node:os'
 import type { FillChipState } from '../shared/fill.ts'
-import type { BrowserState, PhotocraftState, RocketBridge, SuggestionList } from '../shared/types.ts'
+import type { BrowserState, RocketBridge, SuggestionList } from '../shared/types.ts'
 import { HOST_PORT_MESSAGE } from '../shared/types.ts'
 
 // The renderer's only way out. Chat traffic does not go through here at all: main sends a
@@ -41,11 +41,6 @@ const bridge: RocketBridge = {
     onSuggestions: (listener) => listen<SuggestionList>('rocket:browser-suggestions', listener),
     onFill: (listener) => listen<FillChipState>('rocket:fill-chip', listener),
     onFocusAddress: (listener) => listen<void>('rocket:browser-focus-address', listener)
-  },
-  photocraft: {
-    send: (command) => ipcRenderer.send('rocket:photocraft', command),
-    onState: (listener) => listen<PhotocraftState>('rocket:photocraft-state', listener),
-    onShow: (listener) => listen<void>('rocket:photocraft-show', listener)
   },
 }
 

@@ -5,12 +5,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Images, X } from 'lucide-react'
 import { act } from './app-map.ts'
 import { PaneContext, usePane, usePaneChatId, usePaneView } from './pane.ts'
-import { dismissError, focusedChatId, paneAt, peekState, setBrowserWidth, setPhotocraftOpen, setSideWidth, useApp } from './store.ts'
+import { dismissError, focusedChatId, paneAt, setBrowserWidth, setSideWidth, useApp } from './store.ts'
 import { ArtifactPanel } from './components/ArtifactPanel.tsx'
 import { AttachmentNotice, copyTo } from './components/AttachmentMenu.tsx'
 import { BrowserPanel } from './components/BrowserPanel.tsx'
 import { LibraryPanel } from './components/LibraryPanel.tsx'
-import { PhotocraftPanel } from './components/PhotocraftPanel.tsx'
 import { Composer } from './components/Composer.tsx'
 import { PlanDrawer } from './components/PlanDrawer.tsx'
 import { TitleStrip } from './components/TitleStrip.tsx'
@@ -79,7 +78,7 @@ function AppDivider({ appRef }: { appRef: React.RefObject<HTMLDivElement | null>
     const chatId = focusedChatId(state)
     return chatId !== null && state.views[chatId]?.planTurnId != null
   })
-  const sideIsWide = useApp((state) => state.libraryOpen || state.photocraftOpen)
+  const sideIsWide = useApp((state) => state.libraryOpen)
 
   const drag = (event: React.PointerEvent<HTMLDivElement>): void => {
     if (event.button !== 0) return
@@ -264,13 +263,9 @@ export function App() {
       window.removeEventListener('drop', preventNavigation)
     }
   }, [])
-  useEffect(() => window.rocket.photocraft.onShow(() => {
-    if (!peekState().photocraftOpen) setPhotocraftOpen(true)
-  }), [])
   const artifact = useApp((state) => state.artifact)
   const browserOpen = useApp((state) => state.browserOpen)
   const libraryOpen = useApp((state) => state.libraryOpen)
-  const photocraftOpen = useApp((state) => state.photocraftOpen)
   const browserWidth = useApp((state) => state.browserWidth)
   const error = useApp((state) => state.error)
   const split = useApp((state) => {
@@ -278,11 +273,11 @@ export function App() {
     const chatId = focusedChatId(state)
     return chatId !== null && state.views[chatId]?.planTurnId != null
   })
-  const sidePanel = artifact ? <ArtifactPanel /> : libraryOpen ? <LibraryPanel /> : photocraftOpen ? <PhotocraftPanel /> : browserOpen ? <BrowserPanel /> : null
+  const sidePanel = artifact ? <ArtifactPanel /> : libraryOpen ? <LibraryPanel /> : browserOpen ? <BrowserPanel /> : null
   const style = (browserWidth != null ? { '--browser-width': `${browserWidth}px` } : undefined) as React.CSSProperties | undefined
 
   return (
-    <div ref={appRef} className={`app${libraryOpen && !artifact ? ' has-library' : ''}${photocraftOpen && !libraryOpen && !artifact ? ' has-photocraft' : ''}${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-side' : ''}`} style={style}>
+    <div ref={appRef} className={`app${libraryOpen && !artifact ? ' has-library' : ''}${browserOpen || artifact ? ' has-browser' : ''}${split ? ' has-side' : ''}`} style={style}>
       <TitleStrip />
       <ChatCard />
       {sidePanel && <AppDivider appRef={appRef} />}

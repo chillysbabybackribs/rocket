@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Globe, GripVertical, History as HistoryIcon, LayoutGrid, LibraryBig, Palette, SlidersHorizontal, type LucideIcon } from 'lucide-react'
+import { Check, ChevronDown, Globe, GripVertical, History as HistoryIcon, LayoutGrid, LibraryBig, SlidersHorizontal, type LucideIcon } from 'lucide-react'
 import { go } from '../app-map.ts'
-import { patchToolbar, resetToolbar, setBrowserOpen, setLibraryOpen, setPhotocraftOpen, sideShown, useApp } from '../store.ts'
+import { patchToolbar, resetToolbar, setBrowserOpen, setLibraryOpen, sideShown, useApp } from '../store.ts'
 import { accessibleName, arrange, labelOf, moveSection, rename, SECTIONS, setKept, type SectionId } from '../toolbar.ts'
 import { HistoryMenu } from './History.tsx'
 
-const ICONS: Record<SectionId, LucideIcon> = { chats: HistoryIcon, library: LibraryBig, browser: Globe, photocraft: Palette }
+const ICONS: Record<SectionId, LucideIcon> = { chats: HistoryIcon, library: LibraryBig, browser: Globe }
 
 type Popup = { kind: 'menu'; id: SectionId; left: number } | { kind: 'customize'; left: number } | { kind: 'context'; left: number } | null
 type Opener = (popup: Popup) => void
@@ -61,7 +61,6 @@ function Section({ id, popup, setPopup, tabbable = true }: { id: SectionId; popu
   const toggle = (): void => {
     setPopup(null)
     if (id === 'library') on ? setLibraryOpen(false) : void go('library')
-    else if (id === 'photocraft') on ? setPhotocraftOpen(false) : void go('photocraft')
     else on ? setBrowserOpen(false) : void go('browser')
   }
   return (

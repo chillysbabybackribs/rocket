@@ -105,8 +105,8 @@ button {
 .app.has-browser {
   grid-template-columns: minmax(380px, 1fr) var(--gap) minmax(360px, var(--browser-width, 1.15fr));
 }
-/* The library and PhotoCraft share one wide side column so switching from the toolbar never moves the chat. */
-.app.has-library, .app.has-photocraft {
+/* The library uses a wide side column so switching from the toolbar never moves the chat. */
+.app.has-library {
   grid-template-columns: minmax(340px, 0.8fr) var(--gap) minmax(560px, var(--browser-width, 1.5fr));
 }
 
@@ -118,8 +118,7 @@ button {
 }
 .browser { margin-left: 0; }
 .app.has-browser .artifact,
-.app.has-library .library-panel,
-.app.has-photocraft .photocraft-panel {
+.app.has-library .library-panel {
   margin-left: 0;
 }
 
@@ -1640,26 +1639,3 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
 .artifact.is-undone .diff-body { opacity: 0.6; }
 .undone-tag { font-size: 10.5px; line-height: 16px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-strong); color: var(--text-4); }
 .changes-line.is-undone .counts, .changes-line.is-undone .bar { opacity: 0.45; }
-
-/* PhotoCraft beside the chat: a header, and the box main lays the editor's view over. */
-.photocraft {
-  margin-left: var(--gap);
-  border: 1px solid var(--line);
-  border-radius: var(--card-radius);
-  background: var(--sheen), var(--panel);
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-.pc-head { height: 40px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--line); }
-.pc-mark { width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, #ff4fd8, #5ee7ff); flex: none; }
-.pc-name { font-weight: 550; font-size: 12.5px; }
-.pc-title { color: var(--text-3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pc-status { font-size: 11px; color: var(--text-3); padding: 1px 7px; border-radius: 6px; background: var(--hover); }
-.pc-status.is-missing, .pc-status.is-failed { color: var(--warn, #f2c94c); }
-.pc-grow { flex: 1; }
-/* PhotoCraft's own background, so the moment before its view arrives doesn't flash. */
-.pc-stage { flex: 1; min-height: 0; position: relative; background: #262626; display: grid; place-items: center; }
-.pc-message { max-width: 460px; margin: 0; padding: 16px; color: var(--text-2); font-size: 12.5px; line-height: 1.55; text-align: center; }

@@ -234,10 +234,10 @@ export const test = base.extend<{ rocket: Rocket }>({
 
 export { expect }
 
-export type SectionName = 'Chats' | 'Library' | 'Browser' | 'PhotoCraft'
+export type SectionName = 'Chats' | 'Library' | 'Browser'
 
 /**
- * A toolbar section's button: the only way to Chats, Library, Browser and PhotoCraft. A section
+ * A toolbar section's button: the only way to Chats, Library and Browser. A section
  * in the closed Sections drawer is reached by opening the drawer first.
  */
 export async function section(page: Page, name: SectionName): Promise<Locator> {

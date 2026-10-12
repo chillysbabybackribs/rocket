@@ -33,7 +33,6 @@ import { memoryTools } from './tools/memory.ts'
 import { selfCheckTools } from './tools/self-check.ts'
 import { uiSnapshotTools } from './tools/ui-snapshot.ts'
 import { askWhere, describeWhere, uiMapTools } from './tools/ui-map.ts'
-import { photocraftBrief, photocraftTools } from './tools/photocraft.ts'
 import { rocketSourceRoot, UiRunManager } from './tools/ui-run.ts'
 import { LiveUiRunner } from './tools/ui-live.ts'
 import { redactText, ToolLedger } from './tool-ledger.ts'
@@ -114,7 +113,6 @@ function post(message: HostToRenderer): void {
 
 // Longer than anything main waits for on a page, so main's own, clearer error arrives first.
 const BROWSER_TIMEOUT_MS = 150_000
-const PHOTOCRAFT_TIMEOUT_MS = 20 * 60_000
 let browserSeq = 0
 const browserPending = new Map<number, { resolve: (result: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>()
 
@@ -166,9 +164,6 @@ const toolRegistry = new ToolRegistry((name, message, { provider, chatId }) => j
   .add(...browserTools({ request: askBrowser }, join(dataDir, 'browser-results'), (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null), (chatId, url) => hub.noteOpened(chatId, url)))
   .add(...uiSnapshotTools(async () => await askBrowser({ op: 'uiSnapshot' }) as UiSnapshot))
   .add(...uiMapTools(askBrowser))
-  // PhotoCraft runs a long filter in its page's one thread and answers when it is done: a lens blur on
-  // a 24-megapixel image outlasts the browser's 150 s, so its requests wait longer.
-  .add(...photocraftTools((op) => askBrowser(op, PHOTOCRAFT_TIMEOUT_MS), (chatId) => (chatId ? store.chat(chatId)?.cwd ?? null : null)))
   .add(...uiRuns.tools())
   .add(...(ledger ? [...toolHistoryTools(ledger), ...toolReviewTools(ledger)] : []))
   .add(...memoryTools(store))
@@ -242,10 +237,10 @@ const hub: Hub = new Hub(
         teamwork.context(chatId, provider, fresh),
         browserTabs(chatId, provider, fresh),
         // The window may be closed or still loading; the block then says to ask rocket_ui_where.
-        askWhere(askBrowser, chatId).then(async (where) => {
-          const photocraft = await photocraftBrief(askBrowser, where.side === 'photocraft')
-          return [agentEnvironmentContext(describeWhere(where), fresh), photocraft].filter(Boolean).join('\n\n')
-        }, () => agentEnvironmentContext(null, fresh))
+        askWhere(askBrowser, chatId).then(
+          (where) => agentEnvironmentContext(describeWhere(where), fresh),
+          () => agentEnvironmentContext(null, fresh)
+        )
       ])
     ]
     return parts.filter(Boolean).join('\n\n') || null

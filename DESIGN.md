@@ -14,7 +14,7 @@ The accent is indigo; external reference palettes do not override it.
 ## Components and interaction
 
 Reuse [Tabs](src/renderer/src/components/Tabs.tsx) and the layouts in
-[App](src/renderer/src/App.tsx). The side panel (browser, library, PhotoCraft, artifacts) is
+[App](src/renderer/src/App.tsx). The side panel (browser, library, artifacts) is
 independently toggleable. Follow existing controls and focus treatment.
 
 ## Reference direction

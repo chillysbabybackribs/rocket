@@ -83,8 +83,6 @@ export type AppState = {
   /** The library beside the chat: every file the chats touched (docs/library-plan.md). */
   libraryOpen: boolean
   library: LibraryState
-  /** PhotoCraft beside the chat (docs/photocraft-in-rocket-plan.md). */
-  photocraftOpen: boolean
   /** The toolbar's sections: the drawer open or not, and what the user kept, renamed and reordered. */
   toolbar: ToolbarPrefs
   /** Width of the plan drawer beside the chat, in pixels. */
@@ -126,7 +124,6 @@ type Prefs = {
   readingSpeed?: number
   libraryOpen?: boolean
   libraryView?: 'grid' | 'list'
-  photocraftOpen?: boolean
   toolbar?: ToolbarPrefs
   sideWidth?: number
   browserWidth?: number | null
@@ -208,7 +205,6 @@ let state: AppState = {
   browserOpen: prefs.browserOpen === true,
   libraryOpen: prefs.libraryOpen === true,
   library: { entries: [], loaded: false, error: null, filters: {}, view: prefs.libraryView === 'list' ? 'list' : 'grid', selected: null, previews: {} },
-  photocraftOpen: prefs.photocraftOpen === true,
   toolbar: normalizeToolbar(prefs.toolbar),
   sideWidth: prefs.sideWidth ?? prefs.goalWidth ?? 400,
   browserWidth: typeof prefs.browserWidth === 'number' ? prefs.browserWidth : null,
@@ -698,27 +694,17 @@ export function resetToolbar(): void {
 }
 
 /** The side panel the toolbar shows as on: an artifact covers them all. */
-export function sideShown(state: AppState): 'library' | 'photocraft' | 'browser' | null {
+export function sideShown(state: AppState): 'library' | 'browser' | null {
   if (state.artifact) return null
   if (state.libraryOpen) return 'library'
-  if (state.photocraftOpen) return 'photocraft'
   return state.browserOpen ? 'browser' : null
 }
 
 export function setBrowserOpen(browserOpen: boolean): void {
   linkRequest++
   const libraryOpen = browserOpen ? false : state.libraryOpen
-  const photocraftOpen = browserOpen ? false : state.photocraftOpen
-  setState({ browserOpen, libraryOpen, photocraftOpen, artifact: null })
-  writePrefs({ browserOpen, libraryOpen, photocraftOpen })
-}
-
-/** Show or hide PhotoCraft beside the chat; like the others, it takes the side column alone. */
-export function setPhotocraftOpen(photocraftOpen: boolean): void {
-  linkRequest++
-  const others = photocraftOpen ? { browserOpen: false, libraryOpen: false } : {}
-  setState({ photocraftOpen, ...others, artifact: null })
-  writePrefs({ photocraftOpen, ...others })
+  setState({ browserOpen, libraryOpen, artifact: null })
+  writePrefs({ browserOpen, libraryOpen })
 }
 
 // ── Library ───────────────────────────────────────────────────────────
@@ -726,7 +712,7 @@ export function setPhotocraftOpen(photocraftOpen: boolean): void {
 /** Show or hide the library beside the chat; it takes the side from the browser. */
 export function setLibraryOpen(libraryOpen: boolean): void {
   linkRequest++
-  const others = libraryOpen ? { browserOpen: false, photocraftOpen: false } : {}
+  const others = libraryOpen ? { browserOpen: false } : {}
   setState({ libraryOpen, ...others, artifact: null })
   writePrefs({ libraryOpen, ...others })
   if (libraryOpen && !state.library.loaded) void loadLibrary()
@@ -968,8 +954,8 @@ export async function openChatLink(href: string, cwd?: string): Promise<void> {
     const target = await window.rocket.openChatLink(href, folder)
     if (request !== linkRequest) return
     if (target.kind === 'browser') {
-      setState({ artifact: null, browserOpen: true, photocraftOpen: false })
-      writePrefs({ browserOpen: true, photocraftOpen: false })
+      setState({ artifact: null, browserOpen: true })
+      writePrefs({ browserOpen: true })
       window.rocket.browser.send({ type: 'newTab', url: target.url })
     } else {
       setState({ artifact: target })

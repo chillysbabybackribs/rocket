@@ -3,7 +3,7 @@ import type { UiMapResult, UiWhere } from '../../shared/types.ts'
 import { filterEntries, parseFilters } from '../../shared/library.ts'
 import {
   addPane, closeArtifact, closePane, focusPane, loadLibrary, openChat, openLibraryEntry, patchLibrary, peekState,
-  setBrowserOpen, setLibraryOpen, setPhotocraftOpen
+  setBrowserOpen, setLibraryOpen
 } from './store.ts'
 
 // The one dispatcher behind the app map. The dashboard's buttons call `go` and `act`, and so do
@@ -16,7 +16,6 @@ type Params = Record<string, unknown>
 function placeOf(state: ReturnType<typeof peekState>): PlaceName {
   if (state.artifact) return 'chat'
   if (state.libraryOpen) return 'library'
-  if (state.photocraftOpen) return 'photocraft'
   if (state.browserOpen) return 'browser'
   return 'chat'
 }
@@ -45,7 +44,7 @@ export function where(): UiWhere {
       }
     }),
     focused: state.focused,
-    side: state.artifact ? 'artifact' : state.libraryOpen ? 'library' : state.photocraftOpen ? 'photocraft' : state.browserOpen ? 'browser' : 'chat',
+    side: state.artifact ? 'artifact' : state.libraryOpen ? 'library' : state.browserOpen ? 'browser' : 'chat',
     artifact: state.artifact ? { kind: state.artifact.kind, path: state.artifact.kind === 'artifact' ? state.artifact.path : null } : null,
     library: state.libraryOpen ? libraryWhere(state) : null,
     dialogs: []
@@ -86,7 +85,6 @@ const places: Record<PlaceName, (params: Params) => Promise<void>> = {
     closeArtifact()
     if (peekState().browserOpen) setBrowserOpen(false)
     if (peekState().libraryOpen) setLibraryOpen(false)
-    if (peekState().photocraftOpen) setPhotocraftOpen(false)
   },
   library: async (params) => {
     const view = text(params, 'view')
@@ -98,8 +96,7 @@ const places: Record<PlaceName, (params: Params) => Promise<void>> = {
     if (!peekState().library.loaded) await loadLibrary()
     patchLibrary({ ...(filters ? { filters } : {}), ...(view ? { view } : {}) })
   },
-  browser: async () => { setBrowserOpen(true) },
-  photocraft: async () => { if (!peekState().photocraftOpen || peekState().artifact) setPhotocraftOpen(true) }
+  browser: async () => { setBrowserOpen(true) }
 }
 
 const actions: Record<ActionName, (params: Params) => Promise<unknown>> = {
