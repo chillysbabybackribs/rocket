@@ -83,7 +83,7 @@ export type AppState = {
   /** The library beside the chat: every file the chats touched (docs/library-plan.md). */
   libraryOpen: boolean
   library: LibraryState
-  /** The toolbar's sections: the drawer open or not, and what the user kept, renamed and reordered. */
+  /** Custom labels for Library and Browser beside the usage notch. */
   toolbar: ToolbarPrefs
   /** Width of the plan drawer beside the chat, in pixels. */
   sideWidth: number
@@ -688,9 +688,9 @@ export function patchToolbar(patch: Partial<ToolbarPrefs>): void {
   writePrefs({ toolbar })
 }
 
-/** Back to every section in the drawer under its own name, leaving the drawer as it stands. */
+/** Clear custom section names back to Library and Browser. */
 export function resetToolbar(): void {
-  patchToolbar({ ...DEFAULT_TOOLBAR, open: state.toolbar.open })
+  patchToolbar({ ...DEFAULT_TOOLBAR })
 }
 
 /** The side panel the toolbar shows as on: an artifact covers them all. */

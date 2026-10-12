@@ -112,20 +112,13 @@ through `PaneContext` (`pane.ts`); every store action meaning "in this chat" tak
 ### The title strip and toolbar
 
 There is no rail: the chat card starts at the window's left edge. The 48px strip above the cards
-(`TitleStrip.tsx`, design in `docs/mockups/usage-in-titlebar.html`) holds the window controls and
-toolbar at its start, and the usage notch at its centre: a tab hanging from the top edge with one
-ring per provider and its percentage. The notch stays centred until the toolbar outgrows its half,
-then moves right. Hovering a ring opens its flyout (each limit, when it resets, refresh).
-
-The toolbar (`Toolbar.tsx`, design in `docs/mockups/titlebar-nav-drawer-mac.html`) is Mac-style.
-Its Sections icon slides out a drawer with the app's sections by name; Library and Browser show or
-hide the side column. Chat history is a history icon above the composer, top right. The drawer's last button, or a
-right-click on the icon, opens Customize: rename a section, drag it (or use the arrow keys on its
-handle) to reorder, and choose **Keep** (always in the toolbar) or **Consolidate** (drawer only).
-A renamed section keeps its real name for screen readers and the app map. Choices persist
-(`toolbar.ts`). The focused chat's title, provider and folder follow. Every menu and popover is
-pulled left to end inside the chat card, since the browser page is a native view that would paint
-over it.
+(`TitleStrip.tsx`, design in `docs/mockups/usage-in-titlebar.html`) holds the window controls at
+its start and the usage notch at its centre: a tab hanging from the top edge with **Library** and
+**Browser** as plain text on its left and right, then one ring per provider and its percentage.
+Hovering a ring opens its flyout (each limit, when it resets, refresh). Library and Browser toggle
+the side column. Chat history is a history icon above the composer, top right. Every menu and
+popover is pulled left to end inside the chat card, since the browser page is a native view that
+would paint over it.
 
 ### Images and files in chat
 

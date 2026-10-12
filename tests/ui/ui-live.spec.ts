@@ -33,7 +33,6 @@ test('default UI scripts operate on the attached live window and leave it open',
   await expect(rocket.page.getByRole('textbox', { name: 'Message', exact: true }).last()).toHaveValue('New live draft')
   await info.attach('Live UI: added chat pane', { path: first.data.captures[0].images[0].path, contentType: 'image/png' })
   const second = await call({ code: `
-    await page.getByRole('button',{name:'Sections',exact:true}).click()
     await page.getByRole('button',{name:'Browser',exact:true}).click()
     const browser = await ui.surface('browser')
     await browser.getByRole('textbox',{name:'Test input',exact:true}).fill('Live browser draft')

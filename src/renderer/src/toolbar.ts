@@ -1,45 +1,32 @@
-// The toolbar's sections: the rail's destinations, which the user can rename, reorder, keep
-// in the toolbar for good, or consolidate into the drawer that slides out of the Sections icon
-// (docs/mockups/titlebar-nav-drawer-mac.html). A name is only a label: the section's id, the app
-// map and what a screen reader hears all keep the real name, so a model asked to open the evals
-// still finds them.
+// Side panel labels in the title strip (Library and Browser beside the usage notch). Names can be
+// renamed in prefs; defaults come from SECTIONS.
 
 export type SectionId = 'library' | 'browser'
 
-/** Panels take the side column, one at a time. Chat history lives beside the composer (History.tsx). */
-export const SECTIONS: Record<SectionId, { name: string; kind: 'panel' }> = {
-  library: { name: 'Library', kind: 'panel' },
-  browser: { name: 'Browser', kind: 'panel' }
+export const SECTIONS: Record<SectionId, { name: string }> = {
+  library: { name: 'Library' },
+  browser: { name: 'Browser' }
 }
 
 export const SECTION_IDS = Object.keys(SECTIONS) as SectionId[]
 
-/** Long enough for a word or two; the toolbar has no room for more. */
+/** Long enough for a word or two. */
 export const NAME_MAX = 24
 
 export type ToolbarPrefs = {
-  /** Whether the drawer stands open. */
-  open: boolean
-  /** Every section, in the order the user put them. */
-  order: SectionId[]
-  /** Sections shown in the toolbar at all times; the rest live in the drawer. */
-  kept: SectionId[]
   /** Labels the user gave, by section. */
   names: Partial<Record<SectionId, string>>
 }
 
-export const DEFAULT_TOOLBAR: ToolbarPrefs = { open: false, order: [...SECTION_IDS], kept: [], names: {} }
+export const DEFAULT_TOOLBAR: ToolbarPrefs = { names: {} }
 
 function isSection(value: unknown): value is SectionId {
   return typeof value === 'string' && Object.hasOwn(SECTIONS, value)
 }
 
-/** Saved preferences as they can be trusted: unknown ids dropped, missing sections added at the end. */
+/** Saved preferences as they can be trusted; legacy drawer fields are ignored. */
 export function normalizeToolbar(saved: unknown): ToolbarPrefs {
   const record = saved && typeof saved === 'object' ? saved as Record<string, unknown> : {}
-  const listed = Array.isArray(record.order) ? record.order.filter(isSection) : []
-  const order = [...new Set([...listed, ...SECTION_IDS])]
-  const kept = Array.isArray(record.kept) ? [...new Set(record.kept.filter(isSection))] : []
   const names: Partial<Record<SectionId, string>> = {}
   if (record.names && typeof record.names === 'object') {
     for (const [id, name] of Object.entries(record.names as Record<string, unknown>)) {
@@ -49,7 +36,7 @@ export function normalizeToolbar(saved: unknown): ToolbarPrefs {
       }
     }
   }
-  return { open: record.open === true, order, kept, names }
+  return { names }
 }
 
 /** A typed name as it is kept: trimmed and capped, or nothing when it is blank or the default. */
@@ -74,25 +61,4 @@ export function rename(prefs: ToolbarPrefs, id: SectionId, name: string): Toolba
   if (clean) names[id] = clean
   else delete names[id]
   return names
-}
-
-export function setKept(prefs: ToolbarPrefs, id: SectionId, keep: boolean): SectionId[] {
-  const kept = prefs.kept.filter((each) => each !== id)
-  return keep ? [...kept, id] : kept
-}
-
-/** The order with `id` moved to just before `before`, or to the end when `before` is null. */
-export function moveSection(order: SectionId[], id: SectionId, before: SectionId | null): SectionId[] {
-  if (id === before) return order
-  const rest = order.filter((each) => each !== id)
-  const at = before ? rest.indexOf(before) : -1
-  return at < 0 ? [...rest, id] : [...rest.slice(0, at), id, ...rest.slice(at)]
-}
-
-/** The sections in order, split into the ones the toolbar keeps and the ones in the drawer. */
-export function arrange(prefs: ToolbarPrefs): { kept: SectionId[]; drawer: SectionId[] } {
-  return {
-    kept: prefs.order.filter((id) => prefs.kept.includes(id)),
-    drawer: prefs.order.filter((id) => !prefs.kept.includes(id))
-  }
 }

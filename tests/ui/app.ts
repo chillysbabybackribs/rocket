@@ -241,13 +241,8 @@ export function chatHistory(page: Page): Locator {
   return page.getByRole('button', { name: 'Chats', exact: true })
 }
 
-/**
- * A toolbar section's button: the way to Library and Browser. A section
- * in the closed Sections drawer is reached by opening the drawer first.
- */
+/** Library or Browser beside the subscription usage tab in the title strip. */
 export async function section(page: Page, name: SectionName): Promise<Locator> {
   const id = name.toLowerCase()
-  const toggle = page.getByRole('button', { name: 'Sections', exact: true })
-  if (await toggle.getAttribute('aria-expanded') !== 'true' && await page.locator(`.tb-drawer [data-section="${id}"]`).count()) await toggle.click()
-  return page.locator(`.toolbar [data-section="${id}"]`)
+  return page.locator(`.notch [data-section="${id}"]`)
 }

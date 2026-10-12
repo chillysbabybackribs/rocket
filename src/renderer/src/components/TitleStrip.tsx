@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { PROVIDERS, providerLabel, type ProviderId, type UsageSnapshot, type UsageWindow } from '../../../shared/types.ts'
-import { refreshUsage, useApp } from '../store.ts'
+import { go } from '../app-map.ts'
+import { refreshUsage, setBrowserOpen, setLibraryOpen, sideShown, useApp } from '../store.ts'
+import { accessibleName, labelOf, type SectionId } from '../toolbar.ts'
 import { ProviderGlyph } from './glyphs.tsx'
-import { Toolbar } from './Toolbar.tsx'
 
-// The title strip: window lights, the toolbar (Toolbar.tsx) and the usage notch
+// The title strip: window lights and the usage notch with Library and Browser beside it
 // (docs/mockups/usage-in-titlebar.html). The notch is the app's signature: a black tab hanging from
 // the window's top edge with one ring per provider, each showing how much of that subscription's
 // nearest limit is used. There is no rail; the chat card starts at the window's left edge.
@@ -142,6 +143,32 @@ function flyoutPlace(element: HTMLElement): { left: number; top: number } {
   return { left: Math.max(8, Math.min(ring.left + ring.width / 2 - FLYOUT_WIDTH / 2, limit)), top: notch.bottom + 6 }
 }
 
+function NotchSidePanel({ id }: { id: SectionId }) {
+  const toolbar = useApp((state) => state.toolbar)
+  const side = useApp(sideShown)
+  const label = labelOf(toolbar, id)
+  const name = accessibleName(toolbar, id)
+  const on = side === id
+  const toggle = (): void => {
+    if (id === 'library') on ? setLibraryOpen(false) : void go('library')
+    else on ? setBrowserOpen(false) : void go('browser')
+  }
+  return (
+    <button
+      type="button"
+      className={`notch-side${on ? ' is-on' : ''}`}
+      data-section={id}
+      data-nav={id}
+      aria-label={name}
+      aria-pressed={on}
+      title={`${on ? 'Hide' : 'Show'} ${label}`}
+      onClick={toggle}
+    >
+      {label}
+    </button>
+  )
+}
+
 function UsageNotch() {
   const usage = useApp((state) => state.usage)
   const [hovered, setHovered] = useState<{ provider: ProviderId; at: { left: number; top: number } } | null>(null)
@@ -165,22 +192,26 @@ function UsageNotch() {
   }
 
   return (
-    <div className="notch" aria-label="Subscription usage">
-      {PROVIDERS.map(({ id, label }) => (
-        <button
-          key={id}
-          type="button"
-          className="notch-item"
-          aria-label={`${label} usage${usage[id]?.windows[0] ? `: ${usage[id]!.windows[0]!.percent}% used` : ''}`}
-          onMouseEnter={(event) => show(id, event.currentTarget)}
-          onMouseLeave={hide}
-          onFocus={(event) => show(id, event.currentTarget)}
-          onBlur={hide}
-          onClick={() => refreshUsage(id, true)}
-        >
-          <Ring provider={id} usage={usage[id]} />
-        </button>
-      ))}
+    <div className="notch">
+      <NotchSidePanel id="library" />
+      <div className="notch-rings" aria-label="Subscription usage">
+        {PROVIDERS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            className="notch-item"
+            aria-label={`${label} usage${usage[id]?.windows[0] ? `: ${usage[id]!.windows[0]!.percent}% used` : ''}`}
+            onMouseEnter={(event) => show(id, event.currentTarget)}
+            onMouseLeave={hide}
+            onFocus={(event) => show(id, event.currentTarget)}
+            onBlur={hide}
+            onClick={() => refreshUsage(id, true)}
+          >
+            <Ring provider={id} usage={usage[id]} />
+          </button>
+        ))}
+      </div>
+      <NotchSidePanel id="browser" />
       {hovered && <Flyout key={hovered.provider} provider={hovered.provider} usage={usage[hovered.provider]} at={hovered.at} keepOpen={keepOpen} hide={hide} />}
     </div>
   )
@@ -203,16 +234,14 @@ function Traffic() {
 }
 
 /**
- * The strip above the cards: the window lights and the toolbar at its start, the usage tab at its
- * centre. The grid's two outer columns share the width equally, so the tab sits at the window's
- * centre until the toolbar outgrows its half, and then it moves right rather than overlapping.
+ * The strip above the cards: window lights at the start, the usage tab at the centre with Library
+ * and Browser as plain text on its sides.
  */
 export function TitleStrip() {
   return (
     <header className="titlebar">
       <div className="titlebar-start">
         <Traffic />
-        <Toolbar />
       </div>
       <UsageNotch />
     </header>
