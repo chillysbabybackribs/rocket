@@ -150,6 +150,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await page.reload()
     await expect(page.locator('.turn')).toHaveCount(5)
     await expect(page.locator('.turn').last().locator('.prose')).toContainText('Complete. The controlled response finished.')
+    await expect.poll(async () => page.locator('.transcript').evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(81)
     await expect(page.locator('.btab.is-active')).toHaveText('UI page two')
     await expect(page.locator('.notice.is-info')).toHaveText('Stopped')
     await expect(page.locator('.notice.is-error')).toHaveText('Controlled UI test failure.')

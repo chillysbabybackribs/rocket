@@ -1,9 +1,9 @@
 import { Attachments, useImagePreview, useMenuRequest } from './Attachments.tsx'
 import { AttachmentMenu } from './AttachmentMenu.tsx'
 import { call } from '../host.ts'
-import { createContext, Fragment, memo, useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, Fragment, memo, useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
-import { AlertCircle, Check, ChevronRight, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, ChevronRight, ChevronUp, FileDiff, FileText, Globe, PencilLine, Plug, Search, SquareTerminal, Wrench } from 'lucide-react'
 import { citationMarks } from '../../../shared/sources.ts'
 import { contextMeterLabel } from '../../../shared/context-meter.ts'
 import { planItemId, providerLabel, type Item, type MessageDraft, type ToolKind, type Turn, type TurnSources } from '../../../shared/types.ts'
@@ -12,6 +12,9 @@ import { ShownChatContext, usePane, usePaneChatId, usePaneView } from '../pane.t
 import { answerQuestion, editQueued, loadOlder, loadOutput, openTurnChanges, peekItem, sendNow, togglePlan, useApp, useItem } from '../store.ts'
 import { Bar, Counts } from './ChangesView.tsx'
 import { attachZoom } from '../transcript-zoom.ts'
+import {
+  EDGE_TOLERANCE, followBottom, isAtBottom, isAtTop, scrollToBottomSoon, scrollToTopSoon
+} from '../transcript-scroll.ts'
 
 /** The turn's sources record, for the marks on the links of its replies; null while it runs. */
 const SourcesContext = createContext<TurnSources | null>(null)
@@ -533,7 +536,7 @@ function Stage({ ids, running, thoughtsOpen }: { ids: string[]; running: boolean
   return <>{rows}</>
 }
 
-const TurnBlock = memo(function TurnBlock({ turn, ids, fill }: { turn: Turn; ids: string[]; fill: boolean }) {
+const TurnBlock = memo(function TurnBlock({ turn, ids, fill, rootRef }: { turn: Turn; ids: string[]; fill: boolean; rootRef?: Ref<HTMLElement> }) {
   // The plan is not a row of the response; the head line names it and it shows beside the chat.
   const planId = planItemId(turn.id)
   const [userId, ...rest] = ids.filter((id) => id !== planId)
@@ -544,7 +547,7 @@ const TurnBlock = memo(function TurnBlock({ turn, ids, fill }: { turn: Turn; ids
   const { steps } = stageOf(parts[0]!.ids, running && parts.length === 1)
   const thoughts = hasThought(steps) && steps.every((id) => peekItem(id)?.type !== 'tool')
   return (
-    <article className={`turn${fill ? ' is-fill' : ''}`}>
+    <article ref={rootRef} className={`turn${fill ? ' is-fill' : ''}`}>
       {userId && <ItemRow id={userId} />}
       <div className="answer">
         <SourcesContext.Provider value={turn.sources}>
@@ -609,6 +612,8 @@ const sentTurns = new Map<string, string>()
 /** How near the top, in screens, the reader gets before the turns above are fetched. */
 const OLDER_MARGIN = 1.5
 
+const SCROLL_IDLE_MS = 140
+
 export function Transcript() {
   const turns = usePaneView((view) => view.turns)
   const turnItems = usePaneView((view) => view.turnItems)
@@ -616,9 +621,13 @@ export function Transcript() {
   const chatId = usePaneChatId()
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
+  const lastTurn = useRef<HTMLElement>(null)
   const pinned = useRef(true)
   // How far the reader is from the bottom, so turns put in above them leave them where they were.
   const fromBottom = useRef(0)
+  const [jump, setJump] = useState({ up: false, down: false })
+  const scrollIdle = useRef<number | null>(null)
+  const programmatic = useRef(false)
   // The turn just sent in this chat. It is made as tall as the view, so that scrolled to the
   // bottom its message sits at the top with the whole view beneath it free for the response.
   const [sentId, setSentId] = useState<string | null>(null)
@@ -647,10 +656,19 @@ export function Transcript() {
       element.style.setProperty('--turn-pad', `${padding}px`)
     }
     measure()
+    const syncJump = (): void => {
+      if (programmatic.current) return
+      setJump({ up: !isAtTop(element), down: !isAtBottom(element) })
+    }
     const onScroll = (): void => {
-      pinned.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80
+      pinned.current = isAtBottom(element, EDGE_TOLERANCE)
       fromBottom.current = element.scrollHeight - element.scrollTop
       nearTop()
+      if (scrollIdle.current) window.clearTimeout(scrollIdle.current)
+      scrollIdle.current = window.setTimeout(() => {
+        scrollIdle.current = null
+        syncJump()
+      }, SCROLL_IDLE_MS)
     }
     element.addEventListener('scroll', onScroll, { passive: true })
     const observer = new ResizeObserver(() => {
@@ -664,6 +682,7 @@ export function Transcript() {
     if (content.current) observer.observe(content.current)
     const detach = content.current ? attachZoom(element, content.current, () => pinned.current) : null
     return () => {
+      if (scrollIdle.current) window.clearTimeout(scrollIdle.current)
       element.removeEventListener('scroll', onScroll)
       observer.disconnect()
       detach?.()
@@ -684,27 +703,69 @@ export function Transcript() {
     // not long ago. The chat remembers it, so the layout is the same on coming back from another tab.
     const last = turns.at(-1)
     const sent = before.chatId === chatId && before.lastId !== lastId
+    if (before.chatId !== chatId && chatId && last?.status !== 'running') sentTurns.delete(chatId)
     if (chatId && last && (sent || last.status === 'running')) sentTurns.set(chatId, last.id)
+    else if (chatId && last?.status !== 'running') sentTurns.delete(chatId)
     setSentId((chatId && sentTurns.get(chatId)) || null)
   }, [chatId, firstId, lastId])
 
   useLayoutEffect(() => {
-    pinned.current = true
     const element = scroller.current
-    if (!element) return
-    element.scrollTop = element.scrollHeight
+    if (!element || !chatId) return
+    pinned.current = true
+    setJump({ up: false, down: false })
+    programmatic.current = true
+    const anchor = lastTurn.current
+    const stopFollow = followBottom(element, anchor, () => pinned.current)
     fromBottom.current = element.clientHeight
-    // A first page shorter than the view gives no scroll to start the next one.
     nearTop()
+    const unlock = window.setTimeout(() => { programmatic.current = false }, 400)
+    return () => {
+      stopFollow()
+      window.clearTimeout(unlock)
+    }
   }, [chatId, lastId, sentId])
 
+  const jumpTo = (where: 'top' | 'bottom'): void => {
+    const element = scroller.current
+    if (!element) return
+    programmatic.current = true
+    if (where === 'bottom') {
+      pinned.current = true
+      scrollToBottomSoon(element, lastTurn.current)
+      setJump((state) => ({ ...state, down: false }))
+    } else {
+      scrollToTopSoon(element)
+      setJump((state) => ({ ...state, up: false }))
+    }
+    window.setTimeout(() => { programmatic.current = false }, 400)
+  }
+
   return (
-    <div className="transcript" ref={scroller}>
-      <div className="transcript-inner" ref={content}>
-        {turns.map((turn) => (
-          <TurnBlock key={turn.id} turn={turn} ids={turnItems[turn.id] ?? NO_ITEMS} fill={turn.id === sentId} />
-        ))}
-        <Waiting />
+    <div className="transcript-shell">
+      {jump.up && (
+        <button type="button" className="transcript-jump is-top" aria-label="Scroll to top" onClick={() => jumpTo('top')}>
+          <ChevronUp size={16} aria-hidden />
+        </button>
+      )}
+      {jump.down && (
+        <button type="button" className="transcript-jump is-bottom" aria-label="Scroll to latest" onClick={() => jumpTo('bottom')}>
+          <ChevronDown size={16} aria-hidden />
+        </button>
+      )}
+      <div className="transcript" ref={scroller}>
+        <div className="transcript-inner" ref={content}>
+          {turns.map((turn, index) => (
+            <TurnBlock
+              key={turn.id}
+              turn={turn}
+              ids={turnItems[turn.id] ?? NO_ITEMS}
+              fill={turn.id === sentId}
+              rootRef={index === turns.length - 1 ? lastTurn : undefined}
+            />
+          ))}
+          <Waiting />
+        </div>
       </div>
     </div>
   )
