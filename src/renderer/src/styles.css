@@ -178,6 +178,12 @@ button {
 .light:active { filter: brightness(0.8); }
 
 /* A tab hanging from the window's top edge, one tone above the canvas. */
+.titlebar-center {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 40px;
+}
 .notch {
   --notch-fill: #151618;
   --notch-flare: 14px;

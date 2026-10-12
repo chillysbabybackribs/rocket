@@ -196,7 +196,6 @@ function UsageNotch() {
 
   return (
     <div className="notch">
-      <NotchSidePanel id="library" />
       <div className="notch-rings" aria-label="Subscription usage">
         {PROVIDERS.map(({ id, label }) => (
           <button
@@ -214,7 +213,6 @@ function UsageNotch() {
           </button>
         ))}
       </div>
-      <NotchSidePanel id="browser" />
       {hovered && <Flyout key={hovered.provider} provider={hovered.provider} usage={usage[hovered.provider]} at={hovered.at} keepOpen={keepOpen} hide={hide} />}
     </div>
   )
@@ -238,7 +236,7 @@ function Traffic() {
 
 /**
  * The strip above the cards: window lights at the start, the usage tab at the centre with Library
- * and Browser as plain text on its sides.
+ * and Browser icons outside its sides.
  */
 export function TitleStrip() {
   return (
@@ -246,7 +244,11 @@ export function TitleStrip() {
       <div className="titlebar-start">
         <Traffic />
       </div>
-      <UsageNotch />
+      <div className="titlebar-center">
+        <NotchSidePanel id="library" />
+        <UsageNotch />
+        <NotchSidePanel id="browser" />
+      </div>
     </header>
   )
 }

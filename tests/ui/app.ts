@@ -244,5 +244,5 @@ export function chatHistory(page: Page): Locator {
 /** Library or Browser beside the subscription usage tab in the title strip. */
 export async function section(page: Page, name: SectionName): Promise<Locator> {
   const id = name.toLowerCase()
-  return page.locator(`.notch [data-section="${id}"]`)
+  return page.locator(`.titlebar [data-section="${id}"]`)
 }
