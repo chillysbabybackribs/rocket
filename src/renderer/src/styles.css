@@ -240,6 +240,11 @@ button {
 }
 .notch-side:hover { background: var(--hover); }
 .notch-side.is-on { background: var(--selected); }
+.notch-side[data-section='browser'] {
+  background: none;
+  position: relative;
+  left: -4px;
+}
 .notch-side:is(:hover, :focus-visible, .is-on) .notch-icon {
   opacity: 1;
   filter: saturate(1);
