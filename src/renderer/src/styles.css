@@ -230,6 +230,7 @@ button {
   filter: saturate(0.65);
   transition: transform 350ms ease, opacity 180ms ease, filter 180ms ease;
 }
+.notch-icon-browser { border-radius: 50%; }
 .notch-side:hover { background: var(--hover); }
 .notch-side.is-on { background: var(--selected); }
 .notch-side:is(:hover, :focus-visible, .is-on) .notch-icon {
