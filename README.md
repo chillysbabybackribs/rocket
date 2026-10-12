@@ -20,7 +20,9 @@ running app (or starts one), which opens it as a chat link would: a page or HTML
 browser tab, a text file in the artifact panel. Mockups and reports made for you belong here,
 not in an outside browser.
 
-The title strip uses Orbit book and globe icons for Library and Browser, outside the left and
+The title strip has a 32px Linux penguin SVG at the top left, from
+[Icons8 Flat Color Icons](https://icon-sets.iconify.design/flat-color-icons/linux/).
+It uses Orbit book and Chromium icons for Library and Browser, outside the left and
 right edges of the subscription tab. Hover shows their tooltips; keyboard access and accessible names are preserved. The selected
 panel has a subtle filled background.
 The icons gently tilt on hover and keyboard focus, and respect reduced-motion preferences.

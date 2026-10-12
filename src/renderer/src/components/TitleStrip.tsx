@@ -7,6 +7,7 @@ import { accessibleName, labelOf, type SectionId } from '../toolbar.ts'
 import { ProviderGlyph } from './glyphs.tsx'
 import libraryOrbit from '../assets/header/library-orbit.png'
 import chromiumIcon from '../assets/header/chromium.png'
+import linuxIcon from '../assets/header/linux.svg'
 
 // The title strip: the usage notch with Library and Browser beside it, and window lights at the end
 // (docs/mockups/usage-in-titlebar.html). The notch is the app's signature: a black tab hanging from
@@ -241,7 +242,9 @@ function Traffic() {
 export function TitleStrip() {
   return (
     <header className="titlebar">
-      <div className="titlebar-start" aria-hidden="true" />
+      <div className="titlebar-start">
+        <img className="titlebar-linux" src={linuxIcon} width={32} height={32} alt="Linux" draggable={false} />
+      </div>
       <div className="titlebar-center">
         <NotchSidePanel id="library" />
         <UsageNotch />

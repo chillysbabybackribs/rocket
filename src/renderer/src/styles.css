@@ -145,6 +145,12 @@ button {
   height: var(--titlebar);
 }
 .titlebar-end { justify-content: flex-end; }
+.titlebar-linux {
+  display: block;
+  flex: none;
+  margin-left: 8px;
+  user-select: none;
+}
 
 .traffic {
   display: flex;
