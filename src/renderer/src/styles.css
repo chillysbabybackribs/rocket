@@ -198,13 +198,16 @@ button {
   flex: none;
 }
 .notch-side {
+  display: grid;
+  place-items: center;
   flex: none;
+  width: 36px;
   height: 32px;
-  padding: 0 8px;
+  padding: 0;
   background: none;
   border: 0;
   box-shadow: none;
-  border-radius: 0;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 510;
   color: var(--text-3);
@@ -214,6 +217,26 @@ button {
 .notch-side:hover { color: var(--text-2); }
 .notch-side.is-on { color: var(--text); }
 .notch-side:focus-visible { outline-offset: 2px; }
+.notch-icon {
+  display: block;
+  object-fit: contain;
+  opacity: 0.72;
+  filter: saturate(0.65);
+  transition: transform 350ms ease, opacity 180ms ease, filter 180ms ease;
+}
+.notch-side:hover { background: var(--hover); }
+.notch-side.is-on { background: var(--selected); }
+.notch-side:is(:hover, :focus-visible, .is-on) .notch-icon {
+  opacity: 1;
+  filter: saturate(1);
+}
+.notch-side:is(:hover, :focus-visible) .notch-icon-library { transform: translateY(-1px) rotate(-4deg); }
+.notch-side:is(:hover, :focus-visible) .notch-icon-browser { transform: rotate(12deg); }
+.notch-side:active .notch-icon { transform: scale(0.92); }
+@media (prefers-reduced-motion: reduce) {
+  .notch-icon { transition: none; }
+  .notch-side:is(:hover, :focus-visible, :active) .notch-icon { transform: none; }
+}
 /* The flares where the tab meets the edge: a quarter-circle cut out of a filled square. */
 .notch::before,
 .notch::after {

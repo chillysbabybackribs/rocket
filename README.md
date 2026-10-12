@@ -20,6 +20,11 @@ running app (or starts one), which opens it as a chat link would: a page or HTML
 browser tab, a text file in the artifact panel. Mockups and reports made for you belong here,
 not in an outside browser.
 
+The title strip uses Orbit book and globe icons for Library and Browser, beside the subscription
+meters. Hover shows their tooltips; keyboard access and accessible names are preserved. The selected
+panel has a subtle filled background.
+The icons gently tilt on hover and keyboard focus, and respect reduced-motion preferences.
+
 Each provider runs through its own CLI, signed in with your own account. Install and sign in to
 the ones you want: `claude`, `codex`, `cursor-agent`, `agy`.
 

@@ -5,6 +5,8 @@ import { go } from '../app-map.ts'
 import { refreshUsage, setBrowserOpen, setLibraryOpen, sideShown, useApp } from '../store.ts'
 import { accessibleName, labelOf, type SectionId } from '../toolbar.ts'
 import { ProviderGlyph } from './glyphs.tsx'
+import libraryOrbit from '../assets/header/library-orbit.png'
+import browserOrbit from '../assets/header/browser-orbit.png'
 
 // The title strip: window lights and the usage notch with Library and Browser beside it
 // (docs/mockups/usage-in-titlebar.html). The notch is the app's signature: a black tab hanging from
@@ -164,7 +166,8 @@ function NotchSidePanel({ id }: { id: SectionId }) {
       title={`${on ? 'Hide' : 'Show'} ${label}`}
       onClick={toggle}
     >
-      {label}
+      <img className={`notch-icon notch-icon-${id}`} src={id === 'library' ? libraryOrbit : browserOrbit}
+        width={28} height={28} alt="" aria-hidden draggable={false} />
     </button>
   )
 }
