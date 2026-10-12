@@ -613,6 +613,8 @@ const sentTurns = new Map<string, string>()
 const OLDER_MARGIN = 1.5
 
 const SCROLL_IDLE_MS = 140
+/** Jump buttons hide again after this long without a manual scroll. */
+const JUMP_HIDE_MS = 2_500
 
 export function Transcript() {
   const turns = usePaneView((view) => view.turns)
@@ -627,7 +629,11 @@ export function Transcript() {
   const fromBottom = useRef(0)
   const [jump, setJump] = useState({ up: false, down: false })
   const scrollIdle = useRef<number | null>(null)
+  const hideJump = useRef<number | null>(null)
   const programmatic = useRef(false)
+  const manualScroll = useRef(false)
+  const manualUpScroll = useRef(false)
+  const lastScrollTop = useRef(0)
   // The turn just sent in this chat. It is made as tall as the view, so that scrolled to the
   // bottom its message sits at the top with the whole view beneath it free for the response.
   const [sentId, setSentId] = useState<string | null>(null)
@@ -656,18 +662,37 @@ export function Transcript() {
       element.style.setProperty('--turn-pad', `${padding}px`)
     }
     measure()
-    const syncJump = (): void => {
-      if (programmatic.current) return
-      setJump({ up: !isAtTop(element), down: !isAtBottom(element) })
+    lastScrollTop.current = element.scrollTop
+    const refreshJump = (): void => {
+      setJump({
+        up: manualUpScroll.current && !isAtTop(element),
+        down: manualScroll.current && !isAtBottom(element),
+      })
+    }
+    const armJumpHide = (): void => {
+      if (hideJump.current) window.clearTimeout(hideJump.current)
+      hideJump.current = window.setTimeout(() => {
+        hideJump.current = null
+        manualScroll.current = false
+        manualUpScroll.current = false
+        setJump({ up: false, down: false })
+      }, JUMP_HIDE_MS)
     }
     const onScroll = (): void => {
       pinned.current = isAtBottom(element, EDGE_TOLERANCE)
       fromBottom.current = element.scrollHeight - element.scrollTop
       nearTop()
+      if (!programmatic.current) {
+        if (element.scrollTop < lastScrollTop.current - 1) manualUpScroll.current = true
+        manualScroll.current = true
+        lastScrollTop.current = element.scrollTop
+        refreshJump()
+        armJumpHide()
+      }
       if (scrollIdle.current) window.clearTimeout(scrollIdle.current)
       scrollIdle.current = window.setTimeout(() => {
         scrollIdle.current = null
-        syncJump()
+        if (manualScroll.current || manualUpScroll.current) refreshJump()
       }, SCROLL_IDLE_MS)
     }
     element.addEventListener('scroll', onScroll, { passive: true })
@@ -683,6 +708,7 @@ export function Transcript() {
     const detach = content.current ? attachZoom(element, content.current, () => pinned.current) : null
     return () => {
       if (scrollIdle.current) window.clearTimeout(scrollIdle.current)
+      if (hideJump.current) window.clearTimeout(hideJump.current)
       element.removeEventListener('scroll', onScroll)
       observer.disconnect()
       detach?.()
@@ -713,7 +739,13 @@ export function Transcript() {
     const element = scroller.current
     if (!element || !chatId) return
     pinned.current = true
+    manualScroll.current = false
+    manualUpScroll.current = false
     setJump({ up: false, down: false })
+    if (hideJump.current) {
+      window.clearTimeout(hideJump.current)
+      hideJump.current = null
+    }
     programmatic.current = true
     const anchor = lastTurn.current
     const stopFollow = followBottom(element, anchor, () => pinned.current)
@@ -732,11 +764,18 @@ export function Transcript() {
     programmatic.current = true
     if (where === 'bottom') {
       pinned.current = true
+      manualScroll.current = false
+      manualUpScroll.current = false
       scrollToBottomSoon(element, lastTurn.current)
-      setJump((state) => ({ ...state, down: false }))
+      setJump({ up: false, down: false })
     } else {
       scrollToTopSoon(element)
+      manualUpScroll.current = false
       setJump((state) => ({ ...state, up: false }))
+    }
+    if (hideJump.current) {
+      window.clearTimeout(hideJump.current)
+      hideJump.current = null
     }
     window.setTimeout(() => { programmatic.current = false }, 400)
   }
