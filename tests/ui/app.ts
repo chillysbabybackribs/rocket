@@ -234,10 +234,15 @@ export const test = base.extend<{ rocket: Rocket }>({
 
 export { expect }
 
-export type SectionName = 'Chats' | 'Library' | 'Browser'
+export type SectionName = 'Library' | 'Browser'
+
+/** Chat history beside the composer (top right above the message box). */
+export function chatHistory(page: Page): Locator {
+  return page.getByRole('button', { name: 'Chats', exact: true })
+}
 
 /**
- * A toolbar section's button: the only way to Chats, Library and Browser. A section
+ * A toolbar section's button: the way to Library and Browser. A section
  * in the closed Sections drawer is reached by opening the drawer first.
  */
 export async function section(page: Page, name: SectionName): Promise<Locator> {

@@ -4,11 +4,10 @@
 // map and what a screen reader hears all keep the real name, so a model asked to open the evals
 // still finds them.
 
-export type SectionId = 'chats' | 'library' | 'browser'
+export type SectionId = 'library' | 'browser'
 
-/** Menus open a list under their button; panels take the side column, one at a time. */
-export const SECTIONS: Record<SectionId, { name: string; kind: 'menu' | 'panel' }> = {
-  chats: { name: 'Chats', kind: 'menu' },
+/** Panels take the side column, one at a time. Chat history lives beside the composer (History.tsx). */
+export const SECTIONS: Record<SectionId, { name: string; kind: 'panel' }> = {
   library: { name: 'Library', kind: 'panel' },
   browser: { name: 'Browser', kind: 'panel' }
 }

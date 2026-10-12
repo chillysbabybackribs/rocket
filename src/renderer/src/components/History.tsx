@@ -1,11 +1,12 @@
-import { Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { History as HistoryIcon, Trash2 } from 'lucide-react'
 import type { Chat } from '../../../shared/types.ts'
 import { act } from '../app-map.ts'
 import { deleteChat, focusedChatId, useApp } from '../store.ts'
 
-// Every chat, newest first, in a menu that opens from the toolbar's Chats section. Picking one
-// opens it as a tab. The toolbar keeps the menu inside the chat card, so it never reaches the
-// browser (a native view that would paint on top of it).
+// Every chat, newest first, in a menu beside the composer. Picking one opens it as a tab. The
+// popup stays inside the chat card, so it never reaches the browser (a native view that would
+// paint on top of it).
 
 function groupOf(chat: Chat, now: number): string {
   const days = Math.floor((startOfDay(now) - startOfDay(chat.updatedAt)) / 86_400_000)
@@ -68,6 +69,52 @@ export function HistoryMenu({ onPick }: { onPick: () => void }) {
           ))}
         </section>
       ))}
+    </div>
+  )
+}
+
+/** History icon above the composer, top right; opens {@link HistoryMenu}. */
+export function ChatHistoryButton() {
+  const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (event: PointerEvent): void => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        setOpen(false)
+      }
+    }
+    window.addEventListener('pointerdown', onPointer)
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      window.removeEventListener('pointerdown', onPointer)
+      window.removeEventListener('keydown', onKey, true)
+    }
+  }, [open])
+
+  return (
+    <div className="composer-history-wrap" ref={root}>
+      <button
+        type="button"
+        className={`composer-history${open ? ' is-on' : ''}`}
+        aria-label="Chats"
+        title="Chat history"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((was) => !was)}
+      >
+        <HistoryIcon size={16} aria-hidden />
+      </button>
+      {open && (
+        <div className="composer-history-pop">
+          <HistoryMenu onPick={() => setOpen(false)} />
+        </div>
+      )}
     </div>
   )
 }

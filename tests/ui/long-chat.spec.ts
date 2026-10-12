@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { test, expect, section } from './app'
+import { test, expect, chatHistory } from './app'
 import { seedLongChat, type LongChat } from '../fixtures/long-chat'
 
 // The window's half of the long-chat benchmark: chats of real and larger sizes are written into
@@ -91,7 +91,7 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
   const shown = (): Promise<number> => page.locator('.pane').first().locator('.turn').count()
 
   const openFromHistory = async (title: string, newest: number): Promise<Phase> => {
-    await (await section(page, 'Chats')).click()
+    await chatHistory(page).click()
     await expect(page.getByRole('menu', { name: 'Chat history' })).toBeVisible()
     return await measure({ click: '[role="menuitem"]', text: title }, { newest })
   }

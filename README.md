@@ -100,7 +100,7 @@ by side, three as two above one, four as quadrants. A new pane opens on the new-
 takes the focus. Each pane is a whole chat with its own tabs, transcript, composer, folder and
 model, and a turn streams into every pane that shows its chat.
 
-The focused pane is the one last clicked or typed in: the Chats menu opens chats there, Ctrl+1–4
+The focused pane is the one last clicked or typed in: chat history opens chats there, Ctrl+1–4
 picks its provider, and its chat is marked in the history. Closing a pane's last tab closes the
 pane (the only pane shows the new-chat screen instead). The plan drawer shows only while the chat
 has the card to itself. Panes and tabs come back after a restart.
@@ -118,8 +118,8 @@ ring per provider and its percentage. The notch stays centred until the toolbar 
 then moves right. Hovering a ring opens its flyout (each limit, when it resets, refresh).
 
 The toolbar (`Toolbar.tsx`, design in `docs/mockups/titlebar-nav-drawer-mac.html`) is Mac-style.
-Its Sections icon slides out a drawer with the app's sections by name: Chats opens its menu, and
-Library and Browser show or hide the side column. The drawer's last button, or a
+Its Sections icon slides out a drawer with the app's sections by name; Library and Browser show or
+hide the side column. Chat history is a history icon above the composer, top right. The drawer's last button, or a
 right-click on the icon, opens Customize: rename a section, drag it (or use the arrow keys on its
 handle) to reorder, and choose **Keep** (always in the toolbar) or **Consolidate** (drawer only).
 A renamed section keeps its real name for screen readers and the app map. Choices persist

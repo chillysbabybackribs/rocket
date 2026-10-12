@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { test, expect, section } from './app'
+import { test, expect, chatHistory } from './app'
 import { seedLongChat } from '../fixtures/long-chat'
 
 // Ctrl + wheel zooms the transcript (src/renderer/src/transcript-zoom.ts): it eases through
@@ -10,7 +10,7 @@ test('ctrl + wheel zooms the transcript smoothly around the pointer', async ({ r
   seedLongChat(join(rocket.profile, 'rocket.db'), { turns: 20, cwd: rocket.workspace, title, seed: 3 })
   await rocket.restart()
   const { page } = rocket
-  await (await section(page, 'Chats')).click()
+  await chatHistory(page).click()
   await page.getByRole('menuitem').filter({ hasText: title }).first().click()
   const scroller = page.locator('.pane').first().locator('.transcript')
   await expect(scroller.locator('.turn').first()).toBeVisible()

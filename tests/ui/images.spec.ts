@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { test, expect, section } from './app'
+import { test, expect, chatHistory, section } from './app'
 import { jpegBase64 } from '../fixtures/image'
 import { pdfBytes } from '../fixtures/pdf'
 
@@ -219,7 +219,7 @@ test('an attachment is copied to another chat by menu or drag, saved, revealed, 
 
   // Deleting the chat the file came from leaves the copy usable, across a restart.
   page.once('dialog', dialog => void dialog.accept())
-  await (await section(page, 'Chats')).click()
+  await chatHistory(page).click()
   await page.locator('.chat-row').filter({ hasText: 'Here is the brief' }).hover()
   await page.getByRole('button', { name: 'Delete chat: Here is the brief' }).click()
   await rocket.restart()

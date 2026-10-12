@@ -571,7 +571,7 @@ body.is-resizing * {
 
 /* ── Chat history ──────────────────────────────────────────────────── */
 
-/* Drawn in a toolbar popup (Toolbar.tsx), which places it under its section. */
+/* Drawn beside the composer (History.tsx) or in a toolbar popup. */
 .history-menu {
   width: 300px;
   max-height: min(520px, calc(100vh - 96px));
@@ -964,6 +964,40 @@ button.tool-line:not(:disabled):hover { color: var(--text); }
   margin: 0 auto;
 }
 .composer-group:focus-within { --edge: var(--composer-line-focus); }
+.composer-tabs-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+.composer-tabs-row .tabs {
+  flex: 1;
+  min-width: 0;
+  padding-right: 0;
+}
+.composer-history-wrap {
+  position: relative;
+  flex: none;
+  margin: 0 10px 5px 0;
+}
+.composer-history {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: var(--text-3);
+}
+.composer-history:not(:disabled):hover,
+.composer-history.is-on {
+  background: var(--hover);
+  color: var(--text);
+}
+.composer-history-pop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 50;
+}
 .composer {
   position: relative;
   background: var(--composer);

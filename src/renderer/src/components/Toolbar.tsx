@@ -1,13 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Globe, GripVertical, History as HistoryIcon, LayoutGrid, LibraryBig, SlidersHorizontal, type LucideIcon } from 'lucide-react'
+import { Check, Globe, GripVertical, LayoutGrid, LibraryBig, SlidersHorizontal, type LucideIcon } from 'lucide-react'
 import { go } from '../app-map.ts'
 import { patchToolbar, resetToolbar, setBrowserOpen, setLibraryOpen, sideShown, useApp } from '../store.ts'
 import { accessibleName, arrange, labelOf, moveSection, rename, SECTIONS, setKept, type SectionId } from '../toolbar.ts'
-import { HistoryMenu } from './History.tsx'
+const ICONS: Record<SectionId, LucideIcon> = { library: LibraryBig, browser: Globe }
 
-const ICONS: Record<SectionId, LucideIcon> = { chats: HistoryIcon, library: LibraryBig, browser: Globe }
-
-type Popup = { kind: 'menu'; id: SectionId; left: number } | { kind: 'customize'; left: number } | { kind: 'context'; left: number } | null
+type Popup = { kind: 'customize'; left: number } | { kind: 'context'; left: number } | null
 type Opener = (popup: Popup) => void
 
 function leftOf(element: HTMLElement): number {
@@ -31,31 +29,12 @@ function InsideChat({ left, className, children, ...rest }: React.HTMLAttributes
   return <div ref={ref} className={`tb-popup ${className ?? ''}`} style={{ left }} {...rest}>{children}</div>
 }
 
-function Section({ id, popup, setPopup, tabbable = true }: { id: SectionId; popup: Popup; setPopup: Opener; tabbable?: boolean }) {
+function Section({ id, setPopup, tabbable = true }: { id: SectionId; popup: Popup; setPopup: Opener; tabbable?: boolean }) {
   const toolbar = useApp((state) => state.toolbar)
   const side = useApp(sideShown)
   const label = labelOf(toolbar, id)
   const name = accessibleName(toolbar, id)
   const tabIndex = tabbable ? undefined : -1
-
-  if (SECTIONS[id].kind === 'menu') {
-    const open = popup?.kind === 'menu' && popup.id === id
-    return (
-      <button
-        type="button"
-        className={`tb-item${open ? ' is-on' : ''}`}
-        data-section={id}
-        aria-label={name}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        tabIndex={tabIndex}
-        onClick={(event) => setPopup(open ? null : { kind: 'menu', id, left: leftOf(event.currentTarget) })}
-      >
-        <span>{label}</span>
-        <ChevronDown size={12} className="tb-chev" aria-hidden />
-      </button>
-    )
-  }
 
   const on = side === id
   const toggle = (): void => {
@@ -277,11 +256,6 @@ export function Toolbar() {
         <div className="tb-glass tb-kept">
           {kept.map((id) => <Section key={id} id={id} popup={popup} setPopup={setPopup} />)}
         </div>
-      )}
-      {popup?.kind === 'menu' && popup.id === 'chats' && (
-        <InsideChat key={popup.id} left={popup.left}>
-          <HistoryMenu onPick={close} />
-        </InsideChat>
       )}
       {popup?.kind === 'customize' && <Customize left={popup.left} close={close} />}
       {popup?.kind === 'context' && <ContextMenu left={popup.left} setPopup={setPopup} />}

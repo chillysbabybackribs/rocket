@@ -8,6 +8,7 @@ import { usePane, usePaneChatId, usePaneView } from '../pane.ts'
 import { act } from '../app-map.ts'
 import { MAX_PANES, chooseFolder, cwdOf, paneAt, prepare, send, setProvider, stop, useApp } from '../store.ts'
 import { ModelPicker } from './ModelPicker.tsx'
+import { ChatHistoryButton } from './History.tsx'
 import { Tabs } from './Tabs.tsx'
 
 const MAX_HEIGHT = 260
@@ -95,7 +96,10 @@ export function Composer({ placeholder }: { placeholder: string }) {
 
   return (
     <div className="composer-group">
-      <Tabs />
+      <div className="composer-tabs-row">
+        <Tabs />
+        <ChatHistoryButton />
+      </div>
       <div className="composer">
         <Attachments attachments={attachments} fresh={draft.fresh} onRemove={id => { if (!draft.sending) updateDraft(draftKey, { attachments: attachments.filter(each => each.id !== id) }) }} />
         <div className="composer-entry">

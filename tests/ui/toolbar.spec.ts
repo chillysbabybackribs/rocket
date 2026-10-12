@@ -21,7 +21,7 @@ test('the sections drawer opens, customizes, and keeps its choices after a resta
     await rocket.capture('toolbar-open')
   })
 
-  await test.step('The Chats menu opens under its name and stays inside the chat card', async () => {
+  await test.step('Chat history opens beside the composer and stays inside the chat card', async () => {
     await page.getByRole('button', { name: 'Chats', exact: true }).click()
     const menu = page.getByRole('menu', { name: 'Chat history' })
     await expect(menu).toBeVisible()
@@ -32,20 +32,20 @@ test('the sections drawer opens, customizes, and keeps its choices after a resta
     await expect(menu).toHaveCount(0)
   })
 
-  await test.step('Customize renames Chats and keeps Browser in the toolbar', async () => {
+  await test.step('Customize renames Library and keeps Browser in the toolbar', async () => {
     await page.getByRole('button', { name: 'Customize sections…', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Customize sections' })
     await expect(dialog).toBeVisible()
-    await dialog.getByRole('textbox', { name: 'Name for Chats' }).fill('History')
-    await expect(dialog).toContainText('was Chats')
+    await dialog.getByRole('textbox', { name: 'Name for Library' }).fill('Files')
+    await expect(dialog).toContainText('was Library')
     await dialog.locator('[data-section="browser"]').getByRole('radio', { name: 'Keep' }).click()
     await rocket.capture('toolbar-customize')
     await dialog.getByRole('button', { name: 'Done', exact: true }).click()
     await expect(dialog).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'History (Chats)', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Files (Library)', exact: true })).toBeVisible()
     await sections.click()
     await expect(sections).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.getByRole('button', { name: 'History (Chats)', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Files (Library)', exact: true })).toHaveCount(0)
     await expect(browserTab).toBeVisible()
     await rocket.capture('toolbar-kept')
   })
@@ -59,7 +59,7 @@ test('the sections drawer opens, customizes, and keeps its choices after a resta
     await page.getByRole('menuitem', { name: 'Customize Sections…' }).click()
     const dialog = page.getByRole('dialog', { name: 'Customize sections' })
     await dialog.getByRole('button', { name: 'Restore Defaults', exact: true }).click()
-    await expect(dialog.getByRole('textbox', { name: 'Name for Chats' })).toHaveValue('Chats')
+    await expect(dialog.getByRole('textbox', { name: 'Name for Library' })).toHaveValue('Library')
     await page.keyboard.press('Escape')
     await expect(browserTab).toHaveCount(0)
   })

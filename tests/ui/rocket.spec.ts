@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect, section } from './app'
+import { test, expect, chatHistory, section } from './app'
 import { assertOverlay, nativeViews } from './safeguards'
 
 test('Rocket desktop self-check', async ({ rocket }) => {
@@ -34,7 +34,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await message.pressSequentially('Second line')
     await expect(message).toHaveValue('Draft first line\nSecond line')
     await expect(send).toBeEnabled()
-    await (await section(page, 'Chats')).click()
+    await chatHistory(page).click()
     await expect(page.getByRole('menu', { name: 'Chat history' })).toContainText('Your chats will appear here.')
     await page.keyboard.press('Escape')
     await provider('Codex')
@@ -138,7 +138,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await expect(message).toHaveValue('Draft in existing chat')
     await page.getByRole('button', { name: 'Close tab: UI check: stream', exact: true }).click()
     await expect(message).toHaveValue('Draft in new chat')
-    await (await section(page, 'Chats')).click()
+    await chatHistory(page).click()
     await page.getByRole('menuitem', { name: 'UI check: stream', exact: true }).click()
     await expect(page.locator('.turn')).toHaveCount(5)
     await expect(message).toHaveValue('Draft in existing chat')
