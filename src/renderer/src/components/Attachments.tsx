@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { X } from 'lucide-react'
 import { isFileAttachment, type Attachment, type FileAttachment, type ImageAttachment } from '../../../shared/types.ts'
 import { call } from '../host.ts'
 import { ATTACHMENT_DRAG_TYPE } from '../drafts.ts'
 import { openAttachment, useApp } from '../store.ts'
 import { AttachmentMenu } from './AttachmentMenu.tsx'
+import { NativeOverlay } from './NativeOverlay.tsx'
 
 type MenuRequest = { point: { x: number; y: number } | null; at: number } | null
 /** Right-click, Shift+F10 or the context-menu key on a tile opens the same menu as its ⋯ button. */
@@ -21,42 +22,36 @@ export function useMenuRequest() {
   }
 }
 
-// Electron's native browser view must hide while a renderer dialog (an image preview, a capture) is open.
-let previewOpen = false
-const previewListeners = new Set<() => void>()
-export function setPreviewOpen(open: boolean): void {
-  previewOpen = open
-  for (const notify of previewListeners) notify()
-}
-export function useImagePreviewOpen(): boolean {
-  return useSyncExternalStore(listener => { previewListeners.add(listener); return () => { previewListeners.delete(listener) } }, () => previewOpen)
+/** The original image stays in a native modal above the live browser page. */
+export function useImagePreview(image: ImageAttachment) {
+  const [opened, setOpened] = useState(false)
+  return {
+    open: async () => { setOpened(true) },
+    dialog: opened ? <NativeOverlay slot="modal" onDismiss={() => setOpened(false)}>
+      <ImagePreview image={image} onClose={() => setOpened(false)} />
+    </NativeOverlay> : null
+  }
 }
 
-/**
- * The full-size viewer an image opens in, shared by attached and generated pictures: a modal
- * dialog that loads the stored original when opened. `open` shows it; `dialog` is its element.
- */
-export function useImagePreview(image: ImageAttachment) {
+function ImagePreview({ image, onClose }: { image: ImageAttachment; onClose: () => void }) {
   const [full, setFull] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
-    const element = ref.current
-    return () => { if (element?.open) setPreviewOpen(false) }
-  }, [image.id])
-  const open = async (): Promise<void> => {
-    setPreviewOpen(true)
+    let active = true
     ref.current?.showModal()
-    try { setFull(await call('attachment.read', { id: image.id })) }
-    catch (reason) { setError(reason instanceof Error ? reason.message : 'This image could not be opened.') }
-  }
-  const dialog = (
-    <dialog ref={ref} className="image-preview" aria-label={`Image preview: ${image.name}`} onClick={event => { if (event.target === event.currentTarget) ref.current?.close() }} onClose={() => { setFull(null); setPreviewOpen(false) }}>
-      <div className="image-preview-bar"><span>{image.name}</span><button type="button" aria-label="Close image preview" onClick={() => ref.current?.close()}><X size={18} /></button></div>
+    void call('attachment.read', { id: image.id }).then(
+      value => { if (active) setFull(value) },
+      reason => { if (active) setError(reason instanceof Error ? reason.message : 'This image could not be opened.') }
+    )
+    return () => { active = false }
+  }, [image.id])
+  return (
+    <dialog ref={ref} className="image-preview" aria-label={`Image preview: ${image.name}`} onClick={event => { if (event.target === event.currentTarget) onClose() }} onClose={onClose}>
+      <div className="image-preview-bar"><span>{image.name}</span><button type="button" aria-label="Close image preview" onClick={onClose}><X size={18} /></button></div>
       {full ? <img src={full} alt={image.name} /> : <p>{error ?? 'Loading image…'}</p>}
     </dialog>
   )
-  return { open, dialog }
 }
 
 function ImageTile({ image, remove, fresh }: { image: ImageAttachment; remove?: () => void; fresh?: boolean }) {

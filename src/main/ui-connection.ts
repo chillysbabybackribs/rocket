@@ -1,3 +1,4 @@
+import { nativeSurfaceKind } from './native-layers.ts'
 import { app, WebContentsView, type BrowserWindow, type WebContents } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -20,7 +21,7 @@ export async function liveUiConnection(window: BrowserWindow): Promise<LiveUiCon
   const surfaces: LiveUiConnection['surfaces'] = { shell: await targetId(window.webContents) }
   for (const view of window.contentView.children) {
     if (!(view instanceof WebContentsView) || !view.getVisible()) continue
-    const kind = view.webContents.getURL().endsWith('/suggest.html') ? 'suggestions' : 'browser'
+    const kind = nativeSurfaceKind(view)
     surfaces[kind] = await targetId(view.webContents)
   }
   return { endpoint: `ws://127.0.0.1:${port}${path}`, pid: process.pid, surfaces }

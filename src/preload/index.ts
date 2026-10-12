@@ -19,6 +19,10 @@ function listen<T>(channel: string, listener: (value: T) => void): () => void {
 }
 
 const bridge: RocketBridge = {
+  overlay: {
+    send: command => ipcRenderer.invoke('rocket:overlay', command),
+    onDismiss: listener => listen('rocket:overlay-dismiss', listener)
+  },
   requestHostPort: () => ipcRenderer.send('rocket:request-host-port'),
   window: {
     minimize: () => ipcRenderer.send('rocket:window', 'minimize'),

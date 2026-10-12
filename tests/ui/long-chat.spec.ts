@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { test, expect, chatHistory } from './app'
+import { overlay, test, expect, chatHistory } from './app'
 import { seedLongChat, type LongChat } from '../fixtures/long-chat'
 
 // The window's half of the long-chat benchmark: chats of real and larger sizes are written into
@@ -54,8 +54,15 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
   // the newest reply, more turns than before, or the chat's first turn. Reaching the first turn
   // scrolls to the top on every frame, as a reader would, until the last page is in.
   type Until = { newest: number } | { more: number } | 'first'
-  const measure = (act: { click: string; text: string } | 'top', until: Until): Promise<Phase> => page.evaluate(async ({ act, until }) => {
-    const w = window as unknown as { tasks: number[][] }
+  const measure = async (act: { click: string; text: string } | 'top', until: Until): Promise<Phase> => {
+    const target = act !== 'top' && act.click.includes('menuitem') ? await overlay(page, 'menu') : page
+    return target.evaluate(async ({ act, until }) => {
+    const actionDocument = window.document
+    const shell = (window.opener as Window | null) ?? window
+    const document = shell.document
+    const performance = shell.performance
+    const requestAnimationFrame = shell.requestAnimationFrame.bind(shell)
+    const w = shell as unknown as { tasks: number[][] }
     const frame = (): Promise<void> => new Promise((done) => requestAnimationFrame(() => done()))
     const pane = (): Element => document.querySelector('.pane')!
     const top = (): void => { pane().querySelector('.transcript')!.scrollTop = 0 }
@@ -72,7 +79,7 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
     const offset = (): number => anchor && scroller ? anchor.getBoundingClientRect().top - scroller.getBoundingClientRect().top : 0
     if (act === 'top') top()
     else {
-      const element = [...document.querySelectorAll(act.click)].find((candidate) => candidate.textContent?.includes(act.text))
+      const element = [...actionDocument.querySelectorAll(act.click)].find((candidate) => candidate.textContent?.includes(act.text))
       if (!element) throw new Error(`Nothing matches ${act.click} with "${act.text}".`)
       ;(element as HTMLElement).click()
     }
@@ -87,12 +94,13 @@ test('long chats open, switch and scroll within budget', async ({ rocket }) => {
     const end = performance.now()
     const longest = w.tasks.filter(([at, duration]) => at + duration >= start && at <= end).reduce((max, [, duration]) => Math.max(max, duration), 0)
     return { ms: Math.round(end - start), longestTaskMs: Math.round(longest), shiftPx: Math.round(Math.abs(offset() - placed)) }
-  }, { act, until })
+    }, { act, until })
+  }
   const shown = (): Promise<number> => page.locator('.pane').first().locator('.turn').count()
 
   const openFromHistory = async (title: string, newest: number): Promise<Phase> => {
     await chatHistory(page).click()
-    await expect(page.getByRole('menu', { name: 'Chat history' })).toBeVisible()
+    await expect((await overlay(page, 'menu')).getByRole('menu', { name: 'Chat history' })).toBeVisible()
     return await measure({ click: '[role="menuitem"]', text: title }, { newest })
   }
 

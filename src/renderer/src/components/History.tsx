@@ -1,3 +1,4 @@
+import { NativeOverlay, anchoredOverlay } from './NativeOverlay.tsx'
 import { useEffect, useRef, useState } from 'react'
 import { History as HistoryIcon, Trash2 } from 'lucide-react'
 import type { Chat } from '../../../shared/types.ts'
@@ -5,8 +6,7 @@ import { act } from '../app-map.ts'
 import { deleteChat, focusedChatId, useApp } from '../store.ts'
 
 // Every chat, newest first, in a menu beside the composer. Picking one opens it as a tab. The
-// popup stays inside the chat card, so it never reaches the browser (a native view that would
-// paint on top of it).
+// popup uses a native view so it can extend across the browser when space is tight.
 
 function groupOf(chat: Chat, now: number): string {
   const days = Math.floor((startOfDay(now) - startOfDay(chat.updatedAt)) / 86_400_000)
@@ -111,9 +111,11 @@ export function ChatHistoryButton() {
         <HistoryIcon size={16} aria-hidden />
       </button>
       {open && (
-        <div className="composer-history-pop">
-          <HistoryMenu onPick={() => setOpen(false)} />
-        </div>
+        <NativeOverlay anchor={root.current} place={size => anchoredOverlay(root.current, size, true)} onDismiss={() => setOpen(false)}>
+          <div className="composer-history-pop">
+            <HistoryMenu onPick={() => setOpen(false)} />
+          </div>
+        </NativeOverlay>
       )}
     </div>
   )

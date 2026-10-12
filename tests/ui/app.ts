@@ -189,10 +189,10 @@ export const test = base.extend<{ rocket: Rocket }>({
         await info.attach(`${name}: app shell`, { path: shell, contentType: 'image/png' })
         const views = await app!.evaluate(({ BrowserWindow, WebContentsView }) => BrowserWindow.getAllWindows()[0].contentView.children
           .filter(view => view instanceof WebContentsView && view.getVisible())
-          .map(view => ({ url: (view as InstanceType<typeof WebContentsView>).webContents.getURL(), bounds: view.getBounds() })))
+          .map(view => ({ url: (view as InstanceType<typeof WebContentsView>).webContents.getURL(), title: (view as InstanceType<typeof WebContentsView>).webContents.getTitle(), bounds: view.getBounds() })))
         await info.attach(`${name}: native view layout`, { body: JSON.stringify(views, null, 2), contentType: 'application/json' })
         for (const [index, view] of views.entries()) {
-          const target = app!.context().pages().find(candidate => candidate.url() === view.url)
+          const target = (await Promise.all(app!.context().pages().map(async candidate => ({ candidate, title: await candidate.title() })))).find(item => item.candidate.url() === view.url && item.title === view.title)?.candidate
           if (!target || target === page) continue
           const path = info.outputPath(`${name}-view-${index}.png`)
           await target.screenshot({ path })
@@ -245,4 +245,16 @@ export function chatHistory(page: Page): Locator {
 export async function section(page: Page, name: SectionName): Promise<Locator> {
   const id = name.toLowerCase()
   return page.locator(`.titlebar [data-section="${id}"]`)
+}
+
+/** The shell's same-origin React portals live in these native documents. */
+export async function overlay(page: Page, slot: 'menu' | 'modal' | 'flyout' | 'notice'): Promise<Page> {
+  const find = async () => {
+    for (const candidate of page.context().pages()) {
+      if (!candidate.isClosed() && await candidate.title() === `Rocket overlay: ${slot}`) return candidate
+    }
+    return null
+  }
+  await expect.poll(async () => !!await find()).toBe(true)
+  return (await find())!
 }

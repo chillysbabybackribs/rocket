@@ -6,6 +6,7 @@ import { App } from './App.tsx'
 import { rocketMap } from './app-map.ts'
 import { call } from './host.ts'
 import { start } from './store.ts'
+import { warmOverlays } from './components/NativeOverlay.tsx'
 
 // Main runs the app map's dispatcher here for the host's rocket_ui_where / go / act tools.
 window.rocketMap = rocketMap
@@ -23,4 +24,5 @@ window.addEventListener('error', (event) => report(event.error ?? event.message)
 window.addEventListener('unhandledrejection', (event) => report(event.reason))
 
 start()
+warmOverlays()
 createRoot(document.getElementById('root')!).render(<App />)

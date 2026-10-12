@@ -1,3 +1,4 @@
+import { registerLayer, raiseLayers } from './native-layers.ts'
 import { WebContentsView, type BrowserWindow, type ContextMenuParams, type MenuItemConstructorOptions, type Rectangle, type WebContents } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
@@ -201,7 +202,7 @@ export class PageFill {
 
   /** Keep the chip above a tab's view that was just added to the window. */
   raise(): void {
-    if (this.view) this.window.contentView.addChildView(this.view)
+    if (this.view) raiseLayers(this.window)
   }
 
   /** Put the chip by its field, or out of sight when that tab is not on screen. */
@@ -340,7 +341,7 @@ export class PageFill {
     // Transparent, so the room around the chip (its shadow, a dropdown's) shows the page through.
     view.setBackgroundColor('#00000000')
     this.view = view
-    this.window.contentView.addChildView(view)
+    registerLayer(this.window, view, 20, 'fill')
     conceal(this.window, view)
     view.webContents.on('did-finish-load', () => {
       this.loaded = true

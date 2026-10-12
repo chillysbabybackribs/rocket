@@ -11,6 +11,7 @@ import type { AgentTab, Bounds, BrowserCommand, BrowserState, BrowserTab } from 
 import { CHROME_OBJECT_SCRIPT } from './chrome-object.ts'
 import { detectCookieSources, importCookies, type CookieSource } from './cookie-import.ts'
 import { Suggestions } from './browser-suggest.ts'
+import { raiseLayers } from './native-layers.ts'
 import { PageFill } from './page-fill.ts'
 import { ReadingScroll } from './reading-scroll.ts'
 import { nudgeSpeed } from '../shared/reading.ts'
@@ -20,9 +21,8 @@ import {
 } from './browser-url.ts'
 
 // The embedded browser: a strip of tabs, each a WebContentsView laid over the region of the
-// window the UI reserves for the page. A view is a native surface, so it paints above every DOM
-// layer; the UI is laid out so that nothing it draws ever needs to overlap that region, and the
-// one thing that must (the address field's dropdown) is a view of its own.
+// window the UI reserves for the page. Native overlay siblings (overlays.ts, native-layers.ts)
+// cover it without hiding or moving it. Shell CSS alone cannot change this native stacking order.
 //
 // Only the active tab's view is on screen. The others are concealed (see browser-url.ts), and a
 // tab restored from the last session has no view at all until it is first selected, as in
@@ -80,7 +80,7 @@ export class BrowserPane {
   private disposed = false
   private refSeq = 0
 
-  constructor(private readonly window: BrowserWindow, toHost: (message: MainToHostFill) => void = () => {}) {
+  constructor(private readonly window: BrowserWindow, toHost: (message: MainToHostFill) => void = () => {}, private readonly watchPage: (contents: WebContents) => void = () => {}) {
     // Set before any tab exists: a session's user agent only reaches pages made after it.
     const pages = session.fromPartition(PARTITION)
     pages.setUserAgent(plainUserAgent(pages.getUserAgent(), app.name), ACCEPT_LANGUAGES)
@@ -474,10 +474,12 @@ export class BrowserPane {
     // leaves the tab's page unpainted.)
     this.suggestions.raise()
     this.fill.raise()
+    raiseLayers(this.window)
     view.setBounds({ x: 0, y: 0, ...this.size })
     conceal(this.window, view)
 
     const contents = view.webContents
+    this.watchPage(contents)
     this.presenting.set(contents, this.presentAsChrome(contents))
     const history = this.suggestions.history
     const changed = (): void => {

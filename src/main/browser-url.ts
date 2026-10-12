@@ -73,8 +73,8 @@ export function completeAddress(typed: string, pages: Iterable<VisitedPage>, now
   return best && best.address.length > text.length ? best.address : null
 }
 
-// A browser view is a native surface: it cannot be covered, only hidden or moved. There are two
-// ways to take one off screen:
+// Native overlays cover the active page without changing it. These helpers are only for
+// switching tabs or hiding the browser panel itself. There are two ways to take a tab off screen:
 // - 'invisible', the default, uses setVisible(false). Chromium then treats the page as a
 //   background tab and stops drawing it: an animating page goes from 60 frames a second to none.
 // - 'park' moves it almost entirely outside the window, with one pixel left inside so Chromium

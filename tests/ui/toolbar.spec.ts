@@ -1,7 +1,7 @@
-import { test, expect, chatHistory, section } from './app'
+import { overlay, test, expect, chatHistory, section } from './app'
 
-// Library and Browser sit as plain text on either side of the usage notch; chat history is above
-// the composer. Menus stay inside the chat card, clear of the browser's native page.
+// Library and Browser sit on either side of the usage notch; chat history is above
+// the composer. Menus use native surfaces above both chat and browser.
 test('side panels and chat history open from the title strip and composer', async ({ rocket }) => {
   const { page } = rocket
   const library = await section(page, 'Library')
@@ -15,18 +15,18 @@ test('side panels and chat history open from the title strip and composer', asyn
     await expect(page.getByRole('region', { name: 'Browser', exact: true })).toBeVisible()
     await expect(browser).toHaveAttribute('aria-pressed', 'true')
     await library.click()
-    await expect(page.getByRole('region', { name: 'Library', exact: true })).toBeVisible()
+    await expect(page.getByRole('complementary', { name: 'Library', exact: true })).toBeVisible()
     await rocket.capture('notch-sections')
   })
 
-  await test.step('Chat history opens beside the composer and stays inside the chat card', async () => {
+  await test.step('Chat history opens in a bounded native menu', async () => {
     await chatHistory(page).click()
-    const menu = page.getByRole('menu', { name: 'Chat history' })
+    const menu = (await overlay(page, 'menu')).getByRole('menu', { name: 'Chat history' })
     await expect(menu).toBeVisible()
     const box = (await menu.boundingBox())!
-    const chat = (await page.locator('.chat').boundingBox())!
-    expect(box.x + box.width).toBeLessThanOrEqual(chat.x + chat.width)
-    await page.keyboard.press('Escape')
+    expect(box.width).toBeGreaterThan(100)
+    expect(box.width).toBeLessThan(await page.evaluate(() => innerWidth))
+    await (await overlay(page, 'menu')).keyboard.press('Escape')
     await expect(menu).toHaveCount(0)
   })
 })

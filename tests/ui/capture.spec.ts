@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect, section } from './app'
+import { overlay, test, expect, section } from './app'
 
 // The composer's camera: capture, draw, add to the draft, send. Real captures through main
 // (capturePage, desktopCapturer and the region window) on the check's private display.
@@ -9,7 +9,8 @@ test('captures of the browser page, a window and a region reach the draft with t
   await page.locator('.composer-folder').click()
   await (await section(page, 'Browser')).click()
   await expect((await rocket.surface('browser')).getByRole('heading', { name: 'Rocket browser check' })).toBeVisible()
-  const review = page.getByRole('dialog', { name: 'Review capture' })
+  const modal = await overlay(page, 'modal')
+  const review = modal.getByRole('dialog', { name: 'Review capture' })
   const layer = review.getByLabel('Drawing layer')
   const inked = () => layer.evaluate((canvas: HTMLCanvasElement) => {
     const data = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data
@@ -19,15 +20,15 @@ test('captures of the browser page, a window and a region reach the draft with t
   })
   const scribble = async (): Promise<void> => {
     const box = (await layer.boundingBox())!
-    await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.3)
-    await page.mouse.down()
-    for (let i = 1; i <= 10; i++) await page.mouse.move(box.x + box.width * (0.2 + i * 0.05), box.y + box.height * (0.3 + (i % 2) * 0.1))
-    await page.mouse.up()
+    await modal.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.3)
+    await modal.mouse.down()
+    for (let i = 1; i <= 10; i++) await modal.mouse.move(box.x + box.width * (0.2 + i * 0.05), box.y + box.height * (0.3 + (i % 2) * 0.1))
+    await modal.mouse.up()
   }
 
   // Browser page: draw, erase, clear, draw again, rename, add.
   await page.getByRole('button', { name: 'Capture', exact: true }).click()
-  await page.getByRole('menuitem', { name: /Browser page/ }).click()
+  await (await overlay(page, 'menu')).getByRole('menuitem', { name: /Browser page/ }).click()
   await expect(review).toBeVisible()
   await expect(review.getByText(/^http:\/\/127\.0\.0\.1:\d+\/one$/)).toBeVisible()
   await scribble()
@@ -47,12 +48,12 @@ test('captures of the browser page, a window and a region reach the draft with t
   await expect(review).toHaveCount(0)
   await expect(page.locator('.is-draft .image-attachment')).toHaveCount(1)
   await expect(page.locator('.is-draft .image-name')).toHaveText('test page.png')
-  await expect(page.locator('.attachment-notice')).toContainText('Nothing was sent')
+  await expect((await overlay(page, 'notice')).locator('.attachment-notice')).toContainText('Nothing was sent')
 
   // Another app's window: the picker lists what desktopCapturer finds; cancelling a review changes nothing.
   await page.getByRole('button', { name: 'Capture', exact: true }).click()
-  await page.getByRole('menuitem', { name: /Another app/ }).click()
-  const picker = page.getByRole('dialog', { name: 'Capture a window or screen' })
+  await (await overlay(page, 'menu')).getByRole('menuitem', { name: /Another app/ }).click()
+  const picker = modal.getByRole('dialog', { name: 'Capture a window or screen' })
   await expect(picker).toBeVisible()
   await expect(picker.getByText('Looking for windows…')).toHaveCount(0)
   const sources = picker.locator('.capture-source')
@@ -68,9 +69,9 @@ test('captures of the browser page, a window and a region reach the draft with t
 
   // A region: Rocket steps aside, a window over the frozen screen takes the drag.
   await page.getByRole('button', { name: 'Capture', exact: true }).click()
-  const overlay = app.waitForEvent('window')
-  await page.getByRole('menuitem', { name: /Select a region/ }).click()
-  const region = await overlay
+  const regionWindow = app.waitForEvent('window')
+  await (await overlay(page, 'menu')).getByRole('menuitem', { name: /Select a region/ }).click()
+  const region = await regionWindow
   await region.waitForLoadState()
   await region.mouse.move(100, 100)
   await region.mouse.down()

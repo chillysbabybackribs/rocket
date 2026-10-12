@@ -1,3 +1,4 @@
+import { registerLayer, raiseLayers } from './native-layers.ts'
 import { app, net, WebContentsView, type BrowserWindow, type WebContents } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
@@ -193,7 +194,7 @@ export class Suggestions {
 
   /** Put the dropdown's view back above a tab's view that was just added to the window. */
   raise(): void {
-    if (this.view) this.window.contentView.addChildView(this.view)
+    if (this.view) raiseLayers(this.window)
   }
 
   dispose(): void {
@@ -231,7 +232,7 @@ export class Suggestions {
     view.setBorderRadius(10)
     view.setBackgroundColor('#1b1c1e')
     this.view = view
-    this.window.contentView.addChildView(view)
+    registerLayer(this.window, view, 10, 'suggestions')
     view.webContents.on('did-finish-load', () => {
       this.loaded = true
       view.webContents.send('rocket:browser-suggestions', this.list)

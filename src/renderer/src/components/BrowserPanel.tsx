@@ -1,4 +1,3 @@
-import { useImagePreviewOpen } from './Attachments.tsx'
 import { useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { ArrowLeft, ArrowRight, Lock, RotateCw, Search, X } from 'lucide-react'
@@ -199,7 +198,6 @@ function AddressField({ tab }: { tab: BrowserTab | null }) {
 }
 
 export function BrowserPanel() {
-  const imagePreview = useImagePreviewOpen()
   const [state, setState] = useState(EMPTY)
   const stage = useRef<HTMLDivElement>(null)
   const active = state.tabs.find((tab) => tab.id === state.activeId) ?? null
@@ -216,13 +214,11 @@ export function BrowserPanel() {
     return off
   }, [])
 
-  // The page is a native view over the window; while a dialog is open it is hidden, not covered.
-  const covered = imagePreview
+  // Overlays are native siblings. Only actual panel layout changes affect the page.
   useEffect(() => {
     const element = stage.current
     if (!element) return
     const report = (): void => {
-      if (covered) return send({ type: 'setBounds', bounds: null })
       const box = element.getBoundingClientRect()
       send({ type: 'setBounds', bounds: { x: box.left, y: box.top, width: box.width, height: box.height } })
     }
@@ -236,7 +232,7 @@ export function BrowserPanel() {
       send({ type: 'setBounds', bounds: null })
       send({ type: 'chromeFocus', focused: false })
     }
-  }, [covered])
+  }, [])
 
   return (
     <section

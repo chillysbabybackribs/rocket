@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { NativeOverlay, anchoredOverlay } from './NativeOverlay.tsx'
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Download, Eye, FolderSearch, MessageSquarePlus, MoreHorizontal, Plus } from 'lucide-react'
 import type { Attachment } from '../../../shared/types.ts'
 import { call } from '../host.ts'
@@ -10,8 +10,8 @@ import { usePane } from '../pane.ts'
 
 // One menu on every attachment, wherever it is shown (draft, waiting or sent): Preview, Copy to
 // chat, Save as and Reveal stored file, as agreed in docs/mockups/attachment-reuse.html. Copying
-// appends to the destination's draft and never sends. The menu overlays the chat in a layer of
-// its own and is kept inside the chat card, clear of the native browser view beside it.
+// appends to the destination's draft and never sends. Native surfaces put menus and notices
+// above both the shell and browser without changing the browser page.
 
 type Notice = { id: number; text: string; undo?: () => void }
 let notice: Notice | null = null
@@ -33,10 +33,12 @@ export function AttachmentNotice() {
   const current = useSyncExternalStore(listener => { noticeListeners.add(listener); return () => { noticeListeners.delete(listener) } }, () => notice)
   if (!current) return null
   return (
-    <div className="attachment-notice" role="status">
-      <span>{current.text}</span>
-      {current.undo && <button type="button" onClick={() => { current.undo?.(); showNotice('Undone. The draft is as it was.') }}>Undo</button>}
-    </div>
+    <NativeOverlay slot="notice" focus={false} onDismiss={() => setNotice(null)} place={size => ({ x: 20, y: innerHeight - size.height - 20, ...size })}>
+      <div className="attachment-notice" role="status">
+        <span>{current.text}</span>
+        {current.undo && <button type="button" onClick={() => { current.undo?.(); showNotice('Undone. The draft is as it was.') }}>Undo</button>}
+      </div>
+    </NativeOverlay>
   )
 }
 
@@ -101,7 +103,7 @@ function moveFocus(event: ReactKeyboardEvent<HTMLElement>, close: () => void): v
   if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
   event.preventDefault()
   const items = [...event.currentTarget.querySelectorAll<HTMLElement>('[data-item]')].filter(item => !(item as HTMLButtonElement).disabled)
-  const index = items.indexOf(document.activeElement as HTMLElement)
+  const index = items.indexOf(event.currentTarget.ownerDocument.activeElement as HTMLElement)
   items.at(event.key === 'ArrowDown' ? (index + 1) % items.length : index <= 0 ? -1 : index - 1)?.focus()
 }
 
@@ -144,37 +146,14 @@ function Picker({ attachment, pane, onBack, onDone }: { attachment: Attachment; 
   )
 }
 
-/** The menu's popover, placed under its anchor (or at the pointer) and kept inside the chat card. */
+/** A bounded native popover can cross the chat/browser boundary without moving either. */
 function Popover({ anchor, point, label, children, onClose }: { anchor: HTMLElement | null; point: { x: number; y: number } | null; label: string; children: ReactNode; onClose: () => void }) {
-  const box = useRef<HTMLDivElement>(null)
-  const [place, setPlace] = useState<{ left: number; top: number } | null>(null)
-  useLayoutEffect(() => {
-    const element = box.current
-    if (!element) return
-    const bounds = (anchor?.closest('.chat') ?? document.querySelector('.chat'))?.getBoundingClientRect() ?? { left: 0, top: 0, right: innerWidth, bottom: innerHeight }
-    const size = element.getBoundingClientRect()
-    const from = anchor?.getBoundingClientRect()
-    let left = point ? point.x : from ? from.right - size.width : 8
-    let top = point ? point.y : from ? from.bottom + 6 : 8
-    if (top + size.height > bounds.bottom - 8 && from) top = (point ? point.y : from.top - 6) - size.height
-    left = Math.max(bounds.left + 8, Math.min(left, bounds.right - size.width - 8))
-    top = Math.max(bounds.top + 8, Math.min(top, bounds.bottom - size.height - 8))
-    setPlace(old => old && old.left === left && old.top === top ? old : { left, top })
-  }, [anchor, point, label])
-  useEffect(() => {
-    const outside = (event: MouseEvent): void => {
-      if (!box.current?.contains(event.target as Node) && !anchor?.contains(event.target as Node)) onClose()
-    }
-    document.addEventListener('mousedown', outside, true)
-    window.addEventListener('resize', onClose)
-    return () => { document.removeEventListener('mousedown', outside, true); window.removeEventListener('resize', onClose) }
-  }, [anchor, onClose])
-  return createPortal(
-    <div ref={box} className={`attachment-menu${label === 'Copy to chat' ? ' is-picker' : ''}`} role="menu" aria-label={label}
-      style={place ? { left: place.left, top: place.top } : { visibility: 'hidden' }} onKeyDown={event => moveFocus(event, onClose)}>
-      {children}
-    </div>,
-    document.body
+  return (
+    <NativeOverlay anchor={anchor} place={size => anchoredOverlay(anchor, size, false, point)} onDismiss={onClose}>
+        <div className={`attachment-menu${label === 'Copy to chat' ? ' is-picker' : ''}`} role="menu" aria-label={label} onKeyDown={event => moveFocus(event, onClose)}>
+          {children}
+        </div>
+    </NativeOverlay>
   )
 }
 

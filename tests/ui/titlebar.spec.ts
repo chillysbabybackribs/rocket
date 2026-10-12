@@ -1,8 +1,8 @@
-import { test, expect, section } from './app'
+import { overlay, test, expect, section } from './app'
 
 // There is no rail: the window lights start the title strip, the usage notch hangs at its centre
 // with Library and Browser beside it, and the chat card starts at the window's left edge. A ring's
-// flyout opens below the notch and ends inside the chat card, clear of the browser's native page.
+// flyout opens below the notch in a native surface above the browser.
 test('usage sits at the centre of the title strip and nothing but the chat uses the left edge', async ({ rocket }) => {
   const { page } = rocket
   const notch = page.locator('.notch')
@@ -24,16 +24,15 @@ test('usage sits at the centre of the title strip and nothing but the chat uses 
     await rocket.capture('titlebar-usage')
   })
 
-  await test.step('With the browser open, a ring\'s flyout ends inside the chat card', async () => {
+  await test.step('With the browser open, a ring\'s native flyout can overlap the page', async () => {
     await (await section(page, 'Browser')).click()
     await expect(page.getByRole('region', { name: 'Browser', exact: true })).toBeVisible()
     await page.getByRole('button', { name: /^Antigravity usage/ }).hover()
-    const flyout = page.getByRole('group', { name: 'Antigravity usage', exact: true })
+    const flyout = (await overlay(page, 'flyout')).getByRole('group', { name: 'Antigravity usage', exact: true })
     await expect(flyout).toBeVisible()
-    const box = (await flyout.boundingBox())!
+    const native = await rocket.app.evaluate(({ BrowserWindow, WebContentsView }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(v => v instanceof WebContentsView && (v as InstanceType<typeof WebContentsView>).webContents.getTitle() === 'Rocket overlay: flyout').map(v => v.getBounds())[0])
     const chat = (await page.locator('.chat').boundingBox())!
-    expect(box.x + box.width).toBeLessThanOrEqual(chat.x + chat.width)
-    expect(box.y).toBeGreaterThanOrEqual((await notch.boundingBox())!.height)
+    expect(native.x + native.width).toBeGreaterThan(chat.x + chat.width)
     await rocket.capture('titlebar-usage-flyout')
   })
 })

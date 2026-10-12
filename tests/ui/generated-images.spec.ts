@@ -1,4 +1,4 @@
-import { test, expect, section } from './app'
+import { test, expect, section, overlay } from './app'
 
 // A picture a model makes shows in the reply where it was made (docs/mockups/generated-images.html):
 // rippling dots alone while it comes, then the picture from Rocket's own copy with
@@ -47,7 +47,7 @@ test('a generated picture shows in the reply, opens full size, and is on the lib
   await rocket.capture('generated-image-made')
 
   await picture.click()
-  const viewer = page.getByRole('dialog', { name: /Image preview: a-neon-horizon-over-a-desert-city/ })
+  const viewer = (await overlay(page, 'modal')).getByRole('dialog', { name: /Image preview: a-neon-horizon-over-a-desert-city/ })
   await expect(viewer.locator('img')).toBeVisible()
   await rocket.capture('generated-image-full-size')
   await viewer.getByRole('button', { name: 'Close image preview' }).click()

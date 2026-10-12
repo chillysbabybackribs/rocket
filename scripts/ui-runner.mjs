@@ -22,6 +22,8 @@ const log = value => process.stderr.write(String(value))
 const session = { id: directory.split('/').at(-1), directory, profile, workspace, build: buildMode === 'build' ? 'session build of current source' : 'existing out/ build' }
 
 const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^(ROCKET_|ELECTRON_|__NV_PRIME_RENDER_OFFLOAD$|__GLX_VENDOR_LIBRARY_NAME$|__VK_LAYER_NV_optimus$)/.test(name)))
+env.XDG_SESSION_TYPE = 'x11'
+delete env.WAYLAND_DISPLAY
 const noSandbox = process.env.ROCKET_NO_SANDBOX === '1'
 Object.assign(env, { NODE_ENV: 'test', ROCKET_UI_TEST: '1', ROCKET_USER_DATA: profile, ROCKET_AUTO_COMMIT: '0', ROCKET_SELF_CHECK: '1', ROCKET_UI_SOURCE_ROOT: root })
 
@@ -83,7 +85,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { void clos
 
 async function surface(kind) {
   if (kind === 'shell') return shell
-  if (!['browser', 'suggestions'].includes(kind)) throw new Error('Choose shell, browser or suggestions as the UI surface.')
+  if (!['browser', 'suggestions', 'fill', 'menu', 'modal', 'flyout', 'notice'].includes(kind)) throw new Error('Choose shell, browser, suggestions, fill, menu, modal, flyout or notice as the UI surface.')
   const deadline = Date.now() + 10_000
   while (Date.now() < deadline) {
     // Resolve the visible native view each time, including after navigation or switching
@@ -91,7 +93,7 @@ async function surface(kind) {
     const selected = await application.evaluate(({ BrowserWindow, WebContentsView }, kind) => {
       const views = BrowserWindow.getAllWindows()[0].contentView.children
       const current = views.find(view => view instanceof WebContentsView && view.getVisible()
-        && (kind === 'suggestions' ? view.webContents.getURL().endsWith('/suggest.html') : !view.webContents.getURL().endsWith('/suggest.html')))
+        && (['menu', 'modal', 'flyout', 'notice'].includes(kind) ? view.webContents.getTitle() === `Rocket overlay: ${kind}` : kind === 'suggestions' ? view.webContents.getURL().endsWith('/suggest.html') : kind === 'fill' ? view.webContents.getURL().endsWith('/fill.html') : !view.webContents.getTitle().startsWith('Rocket overlay: ') && !/\/(suggest|fill)\.html$/.test(view.webContents.getURL())))
       return current ? { url: current.webContents.getURL(), id: current.webContents.id } : null
     }, kind)
     const candidates = application.context().pages().filter(page => page.url() === selected?.url)

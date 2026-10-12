@@ -7,6 +7,7 @@ import { accessibleName, labelOf, type SectionId } from '../toolbar.ts'
 import { ProviderGlyph } from './glyphs.tsx'
 import libraryOrbit from '../assets/header/library-orbit.png'
 import chromiumIcon from '../assets/header/chromium.png'
+import { NativeOverlay } from './NativeOverlay.tsx'
 import linuxIcon from '../assets/header/linux.svg'
 
 // The title strip: the usage notch with Library and Browser beside it, and window lights at the end
@@ -97,52 +98,51 @@ function Flyout({ provider, usage, at, keepOpen, hide }: {
   const now = Date.now()
   const detail = [usage?.plan, usage?.account].filter(Boolean).join(' · ')
   return (
-    <div className="flyout" style={at} role="group" aria-label={`${providerLabel(provider)} usage`}
-      onMouseEnter={keepOpen} onMouseLeave={hide} onFocus={keepOpen} onBlur={hide}>
-      <div className="flyout-title">
-        <ProviderGlyph provider={provider} size={18} />
-        <span>{providerLabel(provider)} Usage</span>
-        <button
-          type="button"
-          className={`flyout-refresh${refreshing ? ' is-refreshing' : ''}`}
-          aria-label={`Refresh ${providerLabel(provider)} usage`}
-          aria-disabled={refreshing}
-          title={refreshing ? 'Refreshing usage…' : 'Refresh usage'}
-          onClick={refresh}
-        >
-          <RefreshCw size={14} aria-hidden />
-        </button>
-      </div>
-      {!usage && <p className="flyout-empty">Reading usage…</p>}
-      {usage?.windows.map((window) => (
-        <div className="flyout-window" key={window.label}>
-          <div className="flyout-row">
-            <span>{window.label}</span>
-            <span className="flyout-reset">{resetText(window.resetsAt, now)}</span>
-          </div>
-          <div className="flyout-bar">
-            <div className={`flyout-fill level-${levelOf(window.percent)}`} style={{ width: `${Math.max(window.percent, 1.5)}%` }} />
-          </div>
-          <div className="flyout-used">{window.percent}% Used</div>
+    <NativeOverlay slot="flyout" focus={false} onDismiss={hide} place={size => ({ x: Math.max(0, Math.min(at.left - 8, innerWidth - size.width)), y: at.top - 8, ...size })}>
+      <div className="flyout" role="group" aria-label={`${providerLabel(provider)} usage`}
+        onMouseEnter={keepOpen} onMouseLeave={hide} onFocus={keepOpen} onBlur={hide}>
+        <div className="flyout-title">
+          <ProviderGlyph provider={provider} size={18} />
+          <span>{providerLabel(provider)} Usage</span>
+          <button
+            type="button"
+            className={`flyout-refresh${refreshing ? ' is-refreshing' : ''}`}
+            aria-label={`Refresh ${providerLabel(provider)} usage`}
+            aria-disabled={refreshing}
+            title={refreshing ? 'Refreshing usage…' : 'Refresh usage'}
+            onClick={refresh}
+          >
+            <RefreshCw size={14} aria-hidden />
+          </button>
         </div>
-      ))}
-      {usage && usage.windows.length === 0 && <p className="flyout-empty">{usage.unavailable ?? 'No usage reported.'}</p>}
-      {usage?.note && <p className="flyout-note">{usage.note}</p>}
-      {detail && <p className="flyout-note">{detail}</p>}
-    </div>
+        {!usage && <p className="flyout-empty">Reading usage…</p>}
+        {usage?.windows.map((window) => (
+          <div className="flyout-window" key={window.label}>
+            <div className="flyout-row">
+              <span>{window.label}</span>
+              <span className="flyout-reset">{resetText(window.resetsAt, now)}</span>
+            </div>
+            <div className="flyout-bar">
+              <div className={`flyout-fill level-${levelOf(window.percent)}`} style={{ width: `${Math.max(window.percent, 1.5)}%` }} />
+            </div>
+            <div className="flyout-used">{window.percent}% Used</div>
+          </div>
+        ))}
+        {usage && usage.windows.length === 0 && <p className="flyout-empty">{usage.unavailable ?? 'No usage reported.'}</p>}
+        {usage?.note && <p className="flyout-note">{usage.note}</p>}
+        {detail && <p className="flyout-note">{detail}</p>}
+      </div>
+    </NativeOverlay>
   )
 }
 
 /**
- * Where a ring's flyout opens: centred under the ring, then pulled left until it ends inside the
- * chat card. The centre of the strip sits over the seam between chat and browser, and the
- * browser's page is a native view that paints over anything drawn across it.
+ * Centre the native flyout under its ring, clamped to the window edges.
  */
 function flyoutPlace(element: HTMLElement): { left: number; top: number } {
   const ring = element.getBoundingClientRect()
   const notch = element.closest('.notch')!.getBoundingClientRect()
-  const chat = document.querySelector('.chat')?.getBoundingClientRect()
-  const limit = (chat ? chat.right : window.innerWidth) - 8 - FLYOUT_WIDTH
+  const limit = window.innerWidth - 8 - FLYOUT_WIDTH
   return { left: Math.max(8, Math.min(ring.left + ring.width / 2 - FLYOUT_WIDTH / 2, limit)), top: notch.bottom + 6 }
 }
 

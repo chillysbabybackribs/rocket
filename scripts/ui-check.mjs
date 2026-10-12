@@ -12,6 +12,11 @@ await mkdir(join(root, '.artifacts/ui'), { recursive: true })
 const output = await mkdtemp(join(root, '.artifacts/ui', `${new Date().toISOString().replace(/[:.]/g, '-')}-`))
 const env = { ...process.env, NODE_ENV: 'test', ROCKET_UI_OUTPUT: output }
 const visible = process.argv.includes('--visible')
+// Electron now auto-selects Wayland. An isolated xvfb run must not inherit the user's compositor.
+if (!visible) {
+  env.XDG_SESSION_TYPE = 'x11'
+  delete env.WAYLAND_DISPLAY
+}
 const args = process.argv.slice(2).filter(arg => arg !== '--visible')
 const skipBuild = process.env.ROCKET_UI_SKIP_BUILD === '1'
 const skipUnit = process.env.ROCKET_UI_SKIP_UNIT === '1'

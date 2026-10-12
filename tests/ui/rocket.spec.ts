@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect, chatHistory, section } from './app'
+import { overlay, test, expect, chatHistory, section } from './app'
 import { assertOverlay, nativeViews } from './safeguards'
 
 test('Rocket desktop self-check', async ({ rocket }) => {
@@ -10,7 +10,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
   const stop = page.getByRole('button', { name: 'Stop', exact: true })
   const provider = async (name: string): Promise<void> => {
     await page.locator('.picker-trigger').click()
-    await page.getByRole('menu', { name: 'Providers', exact: true }).getByRole('menuitemradio').filter({ hasText: name }).click()
+    await (await overlay(page, 'menu')).getByRole('menu', { name: 'Providers', exact: true }).getByRole('menuitemradio').filter({ hasText: name }).click()
   }
   const submit = async (text: string): Promise<void> => {
     const count = await page.locator('.turn').count()
@@ -35,14 +35,14 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await expect(message).toHaveValue('Draft first line\nSecond line')
     await expect(send).toBeEnabled()
     await chatHistory(page).click()
-    await expect(page.getByRole('menu', { name: 'Chat history' })).toContainText('Your chats will appear here.')
-    await page.keyboard.press('Escape')
+    await expect((await overlay(page, 'menu')).getByRole('menu', { name: 'Chat history' })).toContainText('Your chats will appear here.')
+    await (await overlay(page, 'menu')).keyboard.press('Escape')
     await provider('Codex')
     await page.locator('.picker-trigger').click()
-    await page.getByRole('menu', { name: 'Codex models' }).getByRole('menuitemradio').filter({ hasText: 'UI alternate' }).click()
+    await (await overlay(page, 'menu')).getByRole('menu', { name: 'Codex models' }).getByRole('menuitemradio').filter({ hasText: 'UI alternate' }).click()
     await expect(page.locator('.picker-trigger')).toContainText('UI alternate')
     await page.getByRole('button', { name: 'Codex usage: 25% used', exact: true }).hover()
-    await expect(page.getByRole('group', { name: 'Codex usage', exact: true })).toContainText('25% Used')
+    await expect((await overlay(page, 'flyout')).getByRole('group', { name: 'Codex usage', exact: true })).toContainText('25% Used')
     await message.click()
   })
 
@@ -139,7 +139,7 @@ test('Rocket desktop self-check', async ({ rocket }) => {
     await page.getByRole('button', { name: 'Close tab: UI check: stream', exact: true }).click()
     await expect(message).toHaveValue('Draft in new chat')
     await chatHistory(page).click()
-    await page.getByRole('menuitem', { name: 'UI check: stream', exact: true }).click()
+    await (await overlay(page, 'menu')).getByRole('menuitem', { name: 'UI check: stream', exact: true }).click()
     await expect(page.locator('.turn')).toHaveCount(5)
     await expect(message).toHaveValue('Draft in existing chat')
     await message.fill('')

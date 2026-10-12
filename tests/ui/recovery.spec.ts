@@ -1,12 +1,12 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect, section } from './app'
+import { overlay, test, expect, section } from './app'
 
 test('full app restart preserves completed chats, chosen model and browser tabs', async ({ rocket }) => {
   let page = rocket.page
   await page.locator('.composer-folder').click()
   await page.locator('.picker-trigger').click()
-  await page.getByRole('menu', { name: 'Claude models' }).getByRole('menuitemradio').filter({ hasText: 'UI alternate' }).click()
+  await (await overlay(page, 'menu')).getByRole('menu', { name: 'Claude models' }).getByRole('menuitemradio').filter({ hasText: 'UI alternate' }).click()
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('UI check: stream')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.locator('.prose')).toHaveText('Streaming from claude.')

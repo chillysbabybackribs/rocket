@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { test, expect, chatHistory, section } from './app'
+import { overlay, test, expect, chatHistory, section } from './app'
 import { jpegBase64 } from '../fixtures/image'
 import { pdfBytes } from '../fixtures/pdf'
 
@@ -21,10 +21,10 @@ test('image uploads, queue editing, Stop and restart preserve the whole message'
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Compare this screen')
   await (await section(page, 'Browser')).click()
   await page.getByRole('button', { name: 'Preview rocket.png' }).click()
-  await expect(page.locator('dialog[open] > img')).toBeVisible()
+  await expect((await overlay(page, 'modal')).locator('dialog[open] > img')).toBeVisible()
   await rocket.capture('images-preview-with-browser')
-  await page.keyboard.press('Escape')
-  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await (await overlay(page, 'modal')).keyboard.press('Escape')
+  await expect((await overlay(page, 'modal')).locator('dialog[open]')).toHaveCount(0)
   await (await section(page, 'Browser')).click()
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('UI check: stream')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
@@ -56,8 +56,8 @@ test('image uploads, queue editing, Stop and restart preserve the whole message'
   page = rocket.page
   await expect(page.locator('.user-message > .image-attachments .image-thumbnail img')).toHaveCount(2)
   await page.getByRole('button', { name: 'Preview clipboard.jpg' }).click()
-  await expect(page.locator('dialog[open] > img')).toBeVisible()
-  await page.keyboard.press('Escape')
+  await expect((await overlay(page, 'modal')).locator('dialog[open] > img')).toBeVisible()
+  await (await overlay(page, 'modal')).keyboard.press('Escape')
   const request = JSON.parse(await readFile(join(rocket.profile, 'ui-request.json'), 'utf8'))
   expect(request.attachments[0].name).toBe('clipboard.jpg')
   expect(await readFile(request.attachments[0].path)).toEqual(small.buffer)
@@ -172,7 +172,7 @@ test('an attachment is copied to another chat by menu or drag, saved, revealed, 
   const target = page.locator('.pane').nth(1)
   const sent = source.locator('.user-message .file-attachment')
   const draft = target.locator('.is-draft .file-attachment')
-  const notice = page.locator('.attachment-notice')
+  const notice = (await overlay(page, 'notice')).locator('.attachment-notice')
 
   // Drag from the sent message onto the other pane: the drop target names the copy, and Undo takes it back.
   await sent.locator('.file-open').dragTo(target.locator('.composer'))
@@ -185,19 +185,19 @@ test('an attachment is copied to another chat by menu or drag, saved, revealed, 
   await target.getByRole('textbox', { name: 'Message', exact: true }).fill('Use the same brief here')
   await sent.hover()
   await source.getByRole('button', { name: 'More for onboarding-brief.pdf' }).click()
-  await expect(page.getByRole('menu', { name: 'onboarding-brief.pdf' })).toBeVisible()
+  await expect((await overlay(page, 'menu')).getByRole('menu', { name: 'onboarding-brief.pdf' })).toBeVisible()
   await rocket.capture('reuse-menu')
-  await page.getByRole('menuitem', { name: 'Copy to chat' }).click()
-  await expect(page.locator('.attachment-chat').filter({ hasText: 'This chat' })).toHaveCount(1)
+  await (await overlay(page, 'menu')).getByRole('menuitem', { name: 'Copy to chat' }).click()
+  await expect((await overlay(page, 'menu')).locator('.attachment-chat').filter({ hasText: 'This chat' })).toHaveCount(1)
   await rocket.capture('reuse-picker')
-  await page.locator('.attachment-chat').filter({ hasText: 'Pane 2' }).click()
+  await (await overlay(page, 'menu')).locator('.attachment-chat').filter({ hasText: 'Pane 2' }).click()
   await expect(draft).toHaveCount(1)
   await expect(target.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Use the same brief here')
   await rocket.capture('reuse-copied')
   // Right-click opens the same menu; copying again says it is already there.
   await sent.click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Copy to chat' }).click()
-  await page.locator('.attachment-chat').filter({ hasText: 'Pane 2' }).click()
+  await (await overlay(page, 'menu')).getByRole('menuitem', { name: 'Copy to chat' }).click()
+  await (await overlay(page, 'menu')).locator('.attachment-chat').filter({ hasText: 'Pane 2' }).click()
   await expect(notice).toContainText('already in')
   await expect(draft).toHaveCount(1)
 
@@ -208,20 +208,20 @@ test('an attachment is copied to another chat by menu or drag, saved, revealed, 
     shell.showItemInFolder = (shown: string) => { (globalThis as { revealed?: string }).revealed = shown }
   }, saved)
   await sent.click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Save as…' }).click()
+  await (await overlay(page, 'menu')).getByRole('menuitem', { name: 'Save as…' }).click()
   await expect(notice).toContainText('Saved saved-brief.pdf')
   expect(await readFile(saved)).toEqual(brief)
   await sent.click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Reveal stored file' }).click()
+  await (await overlay(page, 'menu')).getByRole('menuitem', { name: 'Reveal stored file' }).click()
   await expect(notice).toContainText('stored as')
   const revealed = await rocket.app.evaluate(() => (globalThis as { revealed?: string }).revealed)
   expect(revealed).toMatch(/[/\\]attachments[/\\][0-9a-f-]+\.pdf$/)
 
   // Deleting the chat the file came from leaves the copy usable, across a restart.
   page.once('dialog', dialog => void dialog.accept())
-  await chatHistory(page).click()
-  await page.locator('.chat-row').filter({ hasText: 'Here is the brief' }).hover()
-  await page.getByRole('button', { name: 'Delete chat: Here is the brief' }).click()
+  await chatHistory(page).first().click()
+  await (await overlay(page, 'menu')).locator('.chat-row').filter({ hasText: 'Here is the brief' }).hover()
+  await (await overlay(page, 'menu')).getByRole('button', { name: 'Delete chat: Here is the brief' }).click()
   await rocket.restart()
   page = rocket.page
   const kept = page.locator('.is-draft .file-attachment')

@@ -1,9 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { AppWindow, Camera, Eraser, Globe, Monitor, Paintbrush, SquareDashed, Trash2, X } from 'lucide-react'
 import { MAX_IMAGE_BYTES, type CaptureRequest, type CaptureResult, type CaptureSource } from '../../../shared/types.ts'
 import { addDraftFiles, draftOf, updateDraft } from '../drafts.ts'
-import { setPreviewOpen } from './Attachments.tsx'
+import { NativeOverlay, anchoredOverlay } from './NativeOverlay.tsx'
 import { showNotice } from './AttachmentMenu.tsx'
 
 // The composer's camera (docs/mockups/screen-capture.html): capture the browser page, Rocket, any
@@ -72,9 +71,9 @@ export function CaptureButton({ draftKey, title, disabled }: { draftKey: string;
         if (kind === 'apps') void openPicker()
         else void take({ kind } as CaptureRequest)
       }} />}
-      {picker && <SourcePicker sources={picker} onCancel={() => setPicker(null)} onPick={(id) => { setPicker(null); void take({ kind: 'source', id }) }} />}
-      {shot && <Review shot={shot.result} to={target.current.title} onCancel={() => setShot(null)} onAdd={(file) => void add(file)}
-        onRetake={() => { const request = shot.request; setShot(null); if (request.kind === 'source') void openPicker(); else void take(request) }} />}
+      {picker && <NativeOverlay slot="modal" onDismiss={() => setPicker(null)}><SourcePicker sources={picker} onCancel={() => setPicker(null)} onPick={(id) => { setPicker(null); void take({ kind: 'source', id }) }} /></NativeOverlay>}
+      {shot && <NativeOverlay slot="modal" onDismiss={() => setShot(null)}><Review shot={shot.result} to={target.current.title} onCancel={() => setShot(null)} onAdd={(file) => void add(file)}
+        onRetake={() => { const request = shot.request; setShot(null); if (request.kind === 'source') void openPicker(); else void take(request) }} /></NativeOverlay>}
     </>
   )
 }
@@ -82,24 +81,6 @@ export function CaptureButton({ draftKey, title, disabled }: { draftKey: string;
 type MenuKind = 'page' | 'rocket' | 'apps' | 'screen' | 'region'
 
 function CaptureMenu({ anchor, onClose, onPick }: { anchor: HTMLElement | null; onClose: () => void; onPick: (kind: MenuKind) => void }) {
-  const box = useRef<HTMLDivElement>(null)
-  const [place, setPlace] = useState<{ left: number; top: number } | null>(null)
-  useLayoutEffect(() => {
-    const element = box.current
-    if (!element || !anchor) return
-    const from = anchor.getBoundingClientRect()
-    const bounds = anchor.closest('.chat')?.getBoundingClientRect() ?? { left: 0, top: 0, right: innerWidth, bottom: innerHeight }
-    const size = element.getBoundingClientRect()
-    const left = Math.max(bounds.left + 8, Math.min(from.left, bounds.right - size.width - 8))
-    const top = from.top - size.height - 8 >= bounds.top + 8 ? from.top - size.height - 8 : from.bottom + 8
-    setPlace({ left, top })
-    element.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus({ preventScroll: true })
-  }, [anchor])
-  useEffect(() => {
-    const outside = (event: MouseEvent): void => { if (!box.current?.contains(event.target as Node) && !anchor?.contains(event.target as Node)) onClose() }
-    document.addEventListener('mousedown', outside, true)
-    return () => document.removeEventListener('mousedown', outside, true)
-  }, [anchor, onClose])
   const items: Array<[MenuKind, typeof Globe, string, string]> = [
     ['page', Globe, 'Browser page', 'What is visible in the current tab'],
     ['rocket', AppWindow, 'Rocket window', 'Chats, browser and panels as they are'],
@@ -107,34 +88,33 @@ function CaptureMenu({ anchor, onClose, onPick }: { anchor: HTMLElement | null; 
     ['screen', Monitor, 'Entire screen', 'The screen the pointer is on'],
     ['region', SquareDashed, 'Select a region…', 'Drag over anything on screen']
   ]
-  return createPortal(
-    <div ref={box} className="attachment-menu capture-menu" role="menu" aria-label="Capture" style={place ?? { visibility: 'hidden' }}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' || event.key === 'Tab') { event.preventDefault(); onClose(); anchor?.focus(); return }
-        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
-        event.preventDefault()
-        const all = [...event.currentTarget.querySelectorAll<HTMLElement>('[role=menuitem]')]
-        const index = all.indexOf(document.activeElement as HTMLElement)
-        all.at(event.key === 'ArrowDown' ? (index + 1) % all.length : index - 1)?.focus()
-      }}>
-      {items.map(([kind, Icon, label, detail]) => (
-        <button key={kind} type="button" role="menuitem" className="attachment-menu-item capture-item" onClick={() => onPick(kind)}>
-          <Icon size={15} /><span><span>{label}</span><small>{detail}</small></span>
-        </button>
-      ))}
-      <div className="attachment-picker-foot">Adds to this chat's draft. You review it first; nothing is sent.</div>
-    </div>,
-    document.body
+  return (
+    <NativeOverlay anchor={anchor} place={size => anchoredOverlay(anchor, size, true)} onDismiss={onClose}>
+      <div className="attachment-menu capture-menu" role="menu" aria-label="Capture"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' || event.key === 'Tab') { event.preventDefault(); onClose(); anchor?.focus(); return }
+          if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+          event.preventDefault()
+          const all = [...event.currentTarget.querySelectorAll<HTMLElement>('[role=menuitem]')]
+          const index = all.indexOf(event.currentTarget.ownerDocument.activeElement as HTMLElement)
+          all.at(event.key === 'ArrowDown' ? (index + 1) % all.length : index - 1)?.focus()
+        }}>
+        {items.map(([kind, Icon, label, detail]) => (
+          <button key={kind} type="button" role="menuitem" className="attachment-menu-item capture-item" onClick={() => onPick(kind)}>
+            <Icon size={15} /><span><span>{label}</span><small>{detail}</small></span>
+          </button>
+        ))}
+        <div className="attachment-picker-foot">Adds to this chat's draft. You review it first; nothing is sent.</div>
+      </div>
+    </NativeOverlay>
   )
 }
 
-/** A modal dialog that also hides the native browser view, which would otherwise draw over it. */
+/** NativeOverlay owns placement; the HTML dialog owns keyboard focus inside it. */
 function useModal(onCancel: () => void) {
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
-    setPreviewOpen(true)
     dialog.current?.showModal()
-    return () => setPreviewOpen(false)
   }, [])
   return { ref: dialog, onCancel: (event: Event | React.SyntheticEvent) => { event.preventDefault(); onCancel() } }
 }

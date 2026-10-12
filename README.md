@@ -124,8 +124,15 @@ its start and the usage notch at its centre: a tab hanging from the top edge wit
 **Browser** as plain text on its left and right, then one ring per provider and its percentage.
 Hovering a ring opens its flyout (each limit, when it resets, refresh). Library and Browser toggle
 the side column. Chat history is a history icon above the composer, top right. Every menu and
-popover is pulled left to end inside the chat card, since the browser page is a native view that
-would paint over it.
+popover that can overlap the browser uses a native sibling view. Image previews, capture
+dialogs, usage flyouts, attachment menus, model selection, chat history, and notices share
+`src/main/overlays.ts` and `NativeOverlay.tsx`. The shell renders its existing React tree into
+trusted same-origin child documents that main adopts as WebContentsViews; only placement,
+readiness, and dismissal cross the overlay IPC bridge. The active browser's bounds and
+visibility never change because an overlay opens or closes. Menus occupy bounded rectangles;
+modal dialogs have a transparent full-window surface and an intentional dim backdrop.
+Suggestions and fill chips share the native stacking controller. See
+[the implementation and verification notes](docs/browser-overlays-plan.md).
 
 ### Images and files in chat
 
@@ -490,7 +497,7 @@ await page.getByRole('button', { name: 'Add a chat beside this one', exact: true
 return await page.locator('.pane').count()
 ```
 
-- `ui.surface('browser' | 'suggestions')` returns the page API for the visible native view.
+- `ui.surface('browser' | 'suggestions' | 'fill' | 'menu' | 'modal' | 'flyout' | 'notice')` returns the page API for the visible native view.
 - `ui.resize(width, height)` resizes the live window (880×560 to 4000×2400).
 - `ui.read()` returns shell controls and panels; `ui.snapshot()` adds a capture.
 - A final snapshot is included by default; `capture=false` skips it on success (failures always
@@ -743,7 +750,7 @@ the failure in `summary.json`.
 The checks cover composer input, folder selection, usage, model selection, streaming, completion,
 tool output, provider handoff, cancellation, failure recovery, drafts, history, chat panes
 (splitting to four, streaming into one, closing, layout after restart), the title strip (no rail,
-centred usage notch, flyout inside the chat card), renderer reload, full restart, recovery from a
+centred usage notch, native flyout above the browser), renderer reload, full restart, recovery from a
 host crash mid-response, minimum window size, browser navigation and tabs, the address dropdown
 and inline completion (focus kept while a page navigates), chat links, and `ask_user` question
 cards. The shell, embedded page and dropdown are separate Playwright targets, with screenshots and

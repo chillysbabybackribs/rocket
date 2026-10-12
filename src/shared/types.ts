@@ -507,7 +507,7 @@ export type UiWhere = {
 }
 /** A dispatcher call's answer: what it returned, or why it failed, and where the shell ended up. */
 export type UiMapResult = { ok: true; value: unknown; where: UiWhere } | { ok: false; error: string; where: UiWhere }
-export type LiveUiConnection = { endpoint: string; pid: number; surfaces: Partial<Record<'shell' | 'browser' | 'suggestions', string>> }
+export type LiveUiConnection = { endpoint: string; pid: number; surfaces: Partial<Record<'shell' | 'browser' | 'suggestions' | 'fill' | 'menu' | 'modal' | 'flyout' | 'notice', string>> }
 export type UiSnapshot = {
   capturedAt: string
   instance: { pid: number; startedAt: string; version: string; mainBundleSha256: string; rendererUrl: string }
@@ -592,6 +592,10 @@ export type CaptureResult = { png: Uint8Array; width: number; height: number; fr
 
 /** What the preload exposes on `window.rocket`. */
 export type RocketBridge = {
+  overlay: {
+    send: (command: import('./overlays.ts').OverlayCommand) => Promise<void>
+    onDismiss: (listener: (event: import('./overlays.ts').OverlayDismiss) => void) => () => void
+  }
   /** Ask main for a MessagePort to the agent host; it arrives as a window `message` event. */
   requestHostPort: () => void
   window: {

@@ -1,3 +1,4 @@
+import { NativeOverlay, anchoredOverlay } from './NativeOverlay.tsx'
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, ChevronLeft } from 'lucide-react'
 import { PROVIDERS, type ModelInfo, type ProviderId } from '../../../shared/types.ts'
@@ -6,9 +7,7 @@ import { loadModels, paneAt, selectModel, setProvider, useApp } from '../store.t
 import { ProviderGlyph } from './glyphs.tsx'
 
 // Provider first, model second: the menu lists the four providers, and resting on one opens its
-// models beside it. The model list opens to the left because the trigger sits at the right end
-// of the composer, which keeps the whole menu over the chat column and never over the browser
-// (a native view that would paint on top of it).
+// models beside it. A native popover keeps the whole menu above both chat and browser.
 
 function Models({ provider, onPick }: { provider: ProviderId; onPick: () => void }) {
   const pane = usePane()
@@ -115,34 +114,36 @@ export function ModelPicker({ onClose }: { onClose?: () => void }) {
         <ChevronDown size={13} className="picker-caret" />
       </button>
       {open && (
-        <div className="picker-menu">
-          <Models provider={hovered} onPick={close} />
-          <div className="picker-providers" role="menu" aria-label="Providers">
-            {PROVIDERS.map(({ id, label }, index) => (
-              <button
-                key={id}
-                type="button"
-                role="menuitemradio"
-                aria-checked={provider === id}
-                className={`picker-provider provider-${id}${hovered === id ? ' is-hovered' : ''}`}
-                onMouseEnter={() => setHovered(id)}
-                onFocus={() => setHovered(id)}
-                onClick={() => {
-                  setProvider(pane, id)
-                  close()
-                }}
-              >
-                <ChevronLeft size={13} className="picker-arrow" />
-                <span className="picker-provider-glyph"><ProviderGlyph provider={id} size={15} /></span>
-                <span className="picker-provider-text">
-                  <span className="picker-provider-name">{label}</span>
-                  <span className="picker-model-note">{modelLabel(id) ?? 'Default model'}</span>
-                </span>
-                {provider === id ? <Check size={14} className="picker-check" /> : <kbd className="picker-key">⌃{index + 1}</kbd>}
-              </button>
-            ))}
+        <NativeOverlay anchor={root.current} place={size => anchoredOverlay(root.current, size, true)} onDismiss={close}>
+          <div className="picker-menu">
+            <Models provider={hovered} onPick={close} />
+            <div className="picker-providers" role="menu" aria-label="Providers">
+              {PROVIDERS.map(({ id, label }, index) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={provider === id}
+                  className={`picker-provider provider-${id}${hovered === id ? ' is-hovered' : ''}`}
+                  onMouseEnter={() => setHovered(id)}
+                  onFocus={() => setHovered(id)}
+                  onClick={() => {
+                    setProvider(pane, id)
+                    close()
+                  }}
+                >
+                  <ChevronLeft size={13} className="picker-arrow" />
+                  <span className="picker-provider-glyph"><ProviderGlyph provider={id} size={15} /></span>
+                  <span className="picker-provider-text">
+                    <span className="picker-provider-name">{label}</span>
+                    <span className="picker-model-note">{modelLabel(id) ?? 'Default model'}</span>
+                  </span>
+                  {provider === id ? <Check size={14} className="picker-check" /> : <kbd className="picker-key">⌃{index + 1}</kbd>}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </NativeOverlay>
       )}
     </div>
   )

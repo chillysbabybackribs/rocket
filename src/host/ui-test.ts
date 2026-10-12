@@ -117,7 +117,7 @@ export class UiTestAdapter implements ProviderAdapter {
   private async fill(request: RunRequest, sink: TurnSink, signal: AbortSignal): Promise<RunResult> {
     const { turnId, text } = request
     sink.item({ type: 'tool', id: `${turnId}:read`, turnId, kind: 'mcp', label: 'rocket · browser_read {"tab":"t1"}', output: '', status: 'done' })
-    sink.item({ type: 'tool', id: `${turnId}:web`, turnId, kind: 'web', label: 'https://wiki.example/rules', output: '', status: 'done' })
+    sink.item({ type: 'tool', id: `${turnId}:web`, turnId, kind: 'web', label: 'https://wiki.example/rules', output: 'Community rules: keep replies relevant and respectful. Include the details needed to answer the question.', status: 'done' })
     const hold = text.includes('UI check: hold')
     const until = Date.now() + (hold ? 60_000 : 1_500)
     while (Date.now() < until) await delay(25, undefined, { signal })
@@ -205,7 +205,7 @@ export class UiTestAdapter implements ProviderAdapter {
    */
   private cite(turnId: string, sink: TurnSink): RunResult {
     sink.item({ type: 'tool', id: `${turnId}:search`, turnId, kind: 'web', label: 'notes app login best practice', output: '', status: 'done' })
-    sink.item({ type: 'tool', id: `${turnId}:fetch`, turnId, kind: 'web', label: 'https://docs.example.com/auth/sessions', output: '', status: 'done' })
+    sink.item({ type: 'tool', id: `${turnId}:fetch`, turnId, kind: 'web', label: 'https://docs.example.com/auth/sessions', output: 'Session authentication: use bearer tokens with a server-side session store. Expire tokens when the user signs out.', status: 'done' })
     sink.item({
       type: 'assistant', id: `${turnId}:reply`, turnId, streaming: false,
       text: 'Sessions should be bearer tokens with a server-side store, per [the auth docs](https://docs.example.com/auth/sessions/). The cookie advice is reported by [a blog post](https://blog.example.org/cookies-vs-tokens) I could not open, so it is not verified.'

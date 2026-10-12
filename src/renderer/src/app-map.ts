@@ -1,3 +1,4 @@
+import { overlayDialogs } from './components/NativeOverlay.tsx'
 import { ACTIONS, PLACES, isAction, isPlace, type ActionName, type PlaceName } from '../../shared/app-map.ts'
 import type { UiMapResult, UiWhere } from '../../shared/types.ts'
 import { filterEntries, parseFilters } from '../../shared/library.ts'
@@ -47,7 +48,7 @@ export function where(): UiWhere {
     side: state.artifact ? 'artifact' : state.libraryOpen ? 'library' : state.browserOpen ? 'browser' : 'chat',
     artifact: state.artifact ? { kind: state.artifact.kind, path: state.artifact.kind === 'artifact' ? state.artifact.path : null } : null,
     library: state.libraryOpen ? libraryWhere(state) : null,
-    dialogs: []
+    dialogs: overlayDialogs()
   }
 }
 

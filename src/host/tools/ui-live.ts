@@ -43,7 +43,7 @@ export class LiveUiRunner {
       const browser = this.browser = await chromium.connectOverCDP(connection.endpoint, { timeout: 10_000, noDefaults: true })
       const ids = new WeakMap<Page, string>()
       const surface = async (kind: string): Promise<Page> => {
-        if (!['shell', 'browser', 'suggestions'].includes(kind)) throw new Error('Choose shell, browser or suggestions.')
+        if (!['shell', 'browser', 'suggestions', 'fill', 'menu', 'modal', 'flyout', 'notice'].includes(kind)) throw new Error('Choose shell, browser, suggestions, fill, menu, modal, flyout or notice.')
         const info = await this.main({ op: 'uiConnection' }) as LiveUiConnection
         const id = info.surfaces[kind as keyof LiveUiConnection['surfaces']]
         if (!id) throw new Error(`The live ${kind} surface is not visible. Open it through the app UI first.`)

@@ -13,6 +13,8 @@ import { readChatLink } from './chat-links.ts'
 import { ScreenCapture } from './capture.ts'
 import { BrowserAgent } from './browser-agent.ts'
 import { BrowserPane } from './browser-pane.ts'
+import { Overlays } from './overlays.ts'
+import type { OverlayCommand } from '../shared/overlays.ts'
 import { BROWSER_PARTITION } from './browser-url.ts'
 import { defaultCookieSource, detectCookieSources, importCookies } from './cookie-import.ts'
 import { appendJournal } from '../host/journal.ts'
@@ -48,6 +50,7 @@ function freeLoopbackPort(): Promise<number> {
 let window: BrowserWindow | null = null
 let host: UtilityProcess | null = null
 let browser: BrowserPane | null = null
+let overlays: Overlays | null = null
 let browserAgent: BrowserAgent | null = null
 let screenCapture: ScreenCapture | null = null
 let quitting = false
@@ -163,7 +166,8 @@ function createWindow(): void {
       sandbox: false
     }
   })
-  browser = new BrowserPane(window, (message) => host?.postMessage(message))
+  overlays = new Overlays(window)
+  browser = new BrowserPane(window, (message) => host?.postMessage(message), contents => overlays?.watchPage(contents))
   browserAgent = new BrowserAgent(browser)
   screenCapture = new ScreenCapture(window, () => browser)
   window.once('ready-to-show', () => window?.show())
@@ -174,9 +178,11 @@ function createWindow(): void {
     browserAgent = null
     screenCapture = null
   })
-  // The UI never navigates or opens windows. A link that tries opens inside the app, in a
-  // browser tab, the way a chat link does; nothing is handed to a system app.
-  window.webContents.setWindowOpenHandler(({ url }) => {
+  // Only trusted overlay documents become native app surfaces. Other links open inside
+  // the app, in a browser tab, the way a chat link does; nothing goes to a system app.
+  window.webContents.setWindowOpenHandler(({ url, frameName }) => {
+    const overlay = overlays?.open(url, frameName)
+    if (overlay) return overlay
     if (/^(https?|file):/i.test(url)) openInWindow({ href: url, cwd: homedir() })
     return { action: 'deny' }
   })
@@ -257,6 +263,9 @@ ipcMain.handle('rocket:chat-link', (event, href: string, cwd: string) => {
 })
 ipcMain.on('rocket:browser', (event, command: BrowserCommand) => {
   browser?.handle(event.sender, command)
+})
+ipcMain.handle('rocket:overlay', (event, command: OverlayCommand) => {
+  overlays?.handle(event.sender, command)
 })
 // `rocket <path or URL>` opens it inside the app, as a link in the chat would: a page in a
 // browser tab, a text file in the artifact panel. A second launch hands its arguments to the
