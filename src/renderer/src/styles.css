@@ -102,12 +102,10 @@ button {
   grid-template-columns: minmax(0, 1fr);
   padding: var(--titlebar) var(--gap) var(--gap);
 }
-.app.has-browser {
-  grid-template-columns: minmax(380px, 1fr) var(--gap) minmax(360px, var(--browser-width, 1.15fr));
-}
-/* The library uses a wide side column so switching from the toolbar never moves the chat. */
+/* Browser, library, and artifacts share one side-column width so toolbar switches do not jump. */
+.app.has-browser,
 .app.has-library {
-  grid-template-columns: minmax(340px, 0.8fr) var(--gap) minmax(560px, var(--browser-width, 1.5fr));
+  grid-template-columns: minmax(380px, 1fr) var(--gap) minmax(360px, var(--browser-width, 1.15fr));
 }
 
 .chat, .browser {
@@ -344,7 +342,8 @@ button {
 @keyframes usage-refresh-spin { to { transform: rotate(360deg); } }
 /* ── Side pane (plan drawer) ───────────────────────────────────────── */
 
-.app.has-browser.has-side {
+.app.has-browser.has-side,
+.app.has-library.has-side {
   grid-template-columns: minmax(640px, 1.5fr) var(--gap) minmax(360px, var(--browser-width, 1fr));
 }
 .app-divider {

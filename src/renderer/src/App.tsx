@@ -78,8 +78,6 @@ function AppDivider({ appRef }: { appRef: React.RefObject<HTMLDivElement | null>
     const chatId = focusedChatId(state)
     return chatId !== null && state.views[chatId]?.planTurnId != null
   })
-  const sideIsWide = useApp((state) => state.libraryOpen)
-
   const drag = (event: React.PointerEvent<HTMLDivElement>): void => {
     if (event.button !== 0) return
     const handle = event.currentTarget
@@ -90,7 +88,7 @@ function AppDivider({ appRef }: { appRef: React.RefObject<HTMLDivElement | null>
     const appEl = appRef.current
     const appBox = appEl ? appEl.getBoundingClientRect() : { width: window.innerWidth, right: window.innerWidth }
     const chatMin = hasSide ? CHAT_PANEL_SIDE_MIN : CHAT_PANEL_MIN
-    const sideMin = sideIsWide ? 560 : BROWSER_PANEL_MIN
+    const sideMin = BROWSER_PANEL_MIN
     const totalAvailable = appBox.width - APP_GAP * 2 - APP_GAP
     const maxSide = Math.max(sideMin, totalAvailable - chatMin)
 
@@ -139,7 +137,7 @@ function AppDivider({ appRef }: { appRef: React.RefObject<HTMLDivElement | null>
         const appEl = appRef.current
         const appBox = appEl ? appEl.getBoundingClientRect() : { width: window.innerWidth, right: window.innerWidth }
         const chatMin = hasSide ? CHAT_PANEL_SIDE_MIN : CHAT_PANEL_MIN
-        const sideMin = sideIsWide ? 560 : BROWSER_PANEL_MIN
+        const sideMin = BROWSER_PANEL_MIN
         const totalAvailable = appBox.width - APP_GAP * 2 - APP_GAP
         const maxSide = Math.max(sideMin, totalAvailable - chatMin)
         const current = browserWidth ?? (event.currentTarget.nextElementSibling ? Math.round(event.currentTarget.nextElementSibling.getBoundingClientRect().width) : Math.round(totalAvailable * 0.5))

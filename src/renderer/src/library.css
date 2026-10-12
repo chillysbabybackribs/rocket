@@ -2,7 +2,7 @@
    tokens. A filter rail, then a dense grid of 16:10 frames where photos fill the frame and pages
    sit on a backdrop running off its foot, so a document's title and first lines read. */
 
-/* Its column width is shared with the eval dashboard, in styles.css. */
+/* Side column width is shared with the browser and artifacts in styles.css. */
 
 .library-panel {
   margin-left: var(--gap);
